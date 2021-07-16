@@ -1,0 +1,168 @@
+
+
+// comment
+/* multiline comment */
+
+
+// local variable
+@ localVariable;
+<@> localConstVariable = 'Error if changed';
+
+
+// C style arith rules
+@expr = 2 + 3 * (4 / 2);
+
+
+
+// function
+
+// no args
+@myFunction <= {
+    return 2+2
+}
+
+// 2 args
+@myFunctionWithArguments <= (a, b) {
+    return a + b;
+}
+
+
+myFunction();
+myFunctionWithArguments(myFunction(), a);
+
+
+// string 
+@str = 'This is a string';
+@str2 = "also a string";
+
+
+
+
+// for is a special function 
+for(from, to, <= (i) {
+    Debug.print(i);
+    // return modified i
+});
+
+// for with custom increment of 2
+for(to, from, -1, <= (i) {
+    Debug.print(i);
+    // return modified i
+});
+
+
+foreach(object, <=(key, value) {
+    Debug.print(key, value);
+});
+
+
+
+// so is while 
+while(statement, <=() {
+    myFunction();
+})
+
+
+// so is if
+if(expression, {
+    then : <= {
+        
+    
+    }, else : <= {
+        if (expression, {
+        
+        
+        });
+    },
+});
+
+// can also use if as an inline
+@result = if(a > b, {then:a, else:b});
+
+// or 
+@result = if(a > b, {then<={return a;}, else<={return b}});
+
+
+
+// switch doesn't exist, but match does!
+match(statement, {
+    0 : <= {
+        Debug.print('0!');
+    },
+    
+    1 : <= {
+        Debug.print('1!');
+    },
+    
+
+    // special value for no matching
+    default : <= {
+    
+    }
+});
+
+// Object
+@map = {};
+map.newProperty = 3;
+
+@inlineMap = {
+    newProperty : 3,
+    otherproperty : 'aaa',
+    funcProperty <= {
+        return 2+6;
+    }
+};
+
+
+// objects support an accessor value 
+// that acts a key checker. this supercedes normal 
+// object access.
+map.accessor <= (object, key, value) {
+    @output
+
+    match(key, <= {
+        a : <= {
+            output = 100;
+        }
+    
+    });
+    return output
+}
+
+
+// error handling
+// all function contexts have an errorHandler variable.
+// access the functions
+.errorHandler <= (err) {
+    Debug.log('Handled error!' + err.message);
+}
+
+error({myData:1, message:'Aaa!'});
+
+
+
+
+
+// class 
+@MyClass = class({
+    define <= (obj) {
+        @privateVariable = 100;
+        obj.interface({
+            publicVar : 2,
+            
+            something : {
+                get <= {
+                    return privateVariable;
+                }
+            
+            }
+            
+        
+        });
+    
+    }
+});
+
+
+
+
