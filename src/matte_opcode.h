@@ -22,12 +22,16 @@ typedef enum {
     
     // push a new callstack from the given function object.
     MATTE_OPCODE_CAL,
-    // assign a value 
-    MATTE_OPCODE_ASN,
+    // assign value to a referrable 
+    MATTE_OPCODE_ARF,
+    // assign object member
+    MATTE_OPCODE_OSN,
+
     // general purpose operator code.
     MATTE_OPCODE_OPR
     
-    
+    // call c / built-in function
+    MATTE_OPCODE_EXT
         
 } matteOpcode_t;
 

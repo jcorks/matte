@@ -51,13 +51,15 @@ static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
         out->localNames[i] = chomp_string(bytes, left);    
     }        
     ADVANCE(uint16_t, out->capturedCount);
-    out->captures = calloc(sizeof(matteBytecodeStubCapture_t), out->capturedCount);
-    ADVANCEN(sizeof(matteBytecodeStubCapture_t)*out->capturedCount, out->captures);
-
+    if (out->capturedCount) {
+        out->captures = calloc(sizeof(matteBytecodeStubCapture_t), out->capturedCount);
+        ADVANCEN(sizeof(matteBytecodeStubCapture_t)*out->capturedCount, out->captures);
+    }
     ADVANCE(uint32_t, out->instructionCount);
-    out->captures = calloc(sizeof(matteBytecodeStubInstruction_t, out->instructionCount);    
-    ADVANCEN(sizeof(matteBytecodeStubInstruction_t)*out->captureCount, out->instructions);
-
+    if (out->instructionCount) {
+        out->captures = calloc(sizeof(matteBytecodeStubInstruction_t, out->instructionCount);    
+        ADVANCEN(sizeof(matteBytecodeStubInstruction_t)*out->captureCount, out->instructions);
+    }
     return out;    
 }
 

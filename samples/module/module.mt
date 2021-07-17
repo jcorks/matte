@@ -1,10 +1,13 @@
 return class({
-    define <= (obj, args) {
+    constructor <= (obj, args) {
         // declare local variables
         @value0 = 0;
         @value1 = 0;
         @value2 = ?(args.value2 != empty, args.value2, empty); 
     
+        // constants
+        <@>constant = 1;
+
         obj.interface({
             // public variable, write-only
             value0 : {
@@ -22,7 +25,7 @@ return class({
             
             // public function, adds both variables
             add <= (){
-                return value0 + value1;
+                return value0 + value1 + constant;
             }
         });
     }

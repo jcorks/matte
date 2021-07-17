@@ -1,3 +1,5 @@
+// Matte scripting language, syntax overview
+
 
 
 // comment
@@ -65,7 +67,7 @@ while(statement, <=() {
 })
 
 
-// so is if, most statements are in Matte
+// so is if, most statements are functions in Matte
 if(expression, {
     then : <= {
         doSomething();
@@ -85,7 +87,8 @@ if(expression, {
 // or 
 @result = if(a > b, {then<={return a;}, else<={return b}});
 
-
+// or, ternary:
+@result = ?(a > b, a, b);
 
 // switch doesn't exist, but match does!
 match(statement, {
@@ -100,7 +103,7 @@ match(statement, {
 
     // special value for no matching
     default : <= {
-    
+        Debug.print('Neither')
     }
 });
 
@@ -146,7 +149,7 @@ map.assigner <= (object, key, value) {
 
 // error handling
 // all function contexts have an errorHandler variable.
-// access the functions
+// If an error is thrown, the current stackframe's errorHandler is run.
 .errorHandler <= (err) {
     Debug.log('Handled error!' + err.message);
 }
@@ -159,24 +162,62 @@ error({myData:1, message:'Aaa!'});
 
 // class 
 @MyClass = class({
-    define <= (obj) {
-        @privateVariable = 100;
+    constructor <= (obj, args) {
+        // declare local variables
+        @value0 = 0;
+        @value1 = 0;
+        @value2 = ?(args.value2 != empty, args.value2, empty); 
+    
+        // constants
+        <@>constant = 1;
+
+
+        // defines public interface
         obj.interface({
-            publicVar : 2,
-            
-            something : {
-                get <= {
-                    return privateVariable;
+            // public variable
+            publicMember0 : {
+                set <= (v) {
+                    value0 = v;
+                },
+
+                get <= () {
+                    return value0;
                 }
-            
+            },
+
+            // public variable, write-only            
+            publicMember1 : {
+                set <= (v) {
+                    value1 = v;
+                }
+            },
+
+            wasArgSet : {
+                get <= () {
+                    return value2 == empty;
+                }
             }
             
-        
+            // public function, adds both variables (and the constant)
+            add <= () {
+                return value0 + value1 + constant;
+            }
         });
-    
     }
 });
 
 
+@instance = MyClass.new();
+@instance2 = MyClass.new({value2:true});
+
+// prints "false"
+Debug.print(instance.wasArgSet);
+// prints "true"
+Debug.print(instance2.wasArgSet);
 
 
+instance.publicMember0 = 100;
+instance.publicMember1 = 200;
+
+// Prints '301'
+Debug.print(instance.add());

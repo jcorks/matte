@@ -130,7 +130,8 @@ parsing primitives:
     //
     .operator()
     
-    
+    .finalizer (writable)
+
     .toString  (writeable, return string)
     .toNumber  (writeable, return number)
     .toBoolean (writeable, return boolean)
@@ -300,5 +301,23 @@ Operator (OPR)
     
 
     
-    
+External call (EXT)
+    args:
+        - uint64_t external code. VM-Defined external C functions to call.
+          The following are reserved functions that the VM will always know:
+          0 -> noop
+          1 -> if
+          2 -> while 
+          3 -> for 
+          4 -> foreach
+          5 -> match
+          6 -> getExternalFunction 
+          7 -> getExternalValue
+
+          
+    pops:
+        - n values based on args defined for external call
+    pushes:
+        - result of call
+
 

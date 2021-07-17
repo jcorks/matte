@@ -38,12 +38,15 @@ typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 // Generates an array of bytecode stubs (matteBytecodeStub_t *) from 
 // raw bytecode. If an error occurs, err is populated and NULL is returned.
 // When done, each matteBytecodeStub_t * should be removed.
+//
+// Incomplete stubs are supported. If given, remaining attributes are 0.
 matteArray_t * matte_bytecode_stubs_from_bytecode(
     const uint8_t * bytecodeRaw, 
     uint32_t len, 
     matteError_t * err
 );
 
+matte_bytecode_stub_destroy(matteBytecodeStub_t * b);
 
 // Returns the fileid that the stub was given.
 // fileids are only valid if all stubs come from the same parser 
@@ -78,7 +81,7 @@ const matteString_t * matte_bytecode_stub_get_local_name(const matteBytecodeStub
 // ID of a stub capture variable
 typedef struct {
     // parent level of the scope where the 
-    // function is defined.
+    // function is defined. 0 is current;
     uint16_t parentLevel;
 
     // ID within that function scope where the variable referred to is.

@@ -55,7 +55,7 @@ void matte_vm_add_stubs(const matteArray_t *);
 //
 // This is equivalent to pushing the args onto the stack and 
 // inserting a CAL instruction.
-matteValue_t matte_vm_run_stub(
+matteValue_t matte_vm_run_script(
     matteVM_t *, 
     uint16_t fileid, 
     const matteArray_t * args
@@ -85,6 +85,11 @@ typedef struct {
     // If the stackframe is invalid, this will be NULL and no other values 
     // will be valid.
     const matteBytecodeStub_t * stub;
+
+    // function object of the stackframe.
+    // holds captured values.
+    matteValue_t context;
+
     // current instruction index within the stub
     uint32_t pc;
     // contextualized, human-readable string of the name of the running 
@@ -93,15 +98,11 @@ typedef struct {
     matteString_t * prettyName;
 
 
-    // function object of the stackframe
-    matteValue_t * context;
     // array of matteValue_t values passed as args to the function
     matteArray_t * arguments;
     // array of matteValue_t values local to the function
     matteArray_t * locals;
-    // array of matteValue_t values that were captured by this function
-    matteArray_t * captured;
-    
+
     
     // working array of values utilized by this function. (matteValue_t)
     matteArray_t * valueStack;
@@ -109,11 +110,41 @@ typedef struct {
 } matteVMStackFrame_t;
 
 
+
+
 // Gets the requested stackframe. 0 is the currently running stackframe.
 matteVMStackFrame_t matte_vm_get_stackframe(matteVM_t * vm, uint32_t i);
 
+// Makes a copy of the referrable at the stackframe
+// up to caller to recycle the value.
+// Can raise error.
+/*
+    It can refer to an argument, local value, or captured variable.
+    0 -> context object
+    1, num args -1 -> arguments (this is the number of arguments that the function expected.)
+    num args, num args + num locals - 1 -> locals 
+    num args + num locals, num args + num locals + num captured -1 -> captured
+*/
+// Caller is responsible for recycling value.
+matteValue_t matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID);
 
 
+// Adds an external function.
+// In the script context: calling getExternalFunction() with the string identifier 
+// given will return a function object that, when called, calls this C function.
+void matte_vm_set_external_function(
+    matteVM_t * vm, 
+    matteString_t * identifier
+    uint8_t nArgs,
+    matteValue_t (*)(matteVM_t *, matteArray_t * args, void * userData),
+    void * userData
+);
 
+// Gets a new function object that, when called, calls the registered 
+// C function.
+matteValue_t matte_vm_get_external_function_as_value(
+    matteVM_t * vm,
+    matteString_t * identifier
+);
 
 #endif

@@ -23,13 +23,13 @@ typedef enum {
     MATTE_VALUE_TYPE_OBJECT,
 } matteValue_Type_t;
 
+
 // a value object.
-// The object is private;
-struct matteValue_t {
+typedef struct  {
     matteHeap_t * heap;
     uint32_t binID;
     uint32_t objectID;    
-};
+} matteValue_t;
 
 // Creates a new empty value
 matteValue_t matte_heap_new_value(matteHeap_t *);
@@ -53,8 +53,12 @@ void matte_value_into_new_object_ref(matteValue_t *);
 // 
 void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);
 
-// if the value points to an object, can set a user function finalizer
-void matte_value_set_finalizer(matteValue_t, int(*)(matteHeap_t *, matteValue_t, void *), void *);
+
+matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t);
+
+// Gets all captured values by the function. If not a function, returns NULL
+const matteArray_t * matte_value_get_captured_values(matteValue_t);
+
 
 // if the value points to an object, sets custom data for the object.
 void matte_value_set_object_userdata(matteValue_t, void *);
@@ -80,22 +84,21 @@ int matte_value_is_callable(const matteValue_t);
 // key. This will invoke the accessor if present.
 matteValue_t matte_value_object_access(matteValue_t, matteValue_t key);
 
+// convenience function. Same as matte_value_object_access except creates a temporaty 
+// string object as a key.
+matteValue_t matte_value_object_access_string(matteValue_t, const matteString_t *);
+
+
 // Attempts to set a key-value pair within the object.
 // incokes assigner if presetnt
 matteValue_t matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value);
 
-matteValue_t matte_value_object_to_number(matteValue_t);
-matteValue_t matte_value_object_to_string(matteValue_t);
-matteValue_t matte_value_object_to_number(matteValue_t);
-
-// Sets the data for this value. This invokes the assigner if present.
-void matte_value_assign(matteValue_t, matteValue_t value);
 
 
 
 // if number/string/boolean: copy
 // else: point to same source object
-void matte_value_into_copy(matteValue_t, matteValue_t from);
+void matte_value_into_copy(matteValue_t *, matteValue_t from);
 
 
 
