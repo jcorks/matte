@@ -81,7 +81,7 @@ const matteArray_t * matte_array_temporary_from_static_array(
 /// The first argument is the array pointer
 /// The second argument is the type of each member within the array 
 /// The third argument is the number of members in the array
-#define TOPAZ_ARRAY_CAST(__D__,__T__,__L__) (matte_array_temporary_from_static_array(__D__, sizeof(__T__), __L__))
+#define MATTE_ARRAY_CAST(__D__,__T__,__L__) (matte_array_temporary_from_static_array(__D__, sizeof(__T__), __L__))
 
 /// Returns an empty, read-only array. 
 ///

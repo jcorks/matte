@@ -28,8 +28,8 @@ DEALINGS IN THE SOFTWARE.
 
 */
 
-#ifndef H_MATTE_BYTECODE_STUB_INCLUDED
-#define H_MATTE_BYTECODE_STUB_INCLUDED
+#ifndef H_MATTE__BYTECODE_STUB__INCLUDED
+#define H_MATTE__BYTECODE_STUB__INCLUDED
 
 
 
@@ -38,17 +38,12 @@ typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 // Generates an array of bytecode stubs (matteBytecodeStub_t *) from 
 // raw bytecode. If an error occurs, err is populated and NULL is returned.
 // When done, each matteBytecodeStub_t * should be removed.
-matteArray_t * matte_bytecode_st    ubs_from_bytecode(
+matteArray_t * matte_bytecode_stubs_from_bytecode(
     const uint8_t * bytecodeRaw, 
     uint32_t len, 
     matteError_t * err
 );
 
-// returns the human-readable name of the stub.
-// This is guessed by the parser at the time of parsing.
-// For anonymous functional stubs, <function> is displayed.
-// For the toplevel stub, the <toplevel> is displated.
-const matteString_t * matte_bytecode_stub_get_name(const matteBytecodeStub_t *);
 
 // Returns the fileid that the stub was given.
 // fileids are only valid if all stubs come from the same parser 
@@ -98,12 +93,15 @@ const matteBytecodeStubCapture_t * matte_bytecode_stub_get_captures(
 
 // Get all the stub's instructions
 typedef struct {
-    uint32_t lineNumber;
+    // Line number for the parsed instruction
+    int32_t lineNumber;
+    // The opcode of the 
     int32_t  opcode;
     uint8_t  data[8];
 } matteBytecodeStubInstruction_t;
 
-const matteBytecodeStubOp_t * matte_bytecode_stub_get_instructions(const matteBytecodeStub_t *, uint32_t * count);
+// Gets all instructions held by the stub.
+const matteBytecodeStubInstruction_t * matte_bytecode_stub_get_instructions(const matteBytecodeStub_t *, uint32_t * count);
 
 
 

@@ -12,10 +12,11 @@
 // C style arith rules
 @expr = 2 + 3 * (4 / 2);
 
+// semicolon optional
+@otherVar = expr+2
 
 
-// function
-
+///////// functions
 // no args
 @myFunction <= {
     return 2+2
@@ -44,28 +45,30 @@ for(from, to, <= (i) {
     // return modified i
 });
 
-// for with custom increment of 2
+// for with custom increment of -1
 for(to, from, -1, <= (i) {
     Debug.print(i);
     // return modified i
 });
 
 
+// foreach within object.
 foreach(object, <=(key, value) {
     Debug.print(key, value);
 });
 
 
 
-// so is while 
+// while is also a function
 while(statement, <=() {
     myFunction();
 })
 
 
-// so is if
+// so is if, most statements are in Matte
 if(expression, {
     then : <= {
+        doSomething();
         
     
     }, else : <= {
@@ -105,6 +108,8 @@ match(statement, {
 @map = {};
 map.newProperty = 3;
 
+
+
 @inlineMap = {
     newProperty : 3,
     otherproperty : 'aaa',
@@ -117,7 +122,7 @@ map.newProperty = 3;
 // objects support an accessor value 
 // that acts a key checker. this supercedes normal 
 // object access.
-map.accessor <= (object, key, value) {
+map.accessor <= (object, key) {
     @output
 
     match(key, <= {
@@ -127,6 +132,15 @@ map.accessor <= (object, key, value) {
     
     });
     return output
+}
+
+map.assigner <= (object, key, value) {
+    @specialVal;
+    match(key, <= {
+        a <= {
+            specialVal = value;
+        }    
+    });
 }
 
 

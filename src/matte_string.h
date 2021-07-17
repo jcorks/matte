@@ -114,7 +114,7 @@ const matteString_t * matte_string_temporary_from_c_str(
 
 /// A shorter form of matte_string_temporary_from_c_str().
 ///
-#define TOPAZ_STR_CAST(__s__) matte_string_temporary_from_c_str(__s__)
+#define MATTE_STR_CAST(__s__) matte_string_temporary_from_c_str(__s__)
 
 
 /// Sets the contents of the string A to the contents of string B

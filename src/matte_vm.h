@@ -27,8 +27,11 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-#ifndef H_MATTE_VM_INCLUDED
-#define H_MATTE_VM_INCLUDED
+#ifndef H_MATTE__VM__INCLUDED
+#define H_MATTE__VM__INCLUDED
+
+
+
 
 typedef struct matteVM_t matteVM_t;
 
@@ -36,6 +39,9 @@ typedef struct matteVM_t matteVM_t;
 matteVM_t * matte_vm_create();
 
 void matte_vm_destroy(matteVM_t*);
+
+// Returns the heap owned by the VM.
+matteHeap_t * matte_vm_get_heap(matteVM_t *);
 
 // Adds an array of matteBytecodeStub_t * to the vm.
 // Ownership of the stubs is transferred.
@@ -46,11 +52,28 @@ void matte_vm_add_stubs(const matteArray_t *);
 //
 // A function object is created as the toplevel for the 
 // root stub functional; the function is then run.
-matteValue_t * matte_vm_run_stub(
+//
+// This is equivalent to pushing the args onto the stack and 
+// inserting a CAL instruction.
+matteValue_t matte_vm_run_stub(
     matteVM_t *, 
     uint16_t fileid, 
     const matteArray_t * args
 );
+
+
+// Calls a function and evaluates its result immediately.
+matteValue_t matte_vm_call(
+    matteVM_t *,
+    matteValue_t function,
+    const matteArray_t * args
+);
+
+// raises an error
+void matte_vm_raise_error(matteVM_t *, matteValue_t);
+
+// raises an error string
+void matte_vm_raise_error_string(matteVM_t *, const matteString_t *);
 
 
 
@@ -64,18 +87,25 @@ typedef struct {
     const matteBytecodeStub_t * stub;
     // current instruction index within the stub
     uint32_t pc;
+    // contextualized, human-readable string of the name of the running 
+    // function. It is not always possible to get an accurate name,
+    // so this is often a "best guess". Meant for debugging.
+    matteString_t * prettyName;
+
+
     // function object of the stackframe
     matteValue_t * context;
-    // array of matteValue_t * values passed as args to the function
+    // array of matteValue_t values passed as args to the function
     matteArray_t * arguments;
-    // array of matteValue_t * values local to the function
+    // array of matteValue_t values local to the function
     matteArray_t * locals;
-    // array of matteValue_t * values that were captured by this function
+    // array of matteValue_t values that were captured by this function
     matteArray_t * captured;
     
     
-    // working array of values utilized by this function.
+    // working array of values utilized by this function. (matteValue_t)
     matteArray_t * valueStack;
+    
 } matteVMStackFrame_t;
 
 
