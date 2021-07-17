@@ -206,11 +206,21 @@ New Number (NNM)
     
 New String (NST)
     args:
-        - unistring
+        - Nothing. This opcode signals the start of a new string. The string is actually split into instruction packets 
+          within the data section. Since string literals are usually 
+          small, this shouldnt be too crazy and is portable.
+          The last instruction bytes that are unused will be ignored.
     pops:
     pushes:
-        - new value (string) (read-only)
-        
+
+String Continue (STC)
+    args:
+        - lo 4 bytes > next UTF8 char 
+        - hi 4 bytes > next UTF8 char
+    pops:
+    pushes:
+        - new value (string) (read-only) IF the STC segment is complete
+
         
 New Object (NOB)
     args:
@@ -234,9 +244,10 @@ New function (NFN)
           
 Call function (CAL)
     args:
+        - n args pushed for function to receive
     pops: 
-        - function object
-        - value for each arg referenced in the stub. If none, continues with empty values.
+        - function object (first)
+        - value for each arg pushed as specified in data.
     pushes:
         - value result. either something or empty.
           
@@ -321,3 +332,9 @@ External call (EXT)
         - result of call
 
 
+Pop stack values (POP)
+    args:
+        - 4 bytes uint32_t max to pop
+    pops:
+        - the number specified
+    pushes:

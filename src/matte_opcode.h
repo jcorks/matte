@@ -14,6 +14,7 @@ typedef enum {
     MATTE_OPCODE_NNM,
     // push new string
     MATTE_OPCODE_NST,
+    MATTE_OPCODE_STC,
     // push new empty object
     MATTE_OPCODE_NOB,
     // push new function from a compiled stub
@@ -31,7 +32,10 @@ typedef enum {
     MATTE_OPCODE_OPR
     
     // call c / built-in function
-    MATTE_OPCODE_EXT
+    MATTE_OPCODE_EXT,
+
+    // pop values from the stack
+    MATTE_OPCODE_POP,
         
 } matteOpcode_t;
 

@@ -66,7 +66,9 @@ static matteBytecodeStub_t * vm_find_stub(matteVM_t * vm, uint16_t fileid, uint1
     return matte_table_find_by_uint(subt, stubid);
 }
 
-
+#define STACK_SIZE() matte_array_get_size(frame->valueStack);
+#define STACK_POP() matte_array_at(frame->valueStack, matte_array_get_size(frame->valueStack)-1); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__);
 
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
     matteVMStackFrame_t * frame = matte_vm_get_stackframe(vm, 0);
@@ -81,6 +83,118 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_NOP:
             break;
             
+          case MATTE_OPCODE_PRF: {
+            uint32_t referrable;
+            memcpy(&referrable, inst->data, sizeof(uint32));
+            matteValue_t v = matte_vm_stackframe_get_referrable(vm, 0, referrable);
+            STACK_PUSH(v);
+            break;
+          }
+
+          case MATTE_OPCODE_NEM: {
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            STACK_PUSH(v);
+            break;
+          }
+
+          case MATTE_OPCODE_NNM: {
+            double val;
+            memcpy(&val, inst->data, sizeof(double));
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            matte_value_into_number(&v, val);
+            STACK_PUSH(v);
+            break;
+          }
+
+          case MATTE_OPCODE_NST: {
+            matteString_t * str = matte_string_create();
+
+            uint32_t vals[2];
+
+            if (frame->pc < instCount)
+                inst = program[frame->pc++];
+
+            while(inst->opcode == MATTE_OPCODE_STC) {
+                memcpy(vals, inst->data, 8);
+                if (vals[0] != 0) matte_string_append_char(str, vals[0]);
+                if (vals[1] != 0) matte_string_append_char(str, vals[1]);
+
+                if (frame->pc < instCount)
+                    inst = program[frame->pc++];
+            }
+
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            matte_value_into_string(&v, str);
+            matte_string_destroy(str);
+            STACK_PUSH(v);
+            break;
+          }
+          case MATTE_OPCODE_NOB: {
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            matte_value_into_new_object_ref(&v);
+            STACK_PUSH(v);
+            break;
+          }
+          case MATTE_OPCODE_NFN: {
+            uint32_t ids[2];
+            memcpy(ids, inst->data, 8);
+            if (ids[0] == 0) {
+                matte_vm_raise_error_string(vm, "NFN opcode is NOT allowed to reference fileid 0?? (corrupt bytecode?)");
+                break;
+            }
+            matteBytecodeStub_t * stub = vm_find_stub(vm, ids[0], ids[1]);
+
+            if (stub == NULL) {
+                matte_vm_raise_error_string(vm, "NFN opcode data referenced non-existent stub (either parser error OR bytecode was reused erroneously)");
+                break;
+            }
+
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            matte_value_into_new_function_ref(&v, stub);
+            STACK_PUSH(v);
+            break;
+          }
+
+          case MATTE_OPCODE_CAL: {
+            if (STACK_SIZE() == 0) {
+                matte_vm_raise_error_string(vm, "VM error: tried to run CAL opcode when stack is empty.")    
+                break;
+            }
+
+            uint32_t argcount;
+            memcpy(&argcount, inst->data, sizeof(uint32_t));
+            if (STACK_SIZE() < argcount) {
+                matte_vm_raise_error_string(vm, "VM error: tried to prepare arguments for a call, but insufficient arguments on the stack.");    
+                break;
+            }
+
+            matteValue_t function = STACK_POP();
+
+
+            matteArray_t * args = matte_array_create(sizeof(matteValue_t));
+            uint32_t i;
+            for(i = 0; i < argcount; ++i) {
+                matteValue_t v = STACK_POP();
+                matteValue_t c = matte_heap_new_value(vm->heap);
+                matte_value_into_copy(&c, v);
+                matte_array_push(args, c);
+            }
+
+            matteValue_t result = matte_vm_call(vm, function, args);
+
+            for(i = 0; i < argcount; ++i) {
+                matteValue_t v = matte_array_at(args, matteValue_t, i);
+                matte_array_push(args, c);
+            }
+            matte_array_destroy(args);
+
+            STACK_PUSH(result);
+            break;
+          }
+
+          case MATTE_OPCODE_STC:
+            matte_vm_raise_error_string(vm, "STC opcode only allowed as part of NST opcode stream.")    
+            break;            
           default: 
             matte_vm_raise_error_string(vm, "Unknown / unhandled opcode.")    
         
@@ -114,7 +228,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         }
     }
 
-    return output;
+
+
+    // top of stack is output
+    if (matte_array_get_size(frame->valueStack)) {
+        return matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1);
+    } else {
+        return matte_heap_new_value(vm->heap);
+    }
 }
 
 

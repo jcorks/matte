@@ -46,7 +46,8 @@ matteArray_t * matte_bytecode_stubs_from_bytecode(
     matteError_t * err
 );
 
-matte_bytecode_stub_destroy(matteBytecodeStub_t * b);
+// free
+void matte_bytecode_stub_destroy(matteBytecodeStub_t * b);
 
 // Returns the fileid that the stub was given.
 // fileids are only valid if all stubs come from the same parser 
