@@ -1,0 +1,106 @@
+// +
+static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Addition operator to empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_value_into_number(
+            &result, 
+            matte_value_as_number(a) +
+            matte_value_as_number(b)
+        );
+        break;
+      case MATTE_VALUE_TYPE_STRING: { 
+        matteString_t * astr = matte_value_as_string(a);
+        matteString_t * bstr = matte_value_as_string(b);
+        if (!astr || !bstr) return result;
+        
+        matteString_t * str = matte_string_clone(astr);
+        matte_string_concat(str, bstr);
+        
+        matte_value_into_string(
+            &result, 
+            str
+        );
+        
+        matte_string_destroy(str);
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Addition operator to boolean value is undefined."));
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        matteValue_t opSrc = matte_value_object_access_string(a, MATTE_STR_CAST("operator"));
+        if (opSrc.binID) {
+            matteValue_t op = matte_value_object_access_string(a, MATTE_STR_CAST("+"));
+            
+            matteValue_t args[] = {a, b};
+            return matte_vm_call(vm, op, MATTE_ARRAY_CAST(args, matteValue_t, 2));
+        } else {
+            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Addition operator to object without operator overloading is undefined."));
+        }
+        break;
+      }      
+    }
+    return result;
+}
+
+static matteValue_t vm_operator__less(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Less than operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_value_into_boolean(
+            &result, 
+            matte_value_as_number(a) <
+            matte_value_as_number(b)
+        );
+        break;
+      case MATTE_VALUE_TYPE_STRING: { 
+        matteString_t * astr = matte_value_as_string(a);
+        matteString_t * bstr = matte_value_as_string(b);
+        if (!astr || !bstr) return result;
+        
+        matte_value_into_boolean(
+            &result,
+            matte_string_compare(
+                astr,
+                bstr
+            ) < 0
+        );
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Less than operator on boolean value is undefined."));
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        matteValue_t opSrc = matte_value_object_access_string(a, MATTE_STR_CAST("operator"));
+        if (opSrc.binID) {
+            matteValue_t op = matte_value_object_access_string(a, MATTE_STR_CAST("<"));
+            
+            matteValue_t args[] = {a, b};
+            return matte_vm_call(vm, op, MATTE_ARRAY_CAST(args, matteValue_t, 2));
+        } else {
+            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Less than operator to object without operator overloading is undefined."));
+        }
+        break;
+      }      
+    }
+    return result;
+}
+
+
+
+static matteValue_t vm_operator__tonumber(matteVM_t * vm, matteValue_t a) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    matte_value_into_number(&result, matte_value_as_number(a));
+    return result;
+}

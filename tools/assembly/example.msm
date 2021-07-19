@@ -7,8 +7,30 @@
 ;
 fileid 1
 
-; (a + n) + n
+; return if(a.toNumber() < b.toNumber(), {then:a, else:b})
 function 0
+    args=2
+        "a"
+        "b"
+    locals=0
+    captures=0
+    
+    
+    1 prf 2
+    1 prf 1
+
+    1 prf 2
+    1 opr TN
+    1 prf 1
+    1 opr TN 
+    1 opr <
+
+    1 ext if3
+end function
+
+
+; (a + n) + n
+function 8
     args=2
         "a"
         "n"
@@ -19,6 +41,7 @@ function 0
     1 cal 0
     1 prf 2
     1 prf 1
+    1 opr TN
     1 opr +
     1 opr +
 end function
@@ -30,7 +53,7 @@ function 5
     locals=0
     captures=0
     
-    1 nnm 10.0
+    1 nnm 0.0
 end function
 
 function 2

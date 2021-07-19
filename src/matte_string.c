@@ -237,7 +237,7 @@ int matte_string_test_eq(const matteString_t * a, const matteString_t * b) {
     return strcmp(a->cstr, b->cstr) == 0;
 }
 
-int matte_string_matte_compare(const matteString_t * a, const matteString_t * b) {
+int matte_string_compare(const matteString_t * a, const matteString_t * b) {
     return strcmp(a->cstr, b->cstr);
 }
 

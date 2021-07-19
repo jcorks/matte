@@ -73,4 +73,17 @@ typedef enum {
 
 } matteOperator_t;
 
+
+typedef enum {
+    MATTE_EXT_CALL_NOOP,
+    MATTE_EXT_CALL_IF2,
+    MATTE_EXT_CALL_IF3,
+    MATTE_EXT_CALL_WHILE,
+    MATTE_EXT_CALL_FOR3,
+    MATTE_EXT_CALL_FOR4,
+    MATTE_EXT_CALL_FOREACH,
+    MATTE_EXT_CALL_MATCH,
+    MATTE_EXT_CALL_GETEXTERNALFUNCTION
+} matteExtCall_t;
+
 #endif

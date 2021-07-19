@@ -254,8 +254,8 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 oc1 == 's' &&
                 oc2 == 't'
             ) {
-                char * line = strstr(line, "nst");
-                unistring str = read_unistring_ascii(line+3);
+                char * lr = strstr(line, "nst");
+                unistring str = read_unistring_ascii(lr+3);
 
                 inst->opcode = MATTE_OPCODE_NST;
                 uint32_t srcline = inst->line;                
@@ -267,7 +267,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                         instructions = realloc(instructions, instructionsAlloc*sizeof(instruction));
                     }
                     inst = instructions+(instructionsCount++);
-                    inst->opcode = MATTE_OPCODE_NST;
+                    inst->opcode = MATTE_OPCODE_STC;
                     inst->line = srcline;
                     memcpy(inst->data, &str.data[iter], sizeof(int32_t));
                     lenLeft--; iter++;
@@ -276,6 +276,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                         lenLeft--; iter++;
                     }
                 }
+                free(str.data);
             } else if (
                 oc0 == 'n' &&
                 oc1 == 'o' &&
@@ -433,25 +434,29 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 sscanf(line, "%"SCNu32" ext %s", &inst->line, m);
                 inst->opcode = MATTE_OPCODE_EXT;
                 if (!strcmp("noop", m)) {
-                    *(uint64_t*)inst->data = 0;
-                } else if (!strcmp("if", m)) {
-                    *(uint64_t*)inst->data = 1;
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_NOOP;
+                } else if (!strcmp("if2", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_IF2;
+                } else if (!strcmp("if3", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_IF3;
+
                 } else if (!strcmp("while", m)) {
-                    *(uint64_t*)inst->data = 2;
-                } else if (!strcmp("for", m)) {
-                    *(uint64_t*)inst->data = 3;
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_WHILE;
+                } else if (!strcmp("for3", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR3;
+                } else if (!strcmp("for4", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR4;
                 } else if (!strcmp("foreach", m)) {
-                    *(uint64_t*)inst->data = 4;
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_FOREACH;
                 } else if (!strcmp("match", m)) {
-                    *(uint64_t*)inst->data = 5;
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_MATCH;
                 } else if (!strcmp("getExternalFunction", m)) {
-                    *(uint64_t*)inst->data = 6;
-                } else if (!strcmp("getExternalValue", m)) {
-                    *(uint64_t*)inst->data = 7;
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_GETEXTERNALFUNCTION;
                 } else {
                     printf("ERROR on line %d: unrecognized external opcode\n", lineN);
                     exit(1);
                 }
+                free(m);
             } else if (
                 oc0 == 'p' &&
                 oc1 == 'o' &&

@@ -272,7 +272,7 @@ Assign Referrable (ARF)
 Assign Object Member (OSN)
     args:
     pops:
-        - one value for target
+        - one value for target (top)
         - one value for key
         - one value for new value 
     pushes:
@@ -330,14 +330,15 @@ External call (EXT)
         - uint64_t external code. VM-Defined external C functions to call.
           The following are reserved functions that the VM will always know:
           0 -> noop
-          1 -> if
-          2 -> while 
-          3 -> for 
-          4 -> foreach
-          5 -> match
-          6 -> getExternalFunction 
-          7 -> getExternalValue
-
+          1 -> if2   if(condition, {then:func_or_val, else:func_or_val})
+          2 -> if3   if(condition, then_val, else_val)
+          3 -> while 
+          4 -> for3  for(start, end, func)
+          5 -> for4  for(start, end, step, func)
+          6 -> foreach
+          7 -> match
+          8 -> getExternalFunction 
+            
           
     pops:
         - n values based on args defined for external call

@@ -89,63 +89,20 @@ static matteBytecodeStub_t * vm_find_stub(matteVM_t * vm, uint16_t fileid, uint1
 }
 
 
+#include "MATTE_OPERATORS"
+#include "MATTE_EXT_CALLS"
 
 
-static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_t b) {
-    matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
-      case MATTE_VALUE_TYPE_EMPTY: 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Addition operator to empty value is undefined."));
-        return result;
 
-      case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
-            &result, 
-            matte_value_as_number(a) +
-            matte_value_as_number(b)
-        );
-        break;
-      case MATTE_VALUE_TYPE_STRING: { 
-        matteString_t * astr = matte_value_as_string(a);
-        matteString_t * bstr = matte_value_as_string(b);
-        if (!astr || !bstr) return result;
-        
-        matteString_t * str = matte_string_clone(astr);
-        matte_string_concat(str, bstr);
-        
-        matte_value_into_string(
-            &result, 
-            str
-        );
-        
-        matte_string_destroy(str);
-        break;
-      }
-      case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Addition operator to boolean value is undefined."));
-        break;
-      
-      case MATTE_VALUE_TYPE_OBJECT: {
-        matteValue_t opSrc = matte_value_object_access_string(a, MATTE_STR_CAST("operator"));
-        if (opSrc.binID) {
-            matteValue_t op = matte_value_object_access_string(a, MATTE_STR_CAST("+"));
-            
-            matteValue_t args[] = {a, b};
-            return matte_vm_call(vm, op, MATTE_ARRAY_CAST(args, matteValue_t, 2));
-        } else {
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Addition operator to object without operator overloading is undefined."));
-        }
-        break;
-      }      
-    }
-    return result;
-}
+
 
 
 
 static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue_t a, matteValue_t b) {
     switch(op) {
-      case MATTE_OPERATOR_ADD: return vm_operator__add(vm, a, b);
+      case MATTE_OPERATOR_ADD:  return vm_operator__add (vm, a, b);
+      case MATTE_OPERATOR_LESS: return vm_operator__less(vm, a, b);
+
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled OPR operator"));                        
         return matte_heap_new_value(vm->heap);
@@ -155,6 +112,7 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
 
 static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue_t a) {
     switch(op) {
+      case MATTE_OPERATOR_TONUMBER: return vm_operator__tonumber(vm, a);
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled OPR operator"));                        
         return matte_heap_new_value(vm->heap);
@@ -316,6 +274,55 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             break;
           }    
+          case MATTE_OPCODE_OSN: {
+            if (STACK_SIZE() < 3) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: OSN opcode requires 3 on the stack."));                
+                break;        
+            }
+            matteValue_t object = STACK_POP();
+            matteValue_t key = STACK_POP();
+            matteValue_t val = STACK_POP();
+            
+            matte_value_object_set(object, key, val);
+            
+            STACK_PUSH(object);
+            break;
+          }    
+
+          case MATTE_OPCODE_EXT: {
+            uint64_t call = *(uint64_t*)inst->data;
+            switch(call) {
+              case MATTE_EXT_CALL_NOOP: break;
+              case MATTE_EXT_CALL_IF2: {
+                if (STACK_SIZE() < 2) {
+                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: if requires 2 arguments."));                
+                } else {
+                    matteValue_t a = STACK_POP();
+                    matteValue_t b = STACK_POP();
+                    matteValue_t v = vm_ext_call__if2(vm, a, b);
+                    STACK_PUSH(v);
+                }
+                break;
+              }
+              case MATTE_EXT_CALL_IF3: {
+                if (STACK_SIZE() < 2) {
+                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: this if requires 3 arguments."));                
+                } else {
+                    matteValue_t a = STACK_POP();
+                    matteValue_t b = STACK_POP();
+                    matteValue_t c = STACK_POP();
+                    matteValue_t v = vm_ext_call__if3(vm, a, b, c);
+                    STACK_PUSH(v);
+                }
+                break;
+              }
+              
+              default:;
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: unknown EXT command"));                
+                
+            }
+            break;
+          }
           case MATTE_OPCODE_OPR: {            
             switch(inst->data[0]) {
                 case MATTE_OPERATOR_ADD:

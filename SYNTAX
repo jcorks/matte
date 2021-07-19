@@ -88,7 +88,7 @@ if(expression, {
 @result = if(a > b, {then<={return a;}, else<={return b}});
 
 // or, ternary:
-@result = ?(a > b, a, b);
+@result = if(a > b, a, b);
 
 // switch doesn't exist, but match does!
 match(statement, {

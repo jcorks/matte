@@ -270,7 +270,7 @@ int matte_string_test_eq(
 /// Returns < 0 if a alphabetically comes before b
 /// Returns > 0 if a alphabetically comes after b
 /// Returns = 0 if a and b are equivalent
-int matte_string_matte_compare(
+int matte_string_compare(
     /// The first string to compare.
     const matteString_t * a, 
 
