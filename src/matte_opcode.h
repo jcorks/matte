@@ -29,13 +29,13 @@ typedef enum {
     MATTE_OPCODE_OSN,
 
     // general purpose operator code.
-    MATTE_OPCODE_OPR
+    MATTE_OPCODE_OPR,
     
     // call c / built-in function
     MATTE_OPCODE_EXT,
 
     // pop values from the stack
-    MATTE_OPCODE_POP,
+    MATTE_OPCODE_POP
         
 } matteOpcode_t;
 
@@ -46,8 +46,8 @@ typedef enum {
     MATTE_OPERATOR_DIV, // / 2 operands
     MATTE_OPERATOR_MULT, // * 2 operands
     MATTE_OPERATOR_NOT, // ! 1 operand
-    MATTE_OPEARTOR_BITWISE_OR, // | 2 operands
-    MATTE_OPEARTOR_OR, // || 2 operands
+    MATTE_OPERATOR_BITWISE_OR, // | 2 operands
+    MATTE_OPERATOR_OR, // || 2 operands
     MATTE_OPERATOR_BITWISE_AND, // & 2 operands
     MATTE_OPERATOR_AND, // && 2 operands
     MATTE_OPERATOR_SHIFT_DOWN, // << 2 operands
@@ -69,7 +69,7 @@ typedef enum {
     MATTE_OPERATOR_TYPENAME, // .typename() 1 operand 
     MATTE_OPERATOR_SPECIFY, // :: 2 operands
     MATTE_OPERATOR_TRANSFORM, // <> 2 operands
-    MATTE_OPERATOR_NOTEQUAL, // != 2 operands
+    MATTE_OPERATOR_NOTEQUAL // != 2 operands
 
 } matteOperator_t;
 

@@ -1,12 +1,18 @@
 #include "../src/matte_opcode.h"
-
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+#include <inttypes.h>
 
 #define MAX_LEN 256
-
+#define FALSE 0
+#define TRUE 1
 
 
 static uint16_t fileid = 1;
-static uint32_t lineN = 1;    
+static uint32_t lineN = 0;    
 static char * line;
 static FILE * out;
 
@@ -16,8 +22,14 @@ static int next_line(FILE * f) {
     static char memory[MAX_LEN+1];
     if (fgets(memory, MAX_LEN, f)) {
         line = memory;
+        lineN++;
         while(isspace(line[0])) line++;
+        uint32_t len = strlen(line);
+        if (len) {
+            while(isspace(line[len-1])) line[len-1] = 0;
+        }
         if (line[0] == ';') line[0] = 0;
+        return TRUE;
     }
     return FALSE;
 }
@@ -69,13 +81,13 @@ static const void function_to_stub(FILE * f, uint16_t id) {
 
     typedef struct {
         uint32_t line;
-        int32_t value;
+        int32_t opcode;
         uint8_t data[8];
     } instruction;
 
     instruction * instructions = 0;
-    uint32_t instructionCount = 0
-    uint32_t instructionAlloc = 0;
+    uint32_t instructionsCount = 0;
+    uint32_t instructionsAlloc = 0;
 
 
 
@@ -87,7 +99,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 printf("ERROR on line %d: function needs number unsigned 16bit number id\n", lineN);
                 exit(1);
             }
-            function_to_stub(f, substubid));
+            function_to_stub(f, substubid);
 
         } else if (!strncmp(line, "args", strlen("args"))) {
             if (sscanf(line, "args=%"SCNu8"", &nargs) != 1) {
@@ -108,8 +120,8 @@ static const void function_to_stub(FILE * f, uint16_t id) {
 
             argsSet = TRUE;
         } else if (!strncmp(line, "locals", strlen("locals"))) {
-            if (sscanf(line, "local=%"SCNu8"", &stubid) != 1) {
-                printf("ERROR on line %d: unable to parse arg count. Syntax: arg=[0-255]\n", lineN);
+            if (sscanf(line, "locals=%"SCNu8"", &stubid) != 1) {
+                printf("ERROR on line %d: unable to parse local count. Syntax: locals=[0-255]\n", lineN);
                 exit(1);
             }
 
@@ -126,8 +138,8 @@ static const void function_to_stub(FILE * f, uint16_t id) {
 
             localsSet = TRUE;
         } else if (!strncmp(line, "captures", strlen("captures"))) {
-            if (sscanf(line, "local=%"SCNu16"", &ncaptures) != 1) {
-                printf("ERROR on line %d: unable to parse arg count. Syntax: arg=[0-255]\n", lineN);
+            if (sscanf(line, "captures=%"SCNu16"", &ncaptures) != 1) {
+                printf("ERROR on line %d: unable to parse arg count. Syntax: captures=[0-255]\n", lineN);
                 exit(1);
             }
 
@@ -145,53 +157,53 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 }
             }
 
-            capturesSet = TRUE;
-        } else if (!strncmp(line, "function end", strlen("function end"))) {
+            capturedSet = TRUE;
+        } else if (!strncmp(line, "end function", strlen("end function"))) {
             // NOW we can dump to file.
             if (!argsSet) {
-                printf("ERROR in function %d: missing argument specification\n", stubID);
+                printf("ERROR in function %d: missing argument specification\n", stubid);
                 exit(1);                    
             }
             if (!localsSet) {
-                printf("ERROR in function %d: missing locals specification\n", stubID);
+                printf("ERROR in function %d: missing locals specification\n", stubid);
                 exit(1);                    
             }
-            if (!capturesSet) {
-                printf("ERROR in function %d: missing captures specification\n", stubID);
+            if (!capturedSet) {
+                printf("ERROR in function %d: missing captures specification\n", stubid);
                 exit(1);                    
             }
 
             uint32_t i;
-            fwrite(f, 1, sizeof(uin16_t), &fileid);
-            fwrite(f, 1, sizeof(uin16_t), &stubID);
-            fwrite(f, 1, sizeof(uin8_t), &nargs);
+            fwrite(&fileid, 1, sizeof(uint16_t), f);
+            fwrite(&stubid, 1, sizeof(uint16_t), f);
+            fwrite(&nargs, 1, sizeof(uint8_t), f);
             for(i = 0; i < nargs; ++i) {
-                fwrite(f, 1, sizeof(uin32_t), &argNames[i].len);
-                fwrite(f, argNames[i].len, sizeof(int32_t), &argNames[i].data);
+                fwrite(&argNames[i].len, 1, sizeof(uint32_t), f);
+                fwrite(&argNames[i].data, argNames[i].len, sizeof(int32_t), f);
                 free(argNames[i].data);
             }
             free(argNames);
-            fwrite(f, 1, sizeof(uin8_t), &nlocals);
+            fwrite(&nlocals, 1, sizeof(uint8_t), f);
             for(i = 0; i < nlocals; ++i) {
-                fwrite(f, 1, sizeof(uin32_t), &localNames[i].len);
-                fwrite(f, localNames[i].len, sizeof(int32_t), &localNames[i].data);
+                fwrite(&localNames[i].len, 1, sizeof(uint32_t), f);
+                fwrite(&localNames[i].data, localNames[i].len, sizeof(int32_t), f);
                 free(localNames[i].data);
             }
             free(localNames);
-            fwrite(f, 1, sizeof(uin16_t), &ncaptures);
-            fwrite(f, ncaptures, sizeof(captureData), captures);
+            fwrite(&ncaptures, 1, sizeof(uint16_t), f);
+            fwrite(captures, ncaptures, sizeof(captureData), f);
             free(captures);
 
-            fwrite(f, 1, sizeof(uin32_t), &instructionCount);
-            fwrite(f, instructionCount, sizeof(instruction), &instructions);
+            fwrite(&instructionsCount, 1, sizeof(uint32_t), f);
+            fwrite(&instructions, instructionsCount, sizeof(instruction), f);
             free(instructions);
 
-            printf("Assembled fn %5.d: nargs?%3.d nlocals?%3.d ncaptures?%5.d. Ops: %d\n"
-                stubID,
+            printf("Assembled fn %5.d: nargs?%3.d nlocals?%3.d ncaptures?%5.d. Ops: %d\n",
+                stubid,
                 nargs,
                 nlocals,
                 ncaptures,
-                instructionCount
+                instructionsCount
             );
             fflush(stdout);
 
@@ -203,7 +215,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 instructions = realloc(instructions, instructionsAlloc*sizeof(instruction));
             }
             instruction * inst = instructions+(instructionsCount++);
-            sscanf(line, "%"SCNu32" %c%c%c", &inst->line, &oc0, %oc1, &oc1);
+            sscanf(line, "%"SCNu32" %c%c%c", &inst->line, &oc0, &oc1, &oc2);
 
             if (oc0 == 'n' &&
                 oc1 == 'o' &&
@@ -250,10 +262,10 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                     inst = instructions+(instructionsCount++);
                     inst->opcode = MATTE_OPCODE_NST;
                     inst->line = srcline;
-                    memcpy(inst->data, str.data[iter], sizeof(int32_t));
+                    memcpy(inst->data, &str.data[iter], sizeof(int32_t));
                     lenLeft--; iter++;
                     if (lenLeft) {
-                        memcpy(inst->data+4, str.data[iter], sizeof(int32_t));
+                        memcpy(inst->data+4, &str.data[iter], sizeof(int32_t));
                         lenLeft--; iter++;
                     }
                 }
@@ -298,7 +310,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 inst->opcode = MATTE_OPCODE_OPR;
                 char opopcode0 = 0;
                 char opopcode1 = 0;
-                sscanf(line, "%"SCNu32" opr %c%c", &inst->line, &opopcode0, %opopcode1);                
+                sscanf(line, "%"SCNu32" opr %c%c", &inst->line, &opopcode0, &opopcode1);                
 
                 switch(opopcode0) {
                   case '+': inst->data[0] = MATTE_OPERATOR_ADD; break;
@@ -322,7 +334,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '!': 
                     inst->data[0] = MATTE_OPERATOR_NOT;
                     switch(opopcode1) {
-                      case '=': inst->data[0] = MATTE_OEPRATOR_NOTEQUAL; break;
+                      case '=': inst->data[0] = MATTE_OPERATOR_NOTEQUAL; break;
                       default:;
                     }
                     break;
@@ -336,7 +348,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '&':
                     inst->data[0] = MATTE_OPERATOR_BITWISE_AND;
                     switch(opopcode1) {
-                      case '&': inst->data[0] = MATTE_OEPRATOR_AND; break;
+                      case '&': inst->data[0] = MATTE_OPERATOR_AND; break;
                       default:;
                     }
                     break;
@@ -344,9 +356,9 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '<':
                     inst->data[0] = MATTE_OPERATOR_LESS;
                     switch(opopcode1) {
-                      case '<': inst->data[0] = MATTE_OEPRATOR_SHIFT_DOWN; break;
-                      case '=': inst->data[0] = MATTE_OEPRATOR_LESSEQ; break;
-                      case '>': inst->data[0] = MATTE_OEPRATOR_TRANSFORM; break;
+                      case '<': inst->data[0] = MATTE_OPERATOR_SHIFT_DOWN; break;
+                      case '=': inst->data[0] = MATTE_OPERATOR_LESSEQ; break;
+                      case '>': inst->data[0] = MATTE_OPERATOR_TRANSFORM; break;
                       default:;
                     }
                     break;
@@ -354,15 +366,15 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '>':
                     inst->data[0] = MATTE_OPERATOR_GREATER;
                     switch(opopcode1) {
-                      case '<': inst->data[0] = MATTE_OEPRATOR_SHIFT_UP; break;
-                      case '=': inst->data[0] = MATTE_OEPRATOR_GREATEREQ; break;
+                      case '<': inst->data[0] = MATTE_OPERATOR_SHIFT_UP; break;
+                      case '=': inst->data[0] = MATTE_OPERATOR_GREATEREQ; break;
                       default:;
                     }
                     break;
 
                   case '=':
                     switch(opopcode1) {
-                      case '=': inst->data[0] = MATTE_OEPRATOR_EQ; break;
+                      case '=': inst->data[0] = MATTE_OPERATOR_EQ; break;
                       default:;
                     }
                     break;
@@ -370,10 +382,10 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '~': inst->data[0] = MATTE_OPERATOR_BITWISE_NOT; break;
                   case 'T':
                     switch(opopcode1) {
-                      case 'S': inst->data[0] = MATTE_OEPRATOR_TOSTRING; break;
-                      case 'N': inst->data[0] = MATTE_OEPRATOR_TONUMBER; break;
-                      case 'B': inst->data[0] = MATTE_OEPRATOR_TOBOOLEAN; break;
-                      case 'Y': inst->data[0] = MATTE_OEPRATOR_TYPENAME; break;
+                      case 'S': inst->data[0] = MATTE_OPERATOR_TOSTRING; break;
+                      case 'N': inst->data[0] = MATTE_OPERATOR_TONUMBER; break;
+                      case 'B': inst->data[0] = MATTE_OPERATOR_TOBOOLEAN; break;
+                      case 'Y': inst->data[0] = MATTE_OPERATOR_TYPENAME; break;
                       default:;
                     }
                     break;
@@ -383,7 +395,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '$': inst->data[0] = MATTE_OPERATOR_CURRENCY; break;
                   case ':':
                     switch(opopcode1) {
-                      case ':': inst->data[0] = MATTE_OEPRATOR_SPECIFY; break;
+                      case ':': inst->data[0] = MATTE_OPERATOR_SPECIFY; break;
                       default:;
                     }
                     break;
@@ -401,21 +413,21 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 sscanf(line, "%"SCNu32" ext %s", &inst->line, m);
                 inst->opcode = MATTE_OPCODE_EXT;
                 if (!strcmp("noop", m)) {
-                    *(uint64_t*) = 0;
+                    *(uint64_t*)inst->data = 0;
                 } else if (!strcmp("if", m)) {
-                    *(uint64_t*) = 1;
+                    *(uint64_t*)inst->data = 1;
                 } else if (!strcmp("while", m)) {
-                    *(uint64_t*) = 2;
+                    *(uint64_t*)inst->data = 2;
                 } else if (!strcmp("for", m)) {
-                    *(uint64_t*) = 3;
+                    *(uint64_t*)inst->data = 3;
                 } else if (!strcmp("foreach", m)) {
-                    *(uint64_t*) = 4;
+                    *(uint64_t*)inst->data = 4;
                 } else if (!strcmp("match", m)) {
-                    *(uint64_t*) = 5;
+                    *(uint64_t*)inst->data = 5;
                 } else if (!strcmp("getExternalFunction", m)) {
-                    *(uint64_t*) = 6;
+                    *(uint64_t*)inst->data = 6;
                 } else if (!strcmp("getExternalValue", m)) {
-                    *(uint64_t*) = 7;
+                    *(uint64_t*)inst->data = 7;
                 } else {
                     printf("ERROR on line %d: unrecognized external opcode\n", lineN);
                     exit(1);
@@ -437,19 +449,19 @@ static const void function_to_stub(FILE * f, uint16_t id) {
 }
 
 int main(int argc, char ** argv) {
-    if (argc != 2) {
+    if (argc != 3) {
         printf("usage: m2bc [input Matte assembly] [output raw bytecode]\n");
         return 0;
     }
 
-    FILE * f = fopen("r", argv[0]);
-    out = fopen("wb", argv[1])); 
+    FILE * f = fopen(argv[1], "r");
+    out = fopen(argv[2], "wb"); 
     if (!f) {
-        printf("Could not open input file %s\n", argv[0]);
+        printf("Could not open input file %s\n", argv[1]);
         return 1;
     }
     if (!out) {
-        printf("Could not open output file %s\n", argv[1]);
+        printf("Could not open output file %s\n", argv[2]);
         return 1;
     }
 
@@ -461,7 +473,7 @@ int main(int argc, char ** argv) {
         if (!strncmp(line, "fileid", strlen("fileid"))) {
             if (sscanf(line, "fileid %"SCNu16"", &fileid) != 1) {
                 printf("ERROR on line %d: fileid needs number unsigned 16bit number if\n", lineN);
-                exit 1;
+                exit(1);
             }
         } else if (!strncmp(line, "function", strlen("function"))) {
             uint16_t substubid;
@@ -469,16 +481,12 @@ int main(int argc, char ** argv) {
                 printf("ERROR on line %d: function needs unsigned 16bit number id\n", lineN);
                 exit(1);
             }
-            function_to_stub(f, substubid));
+            function_to_stub(f, substubid);
         } else {
             printf("ERROR on line %d: parse error (not in function, and no function present?)\n", lineN);
             exit(1);
 
         }
-
-
-
-        lineN++;
     }
 
     fclose(out);

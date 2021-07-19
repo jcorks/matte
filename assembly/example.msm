@@ -8,13 +8,13 @@ function 0
         "c"
 
     locals=0
-    captured=0
+    captures=0
 
     function 1 
         args=1 
             "arg"
         locals=0
-        captured=0
+        captures=0
 
         2 prf 1
         2 prf 1
