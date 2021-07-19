@@ -39,4 +39,38 @@ typedef enum {
         
 } matteOpcode_t;
 
+
+typedef enum {
+    MATTE_OPERATOR_ADD, // + 2 operands
+    MATTE_OPERATOR_SUB, // - 2 operands
+    MATTE_OPERATOR_DIV, // / 2 operands
+    MATTE_OPERATOR_MULT, // * 2 operands
+    MATTE_OPERATOR_NOT, // ! 1 operand
+    MATTE_OPEARTOR_BITWISE_OR, // | 2 operands
+    MATTE_OPEARTOR_OR, // || 2 operands
+    MATTE_OPERATOR_BITWISE_AND, // & 2 operands
+    MATTE_OPERATOR_AND, // && 2 operands
+    MATTE_OPERATOR_SHIFT_DOWN, // << 2 operands
+    MATTE_OPERATOR_SHIFT_UP, // >> 2 operands
+    MATTE_OPERATOR_POW, // ** 2 operands
+    MATTE_OPERATOR_EQ, // == 2 operands
+    MATTE_OPERATOR_BITWISE_NOT, // ~ 1 operand
+    MATTE_OPERATOR_TOSTRING, // .toString() 1 operand
+    MATTE_OPERATOR_TONUMBER, // .toNumber() 1 operand
+    MATTE_OPERATOR_TOBOOLEAN, // .toBoolean() 1 operand
+    MATTE_OPERATOR_CDEREF, // -> 2 operands
+    MATTE_OPERATOR_POUND, // # 1 operand
+    MATTE_OPERATOR_TERNARY, // ? 2 operands
+    MATTE_OPERATOR_CURRENCY, // $ 1 operand
+    MATTE_OPERATOR_GREATER, // > 2 operands
+    MATTE_OPERATOR_LESS, // < 2 operands
+    MATTE_OPERATOR_GREATEREQ, // >= 2 operands
+    MATTE_OPERATOR_LESSEQ, // <= 2 operands
+    MATTE_OPERATOR_TYPENAME, // .typename() 1 operand 
+    MATTE_OPERATOR_SPECIFY, // :: 2 operands
+    MATTE_OPERATOR_TRANSFORM, // <> 2 operands
+    MATTE_OPERATOR_NOTEQUAL, // != 2 operands
+
+} matteOperator_t;
+
 #endif

@@ -1,0 +1,32 @@
+; Adds 3 variables 
+fileid 1
+
+function 0
+    args=3
+        "a"
+        "b"
+        "c"
+
+    locals=0
+    captured=0
+
+    function 1 
+        args=1 
+            "arg"
+        locals=0
+        captured=0
+
+        2 prf 1
+        2 prf 1
+        2 opr *
+    end function
+
+
+    
+    1 prf 1
+    1 
+    1 prf 2
+    1 prf 3
+    1 opr + 
+    1 opr + 
+end function 

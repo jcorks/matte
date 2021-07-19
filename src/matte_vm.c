@@ -127,6 +127,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matte_value_into_string(&v, str);
             matte_string_destroy(str);
             STACK_PUSH(v);
+            pc--; // put back prev command
             break;
           }
           case MATTE_OPCODE_NOB: {

@@ -132,7 +132,7 @@ matteValue_t matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint
 // Adds an external function.
 // In the script context: calling getExternalFunction() with the string identifier 
 // given will return a function object that, when called, calls this C function.
-void matte_vm_set_external_function(
+uint32_t matte_vm_set_external_function(
     matteVM_t * vm, 
     matteString_t * identifier
     uint8_t nArgs,

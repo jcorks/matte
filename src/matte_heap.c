@@ -264,7 +264,7 @@ void matte_value_into_new_object_ref(matteValue_t * v) {
     d->refs = 1;
 }
 
-void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t * stub) {
+void matte_value_into_new_function_ref(matteValue_t * v, matteBytecodeStub_t * stub) {
     matte_heap_recycle(*v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
@@ -280,10 +280,26 @@ void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t * stu
         stub,
         &len
     );
+    matteVMStackFrame_t frame;
+    uint16_t fileid = matte_bytecode_stub_get_file_id(stub);
 
     for(i = 0; i < len; ++i) {
-        matteValue_t copy = matte_vm_stackframe_get_referrable(v->heap->vm, capturesRaw[i].parentLevel, capturesRaw[i].refferable);
-        matte_array_push(d->functionCaptures, copy);
+        uint32_t frameIndex = 1;
+        do {
+            frame = matte_vm_get_stackframe(v->heap->vm, frameIndex);
+            if (!frame.stub) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("Could not find captured variable!");
+                matteValue_t copy = matte_heap_new_value(v->heap->vm);
+                matte_array_push(d->functionCaptures, copy);
+                break;
+            }
+
+            if (matte_bytecode_stub_get_stub_id(frame.stub) == capturesRaw[i].stubID) {
+                matteValue_t copy = matte_vm_stackframe_get_referrable(v->heap->vm, frameIndex, capturesRaw[i].refferable);
+                matte_array_push(d->functionCaptures, copy);
+            }
+            frameIndex++;
+        }
     }    
 }
 

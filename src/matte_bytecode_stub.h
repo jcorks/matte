@@ -81,9 +81,10 @@ const matteString_t * matte_bytecode_stub_get_local_name(const matteBytecodeStub
 
 // ID of a stub capture variable
 typedef struct {
-    // parent level of the scope where the 
-    // function is defined. 0 is current;
-    uint16_t parentLevel;
+    // stubID of the function that contains the captures.
+    // during runtime, the stack will be walked for the nearest 
+    // context that matches and will pull referrables from it.
+    uint16_t stubID;
 
     // ID within that function scope where the variable referred to is.
     uint32_t referrable;
