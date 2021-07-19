@@ -31,6 +31,12 @@ DEALINGS IN THE SOFTWARE.
 #ifndef H_MATTE__BYTECODE_STUB__INCLUDED
 #define H_MATTE__BYTECODE_STUB__INCLUDED
 
+#include <stdint.h>
+typedef struct matteArray_t matteArray_t;
+typedef struct matteString_t matteString_t;
+
+
+
 
 
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
@@ -42,8 +48,7 @@ typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 // Incomplete stubs are supported. If given, remaining attributes are 0.
 matteArray_t * matte_bytecode_stubs_from_bytecode(
     const uint8_t * bytecodeRaw, 
-    uint32_t len, 
-    matteError_t * err
+    uint32_t len
 );
 
 // free
@@ -92,7 +97,7 @@ typedef struct {
 
 // Get all the external stub captures registered to this stub.
 const matteBytecodeStubCapture_t * matte_bytecode_stub_get_captures(
-    const matteBytecodeStub_t, 
+    const matteBytecodeStub_t *, 
     uint32_t * count
 );
 

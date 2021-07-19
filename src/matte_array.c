@@ -28,11 +28,13 @@ DEALINGS IN THE SOFTWARE.
 
 */
 
-#include <matte/compat.h>
-#include <matte/containers/array.h>
+#include "matte_array.h"
 
 #include <stdlib.h>
 #include <string.h>
+#ifdef MATTE_DEBUG
+    #include <assert.h>
+#endif
 
 
 

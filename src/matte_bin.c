@@ -1,5 +1,5 @@
-#include <matte_array.h>
-#include <matte_bin.h>
+#include "matte_array.h"
+#include "matte_bin.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -11,8 +11,8 @@
 struct matteBin_t {
     matteArray_t * alive;
     matteArray_t * dead;
-    void * (createNew*)();
-    void (destroy*)(void *);
+    void * (*createNew)();
+    void (*destroy)(void *);
 };
 
 
@@ -21,7 +21,7 @@ typedef struct {
     void * data;
 } deadTag_t;
 
-matteBin_t * matte_bin_create(void * (createNew*)(), void (destroy*)(void *)) {
+matteBin_t * matte_bin_create(void * (*createNew)(), void (*destroy)(void *)) {
     matteBin_t * out = malloc(sizeof(matteBin_t));
     out->alive = matte_array_create(sizeof(void*));
     out->dead = matte_array_create(sizeof(deadTag_t));
@@ -60,6 +60,7 @@ void * matte_bin_add(matteBin_t * b, uint32_t * id) {
         matte_array_set_size(b->dead, deadLen-1);
         matte_array_at(b->alive, void *, tag.id) = tag.data;
         *id = tag.id;
+        obj = tag.data;
     } else {
         *id = matte_array_get_size(b->alive);
         obj = b->createNew();
@@ -77,7 +78,7 @@ void * matte_bin_fetch(const matteBin_t * b, uint32_t id) {
     return matte_array_at(b->alive, void*, id);
 }
 
-void matte_bin_remove(matteBin_t * b, uint32_t id) {
+void matte_bin_recycle(matteBin_t * b, uint32_t id) {
     // not real
     if (id >= matte_array_get_size(b->alive)) return;
     // already removed

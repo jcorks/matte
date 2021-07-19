@@ -28,13 +28,12 @@ DEALINGS IN THE SOFTWARE.
 
 */
 
-
+#include "matte_string.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <ctype.h>
-
 #ifdef MATTE_DEBUG
 #include <assert.h>
 #endif

@@ -28,8 +28,8 @@ DEALINGS IN THE SOFTWARE.
 
 */
 
-#include <matte_table.h>
-#include <matte_string.h>
+#include "matte_table.h"
+#include "matte_string.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -41,7 +41,8 @@ DEALINGS IN THE SOFTWARE.
 #endif
 
 
-
+#define TRUE 1
+#define FALSE 0
 
 #define table_bucket_reserve_size 256
 #define table_bucket_start_size 32      

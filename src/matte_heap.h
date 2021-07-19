@@ -2,10 +2,14 @@
 #define H_MATTE__HEAP__INCLUDED
 
 
+typedef struct matteString_t matteString_t;
+typedef struct matteVM_t matteVM_t;
+typedef struct matteBytecodeStub_t matteBytecodeStub_t;
+typedef struct matteArray_t matteArray_t;
+#include <stdint.h>
+
+
 typedef struct matteHeap_t matteHeap_t;
-typedef struct matteValue_t matteValue_t;
-
-
 
 
 // Heap contains values
@@ -65,7 +69,7 @@ void matte_value_set_object_userdata(matteValue_t, void *);
 
 // if the value points to an object, returns the custom data for it.
 // Else, returns NULL.
-void * matte_value_get_object_userdata(matteValue_t, void *);
+void * matte_value_get_object_userdata(matteValue_t);
 
 // returns whether the matte value is empty
 int matte_value_is_empty(matteValue_t);
@@ -90,8 +94,8 @@ matteValue_t matte_value_object_access_string(matteValue_t, const matteString_t 
 
 
 // Attempts to set a key-value pair within the object.
-// incokes assigner if presetnt
-matteValue_t matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value);
+// invokes assigner if present
+void matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value);
 
 
 

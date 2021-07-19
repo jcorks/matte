@@ -1,0 +1,76 @@
+;
+;
+;   @testfn <= (arg0, arg1){return arg0*arg1;}
+;   return c + testfn(a, b);
+;
+;
+;
+fileid 1
+
+; (a + n) + n
+function 0
+    args=2
+        "a"
+        "n"
+    locals=0
+    captures=0
+        
+    1 nfn 1 5
+    1 cal 0
+    1 prf 2
+    1 prf 1
+    1 opr +
+    1 opr +
+end function
+
+
+
+function 5
+    args=0
+    locals=0
+    captures=0
+    
+    1 nnm 10.0
+end function
+
+function 2
+    args=3
+        "a"
+        "b"
+        "c"
+
+    locals=1
+        "testfn"
+    captures=0
+
+    ; (arg){return arg*arg}
+    function 1 
+        args=2
+            "arg0"
+            "arg1"
+        locals=0
+        captures=0
+
+        2 prf 1
+        2 prf 2
+        2 opr +
+    end function
+
+    ; @testfn <= fn 1
+    3 nfn 1 1
+    3 arf 4
+    3 pop 1
+
+
+    ; testfn(a, b)
+    1 prf 1
+    1 prf 2    
+    1 prf 4
+    1 cal 2
+    
+    ; c + testfn(a, b)
+    1 prf 3
+    1 opr +
+    
+    ; return 
+end function 

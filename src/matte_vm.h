@@ -30,10 +30,16 @@ DEALINGS IN THE SOFTWARE.
 #ifndef H_MATTE__VM__INCLUDED
 #define H_MATTE__VM__INCLUDED
 
+#include <stdint.h>
+typedef struct matteArray_t matteArray_t;
+typedef struct matteBytecodeStub_t matteBytecodeStub_t;
+#include "matte_heap.h"
 
 
 
 typedef struct matteVM_t matteVM_t;
+
+
 
 
 matteVM_t * matte_vm_create();
@@ -45,7 +51,7 @@ matteHeap_t * matte_vm_get_heap(matteVM_t *);
 
 // Adds an array of matteBytecodeStub_t * to the vm.
 // Ownership of the stubs is transferred.
-void matte_vm_add_stubs(const matteArray_t *);
+void matte_vm_add_stubs(matteVM_t *, const matteArray_t *);
 
 // Runs the root functional stub of the file
 // The value result of stub is returned. Empty if no result.
@@ -115,8 +121,8 @@ typedef struct {
 // Gets the requested stackframe. 0 is the currently running stackframe.
 matteVMStackFrame_t matte_vm_get_stackframe(matteVM_t * vm, uint32_t i);
 
-// Makes a copy of the referrable at the stackframe
-// up to caller to recycle the value.
+// Gets a pointer to the special referrable value in question.
+// If none, NULL is returned.
 // Can raise error.
 /*
     It can refer to an argument, local value, or captured variable.
@@ -126,15 +132,15 @@ matteVMStackFrame_t matte_vm_get_stackframe(matteVM_t * vm, uint32_t i);
     num args + num locals, num args + num locals + num captured -1 -> captured
 */
 // Caller is responsible for recycling value.
-matteValue_t matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID);
+matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID);
 
 
 // Adds an external function.
 // In the script context: calling getExternalFunction() with the string identifier 
 // given will return a function object that, when called, calls this C function.
-uint32_t matte_vm_set_external_function(
+void matte_vm_set_external_function(
     matteVM_t * vm, 
-    matteString_t * identifier
+    matteString_t * identifier,
     uint8_t nArgs,
     matteValue_t (*)(matteVM_t *, matteArray_t * args, void * userData),
     void * userData
