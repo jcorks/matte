@@ -120,6 +120,26 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
 }
 
 
+static matteValue_t vm_ext_call_3(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b, matteValue_t c) {
+    switch(call) {
+      case MATTE_EXT_CALL_IF3: return vm_ext_call__if3(vm, a, b, c);
+      default:
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
+        return matte_heap_new_value(vm->heap);      
+    }
+
+}
+
+static matteValue_t vm_ext_call_2(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b) {
+    switch(call) {
+      case MATTE_EXT_CALL_IF2: return vm_ext_call__if2(vm, a, b);
+      default:
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
+        return matte_heap_new_value(vm->heap);
+      
+    }
+}
+
 
 
 
@@ -246,7 +266,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             for(i = 0; i < argcount; ++i) {
                 matteValue_t v = matte_array_at(args, matteValue_t, i);
-                matte_array_push(args, v);
+                matte_heap_recycle(v);
             }
             matte_array_destroy(args);
 
@@ -269,7 +289,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_POP: {
             uint32_t popCount = *(uint32_t *)inst->data;
             while (popCount && STACK_SIZE()) {
-                STACK_POP();
+                matteValue_t m = STACK_POP();
+                matte_heap_recycle(m);
                 popCount--;
             }
             break;
@@ -285,7 +306,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             
             matte_value_object_set(object, key, val);
             
-            STACK_PUSH(object);
+            matte_heap_recycle(key);
+            matte_heap_recycle(val);            
+            STACK_PUSH(object); // dont recycle since back in stack
             break;
           }    
 
@@ -293,26 +316,32 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint64_t call = *(uint64_t*)inst->data;
             switch(call) {
               case MATTE_EXT_CALL_NOOP: break;
+              
               case MATTE_EXT_CALL_IF2: {
                 if (STACK_SIZE() < 2) {
-                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: if requires 2 arguments."));                
+                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 2 arguments."));                
                 } else {
                     matteValue_t a = STACK_POP();
                     matteValue_t b = STACK_POP();
-                    matteValue_t v = vm_ext_call__if2(vm, a, b);
-                    STACK_PUSH(v);
+                    matteValue_t v = vm_ext_call_2(vm, call, a, b);
+                    matte_heap_recycle(a);
+                    matte_heap_recycle(b);
+                    STACK_PUSH(v); // already refd
                 }
                 break;
               }
               case MATTE_EXT_CALL_IF3: {
                 if (STACK_SIZE() < 2) {
-                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: this if requires 3 arguments."));                
+                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 3 arguments."));                
                 } else {
                     matteValue_t a = STACK_POP();
                     matteValue_t b = STACK_POP();
                     matteValue_t c = STACK_POP();
-                    matteValue_t v = vm_ext_call__if3(vm, a, b, c);
-                    STACK_PUSH(v);
+                    matteValue_t v = vm_ext_call_3(vm, call, a, b, c);
+                    matte_heap_recycle(a);
+                    matte_heap_recycle(b);
+                    matte_heap_recycle(c);
+                    STACK_PUSH(v); // already refd
                 }
                 break;
               }
@@ -356,7 +385,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                             inst->data[0],
                             a, b
                         );
-                        STACK_PUSH(v);
+                        matte_heap_recycle(a);
+                        matte_heap_recycle(b);
+                        STACK_PUSH(v); // ok
                     }
                     break;                
                 }
@@ -379,6 +410,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                             inst->data[0],
                             a
                         );
+                        matte_heap_recycle(a);
                         STACK_PUSH(v);
                     }
                     break;                
@@ -431,7 +463,15 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
     // top of stack is output
     if (matte_array_get_size(frame->valueStack)) {
-        return matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1);
+        
+        matteValue_t output = matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1);
+        uint32_t i;
+        uint32_t len = matte_array_get_size(frame->valueStack);
+        for(i = 0; i < len-1; ++i) { 
+            matte_heap_recycle(matte_array_at(frame->valueStack, matteValue_t, i));
+        }
+        matte_array_set_size(frame->valueStack, 0);
+        return output; // ok since not removed from normal value stack stuff
     } else {
         return matte_heap_new_value(vm->heap);
     }
@@ -573,7 +613,7 @@ matteValue_t matte_vm_call(
             #endif
         }
         matte_heap_recycle(d);
-        return result;
+        return result; // ok, vm_execution_loop returns new
     } 
 }
 

@@ -5,8 +5,8 @@ static matteValue_t vm_ext_call__if2(matteVM_t * vm, matteValue_t a, matteValue_
         return matte_heap_new_value(vm->heap);
     }
 
-    matteValue_t ithen = matte_value_object_access_string(b, MATTE_STR_CAST("then"));
-    matteValue_t ielse = matte_value_object_access_string(b, MATTE_STR_CAST("else"));
+    matteValue_t ithen = matte_value_object_access_string(b, MATTE_STR_CAST("then")); // allocd
+    matteValue_t ielse = matte_value_object_access_string(b, MATTE_STR_CAST("else")); // allocd
 
     if (condition) {
         if (matte_value_is_callable(ithen)) {
