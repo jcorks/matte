@@ -1,30 +1,6 @@
-static matteValue_t vm_ext_call__if2(matteVM_t * vm, matteValue_t a, matteValue_t b) {
-    int condition = matte_value_as_boolean(a); // uh?? we need to stop if theres an error
-    if (b.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("if expects second arg to be an object."));
-        return matte_heap_new_value(vm->heap);
-    }
-
-    matteValue_t ithen = matte_value_object_access_string(b, MATTE_STR_CAST("then")); // allocd
-    matteValue_t ielse = matte_value_object_access_string(b, MATTE_STR_CAST("else")); // allocd
-
-    if (condition) {
-        if (matte_value_is_callable(ithen)) {
-            return matte_vm_call(vm, ithen, matte_array_empty());
-        } else {
-            return ithen;    
-        }
-    } else {
-        if (matte_value_is_callable(ielse)) {
-            return matte_vm_call(vm, ithen, matte_array_empty());
-        } else {
-            return ielse;        
-        }    
-    }
-}
 
 
-static matteValue_t vm_ext_call__if3(matteVM_t * vm, matteValue_t a, matteValue_t b, matteValue_t c) {
+static matteValue_t vm_ext_call__gate(matteVM_t * vm, matteValue_t a, matteValue_t b, matteValue_t c) {
     int condition = matte_value_as_boolean(a); // uh?? we need to stop if theres an error
 
     if (condition) {
@@ -37,3 +13,19 @@ static matteValue_t vm_ext_call__if3(matteVM_t * vm, matteValue_t a, matteValue_
         return out;
     }
 }
+
+
+static matteValue_t vm_ext_call__while(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    if (!matte_value_is_callable(b)) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("While requires second argument to be a function."));
+        return matte_heap_new_value(vm->heap);
+    }
+    while(matte_value_as_boolean(a)) {
+        matteValue_t result = matte_vm_call(vm, b, matte_array_empty());
+        matte_heap_recycle(result);
+    }
+    return matte_heap_new_value(vm->heap);
+}
+
+
+

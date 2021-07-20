@@ -35,7 +35,13 @@ typedef enum {
     MATTE_OPCODE_EXT,
 
     // pop values from the stack
-    MATTE_OPCODE_POP
+    MATTE_OPCODE_POP,
+    
+    // return;
+    MATTE_OPCODE_RET,
+    
+    // skips PC forward if conditional is false. used for when conditional return
+    MATTE_OPCODE_SKP 
         
 } matteOpcode_t;
 
@@ -76,8 +82,7 @@ typedef enum {
 
 typedef enum {
     MATTE_EXT_CALL_NOOP,
-    MATTE_EXT_CALL_IF2,
-    MATTE_EXT_CALL_IF3,
+    MATTE_EXT_CALL_GATE,
     MATTE_EXT_CALL_WHILE,
     MATTE_EXT_CALL_FOR3,
     MATTE_EXT_CALL_FOR4,

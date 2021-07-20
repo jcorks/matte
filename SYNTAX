@@ -41,10 +41,37 @@ myFunctionWithArguments(myFunction(), a);
 
 
 
+////////////////////////////
+/////// flow control 
+//
+//
+// Matte is a bit different when it comes to flow control:
+// there is no traditional branching i.e. "if" or labels.
+// Instead, branching is bundled into special functions / features.
+
+
+// when() is conditional returning.
+// it can be used to create compact implementations
+// if a when condition is false, nothing is returned
+@hi_low_mid <= (a, b) {
+    when(a < b) : "lo"
+    when(a > b) : "hi"
+
+    // if no conditionals are true, when 
+    // continues on.    
+    return "mid";
+}
+
+
+
+
 // for is a special function 
+
 for(from, to, <= (i) {
     Debug.print(i);
     // return modified i
+    
+
 });
 
 // for with custom increment of -1
@@ -62,33 +89,20 @@ foreach(object, <=(key, value) {
 
 
 // while is also a function
-while(statement, <=() {
+// 
+@statement = true;
+while(statement, <={
     myFunction();
+
+
+
+    // conditionally return    
+    when(!someEarlyCondition):empty
 })
 
 
-// so is if, most statements are functions in Matte
-if(expression, {
-    then : <= {
-        doSomething();
-        
-    
-    }, else : <= {
-        if (expression, {
-        
-        
-        });
-    },
-});
-
-// can also use if as an inline
-@result = if(a > b, {then:a, else:b});
-
-// or 
-@result = if(a > b, {then<={return a;}, else<={return b}});
-
-// or, ternary:
-@result = if(a > b, a, b);
+// like ternary/if, returns either 2nd or third if 1st is true.
+@result = gate(a > b, a, b);
 
 // switch doesn't exist, but match does!
 match(statement, {
@@ -106,6 +120,19 @@ match(statement, {
         Debug.print('Neither')
     }
 });
+
+
+
+
+// match can be also used to return different things
+@myValue = match(random(1, 4), {
+    0 <= {return "A"},
+    1 <= {return "A"},
+    2 <= {return "A"},
+    3 <= {return "A"},
+});
+
+
 
 // Object
 @map = {};

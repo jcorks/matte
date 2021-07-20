@@ -7,8 +7,31 @@
 ;
 fileid 1
 
-; return if(a.toNumber() < b.toNumber(), {then:a, else:b})
+; (a, b) {when(a < b): "smaller"; return "not smaller"}
 function 0
+    args=2
+        "a"
+        "b"
+    locals=0
+    captures=0
+    
+    1 prf 2
+    1 opr TN
+    1 prf 1
+    1 opr TN 
+    1 opr <
+    1 skp 7
+        1 nst "smaller"
+        1 ret
+    nst "not smaller"
+
+    
+end function
+
+
+
+; return if(a.toNumber() < b.toNumber(), {then:a, else:b})
+function 10
     args=2
         "a"
         "b"
@@ -24,7 +47,7 @@ function 0
     1 opr TN 
     1 opr <
 
-    1 ext if3
+    1 ext gate
 end function
 
 

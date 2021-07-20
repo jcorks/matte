@@ -435,11 +435,8 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 inst->opcode = MATTE_OPCODE_EXT;
                 if (!strcmp("noop", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_NOOP;
-                } else if (!strcmp("if2", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_IF2;
-                } else if (!strcmp("if3", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_IF3;
-
+                } else if (!strcmp("gate", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_GATE;
                 } else if (!strcmp("while", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_WHILE;
                 } else if (!strcmp("for3", m)) {
@@ -465,6 +462,24 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 inst->opcode = MATTE_OPCODE_POP; 
                 if (sscanf(line, "%"SCNu32" pop %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
                     printf("ERROR on line %d: unrecognized pop format. Syntax: [line] pop [pop count]\n", lineN);
+                    exit(1);                
+                }
+                
+            } else if (
+                oc0 == 'r' &&
+                oc1 == 'e' &&
+                oc2 == 't'
+            ) { 
+                inst->opcode = MATTE_OPCODE_RET; 
+                
+            } else if (
+                oc0 == 's' &&
+                oc1 == 'k' &&
+                oc2 == 'p'
+            ) { 
+                inst->opcode = MATTE_OPCODE_SKP; 
+                if (sscanf(line, "%"SCNu32" skp %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized skp format. Syntax: [line] skp [pc skip count]\n", lineN);
                     exit(1);                
                 }
                 

@@ -122,7 +122,7 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
 
 static matteValue_t vm_ext_call_3(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b, matteValue_t c) {
     switch(call) {
-      case MATTE_EXT_CALL_IF3: return vm_ext_call__if3(vm, a, b, c);
+      case MATTE_EXT_CALL_GATE: return vm_ext_call__gate(vm, a, b, c);
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
         return matte_heap_new_value(vm->heap);      
@@ -132,7 +132,7 @@ static matteValue_t vm_ext_call_3(matteVM_t * vm, uint64_t call, matteValue_t a,
 
 static matteValue_t vm_ext_call_2(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b) {
     switch(call) {
-      case MATTE_EXT_CALL_IF2: return vm_ext_call__if2(vm, a, b);
+      case MATTE_EXT_CALL_WHILE: return vm_ext_call__while(vm, a, b);
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
         return matte_heap_new_value(vm->heap);
@@ -141,7 +141,30 @@ static matteValue_t vm_ext_call_2(matteVM_t * vm, uint64_t call, matteValue_t a,
 }
 
 
-
+static const char * opcode_to_str(int oc) {
+    switch(oc) {
+      case MATTE_OPCODE_NOP: return "NOP";
+      case MATTE_OPCODE_PRF: return "PRF";
+      case MATTE_OPCODE_NEM: return "NEM";
+      case MATTE_OPCODE_NNM: return "NNM";
+      case MATTE_OPCODE_NST: return "NST";
+      case MATTE_OPCODE_STC: return "STC";
+      case MATTE_OPCODE_NOB: return "NOB";
+      case MATTE_OPCODE_NFN: return "NFN";
+        
+        
+      case MATTE_OPCODE_CAL: return "CAL";
+      case MATTE_OPCODE_ARF: return "ARF";
+      case MATTE_OPCODE_OSN: return "OSN";
+      case MATTE_OPCODE_OPR: return "OPR";
+      case MATTE_OPCODE_EXT: return "EXT";
+      case MATTE_OPCODE_POP: return "POP";
+      case MATTE_OPCODE_RET: return "RET";
+      case MATTE_OPCODE_SKP: return "SKP";
+      default:
+        return "???";
+    }
+}
 
 #define STACK_SIZE() matte_array_get_size(frame->valueStack)
 #define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
@@ -154,8 +177,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
     matteValue_t output = matte_heap_new_value(vm->heap);
 
+
+
     while(frame->pc < instCount) {
         inst = program+frame->pc++;
+        #ifdef MATTE_DEBUG
+            printf("CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", vm->stacksize, frame->pc, opcode_to_str(inst->opcode), matte_array_get_size(frame->valueStack));
+        #endif
+
         switch(inst->opcode) {
           case MATTE_OPCODE_NOP:
             break;
@@ -317,7 +346,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             switch(call) {
               case MATTE_EXT_CALL_NOOP: break;
               
-              case MATTE_EXT_CALL_IF2: {
+              case MATTE_EXT_CALL_WHILE: {
                 if (STACK_SIZE() < 2) {
                     matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 2 arguments."));                
                 } else {
@@ -330,7 +359,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 }
                 break;
               }
-              case MATTE_EXT_CALL_IF3: {
+              case MATTE_EXT_CALL_GATE: {
                 if (STACK_SIZE() < 2) {
                     matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 3 arguments."));                
                 } else {
@@ -352,6 +381,20 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             break;
           }
+          case MATTE_OPCODE_RET: {
+            // ez pz
+            break;
+          }    
+          // used to implement when
+          case MATTE_OPCODE_SKP: {
+            uint32_t count = *(uint32_t*)inst->data;
+            matteValue_t condition = STACK_POP();
+            if (!matte_value_as_boolean(condition)) {
+                frame->pc += count;
+            }
+            break;
+          }    
+
           case MATTE_OPCODE_OPR: {            
             switch(inst->data[0]) {
                 case MATTE_OPERATOR_ADD:
@@ -454,9 +497,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             return matte_heap_new_value(vm->heap);
         }
         
-        #ifdef MATTE_DEBUG
-        printf("CALLSTACK%6d PC%6d, OPCODE %3d, Stacklen: %10d\n", vm->stacksize, frame->pc, inst->opcode, matte_array_get_size(frame->valueStack));
-        #endif
     }
 
 
