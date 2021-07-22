@@ -19,6 +19,8 @@ typedef enum {
     MATTE_OPCODE_NOB,
     // push new function from a compiled stub
     MATTE_OPCODE_NFN,
+    // push new empty with numbered, index keys
+    MATTE_OPCODE_NAR,
     
     
     // push a new callstack from the given function object.
@@ -64,18 +66,20 @@ typedef enum {
     MATTE_OPERATOR_TOSTRING, // .toString() 1 operand
     MATTE_OPERATOR_TONUMBER, // .toNumber() 1 operand
     MATTE_OPERATOR_TOBOOLEAN, // .toBoolean() 1 operand
-    MATTE_OPERATOR_CDEREF, // -> 2 operands
+    MATTE_OPERATOR_POINT, // -> 2 operands
     MATTE_OPERATOR_POUND, // # 1 operand
     MATTE_OPERATOR_TERNARY, // ? 2 operands
-    MATTE_OPERATOR_CURRENCY, // $ 1 operand
+    MATTE_OPERATOR_TOKEN, // $ 1 operand
     MATTE_OPERATOR_GREATER, // > 2 operands
     MATTE_OPERATOR_LESS, // < 2 operands
     MATTE_OPERATOR_GREATEREQ, // >= 2 operands
     MATTE_OPERATOR_LESSEQ, // <= 2 operands
-    MATTE_OPERATOR_TYPENAME, // .typename() 1 operand 
+    MATTE_OPERATOR_TYPENAME, // .type() 1 operand 
     MATTE_OPERATOR_SPECIFY, // :: 2 operands
     MATTE_OPERATOR_TRANSFORM, // <> 2 operands
-    MATTE_OPERATOR_NOTEQUAL // != 2 operands
+    MATTE_OPERATOR_NOTEQ, // != 2 operands
+    MATTE_OPERATOR_MODULO, // % 2 operands
+    MATTE_OPERATOR_CARET, // ^ 2 operands
 
 } matteOperator_t;
 
@@ -88,7 +92,8 @@ typedef enum {
     MATTE_EXT_CALL_FOR4,
     MATTE_EXT_CALL_FOREACH,
     MATTE_EXT_CALL_MATCH,
-    MATTE_EXT_CALL_GETEXTERNALFUNCTION
+    MATTE_EXT_CALL_GETEXTERNALFUNCTION,
+    MATTE_EXT_CALL_IMPORT,
 } matteExtCall_t;
 
 #endif

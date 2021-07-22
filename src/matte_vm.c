@@ -110,9 +110,19 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_AND:        return vm_operator__and         (vm, a, b);
       case MATTE_OPERATOR_SHIFT_LEFT: return vm_operator__shift_left  (vm, a, b);
       case MATTE_OPERATOR_SHIFT_RIGHT:return vm_operator__shift_right (vm, a, b);
-      case MATTE_OPERATOR_POS:        return vm_operator__pow         (vm, a, b);
-
-      case MATTE_OPERATOR_LESS: return vm_operator__less(vm, a, b);
+      case MATTE_OPERATOR_POW:        return vm_operator__pow         (vm, a, b);
+      case MATTE_OPERATOR_EQ:         return vm_operator__eq          (vm, a, b);
+      case MATTE_OPERATOR_POINT:      return vm_operator__point       (vm, a, b);
+      case MATTE_OPERATOR_TERNARY:    return vm_operator__ternary     (vm, a, b);
+      case MATTE_OPERATOR_LESS:       return vm_operator__less        (vm, a, b);
+      case MATTE_OPERATOR_GREATER:    return vm_operator__greater     (vm, a, b);
+      case MATTE_OPERATOR_LESSEQ:     return vm_operator__lesseq      (vm, a, b);
+      case MATTE_OPERATOR_GREATEREQ:  return vm_operator__greatereq   (vm, a, b);
+      case MATTE_OPERATOR_SPECIFY:    return vm_operator__specify     (vm, a, b);
+      case MATTE_OPERATOR_TRANSFORM:  return vm_operator__transform   (vm, a, b);
+      case MATTE_OPERATOR_NOTEQ:      return vm_operator__noteq       (vm, a, b);
+      case MATTE_OPERATOR_MODULO:     return vm_operator__modulo      (vm, a, b);
+      case MATTE_OPERATOR_CARET:      return vm_operator__caret       (vm, a, b);
 
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled OPR operator"));                        
@@ -123,8 +133,14 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
 
 static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue_t a) {
     switch(op) {
-      case MATTE_OPERATOR_TONUMBER: return vm_operator__tonumber(vm, a);
-      case MATTE_OPERATOR_NOT:      return vm_operator__not(vm, a);
+      case MATTE_OPERATOR_TONUMBER:    return vm_operator__tonumber(vm, a);
+      case MATTE_OPERATOR_NOT:         return vm_operator__not(vm, a);
+      case MATTE_OPERATOR_BITWISE_NOT: return vm_operator__bitwise_not(vm, a);
+      case MATTE_OPERATOR_TOSTRING:    return vm_operator__tostring(vm, a);
+      case MATTE_OPERATOR_TOBOOLEAN:   return vm_operator__toboolean(vm, a);
+      case MATTE_OPERATOR_POUND:       return vm_operator__pound(vm, a);
+      case MATTE_OPERATOR_TOKEN:       return vm_operator__token(vm, a);
+      case MATTE_OPERATOR_TYPENAME:    return vm_operator__typename(vm, a);
 
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled OPR operator"));                        
@@ -132,10 +148,22 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
     }
 }
 
+static matteValue_t vm_ext_call_4(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b, matteValue_t c, matteValue_t d) {
+    switch(call) {
+      case MATTE_EXT_CALL_FOR4: return vm_ext_call__for4(vm, a, b, c, d);
+
+      default:
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
+        return matte_heap_new_value(vm->heap);      
+    }
+
+}
 
 static matteValue_t vm_ext_call_3(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b, matteValue_t c) {
     switch(call) {
       case MATTE_EXT_CALL_GATE: return vm_ext_call__gate(vm, a, b, c);
+      case MATTE_EXT_CALL_FOR3: return vm_ext_call__for3(vm, a, b, c);
+
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
         return matte_heap_new_value(vm->heap);      
@@ -145,13 +173,16 @@ static matteValue_t vm_ext_call_3(matteVM_t * vm, uint64_t call, matteValue_t a,
 
 static matteValue_t vm_ext_call_2(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b) {
     switch(call) {
-      case MATTE_EXT_CALL_WHILE: return vm_ext_call__while(vm, a, b);
+      case MATTE_EXT_CALL_WHILE:   return vm_ext_call__while  (vm, a, b);
+      case MATTE_EXT_CALL_FOREACH: return vm_ext_call__foreach(vm, a, b);
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
         return matte_heap_new_value(vm->heap);
       
     }
 }
+
+
 
 
 static const char * opcode_to_str(int oc) {
@@ -278,7 +309,35 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             STACK_PUSH(v);
             break;
           }
+          case MATTE_OPCODE_NAR: {
 
+              
+            uint32_t len;
+            memcpy(&len, inst->data, 4);
+            if (STACK_SIZE() < len) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("Array cannot be created. (insufficient stack size)"));
+                break;
+            }
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            uint32_t i;
+            matteArray_t * args = matte_array_create(sizeof(matteValue_t));
+
+            matteValue_t t;
+            for(i = 0; i < len; ++i) {
+                t = STACK_POP();
+                matte_array_push(args, t);  
+            }
+
+            matte_value_into_new_object_array_ref(&v, args);
+
+            for(i = 0; i < len; ++i) {
+                matte_heap_recycle(matte_array_at(args, matteValue_t, i));
+            }
+            matte_array_destroy(args);
+
+            STACK_PUSH(v);
+            break;
+          }
           case MATTE_OPCODE_CAL: {
             if (STACK_SIZE() == 0) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to run CAL opcode when stack is empty."))    ;
@@ -358,7 +417,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint64_t call = *(uint64_t*)inst->data;
             switch(call) {
               case MATTE_EXT_CALL_NOOP: break;
-              
+              case MATTE_EXT_CALL_FOREACH:
               case MATTE_EXT_CALL_WHILE: {
                 if (STACK_SIZE() < 2) {
                     matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 2 arguments."));                
@@ -372,8 +431,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 }
                 break;
               }
+              case MATTE_EXT_CALL_FOR3:
               case MATTE_EXT_CALL_GATE: {
-                if (STACK_SIZE() < 2) {
+                if (STACK_SIZE() < 3) {
                     matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 3 arguments."));                
                 } else {
                     matteValue_t a = STACK_POP();
@@ -387,7 +447,26 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 }
                 break;
               }
-              
+
+              case MATTE_EXT_CALL_FOR4: {
+                if (STACK_SIZE() < 4) {
+                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 4 arguments."));                
+                } else {
+                    matteValue_t a = STACK_POP();
+                    matteValue_t b = STACK_POP();
+                    matteValue_t c = STACK_POP();
+                    matteValue_t d = STACK_POP();
+                    matteValue_t v = vm_ext_call_4(vm, call, a, b, c, d);
+                    matte_heap_recycle(a);
+                    matte_heap_recycle(b);
+                    matte_heap_recycle(c);
+                    matte_heap_recycle(d);
+                    STACK_PUSH(v); // already refd
+                }
+                break;
+              }
+
+
               default:;
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: unknown EXT command"));                
                 
@@ -418,11 +497,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 case MATTE_OPERATOR_OR:
                 case MATTE_OPERATOR_BITWISE_AND:
                 case MATTE_OPERATOR_AND:
-                case MATTE_OPERATOR_SHIFT_DOWN:
-                case MATTE_OPERATOR_SHIFT_UP:
+                case MATTE_OPERATOR_SHIFT_LEFT:
+                case MATTE_OPERATOR_SHIFT_RIGHT:
                 case MATTE_OPERATOR_POW:
                 case MATTE_OPERATOR_EQ:
-                case MATTE_OPERATOR_CDEREF:
+                case MATTE_OPERATOR_POINT:
                 case MATTE_OPERATOR_TERNARY:
                 case MATTE_OPERATOR_GREATER:
                 case MATTE_OPERATOR_LESS:
@@ -430,7 +509,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 case MATTE_OPERATOR_LESSEQ:
                 case MATTE_OPERATOR_SPECIFY:
                 case MATTE_OPERATOR_TRANSFORM:
-                case MATTE_OPERATOR_NOTEQUAL: {
+                case MATTE_OPERATOR_MODULO:
+                case MATTE_OPERATOR_CARET:
+                case MATTE_OPERATOR_NOTEQ: {
                     if (STACK_SIZE() < 2) {
                         matte_vm_raise_error_string(vm, MATTE_STR_CAST("OPR operator requires 2 operands."));                        
                     } else {
@@ -455,7 +536,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 case MATTE_OPERATOR_TONUMBER:
                 case MATTE_OPERATOR_TOBOOLEAN:
                 case MATTE_OPERATOR_POUND:
-                case MATTE_OPERATOR_CURRENCY:
+                case MATTE_OPERATOR_TOKEN:
                 case MATTE_OPERATOR_TYPENAME: {
                     if (STACK_SIZE() < 1) {
                         matte_vm_raise_error_string(vm, MATTE_STR_CAST("OPR operator requires 1 operand."));                        

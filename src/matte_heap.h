@@ -54,6 +54,9 @@ void matte_value_into_string(matteValue_t *, const matteString_t *);
 // Sets the type to an object that points to a new, empty object.
 void matte_value_into_new_object_ref(matteValue_t *);
 
+// creates a new object with indexed keys/
+void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t *);
+
 // 
 void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);
 
@@ -93,6 +96,12 @@ matteValue_t matte_value_object_access(matteValue_t, matteValue_t key);
 matteValue_t matte_value_object_access_string(matteValue_t, const matteString_t *);
 
 
+
+// attempts to run a VM call for each key-value pair within the object.
+// If object is not an object, no action is taken (and no error is raised.)
+void matte_value_object_foreach(matteValue_t object, matteValue_t function);
+
+
 // Attempts to set a key-value pair within the object.
 // invokes assigner if present
 void matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value);
@@ -103,7 +112,6 @@ void matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value);
 // if number/string/boolean: copy
 // else: point to same source object
 void matte_value_into_copy(matteValue_t *, matteValue_t from);
-
 
 
 

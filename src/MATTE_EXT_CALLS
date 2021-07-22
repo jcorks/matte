@@ -29,3 +29,69 @@ static matteValue_t vm_ext_call__while(matteVM_t * vm, matteValue_t a, matteValu
 
 
 
+static matteValue_t vm_ext_call__for3(matteVM_t * vm, matteValue_t a, matteValue_t b, matteValue_t c) {
+    if (!matte_value_is_callable(c)) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("This version of 'for' requires third argument to be a function."));
+        return matte_heap_new_value(vm->heap);
+    }
+    double current = matte_value_as_number(a);
+    double end     = matte_value_as_number(b);
+
+    while(current < end) {
+        matteValue_t result = matte_vm_call(vm, c, matte_array_empty());
+        if (result.binID != 0) {
+            current = matte_value_as_number(result);
+        } else {
+            current += 1;
+        }
+        matte_heap_recycle(result);
+    }
+
+    return matte_heap_new_value(vm->heap);
+}
+
+
+static matteValue_t vm_ext_call__for4(matteVM_t * vm, matteValue_t a, matteValue_t b, matteValue_t c, matteValue_t d) {
+    if (!matte_value_is_callable(d)) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("This version of 'for' requires last argument to be a function."));
+        return matte_heap_new_value(vm->heap);
+    }
+    double current = matte_value_as_number(a);
+    double end     = matte_value_as_number(b);
+    double incr    = matte_value_as_number(c);
+
+    if (incr < 0) {
+        while(current > end) {
+            matteValue_t result = matte_vm_call(vm, d, matte_array_empty());
+            if (result.binID != 0) {
+                current = matte_value_as_number(result);
+            } else {
+                current += incr;
+            }
+            matte_heap_recycle(result);
+        }
+
+    } else {
+        while(current < end) {
+            matteValue_t result = matte_vm_call(vm, d, matte_array_empty());
+            if (result.binID != 0) {
+                current = matte_value_as_number(result);
+            } else {
+                current += incr;
+            }
+            matte_heap_recycle(result);
+        }
+
+    }
+
+    return matte_heap_new_value(vm->heap);
+}
+
+static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    if (b.binID != MATTE_VALUE_TYPE_OBJECT) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Foreach requires first argument to be a object."));
+        return matte_heap_new_value(vm->heap);
+    }
+    matte_value_object_foreach(a, b);
+    return matte_heap_new_value(vm->heap);
+}

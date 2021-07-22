@@ -4,6 +4,9 @@ toplevel statements are run as if within a function definition.
 
 When import() is called, the given script is run. When the script 
 returns, the return value is then returned from the import() call.
+Once import is called on a script, calling import() again with 
+the same script path will return that same first-produced object 
+rather than rerunning the script for this VM instance.
 
 
 objects
@@ -282,32 +285,38 @@ Assign Object Member (OSN)
 Operator (OPR)
     args:
         - 1-byte operator code.
-            0 -> + 
-            1 -> -
-            2 -> /
-            3 -> *
-            4 -> !
-            5 -> |
-            6 -> ||
-            7 -> & 
-            8 -> &&
-            9 -> <<
-            10 -> >>
-            11 -> **
-            12 -> == 
-            13 -> ~
-            14 -> toString
-            15 -> toNumber 
-            16 -> toBoolean,
-            17 -> ->
-            18 -> #
-            19 -> ?
-            20 -> $
-            21 -> >
-            22 -> <
-            23 -> >=
-            24 -> <=
-            25 -> typename
+                MATTE_OPERATOR_ADD, // + 2 operands
+                MATTE_OPERATOR_SUB, // - 2 operands
+                MATTE_OPERATOR_DIV, // / 2 operands
+                MATTE_OPERATOR_MULT, // * 2 operands
+                MATTE_OPERATOR_NOT, // ! 1 operand
+                MATTE_OPERATOR_BITWISE_OR, // | 2 operands
+                MATTE_OPERATOR_OR, // || 2 operands
+                MATTE_OPERATOR_BITWISE_AND, // & 2 operands
+                MATTE_OPERATOR_AND, // && 2 operands
+                MATTE_OPERATOR_SHIFT_LEFT, // << 2 operands
+                MATTE_OPERATOR_SHIFT_RIGHT, // >> 2 operands
+                MATTE_OPERATOR_POW, // ** 2 operands
+                MATTE_OPERATOR_EQ, // == 2 operands
+                MATTE_OPERATOR_BITWISE_NOT, // ~ 1 operand
+                MATTE_OPERATOR_TOSTRING, // .toString() 1 operand
+                MATTE_OPERATOR_TONUMBER, // .toNumber() 1 operand
+                MATTE_OPERATOR_TOBOOLEAN, // .toBoolean() 1 operand
+                MATTE_OPERATOR_POINT, // -> 2 operands
+                MATTE_OPERATOR_POUND, // # 1 operand
+                MATTE_OPERATOR_TERNARY, // ? 2 operands
+                MATTE_OPERATOR_TOKEN, // $ 1 operand
+                MATTE_OPERATOR_GREATER, // > 2 operands
+                MATTE_OPERATOR_LESS, // < 2 operands
+                MATTE_OPERATOR_GREATEREQ, // >= 2 operands
+                MATTE_OPERATOR_LESSEQ, // <= 2 operands
+                MATTE_OPERATOR_TYPENAME, // .type() 1 operand 
+                MATTE_OPERATOR_SPECIFY, // :: 2 operands
+                MATTE_OPERATOR_TRANSFORM, // <> 2 operands
+                MATTE_OPERATOR_NOTEQUAL, // != 2 operands
+                MATTE_OPERATOR_MODULO, // % 2 operands
+                MATTE_OPERATOR_CARET, // ^ 2 operands
+
 
 
                         

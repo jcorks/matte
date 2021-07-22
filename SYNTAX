@@ -76,7 +76,9 @@ for(from, to, <= (i) {
 });
 
 // for with custom increment of -1
-for(to, from, -1, <= (i) {
+// if arg 3 is above 0, the loop continues until i > to
+// if arg 3 is below 0, the loop continues until i < to
+for(from, to, -1, <= (i) {
     Debug.print(i);
     // return modified i
 });

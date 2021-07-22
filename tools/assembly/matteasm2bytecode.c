@@ -294,6 +294,16 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                     exit(1);                
                 }
             } else if (
+                oc0 == 'n' &&
+                oc1 == 'a' &&
+                oc2 == 'r'
+            ) {
+                inst->opcode = MATTE_OPCODE_NFN;
+                if (sscanf(line, "%"SCNu32" nar %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized nar format. Syntax: [line] nar [number of stack objects into array]\n", lineN);
+                    exit(1);                
+                }
+            } else if (
                 oc0 == 'c' &&
                 oc1 == 'a' &&
                 oc2 == 'l'
@@ -338,7 +348,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '-': 
                     inst->data[0] = MATTE_OPERATOR_SUB; 
                     switch(opopcode1) {
-                      case '>': inst->data[0] = MATTE_OPERATOR_CDEREF; break;
+                      case '>': inst->data[0] = MATTE_OPERATOR_POINT; break;
                       default:;
                     }
                     break;
@@ -355,7 +365,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '!': 
                     inst->data[0] = MATTE_OPERATOR_NOT;
                     switch(opopcode1) {
-                      case '=': inst->data[0] = MATTE_OPERATOR_NOTEQUAL; break;
+                      case '=': inst->data[0] = MATTE_OPERATOR_NOTEQ; break;
                       default:;
                     }
                     break;
@@ -413,7 +423,10 @@ static const void function_to_stub(FILE * f, uint16_t id) {
 
                   case '#': inst->data[0] = MATTE_OPERATOR_POUND; break;
                   case '?': inst->data[0] = MATTE_OPERATOR_TERNARY; break;
-                  case '$': inst->data[0] = MATTE_OPERATOR_CURRENCY; break;
+                  case '$': inst->data[0] = MATTE_OPERATOR_TOKEN; break;
+                  case '^': inst->data[0] = MATTE_OPERATOR_CARET; break;
+                  case '%': inst->data[0] = MATTE_OPERATOR_MODULO; break;
+
                   case ':':
                     switch(opopcode1) {
                       case ':': inst->data[0] = MATTE_OPERATOR_SPECIFY; break;
