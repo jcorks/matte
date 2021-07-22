@@ -60,16 +60,13 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
         frame->prettyName = matte_string_create();
         frame->context = matte_heap_new_value(vm->heap); // will contain captures
         frame->stub = NULL;
-        frame->arguments = matte_array_create(sizeof(matteValue_t));
-        frame->locals = matte_array_create(sizeof(matteValue_t));
         frame->valueStack = matte_array_create(sizeof(matteValue_t));
     } else {
         frame = &matte_array_at(vm->callstack, matteVMStackFrame_t, vm->stacksize-1);
         frame->stub = NULL;
         matte_string_clear(frame->prettyName);     
-        matte_array_set_size(frame->arguments, 0);
-        matte_array_set_size(frame->locals, 0);
-        matte_array_set_size(frame->arguments, 0);
+        matte_array_set_size(frame->valueStack, 0);
+        frame->pc = 0;
            
     }
     return frame;
@@ -195,6 +192,7 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_STC: return "STC";
       case MATTE_OPCODE_NOB: return "NOB";
       case MATTE_OPCODE_NFN: return "NFN";
+      case MATTE_OPCODE_NAR: return "NAR";
         
         
       case MATTE_OPCODE_CAL: return "CAL";
@@ -700,40 +698,44 @@ matteValue_t matte_vm_call(
         frame->context = d;
         frame->stub = matte_value_get_bytecode_stub(d);
 
+        matteArray_t * referrables = matte_array_create(sizeof(matteValue_t));
+
+        matteValue_t empty = matte_heap_new_value(vm->heap);
+
+        // slot 0 is always the context
+        matte_array_push(referrables, frame->context);
         uint32_t i;
         uint32_t lenReal = matte_array_get_size(args);
         uint32_t len = matte_bytecode_stub_arg_count(frame->stub);
         for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_heap_new_value(vm->heap);
-
             // copy as many args as there are available.
             // All remaining args are empty.
 
-            if (i < lenReal)
-                matte_value_into_copy(&v, matte_array_at(args, matteValue_t, i));
-
-            matte_array_push(frame->arguments, v);
+            if (i < lenReal) {
+                matte_array_push(referrables, matte_array_at(args, matteValue_t, i));
+            } else {
+                matte_array_push(referrables, empty);
+            }
         }
 
         len = matte_bytecode_stub_local_count(frame->stub);
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_heap_new_value(vm->heap);
-            matte_array_push(frame->locals, v);
+            matte_array_push(referrables, v);
         }
-
+        
+        frame->referrable = matte_heap_new_value(vm->heap);
+        // ref copies of values happen here.
+        matte_value_into_new_object_array_ref(&frame->referrable, referrables);
+        frame->referrableSize = matte_array_get_size(referrables);
+        matte_array_destroy(referrables);
+        
+        
         matteValue_t result = vm_execution_loop(vm);
 
 
         // cleanup;
-        len = matte_array_get_size(frame->arguments);
-        for(i = 0; i < len; ++i) {
-            matte_heap_recycle(matte_array_at(frame->arguments, matteValue_t, i));
-        }
-        len = matte_array_get_size(frame->locals);
-        for(i = 0; i < len; ++i) {
-            matte_heap_recycle(matte_array_at(frame->locals, matteValue_t, i));
-        }
-
+        matte_heap_recycle(frame->referrable);
         matte_heap_garbage_collect(vm->heap);
         vm_pop_frame(vm);
 
@@ -807,35 +809,19 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 
 
     // get context
-    if (referrableID == 0) {
-        return &frames[i].context;
-    }
+    if (referrableID < frames[i].referrableSize) {
+        return matte_value_object_array_at_unsafe(frames[i].referrable, referrableID);        
+    } else {
+        matteValue_t * ref = matte_value_get_captured_value(frames[i].context, referrableID - frames[i].referrableSize);
 
-    // next, arguments
-    uint32_t offset = 1;
-    uint32_t max  = offset+matte_array_get_size(frames[i].arguments);
-    if (referrableID < max) {
-        return &matte_array_at(frames[i].arguments, matteValue_t, referrableID - offset);        
+        // bad referrable
+        if (!ref) {
+            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Invalid referrable"));
+            return NULL;    
+        } else { 
+            return ref;
+        }
     }
-
-    // next, locals
-    offset = max;
-    max  = offset+matte_array_get_size(frames[i].locals);
-    if (referrableID < max) {
-        return &matte_array_at(frames[i].locals, matteValue_t, referrableID - offset);        
-    }
-
-    // finally
-    const matteArray_t * captured = matte_value_get_captured_values(frames[i].context);
-    offset = max;
-    max  = offset+matte_array_get_size(captured);
-    if (referrableID < max) {
-        return &matte_array_at(captured, matteValue_t, referrableID - offset);        
-    }
-
-    // bad referrable
-    matte_vm_raise_error_string(vm, MATTE_STR_CAST("Invalid referrable"));
-    return NULL;    
 }
 
 

@@ -1,14 +1,59 @@
-;
-;
-;   @testfn <= (arg0, arg1){return arg0*arg1;}
-;   return c + testfn(a, b);
-;
-;
-;
 fileid 1
 
-; (a, b) {when(a < b): "smaller"; return "not smaller"}
+; @sum = 1
+; foreach([10, 100, 1000], <= (key, val) {
+;   sum += val;
+; }
+; return sum;
 function 0
+    args=0
+    locals=1
+        "sum"
+    captures=0
+    
+    1 nnm 1.0
+    1 arf 1
+    1 nfn 1 1000
+    
+    1 nnm 1000.0
+    1 nnm 100.0
+    1 nnm 10.0
+    1 nar 3
+    
+    1 ext foreach
+
+    1 prf 1
+end function
+
+
+; add to sum
+function 1000
+    args=2
+        "key"
+        "val"
+    locals=0
+    ; sum   
+    captures=1
+        0   1
+
+
+    1 prf 2
+    1 prf 3
+    1 opr +
+    1 arf 3
+end function
+
+
+
+
+
+
+
+
+        
+
+; (a, b) {when(a < b): "smaller"; return "not smaller"}
+function 11
     args=2
         "a"
         "b"

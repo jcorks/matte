@@ -104,10 +104,13 @@ typedef struct {
     matteString_t * prettyName;
 
 
-    // array of matteValue_t values passed as args to the function
-    matteArray_t * arguments;
-    // array of matteValue_t values local to the function
-    matteArray_t * locals;
+    // array object that holds argumentsw and locals.
+    // Retrieving a referrable safely incolves copying a 
+    // reference to this. This guarantees access of the value past 
+    // the lifetime of this function call when applicable
+    matteValue_t referrable;
+    uint32_t referrableSize;
+
 
     
     // working array of values utilized by this function. (matteValue_t)
@@ -119,7 +122,11 @@ typedef struct {
 
 
 // Gets the requested stackframe. 0 is the currently running stackframe.
+// If an invalid stackframe is requested, an error is raised.
 matteVMStackFrame_t matte_vm_get_stackframe(matteVM_t * vm, uint32_t i);
+
+// Returns the number of valid stackframes.
+uint32_t matte_vm_get_stackframe_size(const matteVM_t *);
 
 // Gets a pointer to the special referrable value in question.
 // If none, NULL is returned.

@@ -30,6 +30,17 @@ struct matteHeap_t {
 };
 
 
+// When capturing values, the base 
+// referrable of the stackframe is saved along 
+// with an index into it pointing to which 
+// value it is. This allows upding the real, singular 
+// location of it when updating it but also allows 
+// fetching copies as needed.
+typedef struct {
+    matteValue_t referrableSrc;
+    uint32_t index;
+} CapturedReferrable_t;
+
 
 typedef struct {
     // any user data. Defaults to null
@@ -197,6 +208,7 @@ static void * create_object() {
     out->keyvalues_string = matte_table_create_hash_matte_string();
     out->keyvalues_number = matte_array_create(sizeof(matteValue_t));
     out->keyvalues_object = matte_table_create_hash_buffer(sizeof(matteValue_t));
+    out->functionCaptures = matte_array_create(sizeof(CapturedReferrable_t));
     return out;
 }
 
@@ -205,6 +217,7 @@ static void destroy_object(void * d) {
     matte_table_destroy(out->keyvalues_string);
     matte_table_destroy(out->keyvalues_object);
     matte_array_destroy(out->keyvalues_number);
+    matte_array_destroy(out->functionCaptures);
 
     free(out);
 }
@@ -302,7 +315,6 @@ void matte_value_into_new_function_ref(matteValue_t * v, matteBytecodeStub_t * s
     d->refs = 1;
     d->functionstub = stub;
 
-
     // claim captures immediately.
     uint32_t i;
     uint32_t len;
@@ -315,7 +327,7 @@ void matte_value_into_new_function_ref(matteValue_t * v, matteBytecodeStub_t * s
 
     // TODO: can we speed this up?
     for(i = 0; i < len; ++i) {
-        uint32_t frameIndex = 1;
+        uint32_t frameIndex = 0;
         do {
             frame = matte_vm_get_stackframe(v->heap->vm, frameIndex);
             if (!frame.stub) {
@@ -326,17 +338,25 @@ void matte_value_into_new_function_ref(matteValue_t * v, matteBytecodeStub_t * s
             }
 
             if (matte_bytecode_stub_get_id(frame.stub) == capturesRaw[i].stubID) {
-                matteValue_t copy = matte_heap_new_value(v->heap);
-                matteValue_t * r = matte_vm_stackframe_get_referrable(v->heap->vm, frameIndex, capturesRaw[i].referrable);
-                if (r) {
-                    matte_value_into_copy(&copy, *r);
-                }
-                matte_array_push(d->functionCaptures, copy);
+                CapturedReferrable_t ref;
+                ref.referrableSrc = matte_heap_new_value(v->heap);
+                matte_value_into_copy(&ref.referrableSrc, frame.referrable);
+                ref.index = capturesRaw[i].referrable;
+
+                matte_array_push(d->functionCaptures, ref);
+                break;
             }
             frameIndex++;
         } while(1);
     }    
 }
+
+
+matteValue_t * matte_value_object_array_at_unsafe(matteValue_t v, uint32_t index) {
+    matteObject_t * d = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+    return &matte_array_at(d->keyvalues_number, matteValue_t, index);
+}
+
 
 matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t v) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
@@ -346,15 +366,44 @@ matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t v) {
     return NULL;
 }
 
-const matteArray_t * matte_value_get_captured_values(matteValue_t v) {
+matteValue_t * matte_value_get_captured_value(matteValue_t v, uint32_t index) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
-        return m->functionCaptures;
+        if (index >= matte_array_get_size(m->functionCaptures)) return NULL;
+        CapturedReferrable_t referrable = matte_array_at(m->functionCaptures, CapturedReferrable_t, index);
+        return matte_value_object_array_at_unsafe(referrable.referrableSrc, referrable.index);
     }
     return NULL;
 }
 
+void matte_value_print(matteValue_t v) {
+    printf(    "Matte HEAP Object:\n");
+    printf(    "  Heap ID:   %d\n", v.objectID);
+    switch(v.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        printf("  Heap Type: EMPTY\n");
+        break;
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        printf("  Heap Type: BOOLEAN\n");
+        printf("  Value:     %s\n", matte_value_as_boolean(v) ? "true" : "false");
+        break;
+      case MATTE_VALUE_TYPE_NUMBER: 
+        printf("  Heap Type: NUMBER\n");
+        printf("  Value:     %f\n", matte_value_as_number(v));
+        break;
+      case MATTE_VALUE_TYPE_STRING: 
+        printf("  Heap Type: STRING\n");
+        printf("  Value:     %s\n", matte_string_get_c_str(matte_value_as_string(v)));
+        break;
+      case MATTE_VALUE_TYPE_OBJECT: 
+        printf("  Heap Type: OBJECT\n");
+        break;
 
+    }
+    
+    printf("\n");
+    fflush(stdout);
+}
 
 
 void matte_value_set_object_userdata(matteValue_t v, void * userData) {

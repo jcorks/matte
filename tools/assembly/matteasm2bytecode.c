@@ -298,7 +298,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 oc1 == 'a' &&
                 oc2 == 'r'
             ) {
-                inst->opcode = MATTE_OPCODE_NFN;
+                inst->opcode = MATTE_OPCODE_NAR;
                 if (sscanf(line, "%"SCNu32" nar %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
                     printf("ERROR on line %d: unrecognized nar format. Syntax: [line] nar [number of stack objects into array]\n", lineN);
                     exit(1);                

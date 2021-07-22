@@ -57,6 +57,10 @@ void matte_value_into_new_object_ref(matteValue_t *);
 // creates a new object with indexed keys/
 void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t *);
 
+
+matteValue_t * matte_value_object_array_at_unsafe(matteValue_t v, uint32_t index);
+
+
 // 
 void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);
 
@@ -64,7 +68,7 @@ void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);
 matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t);
 
 // Gets all captured values by the function. If not a function, returns NULL
-const matteArray_t * matte_value_get_captured_values(matteValue_t);
+matteValue_t * matte_value_get_captured_value(matteValue_t, uint32_t index);
 
 
 // if the value points to an object, sets custom data for the object.

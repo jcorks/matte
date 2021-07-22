@@ -503,7 +503,7 @@ void matte_table_remove(matteTable_t * t, const void * key) {
 }
 
 int matte_table_is_empty(const matteTable_t * t) {
-    return t->size != 0;
+    return t->size == 0;
 }
 
 void matte_table_clear(matteTable_t * t) {
