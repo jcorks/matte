@@ -56,8 +56,8 @@ typedef enum {
     MATTE_OPERATOR_OR, // || 2 operands
     MATTE_OPERATOR_BITWISE_AND, // & 2 operands
     MATTE_OPERATOR_AND, // && 2 operands
-    MATTE_OPERATOR_SHIFT_DOWN, // << 2 operands
-    MATTE_OPERATOR_SHIFT_UP, // >> 2 operands
+    MATTE_OPERATOR_SHIFT_LEFT, // << 2 operands
+    MATTE_OPERATOR_SHIFT_RIGHT, // >> 2 operands
     MATTE_OPERATOR_POW, // ** 2 operands
     MATTE_OPERATOR_EQ, // == 2 operands
     MATTE_OPERATOR_BITWISE_NOT, // ~ 1 operand

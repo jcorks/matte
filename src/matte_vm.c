@@ -100,7 +100,18 @@ static matteBytecodeStub_t * vm_find_stub(matteVM_t * vm, uint16_t fileid, uint1
 
 static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue_t a, matteValue_t b) {
     switch(op) {
-      case MATTE_OPERATOR_ADD:  return vm_operator__add (vm, a, b);
+      case MATTE_OPERATOR_ADD:        return vm_operator__add         (vm, a, b);
+      case MATTE_OPERATOR_SUB:        return vm_operator__sub         (vm, a, b);
+      case MATTE_OPERATOR_DIV:        return vm_operator__div         (vm, a, b);
+      case MATTE_OPERATOR_MULT:       return vm_operator__mult        (vm, a, b);
+      case MATTE_OPERATOR_BITWISE_OR: return vm_operator__bitwise_or  (vm, a, b);
+      case MATTE_OPERATOR_OR:         return vm_operator__or          (vm, a, b);
+      case MATTE_OPERATOR_BITWISE_AND:return vm_operator__bitwise_and (vm, a, b);
+      case MATTE_OPERATOR_AND:        return vm_operator__and         (vm, a, b);
+      case MATTE_OPERATOR_SHIFT_LEFT: return vm_operator__shift_left  (vm, a, b);
+      case MATTE_OPERATOR_SHIFT_RIGHT:return vm_operator__shift_right (vm, a, b);
+      case MATTE_OPERATOR_POS:        return vm_operator__pow         (vm, a, b);
+
       case MATTE_OPERATOR_LESS: return vm_operator__less(vm, a, b);
 
       default:
@@ -113,6 +124,8 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
 static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue_t a) {
     switch(op) {
       case MATTE_OPERATOR_TONUMBER: return vm_operator__tonumber(vm, a);
+      case MATTE_OPERATOR_NOT:      return vm_operator__not(vm, a);
+
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled OPR operator"));                        
         return matte_heap_new_value(vm->heap);

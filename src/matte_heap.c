@@ -434,6 +434,8 @@ int matte_value_as_boolean(matteValue_t v) {
         matteValue_t * toBoolean;
         if ((toBoolean = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("toBoolean")))) {
             return matte_value_as_number(matte_vm_call(v.heap->vm, *toBoolean, matte_array_empty()));
+        } else {
+            return 1;
         }
       }
     }
@@ -461,6 +463,12 @@ matteValue_t matte_value_object_access(matteValue_t v, matteValue_t key) {
     } else {
         return object_lookup(m, key);
     }
+}
+
+matteValue_t * matte_value_object_get_operator(matteValue_t v, const char * operator) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return NULL;
+    matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+    if 
 }
 
 matteValue_t matte_value_object_access_string(matteValue_t v, const matteString_t * key) {

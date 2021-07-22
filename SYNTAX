@@ -8,6 +8,7 @@
 
 // local variable
 @ localVariable;
+// constant
 <@> localConstVariable = 'Error if changed';
 
 
@@ -34,7 +35,7 @@ myFunction();
 myFunctionWithArguments(myFunction(), a);
 
 
-// string 
+// string constants (immutable)
 @str = 'This is a string';
 @str2 = "also a string";
 
@@ -106,17 +107,17 @@ while(statement, <={
 
 // switch doesn't exist, but match does!
 match(statement, {
-    0 : <= {
+    0  <= {
         Debug.print('0!');
     },
     
-    1 : <= {
+    1  <= {
         Debug.print('1!');
     },
     
 
     // special value for no matching
-    default : <= {
+    default  <= {
         Debug.print('Neither')
     }
 });
@@ -127,9 +128,9 @@ match(statement, {
 // match can be also used to return different things
 @myValue = match(random(1, 4), {
     0 <= {return "A"},
-    1 <= {return "A"},
-    2 <= {return "A"},
-    3 <= {return "A"},
+    1 <= {return "B"},
+    2 <= {return "C"},
+    3 <= {return "D"},
 });
 
 

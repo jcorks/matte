@@ -1,3 +1,40 @@
+static matteValue_t vm_run_object_operator_2(matteVM_t * vm, matteValue_t a, const char * operator, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(a.heap);
+    matteValue_t opSrc = matte_value_object_access_string(a, MATTE_STR_CAST("operator"));
+    if (opSrc.binID) {
+        matteValue_t op = matte_value_object_access_string(a, MATTE_STR_CAST(operator));
+        
+        matteValue_t args[] = {a, b};
+        result = matte_vm_call(vm, op, MATTE_ARRAY_CAST(args, matteValue_t, 2));
+        matte_heap_recycle(op);
+    } else {
+        matteString_t * err = matte_string_create_from_c_str("%s operator to object without operator overloading is undefined.", operator);
+        matte_vm_raise_error_string(vm, err);
+        matte_string_destroy(err);
+    }
+    matte_heap_recycle(opSrc);
+    return result;
+}
+
+
+static matteValue_t vm_run_object_operator_1(matteVM_t * vm, matteValue_t a, const char * operator) {
+    matteValue_t result = matte_heap_new_value(a.heap);
+    matteValue_t opSrc = matte_value_object_access_string(a, MATTE_STR_CAST("operator"));
+    if (opSrc.binID) {
+        matteValue_t op = matte_value_object_access_string(a, MATTE_STR_CAST(operator));
+        
+        matteValue_t args[] = {a};
+        result = matte_vm_call(vm, op, MATTE_ARRAY_CAST(args, matteValue_t, 1));
+        matte_heap_recycle(op);
+    } else {
+        matteString_t * err = matte_string_create_from_c_str("%s operator to object without operator overloading is undefined.", operator);
+        matte_vm_raise_error_string(vm, err);
+        matte_string_destroy(err);
+    }
+    matte_heap_recycle(opSrc);
+    return result;
+}
+
 // +
 static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
@@ -34,26 +71,407 @@ static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_
         break;
       
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteValue_t opSrc = matte_value_object_access_string(a, MATTE_STR_CAST("operator"));
-        if (opSrc.binID) {
-            matteValue_t op = matte_value_object_access_string(a, MATTE_STR_CAST("+"));
-            
-            matteValue_t args[] = {a, b};
-            return matte_vm_call(vm, op, MATTE_ARRAY_CAST(args, matteValue_t, 2));
-        } else {
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Addition operator to object without operator overloading is undefined."));
-        }
+        result = vm_run_object_operator_2(vm, a, "+", b);
         break;
       }      
     }
     return result;
 }
 
+
+static matteValue_t vm_operator__sub(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("- operator to empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_value_into_number(
+            &result, 
+            matte_value_as_number(a) -
+            matte_value_as_number(b)
+        );
+        break;
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("- operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("- operator to boolean value is undefined."));
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "-", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+
+
+static matteValue_t vm_operator__div(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("/ operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_value_into_number(
+            &result, 
+            matte_value_as_number(a) /
+            matte_value_as_number(b)
+        );
+        break;
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("/ operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("/ operator on boolean value is undefined."));
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "/", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+
+static matteValue_t vm_operator__mult(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("* operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_value_into_number(
+            &result, 
+            matte_value_as_number(a) *
+            matte_value_as_number(b)
+        );
+        break;
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("* operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("* operator on boolean value is undefined."));
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "*", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+static matteValue_t vm_operator__not(matteVM_t * vm, matteValue_t a) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("! operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("! operator on number value is undefined."));
+        break;
+
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("! operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_value_into_boolean(
+            &result, 
+            !matte_value_as_boolean(a)
+        );
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_1(vm, a, "!");
+        break;
+      }      
+    }
+    return result;
+}
+
+static matteValue_t vm_operator__bitwise_or(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("| operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("| operator on number value is undefined."));
+        break;
+
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("| operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_value_into_boolean(
+            &result, 
+            matte_value_as_boolean(a) |
+            matte_value_as_boolean(b)
+        );
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "|", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+static matteValue_t vm_operator__or(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("|| operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("|| operator on number value is undefined."));
+        break;
+
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("|| operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_value_into_boolean(
+            &result, 
+            matte_value_as_boolean(a) ||
+            matte_value_as_boolean(b)
+        );
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "||", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+static matteValue_t vm_operator__bitwise_and(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("& operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("& operator on number value is undefined."));
+        break;
+
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("& operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_value_into_boolean(
+            &result, 
+            matte_value_as_boolean(a) &
+            matte_value_as_boolean(b)
+        );
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "&", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+static matteValue_t vm_operator__and(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("&& operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("&& operator on number value is undefined."));
+        break;
+
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("&& operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_value_into_boolean(
+            &result, 
+            matte_value_as_boolean(a) &&
+            matte_value_as_boolean(b)
+        );
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "&&", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+
+static matteValue_t vm_operator__shift_left(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("<< operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_value_into_number(
+            &result, 
+            matte_value_as_number(a) <<
+            matte_value_as_number(b)
+        );
+        break;
+
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("<< operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("<< operator on boolean value is undefined."));
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "<<", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+static matteValue_t vm_operator__shift_right(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST(">> operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_value_into_number(
+            &result, 
+            matte_value_as_number(a) >>
+            matte_value_as_number(b)
+        );
+        break;
+
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST(">> operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST(">> operator on boolean value is undefined."));
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, ">>", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+
+static matteValue_t vm_operator__pow(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("** operator on empty value is undefined."));
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_value_into_number(
+            &result, 
+            pow(matte_value_as_number(a),
+                matte_value_as_number(b))
+        );
+        break;
+
+      case MATTE_VALUE_TYPE_STRING: { 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("** operator on string value is undefined."));
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("** operator on boolean value is undefined."));
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "**", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: 
+        matte_value_into_boolean(&result, b.binID == 0);
+        return result;
+
+      case MATTE_VALUE_TYPE_NUMBER: 
+        matte_value_into_boolean(
+            &result, 
+            matte_value_as_number(a) ==
+            matte_value_as_number(b)
+        );
+        break;
+      case MATTE_VALUE_TYPE_STRING: { 
+        matteString_t * astr = matte_value_as_string(a);
+        matteString_t * bstr = matte_value_as_string(b);
+        if (!astr || !bstr) return result;
+        
+        matte_value_into_boolean(
+            &result,
+            matte_string_test_eq(
+                astr,
+                bstr
+            )
+        );
+        break;
+      }
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_value_into_boolean(
+            &result, 
+            matte_value_as_boolean(a) ==
+            matte_value_as_boolean(b)
+        );
+        break;
+      
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "<", b);
+        break;
+      }      
+    }
+    return result;
+}
+
+
+
 static matteValue_t vm_operator__less(matteVM_t * vm, matteValue_t a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Less than operator on empty value is undefined."));
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("< operator on empty value is undefined."));
         return result;
 
       case MATTE_VALUE_TYPE_NUMBER: 
@@ -78,25 +496,16 @@ static matteValue_t vm_operator__less(matteVM_t * vm, matteValue_t a, matteValue
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Less than operator on boolean value is undefined."));
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("< operator on boolean value is undefined."));
         break;
       
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteValue_t opSrc = matte_value_object_access_string(a, MATTE_STR_CAST("operator"));
-        if (opSrc.binID) {
-            matteValue_t op = matte_value_object_access_string(a, MATTE_STR_CAST("<"));
-            
-            matteValue_t args[] = {a, b};
-            return matte_vm_call(vm, op, MATTE_ARRAY_CAST(args, matteValue_t, 2));
-        } else {
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Less than operator to object without operator overloading is undefined."));
-        }
+        result = vm_run_object_operator_2(vm, a, "<", b);
         break;
       }      
     }
     return result;
 }
-
 
 
 static matteValue_t vm_operator__tonumber(matteVM_t * vm, matteValue_t a) {

@@ -377,7 +377,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '<':
                     inst->data[0] = MATTE_OPERATOR_LESS;
                     switch(opopcode1) {
-                      case '<': inst->data[0] = MATTE_OPERATOR_SHIFT_DOWN; break;
+                      case '<': inst->data[0] = MATTE_OPERATOR_SHIFT_LEFT; break;
                       case '=': inst->data[0] = MATTE_OPERATOR_LESSEQ; break;
                       case '>': inst->data[0] = MATTE_OPERATOR_TRANSFORM; break;
                       default:;
@@ -387,7 +387,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                   case '>':
                     inst->data[0] = MATTE_OPERATOR_GREATER;
                     switch(opopcode1) {
-                      case '<': inst->data[0] = MATTE_OPERATOR_SHIFT_UP; break;
+                      case '<': inst->data[0] = MATTE_OPERATOR_SHIFT_RIGHT; break;
                       case '=': inst->data[0] = MATTE_OPERATOR_GREATEREQ; break;
                       default:;
                     }
