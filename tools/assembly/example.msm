@@ -1,7 +1,7 @@
 fileid 1
 
 ; @sum = 1
-; foreach([10, 100, 1000], <= (key, val) {
+; foreach(["a", "b", "c"], <= (key, val) {
 ;   sum += val;
 ; }
 ; return sum;
@@ -11,13 +11,13 @@ function 0
         "sum"
     captures=0
     
-    1 nnm 1.0
+    1 nnm 1
     1 arf 1
     1 nfn 1 1000
     
-    1 nnm 1000.0
-    1 nnm 100.0
-    1 nnm 10.0
+    1 nnm 1000
+    1 nnm 100
+    1 nnm 10
     1 nar 3
     
     1 ext foreach
@@ -37,7 +37,7 @@ function 1000
         0   1
 
 
-    1 prf 2
+    1 prf 1
     1 prf 3
     1 opr +
     1 arf 3
@@ -68,7 +68,7 @@ function 11
     1 skp 7
         1 nst "smaller"
         1 ret
-    nst "not smaller"
+    1 nst "not smaller"
 
     
 end function

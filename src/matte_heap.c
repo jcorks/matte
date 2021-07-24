@@ -288,6 +288,27 @@ void matte_value_into_new_object_ref(matteValue_t * v) {
     d->refs = 1;
 }
 
+void matte_value_into_new_object_literal_ref(matteValue_t * v, const matteArray_t * arr) {
+    matte_heap_recycle(*v);
+    v->binID = MATTE_VALUE_TYPE_OBJECT;
+    matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
+    d->heapID = v->objectID;
+    d->refs = 1;
+
+
+    uint32_t i;
+    uint32_t len = matte_array_get_size(arr);
+    
+    for(i = 0; i < len/2; ++i) {
+        matteValue_t key   = matte_array_at(arr, matteValue_t, i);
+        matteValue_t value = matte_array_at(arr, matteValue_t, i);
+        
+        object_put_prop(d, key, value);
+    }
+
+}
+
+
 void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t * args) {
     matte_heap_recycle(*v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;

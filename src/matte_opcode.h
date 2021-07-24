@@ -19,8 +19,10 @@ typedef enum {
     MATTE_OPCODE_NOB,
     // push new function from a compiled stub
     MATTE_OPCODE_NFN,
-    // push new empty with numbered, index keys
+    // push new object with numbered, index keys
     MATTE_OPCODE_NAR,
+    // push new object with defined keys and values
+    MATTE_OPCODE_NSO,
     
     
     // push a new callstack from the given function object.

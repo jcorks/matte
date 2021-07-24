@@ -70,7 +70,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
     unistring * argNames;
     unistring * localNames;
     typedef struct {
-        uint16_t stubid;
+        uint32_t stubid;
         uint32_t referrable;
     } captureData;
     captureData * captures;
@@ -152,7 +152,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                     printf("ERROR on line %d: ended early (captures expected)\n", lineN);
                     exit(1);                    
                 }
-                if (sscanf(line, "%"SCNu16" %"SCNu32, &(captures[i].stubid), &(captures[i].referrable)) != 2) {
+                if (sscanf(line, "%"SCNu32" %"SCNu32, &(captures[i].stubid), &(captures[i].referrable)) != 2) {
                     printf("ERROR on line %d: unable to parse capture. Syntax: [function/stub id] [referrable index]\n", lineN);
                     exit(1);                    
                 }
@@ -216,7 +216,10 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 instructions = realloc(instructions, instructionsAlloc*sizeof(instruction));
             }
             instruction * inst = instructions+(instructionsCount++);
-            sscanf(line, "%"SCNu32" %c%c%c", &inst->line, &oc0, &oc1, &oc2);
+            if (sscanf(line, "%"SCNu32" %c%c%c", &inst->line, &oc0, &oc1, &oc2) != 4) {
+                printf("ERROR on line %d: unrecognized opcode format! needs to be: [line number] [3-char lowercase opcode] [args]\n", lineN);
+                exit(1);
+            }
             inst->opcode = 255;
             if (oc0 == 'n' &&
                 oc1 == 'o' &&
@@ -258,7 +261,8 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 unistring str = read_unistring_ascii(lr+3);
 
                 inst->opcode = MATTE_OPCODE_NST;
-                uint32_t srcline = inst->line;                
+                uint32_t srcline = inst->line;             
+                *(uint32_t*)inst->data = str.len;
                 uint32_t lenLeft = str.len;
                 uint32_t iter = 0;
                 while(lenLeft) {
@@ -272,7 +276,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                     memcpy(inst->data, &str.data[iter], sizeof(int32_t));
                     lenLeft--; iter++;
                     if (lenLeft) {
-                        memcpy(inst->data+4, &str.data[iter], sizeof(int32_t));
+                        memcpy(inst->data+sizeof(int32_t), &str.data[iter], sizeof(int32_t));
                         lenLeft--; iter++;
                     }
                 }
@@ -304,6 +308,16 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                     exit(1);                
                 }
             } else if (
+                oc0 == 'n' &&
+                oc1 == 's' &&
+                oc2 == 'o'
+            ) {
+                inst->opcode = MATTE_OPCODE_NSO;
+                if (sscanf(line, "%"SCNu32" nso %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized nso format. Syntax: [line] nar [number of object pairs]\n", lineN);
+                    exit(1);                
+                }
+            }else if (
                 oc0 == 'c' &&
                 oc1 == 'a' &&
                 oc2 == 'l'

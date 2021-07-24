@@ -193,6 +193,7 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_NOB: return "NOB";
       case MATTE_OPCODE_NFN: return "NFN";
       case MATTE_OPCODE_NAR: return "NAR";
+      case MATTE_OPCODE_NSO: return "NSO";
         
         
       case MATTE_OPCODE_CAL: return "CAL";
@@ -262,14 +263,17 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteString_t * str = matte_string_create();
 
             uint32_t vals[2];
-
+            uint32_t len;
+            memcpy(&len, inst->data, sizeof(uint32_t));
             if (frame->pc < instCount)
                 inst = program+(frame->pc++);
 
-            while(inst->opcode == MATTE_OPCODE_STC) {
+            uint32_t i;
+            for(i = 0; i < len; ++i) {
                 memcpy(vals, inst->data, 8);
-                if (vals[0] != 0) matte_string_append_char(str, vals[0]);
-                if (vals[1] != 0) matte_string_append_char(str, vals[1]);
+                if (vals[0] != 0) matte_string_append_char(str, vals[0]); i++;
+                if (i < len)
+                    if (vals[1] != 0) matte_string_append_char(str, vals[1]);
 
                 if (frame->pc < instCount)
                     inst = program+(frame->pc++);
@@ -279,7 +283,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matte_value_into_string(&v, str);
             matte_string_destroy(str);
             STACK_PUSH(v);
-            frame->pc--; // put back prev command
             break;
           }
           case MATTE_OPCODE_NOB: {
@@ -336,6 +339,37 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             STACK_PUSH(v);
             break;
           }
+          case MATTE_OPCODE_NSO: {
+            uint32_t len;
+            memcpy(&len, inst->data, 4);
+            if (STACK_SIZE()*2 < len) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("Static object cannot be created. (insufficient stack size)"));
+                break;
+            }
+
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            uint32_t i;
+            matteArray_t * args = matte_array_create(sizeof(matteValue_t));
+
+            matteValue_t t;
+            for(i = 0; i < len; ++i) {
+                t = STACK_POP();
+                matte_array_push(args, t);  
+                t = STACK_POP();
+                matte_array_push(args, t);  
+            }
+
+            matte_value_into_new_object_literal_ref(&v, args);
+
+            for(i = 0; i < len; ++i) {
+                matte_heap_recycle(matte_array_at(args, matteValue_t, i));
+            }
+            matte_array_destroy(args);
+
+            STACK_PUSH(v);
+            break;
+          }
+
           case MATTE_OPCODE_CAL: {
             if (STACK_SIZE() == 0) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to run CAL opcode when stack is empty."))    ;

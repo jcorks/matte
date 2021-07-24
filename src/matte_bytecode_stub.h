@@ -89,7 +89,7 @@ typedef struct {
     // stubID of the function that contains the captures.
     // during runtime, the stack will be walked for the nearest 
     // context that matches and will pull referrables from it.
-    uint16_t stubID;
+    uint32_t stubID;
 
     // ID within that function scope where the variable referred to is.
     uint32_t referrable;

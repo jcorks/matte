@@ -54,6 +54,9 @@ void matte_value_into_string(matteValue_t *, const matteString_t *);
 // Sets the type to an object that points to a new, empty object.
 void matte_value_into_new_object_ref(matteValue_t *);
 
+
+void matte_value_into_new_object_literal_ref(matteValue_t *, const matteArray_t *);
+
 // creates a new object with indexed keys/
 void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t *);
 

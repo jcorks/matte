@@ -174,7 +174,7 @@ Each stub consists of the following:
 - number of declared local value slots (uint8_t)
 - list of unistrings, count: num locals
 - number of captured variable value slots (uint16_t)
-- list of captured values (pairs of: [source stubid (uint16_t), referrable index (uint32_t)])
+- list of captured values (pairs of: [source stubid (uint32_t), referrable index (uint32_t)])
 
 (when capturing values: when the function is created, the VM will walk the callstack to find the most immediate context with the source stubid)
 
@@ -189,7 +189,7 @@ Noop (NOP) 0
     pops:
     pushes:
 
-Push Referrable (PRF) 1
+Push Referrable (PRF) 
     args:
         - 4-byte special index (uint32_t)
     pops:
@@ -200,7 +200,7 @@ Push Referrable (PRF) 1
           1, num args -1 -> arguments 
           num args, num args + num locals - 1 -> locals 
           num args + num locals, num args + num locals + num captured -1 -> captured
-New Empty (NEM) 2
+New Empty (NEM) 
     args:
     pops:
     push:
