@@ -65,9 +65,9 @@ typedef enum {
     MATTE_OPERATOR_POW, // ** 2 operands
     MATTE_OPERATOR_EQ, // == 2 operands
     MATTE_OPERATOR_BITWISE_NOT, // ~ 1 operand
-    MATTE_OPERATOR_TOSTRING, // .toString() 1 operand
-    MATTE_OPERATOR_TONUMBER, // .toNumber() 1 operand
-    MATTE_OPERATOR_TOBOOLEAN, // .toBoolean() 1 operand
+    MATTE_OPERATOR_TOSTRING, // String() 1 operand
+    MATTE_OPERATOR_TONUMBER, // Number() 1 operand
+    MATTE_OPERATOR_TOBOOLEAN, // Boolean() 1 operand
     MATTE_OPERATOR_POINT, // -> 2 operands
     MATTE_OPERATOR_POUND, // # 1 operand
     MATTE_OPERATOR_TERNARY, // ? 2 operands
@@ -76,7 +76,7 @@ typedef enum {
     MATTE_OPERATOR_LESS, // < 2 operands
     MATTE_OPERATOR_GREATEREQ, // >= 2 operands
     MATTE_OPERATOR_LESSEQ, // <= 2 operands
-    MATTE_OPERATOR_TYPENAME, // .type() 1 operand 
+    MATTE_OPERATOR_TYPENAME, // type() 1 operand 
     MATTE_OPERATOR_SPECIFY, // :: 2 operands
     MATTE_OPERATOR_TRANSFORM, // <> 2 operands
     MATTE_OPERATOR_NOTEQ, // != 2 operands
