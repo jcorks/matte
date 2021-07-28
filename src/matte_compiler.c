@@ -56,9 +56,15 @@ typedef enum {
 
 
 
-typedef struct {
+typedef struct matteToken_t matteToken_t ;
+
+struct matteToken_t {
     // type of the token
     matteTokenType_t ttype;
+
+    // optional value for chain construct. Assists in telling 
+    // what this token is intended for.
+    int chainConstruct;
     
     // source line number
     uint32_t line;
@@ -67,7 +73,10 @@ typedef struct {
     uint32_t character;
     // text for the token
     matteString_t * text;
-} matteToken_t;
+
+    // The next token if this token is part of a chain. Else, is NULL.
+    matteToken_t * next;
+};
 
 
 
@@ -131,8 +140,7 @@ enum {
 // into parsible tokens. 
 matteSyntaxGraph_t * matte_syntax_graph_create(
     matteTokenizer_t *,
-    matteArray_t * tokens,
-    void (*onError)(const uint8_t * errMessage, int line)
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch)
 );
 
 
@@ -148,7 +156,7 @@ matteSyntaxGraph_t * matte_syntax_graph_create(
 // Terminate with 0.
 void matte_syntax_graph_register_constructs(
     matteSyntaxGraph_t *,
-    int constructID, const uint8_t * name,
+    int constructID, const matteString_t * name,
     ...
 );
 
@@ -157,7 +165,7 @@ void matte_syntax_graph_register_constructs(
 // nodes that accept 
 void matte_syntax_graph_register_tokens(
     matteSyntaxGraph_t *,
-    int token, const uint8_t * name,
+    int token, const matteString_t * name,
     ...
 );
 
@@ -176,6 +184,7 @@ int matte_syntax_graph_continue(
 
 void matte_syntax_graph_add_construct_path(
     matteSyntaxGraph_t *,
+    int construct
     ...
 );
 
@@ -212,7 +221,8 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_split(
     ...
 );
 
-
+// Returns the first parsed token from the user source
+matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraph_t * g);
 
 
 
@@ -242,59 +252,58 @@ uint8_t * matte_compiler_run(
 
 
 
-    matteArray_t * arr = matte_array_create(sizeof(matteToken_t *));
-    matteSyntaxGraph_t * st = matte_syntax_graph_create(w, arr, onError);
+    matteSyntaxGraph_t * st = matte_syntax_graph_create(w, onError);
     matte_syntax_graph_register_constructs(
         st,
-        MATTE_SYNTAX_CONSTRUCT_EXPRESSION, "Expression",
-        MATTE_SYNTAX_CONSTRUCT_FUNCTION_CALL, "Function Call",
-        MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT, "Function Scope Statement",
-        MATTE_SYNTAX_CONSTRUCT_NEW_OBJECT, "New Object",
-        MATTE_SYNTAX_CONSTRUCT_VALUE, "Value",
-        MATTE_SYNTAX_CONSTRUCT_VALUE_FUNCTION_CALL_ARGS, "Function Call Argument List",
-        MATTE_SYNTAX_CONSTRUCT_VALUE_FUNCTION_CREATION_ARGS, "New Function Argument List",
+        MATTE_SYNTAX_CONSTRUCT_EXPRESSION, MATTE_STR_CAST("Expression"),
+        MATTE_SYNTAX_CONSTRUCT_FUNCTION_CALL, MATTE_STR_CAST("Function Call"),
+        MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT, MATTE_STR_CAST("Function Scope Statement"),
+        MATTE_SYNTAX_CONSTRUCT_NEW_OBJECT, MATTE_STR_CAST("New Object"),
+        MATTE_SYNTAX_CONSTRUCT_VALUE, MATTE_STR_CAST("Value"),
+        MATTE_SYNTAX_CONSTRUCT_VALUE_FUNCTION_CALL_ARGS, MATTE_STR_CAST("Function Call Argument List"),
+        MATTE_SYNTAX_CONSTRUCT_VALUE_FUNCTION_CREATION_ARGS, MATTE_STR_CAST("New Function Argument List"),
         NULL
     );
 
     matte_syntax_graph_register_tokens(
         st,
         // token is a number literal
-        MATTE_TOKEN_LITERAL_NUMBER, "Number Literal",
-        MATTE_TOKEN_LITERAL_STRING, "String Literal",
-        MATTE_TOKEN_LITERAL_BOOLEAN, "Boolean Literal",
-        MATTE_TOKEN_LITERAL_EMPTY, "Empty Literal",
-        MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, "Expression '('",
-        MATTE_TOKEN_EXPRESSION_GROUP_END, "Expression ')'",
-        MATTE_TOKEN_ASSIGNMENT, "Assignment Operator '='",
-        MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_START, "Object Accessor '['",
-        MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_END, "Object Accessor ']'",
-        MATTE_TOKEN_OBJECT_ACCESSOR_DOT, "Object Accessor '.'",
-        MATTE_TOKEN_GENERAL_OPERATOR1, "Single-operand Operator",
-        MATTE_TOKEN_GENERAL_OPERATOR2, "Operator",
-        MATTE_TOKEN_VARIABLE_NAME, "Variable Name:",
-        MATTE_TOKEN_OBJECT_STATIC_BEGIN, "Object Literal '{'",
-        MATTE_TOKEN_OBJECT_STATIC_END, "Object Literal '}'",
-        MATTE_TOKEN_OBJECT_DEF_PROP, "Object Literal assignment ':'",
-        MATTE_TOKEN_OBJECT_STATIC_SEPARATOR, "Object Literal separator ','",
-        MATTE_TOKEN_OBJECT_ARRAY_START, "Array Literal '['",
-        MATTE_TOKEN_OBJECT_ARRAY_END, "Array Literal ']'",
-        MATTE_TOKEN_OBJECT_ARRAY_SEPARATOR, "Array Element Separator ','",
+        MATTE_TOKEN_LITERAL_NUMBER, MATTE_STR_CAST("Number Literal"),
+        MATTE_TOKEN_LITERAL_STRING, MATTE_STR_CAST("String Literal"),
+        MATTE_TOKEN_LITERAL_BOOLEAN, MATTE_STR_CAST("Boolean Literal"),
+        MATTE_TOKEN_LITERAL_EMPTY, MATTE_STR_CAST("Empty Literal"),
+        MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, MATTE_STR_CAST("Expression '('"),
+        MATTE_TOKEN_EXPRESSION_GROUP_END, MATTE_STR_CAST("Expression ')'"),
+        MATTE_TOKEN_ASSIGNMENT, MATTE_STR_CAST("Assignment Operator '='"),
+        MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_START, MATTE_STR_CAST("Object Accessor '['"),
+        MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_END, MATTE_STR_CAST("Object Accessor ']'"),
+        MATTE_TOKEN_OBJECT_ACCESSOR_DOT, MATTE_STR_CAST("Object Accessor '.'"),
+        MATTE_TOKEN_GENERAL_OPERATOR1, MATTE_STR_CAST("Single-operand Operator"),
+        MATTE_TOKEN_GENERAL_OPERATOR2, MATTE_STR_CAST("Operator"),
+        MATTE_TOKEN_VARIABLE_NAME, MATTE_STR_CAST("Variable Name:"),
+        MATTE_TOKEN_OBJECT_STATIC_BEGIN, MATTE_STR_CAST("Object Literal '{'"),
+        MATTE_TOKEN_OBJECT_STATIC_END, MATTE_STR_CAST("Object Literal '}'"),
+        MATTE_TOKEN_OBJECT_DEF_PROP, MATTE_STR_CAST("Object Literal assignment ':'"),
+        MATTE_TOKEN_OBJECT_STATIC_SEPARATOR, MATTE_STR_CAST("Object Literal separator ','"),
+        MATTE_TOKEN_OBJECT_ARRAY_START, MATTE_STR_CAST("Array Literal '['"),
+        MATTE_TOKEN_OBJECT_ARRAY_END, MATTE_STR_CAST("Array Literal ']'"),
+        MATTE_TOKEN_OBJECT_ARRAY_SEPARATOR, MATTE_STR_CAST("Array Element Separator ','"),
 
-        MATTE_TOKEN_DECLARE, "Local Variable Declarator '@'",
-        MATTE_TOKEN_DECLARE_CONST, "Local Constant Declarator '<@>'",
+        MATTE_TOKEN_DECLARE, MATTE_STR_CAST("Local Variable Declarator '@'"),
+        MATTE_TOKEN_DECLARE_CONST, MATTE_STR_CAST("Local Constant Declarator '<@>'"),
 
-        MATTE_TOKEN_FUNCTION_BEGIN, "Function Constent Block '{'",
-        MATTE_TOKEN_FUNCTION_END,   "Function Constent Block '}'",
-        MATTE_TOKEN_FUNCTION_ARG_BEGIN, "Function Argument List '('",
-        MATTE_TOKEN_FUNCTION_ARG_SEPARATOR, "Function Argument Separator ','",
-        MATTE_TOKEN_FUNCTION_ARG_END, "Function Argument List ')'",
-        MATTE_TOKEN_FUNCTION_CONSTRUCTOR, "Function Constructor '<='",
+        MATTE_TOKEN_FUNCTION_BEGIN, MATTE_STR_CAST("Function Constent Block '{'"),
+        MATTE_TOKEN_FUNCTION_END,   MATTE_STR_CAST("Function Constent Block '}'"),
+        MATTE_TOKEN_FUNCTION_ARG_BEGIN, MATTE_STR_CAST("Function Argument List '('"),
+        MATTE_TOKEN_FUNCTION_ARG_SEPARATOR, MATTE_STR_CAST("Function Argument Separator ','"),
+        MATTE_TOKEN_FUNCTION_ARG_END, MATTE_STR_CAST("Function Argument List ')'"),
+        MATTE_TOKEN_FUNCTION_CONSTRUCTOR, MATTE_STR_CAST("Function Constructor '<='"),
 
-        MATTE_TOKEN_WHEN, "'when' Statement",
-        MATTE_TOKEN_WHEN_RETURN, "'when' Return Value Operator ':'",
-        MATTE_TOKEN_RETURN, "'return' Statement",
+        MATTE_TOKEN_WHEN, MATTE_STR_CAST("'when' Statement"),
+        MATTE_TOKEN_WHEN_RETURN, MATTE_STR_CAST("'when' Return Value Operator ':'"),
+        MATTE_TOKEN_RETURN, MATTE_STR_CAST("'return' Statement"),
 
-        MATTE_TOKEN_STATEMENT_END, "Statement End ';' or newline",
+        MATTE_TOKEN_STATEMENT_END, MATTE_STR_CAST("Statement End ';' or newline"),
         NULL
     );
 
@@ -750,14 +759,41 @@ static void tokenizer_strip(matteTokenizer_t * t) {
     int c;
     for(;;) {
         c = utf8_next_char(&t->iter);
-        t->character++;
         switch(c) {
+          case '/': {
+            int skipped = 1;
+            int cprev = 0;                
+            c = utf8_next_char(&t->iter);
+            switch(c) {
+              case '/': // c-style line comment
+                while(c != '\n' && c != 0) {
+                    c = utf8_next_char(&t->iter);
+                    skipped++;
+                }
+                t->backup = t->iter;
+                t->character+=skipped;
+                break;
+              case '*':// c-style block comment
+                while(!(c == '/' && cprev == '*') && c != 0) {
+                    cprev = c;
+                    c = utf8_next_char(&t->iter);
+                }
+                t->backup = t->iter;
+                t->character+=skipped;
+                break;
+              default: // real char
+                t->iter = t->backup;
+                break;
+            }
+            break;
+          }
           case '\t':
           case '\r':
           case ' ':
           case '\v':
           case '\f':
             t->backup = t->iter;
+            t->character++;
             break;
 
           // newline is a valid statement end, so its not consumed here
@@ -769,6 +805,63 @@ static void tokenizer_strip(matteTokenizer_t * t) {
         }
     }
 }
+
+static matteToken_t * matte_tokenizer_consume_char(
+    matteTokenizer_t * t,
+    uint32_t line,
+    uint32_t ch,
+    matteTokenType_t ty,
+    char cha
+) {
+    int c = utf8_next_char(&t->iter);
+    if (cha == '@') {
+        t->character++;
+        t->backup = t->iter;
+        return new_token(
+            matte_string_create_from_c_str("@"),
+            line,
+            ch,
+            ty
+        );            
+    } else {
+        t->iter = t->backup;
+        return NULL;
+    }
+
+}
+
+static matteToken_t * matte_tokenizer_consume_word(
+    matteTokenizer_t * t,
+    uint32_t line,
+    uint32_t ch,
+    matteTokenType_t ty,
+    const char * word
+) {
+    uint32_t len = strlen(word);
+    uint32_t i;
+    int pass = 1;
+    for(i = 0; i < len; ++i) {
+        if (utf8_next_char(&t->iter) != word[i]) {
+            pass = 0;
+            break;
+        }
+    }
+    if (pass) {
+        t->character += len;
+        t->backup = t->iter;
+        return new_token(
+            matte_string_create_from_c_str("%s", word),
+            line,
+            ch,
+            ty
+        );
+
+    } else {
+        t->iter = t->backup;
+        return NULL;
+    }     
+}
+
 
 
 // Given a matteTokenType_t, the tokenizer will attempt to parse the next 
@@ -920,131 +1013,38 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
       case MATTE_TOKEN_LITERAL_EMPTY: {
-        if (utf8_next_char(&t->iter) == 'e' &&
-            utf8_next_char(&t->iter) == 'm' &&
-            utf8_next_char(&t->iter) == 'p' &&
-            utf8_next_char(&t->iter) == 't' &&
-            utf8_next_char(&t->iter) == 'y'
-        ) {
-            t->character += 5;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("%s", "empty"),
-                currentLine,
-                currentCh,
-                ty
-            );
-
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }     
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "empty");
         break;
       }
 
       case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '(') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("("),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
         break;
       } // (
       case MATTE_TOKEN_EXPRESSION_GROUP_END: {
-        int c = utf8_next_char(&t->iter);
-        if (c == ')') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str(")"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ')');
         break;
 
       } // )
       case MATTE_TOKEN_ASSIGNMENT: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '=') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("="),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '=');
         break;
       }
       case MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_START: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '[') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("["),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '[');
+
         break;
 
       }
 
       case MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_END: {
-        int c = utf8_next_char(&t->iter);
-        if (c == ']') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("]"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ']');
+
         break;          
       }
       case MATTE_TOKEN_OBJECT_ACCESSOR_DOT: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '.') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("."),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '.');
+
         break;
 
       }
@@ -1371,330 +1371,80 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
       case MATTE_TOKEN_OBJECT_STATIC_BEGIN: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '{') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("{"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '{');
         break;          
       }
       case MATTE_TOKEN_OBJECT_STATIC_END: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '}') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("}"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '}');
         break;
       }
 
       case MATTE_TOKEN_OBJECT_DEF_PROP: {
-        int c = utf8_next_char(&t->iter);
-        if (c == ':') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str(":"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
         break;          
       }
 
       case MATTE_TOKEN_OBJECT_STATIC_SEPARATOR: {
-        int c = utf8_next_char(&t->iter);
-        if (c == ',') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str(","),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
         break;
       }
       case MATTE_TOKEN_OBJECT_ARRAY_START: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '[') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("["),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '[');
         break;
       }
       case MATTE_TOKEN_OBJECT_ARRAY_END: {
-        int c = utf8_next_char(&t->iter);
-        if (c == ']') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("]"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ']');
         break;          
       }
       case MATTE_TOKEN_OBJECT_ARRAY_SEPARATOR: {
-        int c = utf8_next_char(&t->iter);
-        if (c == ',') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str(","),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
-        break;          
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');       
       }
 
       case MATTE_TOKEN_DECLARE: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '@') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("@"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '@');
         break;
       }
       case MATTE_TOKEN_DECLARE_CONST: {
-        if (utf8_next_char(&t->iter) == '<' &&
-            utf8_next_char(&t->iter) == '@' &&
-            utf8_next_char(&t->iter) == '>'
-        ) {
-            t->character += 3;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("<@>"),
-                currentLine,
-                currentCh,
-                ty
-            );
-
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }     
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "<@>");
         break;          
       }
 
       case MATTE_TOKEN_FUNCTION_BEGIN: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '{') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("{"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '{');
         break;
       }
       case MATTE_TOKEN_FUNCTION_END: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '}') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("}"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '}');
         break;
       }
       case MATTE_TOKEN_FUNCTION_ARG_BEGIN: {
-        int c = utf8_next_char(&t->iter);
-        if (c == '(') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("("),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
         break;
       }
       case MATTE_TOKEN_FUNCTION_ARG_SEPARATOR: {
-        int c = utf8_next_char(&t->iter);
-        if (c == ',') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str(","),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
         break;
       }
       case MATTE_TOKEN_FUNCTION_ARG_END: {
-        int c = utf8_next_char(&t->iter);
-        if (c == ')') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str(")"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ')');
         break;          
       }
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
-        if (utf8_next_char(&t->iter) == '<' &&
-            utf8_next_char(&t->iter) == '=' 
-        ) {
-            t->character += 2;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("<="),
-                currentLine,
-                currentCh,
-                ty
-            );
-
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }     
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "<=");
         break;  
       }
 
       case MATTE_TOKEN_WHEN: {
-        if (utf8_next_char(&t->iter) == 'w' &&
-            utf8_next_char(&t->iter) == 'h' &&
-            utf8_next_char(&t->iter) == 'e' &&
-            utf8_next_char(&t->iter) == 'n' 
-        ) {
-            t->character += 4;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("when"),
-                currentLine,
-                currentCh,
-                ty
-            );
-
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }     
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "when");
         break;            
       }
       case MATTE_TOKEN_WHEN_RETURN: {
-        int c = utf8_next_char(&t->iter);
-        if (c == ':') {
-            t->character++;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str(":"),
-                currentLine,
-                currentCh,
-                ty
-            );            
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
         break; 
       }
         
       case MATTE_TOKEN_RETURN: {
-        if (utf8_next_char(&t->iter) == 'r' &&
-            utf8_next_char(&t->iter) == 'e' &&
-            utf8_next_char(&t->iter) == 't' &&
-            utf8_next_char(&t->iter) == 'u' &&
-            utf8_next_char(&t->iter) == 'r' &&
-            utf8_next_char(&t->iter) == 'n'
-        ) {
-            t->character += 6;
-            t->backup = t->iter;
-            return new_token(
-                matte_string_create_from_c_str("%s", "return"),
-                currentLine,
-                currentCh,
-                ty
-            );
-
-        } else {
-            t->iter = t->backup;
-            return NULL;
-        }     
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "return");  
         break;
       }
 
@@ -1768,50 +1518,194 @@ void matte_token_print(matteToken_t * t) {
 //////////////////////////////////////////
 // syntax graph 
 
+enum {
+    MATTE_SYNTAX_GRAPH_NODE__TOKEN,
+    MATTE_SYNTAX_GRAPH_NODE__END,
+    MATTE_SYNTAX_GRAPH_NODE__SPLIT,
+    MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT,
+    MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT
+}
+
+struct matteSyntaxGraphNode_t {
+    // graph_node type
+    int type;
+
+    // parent node
+    matteSyntaxGraphNode_t * parent;
+    union {
+        struct {
+            // number of tokens at this node
+            int count;
+            int * refs;            
+            // next node in the chain
+            matteSyntaxGraphNode_t * next;
+        } token;
+
+        struct {
+            // number of valid other node
+            int count;
+            matteSyntaxGraphNode_t * nodes;
+        } split;
+
+        // how many nodes up 
+        int upLevel;
+
+        // id of the construct to assume
+        int construct;
+    }
+};
+
+typedef struct matteSyntaxGraphRoot_t {
+    // name of the construct
+    matteString_t * name;
+    // array of matteSyntaxGraphNode_t *
+    matteArray_t * paths;
+} matteSyntaxGraphRoot_t;
+
+
+struct matteSyntaxGraph_t {
+    // first parsed token
+    matteToken_t * first;
+    // currently last parsed token
+    matteToken_t * last;
+    // source tokenizer instance
+    matteTokenizer_t * tokenizer;
+
+
+    // array of matteString_t *
+    matteArray_t * tokenNames;
+    // array of matteSYntaxGraphRoot_t *
+    matteArray_t * constructRoots;
+
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch)
+};
+
+
 matteSyntaxGraph_t * matte_syntax_graph_create(
     matteTokenizer_t * t,
-    matteArray_t * tokens,
-    void (*onError)(const uint8_t * errMessage, int line)
-){}
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch)
+) {
+    matteSyntaxGraph_t * out = calloc(1, sizeof(matteTokenizer_t));
+    out->tokenizer = t;
+    out->first = out->last = NULL;
+    out->onError = onError;
+
+    out->tokenNames = matte_array_create(sizeof(matteString_t *));
+    out->constructRoots = matte_array_create(sizeof(matteSyntaxGraphRoot_t *));
+    return out;
+}
 
 
-// Before a syntax graph can be used, its syntax constructs
-// must be registered. Every tree consists of constructs: 
-// constructs are symbolic sub-graphs that consist of a series 
-// of paths. 
-//
-// For other functions, referring to constructs is done with 
-// the IDs registered here. UTF8 names are associated with them 
-// for reporting purposes.
-// Each construct ID must be non-zero.
-// Terminate with 0.
+
+
+static void matte_syntax_graph_set_construct_count(
+    matteSyntaxGraph_t * g,
+    uint32_t id
+) {
+    while(matte_array_get_size(g->constructRoots) <= id) {
+        matteSyntaxGraphRoot_t * root = calloc(1, sizeof(matteSyntaxGraphRoot_t));
+        root->name = matte_string_create();
+        root->paths = matte_array_create(sizeof(matteSyntaxGraphNode_t *));
+        matte_array_push(g->constructRoots, root);
+    }
+}
+
+static matteSyntaxGraphRoot_t * matte_syntax_graph_get_root(
+    matteSyntaxGraph_t * g,
+    uint32_t id
+) {
+    return matte_array_at(g->constructRoots, matteSyntaxGraphRoot_t *, id);
+}
+
+
+
+
+static void matte_syntax_graph_set_token_count(
+    matteSyntaxGraph_t * g,
+    uint32_t id
+) {
+    while(matte_array_get_size(g->tokenNames) <= id) {
+        matteString_t * name = matte_string_create();
+        matte_array_push(g->tokenNames, root);
+    }
+}
+
+static matteSyntaxGraphRoot_t * matte_syntax_graph_get_token_name(
+    matteSyntaxGraph_t * g,
+    uint32_t id
+) {
+    return matte_array_at(g->tokenNames, matteString_t *, id);
+}
+
+
+
+
+
 void matte_syntax_graph_register_constructs(
-    matteSyntaxGraph_t * t,
-    int constructID, const uint8_t * name,
+    matteSyntaxGraph_t * g,
+    int constructID, const matteString_t * name,
     ...
-){}
+) {
+    matte_syntax_graph_set_construct_count(g, constructID);
+    matte_string_set(matte_syntax_graph_get_root(g, constructID)->name, name);
+
+    va_list args;
+    va_start(args, name);
+    for(;;) {
+        int id = va_arg(args, int);
+        if (id == 0) break;
+
+        const matteString_t * str = va_arg(args, matteString_t *)
+        matte_syntax_graph_set_construct_count(g, id);
+        matte_string_set(matte_syntax_graph_get_root(g, id)->name, str);
+    }
+    va_end(args);
+}
+
+
 
 
 // For defining nodes of the syntax graph, the 
 // nodes that accept 
 void matte_syntax_graph_register_tokens(
     matteSyntaxGraph_t * g,
-    int token, const uint8_t * name,
+    int token, const matteString_t * name,
     ...
-){}
+){
+    matte_syntax_graph_set_token_count(g, token);
+    matte_string_set(matte_syntax_graph_get_token_name(g, token), name);
+
+    va_list args;
+    va_start(args, name);
+    for(;;) {
+        int id = va_arg(args, int);
+        if (id == 0) break;
+
+        const matteString_t * str = va_arg(args, matteString_t *)
+        matte_syntax_graph_set_token_count(g, id);
+        matte_string_set(matte_syntax_graph_get_token_name(g, id), str);
+    }
+    va_end(args);
+}
 
 
 int matte_syntax_graph_continue(
     matteSyntaxGraph_t * graph,
     int constructID
-){}
+){
+
+}
 
 
 
 void matte_syntax_graph_add_construct_path(
-    matteSyntaxGraph_t * graph,
+    matteSyntaxGraph_t * g,
+    int constructID,
     ...
-){}
+){
+    matteSyntaxGraphRoot_t * root = matte_syntax_graph_get_root(g, constructID);
+    
+}
 
 // returns a new node that represents a single token
 matteSyntaxGraphNode_t * matte_syntax_graph_node_token(
