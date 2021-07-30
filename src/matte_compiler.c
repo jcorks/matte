@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-
+#include <stdarg.h>
 
 
 
@@ -93,6 +93,12 @@ void matte_tokenizer_destroy(matteTokenizer_t *);
 // returns the current line of the tokenizer.
 // The initial line is 1.
 uint32_t matte_tokenizer_current_line(const matteTokenizer_t *);
+
+
+// returns the current character of the tokenizer on the current line.
+// The initial line is 1.
+uint32_t matte_tokenizer_current_character(const matteTokenizer_t *);
+
 
 // skips space and newlines
 int matte_tokenizer_peek_next(matteTokenizer_t *);
@@ -184,7 +190,7 @@ int matte_syntax_graph_continue(
 
 void matte_syntax_graph_add_construct_path(
     matteSyntaxGraph_t *,
-    int construct
+    int construct,
     ...
 );
 
@@ -230,28 +236,13 @@ matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraph_t * g);
 
 
 
-
 uint8_t * matte_compiler_run(
     const uint8_t * source, 
     uint32_t len,
     uint32_t * size,
-    void(*onError)(const char *, uint32_t)
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch)
 ) {
     matteTokenizer_t * w = matte_tokenizer_create(source, len);
-
-
-    ////////// TESTING
-    {
-        matte_token_print(matte_tokenizer_next(w, MATTE_TOKEN_RETURN));   
-        matte_token_print(matte_tokenizer_next(w, MATTE_TOKEN_VARIABLE_NAME));   
-        matte_token_print(matte_tokenizer_next(w, MATTE_TOKEN_GENERAL_OPERATOR2));   
-        matte_token_print(matte_tokenizer_next(w, MATTE_TOKEN_LITERAL_NUMBER));   
-        matte_token_print(matte_tokenizer_next(w, MATTE_TOKEN_STATEMENT_END));   
-        exit(1);
-    }
-
-
-
     matteSyntaxGraph_t * st = matte_syntax_graph_create(w, onError);
     matte_syntax_graph_register_constructs(
         st,
@@ -280,7 +271,7 @@ uint8_t * matte_compiler_run(
         MATTE_TOKEN_OBJECT_ACCESSOR_DOT, MATTE_STR_CAST("Object Accessor '.'"),
         MATTE_TOKEN_GENERAL_OPERATOR1, MATTE_STR_CAST("Single-operand Operator"),
         MATTE_TOKEN_GENERAL_OPERATOR2, MATTE_STR_CAST("Operator"),
-        MATTE_TOKEN_VARIABLE_NAME, MATTE_STR_CAST("Variable Name:"),
+        MATTE_TOKEN_VARIABLE_NAME, MATTE_STR_CAST("Variable Name"),
         MATTE_TOKEN_OBJECT_STATIC_BEGIN, MATTE_STR_CAST("Object Literal '{'"),
         MATTE_TOKEN_OBJECT_STATIC_END, MATTE_STR_CAST("Object Literal '}'"),
         MATTE_TOKEN_OBJECT_DEF_PROP, MATTE_STR_CAST("Object Literal assignment ':'"),
@@ -320,7 +311,8 @@ uint8_t * matte_compiler_run(
             MATTE_TOKEN_LITERAL_BOOLEAN,
             MATTE_TOKEN_LITERAL_NUMBER,
             MATTE_TOKEN_LITERAL_EMPTY,
-            MATTE_TOKEN_LITERAL_STRING
+            MATTE_TOKEN_LITERAL_STRING,
+            0
         ),
         matte_syntax_graph_node_end(),
         NULL
@@ -580,6 +572,28 @@ uint8_t * matte_compiler_run(
     ///////////////
 
     matte_syntax_graph_add_construct_path(st, MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
+        matte_syntax_graph_node_token(MATTE_TOKEN_RETURN),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
+        matte_syntax_graph_node_end(),
+        NULL 
+    );
+
+
+    matte_syntax_graph_add_construct_path(st, MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
+        matte_syntax_graph_node_token(MATTE_TOKEN_WHEN),
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_WHEN_RETURN),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
+        matte_syntax_graph_node_end(),
+        NULL 
+    );
+
+
+    matte_syntax_graph_add_construct_path(st, MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
         matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
         matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
         matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
@@ -625,26 +639,6 @@ uint8_t * matte_compiler_run(
     );
 
 
-    matte_syntax_graph_add_construct_path(st, MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
-        matte_syntax_graph_node_token(MATTE_TOKEN_WHEN),
-        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
-        matte_syntax_graph_node_token(MATTE_TOKEN_WHEN_RETURN),
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-        matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
-        matte_syntax_graph_node_end(),
-        NULL 
-    );
-
-    matte_syntax_graph_add_construct_path(st, MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
-        matte_syntax_graph_node_token(MATTE_TOKEN_RETURN),
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-        matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
-        matte_syntax_graph_node_end(),
-        NULL 
-    );
-
 
    
     // use the text walker to generate an array of tokens for 
@@ -656,6 +650,8 @@ uint8_t * matte_compiler_run(
         *size = 0;
         return NULL;
     }
+
+    matte_token_print(matte_syntax_graph_get_first(st));
     // then walk through the tokens and group them together.
     // a majority of compilation errors will likely happen here, 
     // as only a strict series of tokens are allowed in certain 
@@ -748,10 +744,8 @@ uint32_t matte_tokenizer_current_line(const matteTokenizer_t * t) {
     return t->line;
 }
 
-// skips space and newlines
-int matte_tokenizer_peek_next(matteTokenizer_t * t) {
-    uint8_t * iterC = t->iter;  
-    return utf8_next_char(&iterC);
+uint32_t matte_tokenizer_current_character(const matteTokenizer_t * t) {
+    return t->character;
 }
 
 
@@ -805,6 +799,16 @@ static void tokenizer_strip(matteTokenizer_t * t) {
         }
     }
 }
+
+
+// skips space and newlines
+int matte_tokenizer_peek_next(matteTokenizer_t * t) {
+    tokenizer_strip(t);
+    uint8_t * iterC = t->iter;  
+    return utf8_next_char(&iterC);
+}
+
+
 
 static matteToken_t * matte_tokenizer_consume_char(
     matteTokenizer_t * t,
@@ -1486,7 +1490,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 // Returns whether the tokenizer has reached the end of the inout text.
 int matte_tokenizer_is_end(const matteTokenizer_t * t){}
 
-void matte_token_print(matteToken_t * t) {
+
+static void matte_token_print__helper(matteToken_t * t) {
     if (t == NULL) {
         printf("<token is NULL>\n");
         fflush(stdout);
@@ -1498,6 +1503,16 @@ void matte_token_print(matteToken_t * t) {
     printf("  type:  %d\n", t->ttype);
     printf("  text:  '%s'\n", matte_string_get_c_str(t->text));
     fflush(stdout);
+
+
+}
+
+void matte_token_print(matteToken_t * t) {
+    do {
+        matte_token_print__helper(t);
+        t = t->next;
+    } while(t);
+
 }
 
 
@@ -1524,7 +1539,7 @@ enum {
     MATTE_SYNTAX_GRAPH_NODE__SPLIT,
     MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT,
     MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT
-}
+};
 
 struct matteSyntaxGraphNode_t {
     // graph_node type
@@ -1532,19 +1547,21 @@ struct matteSyntaxGraphNode_t {
 
     // parent node
     matteSyntaxGraphNode_t * parent;
+
+    // next for cases that use it
+    matteSyntaxGraphNode_t * next;
+
     union {
         struct {
             // number of tokens at this node
             int count;
             int * refs;            
-            // next node in the chain
-            matteSyntaxGraphNode_t * next;
         } token;
 
         struct {
             // number of valid other node
             int count;
-            matteSyntaxGraphNode_t * nodes;
+            matteSyntaxGraphNode_t ** nodes;
         } split;
 
         // how many nodes up 
@@ -1552,7 +1569,7 @@ struct matteSyntaxGraphNode_t {
 
         // id of the construct to assume
         int construct;
-    }
+    };
 };
 
 typedef struct matteSyntaxGraphRoot_t {
@@ -1577,7 +1594,7 @@ struct matteSyntaxGraph_t {
     // array of matteSYntaxGraphRoot_t *
     matteArray_t * constructRoots;
 
-    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch)
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch);
 };
 
 
@@ -1626,11 +1643,11 @@ static void matte_syntax_graph_set_token_count(
 ) {
     while(matte_array_get_size(g->tokenNames) <= id) {
         matteString_t * name = matte_string_create();
-        matte_array_push(g->tokenNames, root);
+        matte_array_push(g->tokenNames, name);
     }
 }
 
-static matteSyntaxGraphRoot_t * matte_syntax_graph_get_token_name(
+static matteString_t * matte_syntax_graph_get_token_name(
     matteSyntaxGraph_t * g,
     uint32_t id
 ) {
@@ -1655,7 +1672,7 @@ void matte_syntax_graph_register_constructs(
         int id = va_arg(args, int);
         if (id == 0) break;
 
-        const matteString_t * str = va_arg(args, matteString_t *)
+        const matteString_t * str = va_arg(args, matteString_t *);
         matte_syntax_graph_set_construct_count(g, id);
         matte_string_set(matte_syntax_graph_get_root(g, id)->name, str);
     }
@@ -1681,19 +1698,246 @@ void matte_syntax_graph_register_tokens(
         int id = va_arg(args, int);
         if (id == 0) break;
 
-        const matteString_t * str = va_arg(args, matteString_t *)
+        const matteString_t * str = va_arg(args, matteString_t *);
         matte_syntax_graph_set_token_count(g, id);
         matte_string_set(matte_syntax_graph_get_token_name(g, id), str);
     }
     va_end(args);
 }
 
+static void matte_syntax_graph_print_error(
+    matteSyntaxGraph_t * graph,
+    matteSyntaxGraphNode_t * node
+) {
+    matteString_t * message = matte_string_create_from_c_str("Syntax Error: Expected ");
+    switch(node->type) {
+      case MATTE_SYNTAX_GRAPH_NODE__TOKEN: {
+        uint32_t i;
+        uint32_t len = node->token.count;
+        if (len == 1) {
+            matte_string_concat(message, matte_array_at(graph->tokenNames, matteString_t *, node->token.refs[0]));
+        } else {
+            for(i = 0; i < len; ++i) {
+                if (i == len - 1) {
+                    matte_string_concat_printf(message, ", ");
+                } else if (i == 0) {
+
+                } else {
+                    matte_string_concat_printf(message, ", or ");
+                }             
+                matte_string_concat(message, matte_array_at(graph->tokenNames, matteString_t *, node->token.refs[i]));
+            }
+        }
+        break;
+      }
+      case MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT: {
+        matteSyntaxGraphRoot_t * root = matte_syntax_graph_get_root(graph, node->construct);
+        matte_string_concat(message, root->name);
+        break;
+      }
+
+      case MATTE_SYNTAX_GRAPH_NODE__SPLIT: {
+      }
+
+
+      default:
+        matte_string_concat_printf(message, "[a series of tokens i was too lazy to write the logic to print yet]");
+      
+    }
+
+    matte_string_concat_printf(message, " but received '");
+    matte_string_append_char(message, matte_tokenizer_peek_next(graph->tokenizer));
+    matte_string_concat_printf(message, "' instead.");
+
+
+    graph->onError(
+        message,
+        matte_tokenizer_current_line(graph->tokenizer),
+        matte_tokenizer_current_character(graph->tokenizer)
+    );
+    matte_string_destroy(message);
+}
+
+
+
+
+// attempts to consume the current node and returns 
+// the next node. If the node is not valid, NULL is returned.
+static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
+    matteSyntaxGraph_t * graph,
+    matteSyntaxGraphNode_t * node,
+    int constructID,
+    int silent
+) {
+    switch(node->type) {
+      // node is simply a token / token set.
+      // We try each token in order. If it parses successfully,
+      // we continue. If not, we try the next token.
+      // If we exhaust all tokens, we have failed.
+      case MATTE_SYNTAX_GRAPH_NODE__TOKEN: {
+        #ifdef MATTE_DEBUG
+            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__TOKEN: %s\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name));
+            fflush(stdout);
+        #endif
+        uint32_t i;
+        uint32_t len = node->token.count;
+        for(i = 0; i < len; ++i) {
+            matteToken_t * newT = matte_tokenizer_next(graph->tokenizer, node->token.refs[i]);
+            // success!!!
+            if (newT) {
+                newT->chainConstruct = constructID;
+                if (!graph->first) {
+                    graph->first = newT;
+                    graph->last = newT;
+                } else {
+                    graph->last->next = newT;
+                }
+                return node->next;
+            }
+        }
+        // failure
+        if (!silent)
+            matte_syntax_graph_print_error(graph, node);
+        return NULL;
+      }
+
+
+      // the node is generically able to be split into 
+      // possible paths. Each are attempted in order.
+      case MATTE_SYNTAX_GRAPH_NODE__SPLIT: {
+        #ifdef MATTE_DEBUG
+            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__SPLIT %s\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name));
+            fflush(stdout);
+
+        #endif
+
+        uint32_t i;
+        uint32_t len = node->split.count;
+        for(i = 0; i < len; ++i) {
+            matteSyntaxGraphNode_t * n = matte_syntax_graph_walk(
+                graph,
+                node->split.nodes[i],
+                constructID,
+                1
+            );
+            // success!
+            if (n) {
+                return n;
+            }
+        }
+        // failure
+        if (!silent)
+            matte_syntax_graph_print_error(graph, node);
+        return NULL;
+        break;
+      }
+
+
+      // the node gener
+      case MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT: {
+        #ifdef MATTE_DEBUG
+            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT %s\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name));
+            fflush(stdout);
+
+        #endif
+
+        uint32_t level = node->upLevel;
+        matteSyntaxGraphNode_t * n = node;
+        while(level--) {
+            if (n->parent) n = n->parent;
+        }
+        if (!n) {
+            if (!silent)
+                matte_syntax_graph_print_error(graph, node);
+            return NULL;
+        } else {
+            return n;
+        }
+      }
+
+      // the end of a path has been reached. return
+      case MATTE_SYNTAX_GRAPH_NODE__END: {
+        #ifdef MATTE_DEBUG
+            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__END %s\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name));
+            fflush(stdout);
+
+        #endif
+        return node;
+      }
+
+
+      // the node is a construct path
+      // All top paths are tried before continuing
+      case MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT: {
+        #ifdef MATTE_DEBUG
+            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT %s\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name));
+            fflush(stdout);
+
+        #endif
+        matteSyntaxGraphRoot_t * root = matte_syntax_graph_get_root(graph, node->construct);
+
+        uint32_t i;
+        uint32_t len = matte_array_get_size(root->paths);
+        for(i = 0; i < len; ++i) {
+            matteSyntaxGraphNode_t * tr = matte_array_at(root->paths, matteSyntaxGraphNode_t * , i);
+            matteSyntaxGraphNode_t * out = matte_syntax_graph_walk(graph, tr, node->construct, 1);
+            if (out) {
+                #ifdef MATTE_DEBUG
+                    printf("  Going down path for %s\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, node->construct)->name));
+                    fflush(stdout);
+
+                #endif
+                while(out = matte_syntax_graph_walk(graph, out, node->construct, 0)) {
+                    // The only way to validly finish a path
+                    if (out && out->type == MATTE_SYNTAX_GRAPH_NODE__END) {
+                        return node->next;
+                    }
+                }
+            }
+        }
+        if (!silent)
+            matte_syntax_graph_print_error(graph, node);
+
+        return NULL;
+
+        break;
+      }
+
+
+    }
+}
+
 
 int matte_syntax_graph_continue(
     matteSyntaxGraph_t * graph,
     int constructID
-){
+) {
+    if (constructID < 0 || constructID >= matte_array_get_size(graph->constructRoots)) {
+        graph->onError(MATTE_STR_CAST("Internal error (no such constrctID)"), 0, 0);
+        return 0;
+    }
 
+    matteSyntaxGraphRoot_t * root = matte_syntax_graph_get_root(graph, constructID);
+    matteSyntaxGraphNode_t topNode = {0};
+    topNode.type = MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT; 
+    topNode.construct = constructID;
+
+    matteSyntaxGraphNode_t endNode = {0};
+    endNode.type = MATTE_SYNTAX_GRAPH_NODE__END;
+
+    topNode.next = &endNode;
+
+
+
+    matteSyntaxGraphNode_t * next = &topNode;
+    while(next = matte_syntax_graph_walk(graph, next, constructID, 0)) {
+        // The only way to validly finish a path
+        if (next && next->type == MATTE_SYNTAX_GRAPH_NODE__END) {
+            return 1;
+            break;          
+        }
+    }
+    return 0;
 }
 
 
@@ -1704,38 +1948,155 @@ void matte_syntax_graph_add_construct_path(
     ...
 ){
     matteSyntaxGraphRoot_t * root = matte_syntax_graph_get_root(g, constructID);
-    
+    matteSyntaxGraphNode_t * n;
+    matteSyntaxGraphNode_t * prev = NULL;
+    va_list args;
+    va_start(args, constructID);
+    for(;;) {
+        n = va_arg(args, matteSyntaxGraphNode_t *);
+        if (n) {
+            if (prev) {
+                n->parent = prev;
+                if (prev->type == MATTE_SYNTAX_GRAPH_NODE__TOKEN ||
+                    prev->type == MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT)
+                    prev->next = n;
+            } else {
+                matte_array_push(root->paths, n);
+            }
+        } else {
+            // done
+            break;
+        }
+        prev = n;
+    }
+    va_end(args);
 }
 
 // returns a new node that represents a single token
 matteSyntaxGraphNode_t * matte_syntax_graph_node_token(
     int a
-){}
+){
+    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    n->type = MATTE_SYNTAX_GRAPH_NODE__TOKEN;
+    n->token.count = 1;
+    n->token.refs = malloc(sizeof(int));
+    n->token.refs[0] = a;
+    return n;
+}
 
 // returns a new node that prepresents a possible set of 
 // token types accepted
 matteSyntaxGraphNode_t * matte_syntax_graph_node_token_group(
-    int g,
+    int a,
     ...
-){}
+){
+    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    n->type = MATTE_SYNTAX_GRAPH_NODE__TOKEN;
+
+
+    va_list args;
+    va_start(args, a);
+
+    matteArray_t * tokens = matte_array_create(sizeof(int));
+    for(;;) {
+        if (a) 
+            matte_array_push(tokens, a);
+        else 
+            break;
+        a = va_arg(args, int);
+    }
+    uint32_t i;
+    n->token.count = matte_array_get_size(tokens);
+    n->token.refs = malloc(sizeof(int)*n->token.count);
+    for(i = 0; i < n->token.count; ++i) {
+        n->token.refs[i] = matte_array_at(tokens, int, i);
+    }
+    va_end(args);
+    matte_array_destroy(tokens);
+    assert(n->token.count);
+    return n;
+}
 
 // returns a new node that represents the end of a syntax 
 // tree path.
-matteSyntaxGraphNode_t * matte_syntax_graph_node_end(){}
+matteSyntaxGraphNode_t * matte_syntax_graph_node_end() {
+    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    n->type = MATTE_SYNTAX_GRAPH_NODE__END;
+    return n;
+}
 
 
 // returns a new node that represents a return to 
 // a previous node. Level is how far up the tree this 
 // previous node is. 0 is the self, 1 is the parent, etc
-matteSyntaxGraphNode_t * matte_syntax_graph_node_to_parent(int level){}
+matteSyntaxGraphNode_t * matte_syntax_graph_node_to_parent(int level) {
+    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    n->type = MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT;
+    n->upLevel = level;
+    return n;  
+}
 
 
 // returns a new node that represents a construct sub-tree.
-matteSyntaxGraphNode_t * matte_syntax_graph_node_construct(int a){}
+matteSyntaxGraphNode_t * matte_syntax_graph_node_construct(int a){
+    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    n->type = MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT;
+    n->construct = a;
+    return n;  
+}
 
 // returns a new node that represents multiple valid choices 
 // along the path. One NULL: ends a path, 2 NULLs: 
 matteSyntaxGraphNode_t * matte_syntax_graph_node_split(
     matteSyntaxGraphNode_t * n,
     ...
-){}
+) {
+    matteSyntaxGraphNode_t * out = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    out->type = MATTE_SYNTAX_GRAPH_NODE__SPLIT;
+
+    matteSyntaxGraphNode_t * prev = NULL;
+    matteSyntaxGraphNode_t * path = NULL;
+    matteArray_t * paths = matte_array_create(sizeof(matteSyntaxGraphNode_t *));
+    va_list args;
+    va_start(args, n);
+    for(;;) {
+        if (n) {
+            if (prev) {
+                n->parent = prev;
+                if (prev->type == MATTE_SYNTAX_GRAPH_NODE__TOKEN ||
+                    prev->type == MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT)
+                    prev->next = n;
+            } else {
+                path = n;
+            }
+        } else {
+            n = va_arg(args, matteSyntaxGraphNode_t *);
+            prev = NULL;
+            path = NULL;
+            // true end
+            matte_array_push(paths, path);            
+            if (!n) {
+                break;
+            } 
+        }
+        prev = n;
+        n = va_arg(args, matteSyntaxGraphNode_t *);
+
+    }
+    va_end(args);
+
+    uint32_t i;
+    uint32_t len = matte_array_get_size(paths);
+    out->split.count = len;
+    out->split.nodes = malloc(sizeof(matteSyntaxGraphNode_t *)*len);
+    for(i = 0; i < len; ++i) {
+        out->split.nodes[i] = matte_array_at(paths, matteSyntaxGraphNode_t *, i);
+    }
+    matte_array_destroy(paths);
+    assert(len);
+    return out;
+}
+
+matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraph_t * g) {
+    return g->first;
+}
