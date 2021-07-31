@@ -511,23 +511,48 @@ uint8_t * matte_compiler_run(
     // function
     matte_syntax_graph_add_construct_path(st, MATTE_SYNTAX_CONSTRUCT_NEW_OBJECT,
         matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_CONSTRUCTOR),
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_VALUE_FUNCTION_CREATION_ARGS),
-        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_BEGIN),
         matte_syntax_graph_node_split(
-            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
-            matte_syntax_graph_node_end(),
-            NULL,
-
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_VALUE_FUNCTION_CREATION_ARGS),
+            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_BEGIN),
             matte_syntax_graph_node_split(
                 matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
                 matte_syntax_graph_node_end(),
                 NULL,
 
-                matte_syntax_graph_node_to_parent(2),
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT),
+                matte_syntax_graph_node_split(
+                    matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+                    matte_syntax_graph_node_end(),
+                    NULL,
+
+                    matte_syntax_graph_node_to_parent(2),
+                    NULL,
+                    NULL
+                ),
                 NULL,
                 NULL
             ),
+            NULL,
+            
+            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_BEGIN),
+            matte_syntax_graph_node_split(
+                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+                matte_syntax_graph_node_end(),
+                NULL,
+
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT),
+                matte_syntax_graph_node_split(
+                    matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+                    matte_syntax_graph_node_end(),
+                    NULL,
+
+                    matte_syntax_graph_node_to_parent(2),
+                    NULL,
+                    NULL
+                ),
+                NULL,
+                NULL
+            ),  
             NULL,
             NULL
         ),
