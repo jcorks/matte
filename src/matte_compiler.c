@@ -234,8 +234,20 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_split(
 // Returns the first parsed token from the user source
 matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraph_t * g);
 
+// compiles all nodes into bytecode function blocks.
+typedef struct matteFunctionBlock_t matteFunctionBlock_t;
+struct matteFunctionBlock_t {
+    uint32_t stubID;
+    // array of matteString_t *
+    matteArray_t * locals;
+    // array of matteString_t *
+    matteArray_t * args;
+    // pointer to parent calling function
+    matteFunctionBlock_t * parent;
+};
 
-
+// converts all graph nodes into an array of matteFunctionBlock_t
+matteArray_t * matte_syntax_graph_compile(matteSyntaxGraph_t * g);
 static void matte_syntax_graph_print(matteSyntaxGraph_t * g);
 
 
@@ -745,8 +757,15 @@ uint8_t * matte_compiler_run(
     // a majority of compilation errors will likely happen here, 
     // as only a strict series of tokens are allowed in certain 
     // groups. Might want to form function groups with parenting to track referrables.
-    
+    // optimization may happen here if desired.
+
     // finally emit code for groups.
+    matteArray_t * arr = matte_syntax_graph_compile(st);
+
+    //void * bytecode = matte_function_block_array_to_bytecode(arr, size);
+
+    // cleanup :(
+    //return bytecode;
 }
 
 
@@ -1682,6 +1701,9 @@ struct matteSyntaxGraph_t {
     // array of matteSYntaxGraphRoot_t *
     matteArray_t * constructRoots;
 
+    // starts at 0 (for the root)
+    uint32_t functionStubID;
+
     void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch);
 };
 
@@ -2337,4 +2359,181 @@ static void matte_syntax_graph_print(matteSyntaxGraph_t * g) {
     } while(t);
     fflush(stdout);
 
+}
+
+
+
+
+
+
+
+
+
+///////////// compilation 
+
+static void matte_syntax_graph_print_compile_error(
+    matteSyntaxGraph_t * graph,
+    matteToken_t * t,
+    const char * asciiMessage
+) {
+    matteString_t * message = matte_string_create_from_c_str("Compile Error: %s", asciiMessage);
+    graph->onError(
+        message,
+        t->line,
+        t->character
+    );
+    matte_string_destroy(message);
+}
+
+// fast forwards the token chain past ALL inner functions.
+// by the end, should be on }
+static void ff_skip_inner_function(matteToken_t ** t) {
+    // assumes starting at function constructor <= 
+    matteToken_t * iter = (*t)->next;
+    for(;;) {
+        switch(iter->ttype) {
+          case MATTE_TOKEN_FUNCTION_CONSTRUCTOR:
+            ff_skip_inner_function(&iter);
+            break;
+          case MATTE_TOKEN_FUNCTION_END:
+            *t = iter;
+            return;
+          default:;
+        }
+        iter = iter->next;
+        // should never happen.
+        if (!iter) {
+            return;
+        }
+    }
+
+}
+
+void destroy_function_block(matteFunctionBlock_t * b) {
+    uint32_t i;
+    uint32_t len;
+
+    len = matte_array_get_size(b->args);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(b->args, matteString_t *, i));
+    }
+
+    len = matte_array_get_size(b->locals);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(b->locals, matteString_t *, i));
+    }
+
+    free(b);
+}
+
+static matteFunctionBlock_t * compile_function_block(matteSyntaxGraph_t * g, matteArray_t * functions, matteToken_t ** src) {
+    matteToken_t * iter = *src;
+    matteFunctionBlock_t * b = calloc(1, sizeof(matteFunctionBlock_t));
+    b->args = matte_array_create(sizeof(matteString_t *));
+    b->locals = matte_array_create(sizeof(matteString_t *));
+    b->stubID = g->functionStubID++;
+
+    #ifdef MATTE_DEBUG
+        printf("COMPILING FUNCTION %d\n", b->stubID);
+    #endif
+
+
+    // gather all args first
+    // a proper call to compile_function_block should start AT the '('
+    // if present (err, after the function constructor more accurately)
+    if (b->stubID != 0) {
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_BEGIN) {
+            // args must ALWAYS be variable names 
+            iter = iter->next;
+            while(iter && iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
+                matteString_t * arg = matte_string_clone(iter->text);
+                matte_array_push(b->args, arg);
+                #ifdef MATTE_DEBUG
+                    printf("  - Argument %d: %s\n", matte_array_get_size(b->args), matte_string_get_c_str(arg));
+                #endif
+                iter = iter->next;
+                if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_END) break;
+                if (iter->ttype != MATTE_TOKEN_FUNCTION_ARG_SEPARATOR) {
+                    matte_syntax_graph_print_compile_error(g, iter, "Expected ',' separator for arguments");
+                    goto L_FAIL;                
+                }
+                iter = iter->next;
+            }
+
+            if (iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
+                matte_syntax_graph_print_compile_error(g, iter, "Expected ')' to end function arguments");
+                goto L_FAIL;
+            }
+            iter = iter->next;
+        } 
+
+        // most situations will require that the block begin '{' token 
+        // exists already. This will be true EXCEPT in the toplevel function call (root stub)
+        if (iter->ttype != MATTE_TOKEN_FUNCTION_BEGIN) {
+            matte_syntax_graph_print_compile_error(g, iter, "Missing function block begin brace. '{'");
+            goto L_FAIL;
+        }
+        iter = iter->next;
+    }
+
+
+    // next find all locals
+    matteToken_t * funcStart = iter;
+    while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+            ff_skip_inner_function(&iter);
+        } else if (iter->ttype == MATTE_TOKEN_DECLARE ||
+            iter->ttype == MATTE_TOKEN_DECLARE_CONST) {
+            // TODO: const :(
+
+            iter = iter->next;
+            if (iter->ttype != MATTE_TOKEN_VARIABLE_NAME) {
+                matte_syntax_graph_print_compile_error(g, iter, "Expected local variable name.");
+                goto L_FAIL;
+            }
+            
+            matteString_t * local = matte_string_clone(iter->text);
+            matte_array_push(b->locals, local);
+            #ifdef MATTE_DEBUG
+                printf("  - Local %d: %s\n", matte_array_get_size(b->locals), matte_string_get_c_str(local));
+            #endif
+        }
+        iter = iter->next;
+    }
+
+    // reset
+    iter = funcStart;
+
+
+
+    // now that we have all the locals and args, we can start emitting bytecode.
+    while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
+        switch(iter->ttype) {
+          case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
+            iter = iter->next;
+            matteFunctionBlock_t * b = compile_function_block(g, functions, &iter);
+            if (!b) {
+                goto L_FAIL;
+            }
+            matte_array_push(functions, b);
+            break;
+          }
+        }
+        iter = iter->next;
+    }
+
+
+    return b;
+  L_FAIL:
+    destroy_function_block(b);
+    return NULL;
+}
+
+matteArray_t * matte_syntax_graph_compile(matteSyntaxGraph_t * g) {
+    matteToken_t * iter = g->first;
+    matteArray_t * arr = matte_array_create(sizeof(matteFunctionBlock_t *));
+    if (!compile_function_block(g, arr, &iter)) {
+        return NULL;        
+    }
+    return arr;
 }
