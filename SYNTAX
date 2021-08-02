@@ -40,6 +40,11 @@ myFunctionWithArguments(myFunction(), a);
 @str2 = "also a string";
 
 
+// everything is within function scope. Even in this,
+// keyword to access the current function:
+
+// should store the stirng literal 'function' within variable "t"
+@t = type(context);
 
 
 ////////////////////////////

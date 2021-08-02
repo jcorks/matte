@@ -378,7 +378,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             uint32_t argcount;
             memcpy(&argcount, inst->data, sizeof(uint32_t));
-            if (STACK_SIZE() < argcount) {
+            if (STACK_SIZE() < argcount+1) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to prepare arguments for a call, but insufficient arguments on the stack."));    
                 break;
             }
@@ -507,6 +507,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
           case MATTE_OPCODE_RET: {
             // ez pz
+            frame->pc = instCount;
             break;
           }    
           // used to implement when
