@@ -196,7 +196,7 @@ Push Referrable (PRF)
     pushes:
         - pushes referrable
           It can refer to an argument, local value, or captured variable.
-          0 -> function object itself (this)
+          0 -> function object itself (context)
           1, num args -1 -> arguments 
           num args, num args + num locals - 1 -> locals 
           num args + num locals, num args + num locals + num captured -1 -> captured

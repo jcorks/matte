@@ -1,0 +1,160 @@
+/*
+    Serialized instructions for use by the compiler.
+*/
+
+static void write_instruction__nop(matteFunctionBlock_t * f, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_NOP;
+    matte_array_push(f->instructions, inst);
+}
+
+static void write_instruction__prf(matteFunctionBlock_t * f, uint32_t lineNumber, uint32_t referrable) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_PRF;
+    memcpy(inst.data, &referrable, sizeof(uint32_t));
+    matte_array_push(f->instructions, inst);
+}
+
+
+
+static void write_instruction__nem(matteFunctionBlock_t * f, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_NEM;
+    matte_array_push(f->instructions, inst);
+}
+
+static void write_instruction__nnm(matteFunctionBlock_t * f, uint32_t lineNumber, double val) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_NNM;
+    memcpy(inst.data, &val, sizeof(double));
+    matte_array_push(f->instructions, inst);
+}
+
+static void write_instruction__nst_stc(matteFunctionBlock_t * f, uint32_t lineNumber, const matteString_t * str) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_NST;
+    uint32_t len = matte_string_get_length(str);
+    memcpy(inst.data, &len, sizeof(uint32_t));
+    matte_array_push(f->instructions, inst);
+
+    uint32_t i;
+    for(i = 0; i < len; ++i) {
+        inst.opcode = MATTE_OPCODE_STC;
+        uint32_t c = matte_string_get_char(str, i);
+        memcpy(inst.data+sizeof(uint32_t), &c);
+        i++;
+        if (i < len) {
+            memcpy(inst.data+sizeof(uint32_t), &c);
+        }
+
+        matte_array_push(f->instructions, inst);
+    }
+}
+
+
+static void write_instruction__nob(matteFunctionBlock_t * f, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_NOB;
+    matte_array_push(f->instructions, inst);
+}
+
+
+
+static void write_instruction__nfn(matteFunctionBlock_t * f, uint32_t lineNumber, uint32_t fileID, uint32_t stubID) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_NFN;
+    memcpy(inst.data, &fileID, sizeof(uint32_t));
+    memcpy(inst.data+sizeof(uint32_t), &stubID, sizeof(uint32_t));
+    matte_array_push(f->instructions, inst);
+}
+
+
+static void write_instruction__nar(matteFunctionBlock_t * f, uint32_t lineNumber, uint32_t nItems) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_NAR;
+    memcpy(inst.data, &nItems, sizeof(uint32_t));
+    matte_array_push(f->instructions, inst);
+}
+
+
+
+static void write_instruction__nso(matteFunctionBlock_t * f, uint32_t lineNumber, uint32_t nPairs) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_NSO;
+    memcpy(inst.data, &nPairs, sizeof(uint32_t));
+    matte_array_push(f->instructions, inst);
+}
+
+static void write_instruction__cal(matteFunctionBlock_t * f, uint32_t lineNumber, uint32_t args) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_CAL;
+    memcpy(inst.data, &args, sizeof(uint32_t));
+    matte_array_push(f->instructions, inst);
+}
+
+static void write_instruction__arf(matteFunctionBlock_t * f, uint32_t lineNumber, uint32_t ref) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_ARF;
+    memcpy(inst.data, &ref, sizeof(uint32_t));
+    matte_array_push(f->instructions, inst);
+}
+
+static void write_instruction__osn(matteFunctionBlock_t * f, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_OSN;
+    matte_array_push(f->instructions, inst);
+}
+
+static void write_instruction__opr(matteFunctionBlock_t * f, uint32_t lineNumber, int op) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_OPR;
+    inst.data[0] = op;
+    matte_array_push(f->instructions, inst);
+}
+
+
+static void write_instruction__ext(matteFunctionBlock_t * f, matteExtCall_t ext) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_EXT;
+    uint64_t prop = ext;
+    memcpy(inst.data, &ext, sizeof(uint64_t));
+    matte_array_push(f->instructions, inst);
+}
+
+static void write_instruction__pop(matteFunctionBlock_t * f, uint32_t lineNumber, uint32_t n) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_POP;
+    memcpy(inst.data, &n, sizeof(uint32_t));
+    matte_array_push(f->instructions, inst);
+}
+
+static void write_instruction__ret(matteFunctionBlock_t * f, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_RET;
+    matte_array_push(f->instructions, inst);
+}
+
+
+static void write_instruction__skp_insert(matteFunctionBlock_t * f, uint32_t where, uint32_t lineNumber, uint32_t ninst) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_SKP;
+    memcpy(inst.data, &ninst, sizeof(uint32_t));
+    matte_array_insert(f->instructions, where, inst);
+}

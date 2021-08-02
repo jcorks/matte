@@ -242,8 +242,15 @@ struct matteFunctionBlock_t {
     matteArray_t * locals;
     // array of matteString_t *
     matteArray_t * args;
+    // array of matteBytecodeStubInstruction_t
+    matteArray_t * instructions;
     // pointer to parent calling function
     matteFunctionBlock_t * parent;
+
+    // array of matteBytecodeStubCapture_t 
+    matteArray_t * captures;
+    // array of matteString_t *, names of the captures.
+    matteArray_t * captureNames;
 };
 
 // converts all graph nodes into an array of matteFunctionBlock_t
@@ -688,7 +695,11 @@ uint8_t * matte_compiler_run(
 
 
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Declaration + Assignment"), MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
-        matte_syntax_graph_node_token(MATTE_TOKEN_DECLARE),
+        matte_syntax_graph_node_token_group(
+            MATTE_TOKEN_DECLARE,
+            MATTE_TOKEN_DECLARE_CONST,
+            0
+        ),
         matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
         matte_syntax_graph_node_split(
             matte_syntax_graph_node_split(
@@ -714,15 +725,6 @@ uint8_t * matte_compiler_run(
         NULL
     );
 
-    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Constant Declaration+Assignment"), MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
-        matte_syntax_graph_node_token(MATTE_TOKEN_DECLARE_CONST),
-        matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
-        matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-        matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
-        matte_syntax_graph_node_end(),
-        NULL 
-    );
     
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Expression"), MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
         matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
@@ -2422,16 +2424,395 @@ void destroy_function_block(matteFunctionBlock_t * b) {
     for(i = 0; i < len; ++i) {
         matte_string_destroy(matte_array_at(b->locals, matteString_t *, i));
     }
+    len = matte_array_get_size(b->captureNames);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(b->captureNames, matteString_t *, i));
+    }
 
+    matte_array_destroy(b->args);
+    matte_array_destroy(b->locals);
+    matte_array_destroy(b->instructons);
+    matte_array_destroy(b->captures);
+    matte_array_destroy(b->captureNames);
     free(b);
 }
 
-static matteFunctionBlock_t * compile_function_block(matteSyntaxGraph_t * g, matteArray_t * functions, matteToken_t ** src) {
+#include "MATTE_INSTRUCTIONS"
+
+
+// returns 0xffffffff
+static uint32_t get_local_referrable(
+    matteSyntaxGraph_t * g, 
+    matteFunctionBlock_t * block,
+    matteToken_t * iter,
+) {
+    uint32_t i;
+    uint32_t len;
+
+    // special: always refers to the calling context.
+    if (matte_string_test_eq(iter->text, MATTE_STR_CAST("context"))) {
+        return 0;
+    }
+
+    //while(block) {
+    len = matte_array_get_size(block->args);
+    for(i = 0; i < len; ++i) {
+        if (matte_string_test_eq(iter->text, matte_array_at(block->args, matteString_t *, i))) {
+            return i+1;
+        }
+    }
+
+    uint32_t offset = len+1;
+    len = matte_array_get_size(block->locals);
+    for(i = 0; i < len; ++i) {
+        if (matte_string_test_eq(iter->text, matte_array_at(block->locals, matteString_t *, i))) {
+            return offset+i;
+        }
+    }
+
+    //block = block->parent;
+    //}
+
+    matteString_t * m = matte_string_create_from_c_str("Could not find local referrable of the given name '%s'", iter->text);
+    matte_syntax_graph_print_compile_error(g, iter, matte_string_get_c_str(m));
+    matte_string_destroy(m);
+    return 0xffffffff;
+}
+
+
+
+// attempts to add additional instructions to push a variable onto the stack.
+// returns 0 on failure
+static int push_variable_name(
+    matteSyntaxGraph_t * g, 
+    matteFunctionBlock_t * block,
+    matteToken_t * iter
+) {
+    uint32_t referrable = get_local_referrable(
+        g,
+        block,
+        iter
+    );
+    if (referrable != 0xffffffff) {
+        write_instruction__prf(block, iter->lineNumber, referrable);
+        return 1;
+    } else {
+        // first look through existing captures
+        uint32_t i;
+        uint32_t len;
+
+        len = matte_array_get_size(g->captureNames);
+        for(i = 0; i < len; ++i) {
+            if (matte_string_test_eq(iter->text, matte_array_at(g->captureNames, matteString_t *, i))) {
+                write_instruction__prf(block, iter->lineNumber, i+1+matte_array_get_size(g->locals)+matte_array_get_size(g->args));
+                return 1;                    
+            }
+        }
+
+        // if not found, walk through function scopes 
+        //      if found, append to existing captures
+        matteFunctionBlock_t * blockSrc = block;
+        block = block->parent;
+        while(block) {
+
+            len = matte_array_get_size(block->args);
+            for(i = 0; i < len; ++i) {
+                if (matte_string_test_eq(iter->text, matte_array_at(block->args, matteString_t *, i))) {
+                    matteBytecodeStubCapture_t capture;
+                    capture.stubID = blockSrc->stubID;
+                    capture.referrable = i+1;
+                    matte_array_push(blockSrc->captures, capture);
+                    write_instruction__prf(
+                        blockSrc, iter->lineNumber, 
+                        1+matte_array_get_size(blockSrc->locals)+
+                          matte_array_get_size(blockSrc->args) +
+                          matte_array_get_size(blockSrc->captures)
+                    );
+                    matteString_t * str = matte_string_clone(iter->text);
+                    matte_array_push(blockSrc->captureNames, iter->text);
+                    return 1;                    
+                }
+            }
+
+            uint32_t offset = len+1;
+            len = matte_array_get_size(block->locals);
+            for(i = 0; i < len; ++i) {
+                if (matte_string_test_eq(iter->text, matte_array_at(block->locals, matteString_t *, i))) {
+                    matteBytecodeStubCapture_t capture;
+                    capture.stubID = blockSrc->stubID;
+                    capture.referrable = i+offset;
+                    matte_array_push(blockSrc->captures, capture);
+                    write_instruction__prf(
+                        blockSrc, iter->lineNumber, 
+                        1+matte_array_get_size(blockSrc->locals)+
+                          matte_array_get_size(blockSrc->args) +
+                          matte_array_get_size(blockSrc->captures)
+                    );
+                    matteString_t * str = matte_string_clone(iter->text);
+                    matte_array_push(blockSrc->captureNames, iter->text);
+                    return 1;                    
+
+                }
+            }
+            block = block->parent;
+        }
+    }
+
+    matteString_t * m = matte_string_create_from_c_str("Undefined variable '%s'", iter->text);
+    matte_syntax_graph_print_compile_error(g, iter, matte_string_get_c_str(m));
+    matte_string_destroy(m);
+    return 0;
+}
+
+
+matteOperator_t string_to_operator(const matteString_t * s) {
+    int opopcode0 = matte_string_get_char(s, 0);
+    int opopcode1 = matte_string_get_char(s, 1);
+    switch(opopcode0) {
+        case '+': return MATTE_OPERATOR_ADD; break;
+        case '-': 
+        switch(opopcode1) {
+            case '>': return MATTE_OPERATOR_POINT; break;
+            default:;
+        }
+        return MATTE_OPERATOR_SUB; 
+        break;
+
+        case '/': return MATTE_OPERATOR_DIV; break;
+        case '*': 
+        switch(opopcode1) {
+            case '*': return MATTE_OPERATOR_POW; break;
+            default:;
+        }
+        return MATTE_OPERATOR_MULT;
+        break;
+
+        case '!': 
+        switch(opopcode1) {
+            case '=': return MATTE_OPERATOR_NOTEQ; break;
+            default:;
+        }
+        return MATTE_OPERATOR_NOT;
+        break;
+        case '|': 
+        switch(opopcode1) {
+            case '|': return MATTE_OPERATOR_OR; break;
+            default:;
+        }
+        return MATTE_OPERATOR_BITWISE_OR;
+        break;
+        case '&':
+        switch(opopcode1) {
+            case '&': return MATTE_OPERATOR_AND; break;
+            default:;
+        }
+        return MATTE_OPERATOR_BITWISE_AND;
+        break;
+
+        case '<':
+        switch(opopcode1) {
+            case '<': return MATTE_OPERATOR_SHIFT_LEFT; break;
+            case '=': return MATTE_OPERATOR_LESSEQ; break;
+            case '>': return MATTE_OPERATOR_TRANSFORM; break;
+            default:;
+        }
+        return MATTE_OPERATOR_LESS;
+        break;
+
+        case '>':
+        switch(opopcode1) {
+            case '<': return MATTE_OPERATOR_SHIFT_RIGHT; break;
+            case '=': return MATTE_OPERATOR_GREATEREQ; break;
+            default:;
+        }
+        return MATTE_OPERATOR_GREATER;
+        break;
+
+        case '=':
+        switch(opopcode1) {
+            case '=': return MATTE_OPERATOR_EQ; break;
+            default:;
+        }
+        break;
+
+        case '~': return MATTE_OPERATOR_BITWISE_NOT; break;
+        case 'T':
+        switch(opopcode1) {
+            case 'S': return MATTE_OPERATOR_TOSTRING; break;
+            case 'N': return MATTE_OPERATOR_TONUMBER; break;
+            case 'B': return MATTE_OPERATOR_TOBOOLEAN; break;
+            case 'Y': return MATTE_OPERATOR_TYPENAME; break;
+            default:;
+        }
+        break;
+
+        case '#': return MATTE_OPERATOR_POUND; break;
+        case '?': return MATTE_OPERATOR_TERNARY; break;
+        case '$': return MATTE_OPERATOR_TOKEN; break;
+        case '^': return MATTE_OPERATOR_CARET; break;
+        case '%': return MATTE_OPERATOR_MODULO; break;
+
+        case ':':
+        switch(opopcode1) {
+            case ':': return MATTE_OPERATOR_SPECIFY; break;
+            default:;
+        }
+        break;
+        default:
+    }
+    return 0;
+}
+
+// returns 0 on failure. Expected to report errors 
+// when encountered
+static int compile_expression(
+    matteSyntaxGraph_t * g, 
+    matteFunctionBlock_t * block,
+    matteArray_t * functions, 
+    matteToken_t ** src
+) {
+    matteToken_t * iter = src;
+
+    // operator first
+    if (iter->ttype == MATTE_TOKEN_GENERAL_OPERATOR1) {
+        iter = iter->next;
+        if (!compile_expression(g, block, functions, &iter)) {
+            return 0;
+        }
+        wri
+
+    }
+
+
+    *src = iter;
+    return 1;
+}
+
+
+
+
+
+static int compile_statement(
+    matteSyntaxGraph_t * g, 
+    matteFunctionBlock_t * block,
+    matteArray_t * functions, 
+    matteToken_t ** src
+) {
+    matteToken_t * iter = *src;
+    while(iter->ttype == MATTE_TOKEN_STATEMENT_END) {
+        iter = iter->next;
+    }
+    if (!iter) {
+        *src = NULL;
+        return FALSE;
+    }
+    int varConst = 0;
+    switch(iter->ttype) {
+      // return statement
+      case MATTE_TOKEN_RETURN: {
+        iter = iter->next; // skip "return"
+        uint32_t oln = iter->line;
+        // when computed, should leave one value on the stack
+        if (!compile_expression(g, block, functions, &iter)) {
+            // error reporting handled by compile_expression
+            return -1;
+        }
+        write_instruction__ret(g, oln);
+        iter = iter->next; // skip ;
+        break;
+      }
+
+      case MATTE_TOKEN_WHEN: {
+        uint32_t oln = iter->line;
+        iter = iter->next; // skip when 
+        iter = iter->next; // skip (
+        compile_expression(g, block, functions, &iter);
+        iter = iter->next; // skip )
+        iter = iter->next; // skip :
+        uint32_t pc = matte_array_get_size(block->instructions);
+        if (!compile_expression(g, block, functions, &iter)) {
+            // error reporting handled by compile_expression
+            return -1;            
+        }
+        uint32_t skip = matte_array_get_size(block->instructions) - pc;
+        write_instruction__skp_insert(block->instructions, pc, oln, skip);    
+        iter = iter->next; // skip ;
+        break;
+      }
+
+      case MATTE_TOKEN_DECLARE_CONST:
+        varConst = 1;
+      case MATTE_TOKEN_DECLARE:
+        iter = iter->next; // declaration
+        if (varConst) {
+            if (iter->ttype != MATTE_TOKEN_ASSIGNMENT &&
+                iter->ttype != MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+                matte_syntax_graph_print_compile_error(g, iter, "Constants must be explicitly set when declared.");
+                return -1;
+            }
+        }
+
+        // declaration only, no code
+        if (iter->ttype == MATTE_TOKEN_STATEMENT_END) break;
+        if (iter->ttype == MATTE_TOKEN_ASSIGNMENT) {
+            iter = iter->next; // skip operator
+        }
+
+        if (!compile_expression(g, block, functions, &iter)) {
+            // error reporting handled by compile_expression
+            return -1;
+        }
+        uint32_t g = get_local_referrable(g, block, iter);
+        if (g != 0xffffffff) {
+            write_instruction__arf(g, oln, g);
+        } else {
+            // bad referrable
+            return -1;
+        }
+        break;
+
+
+      default: {
+        // when computed, should leave one value on the stack
+        if (!compile_expression(g, block, functions, &iter)) {
+            return -1;
+        }
+        write_instruction__ret(g, oln);
+        iter = iter->next; // skip ;
+      }
+    }
+
+
+
+
+    if (!iter) {
+        *src = NULL;
+        return FALSE;
+    }
+
+    while(iter->ttype == MATTE_TOKEN_STATEMENT_END) {
+        iter = iter->next;
+    }
+    *src = iter;
+    return 1;
+}
+
+
+static matteFunctionBlock_t * compile_function_block(
+    matteSyntaxGraph_t * g, 
+    matteFunctionBlock_t * parent,
+    matteArray_t * functions, 
+    matteToken_t ** src
+) {
     matteToken_t * iter = *src;
     matteFunctionBlock_t * b = calloc(1, sizeof(matteFunctionBlock_t));
     b->args = matte_array_create(sizeof(matteString_t *));
     b->locals = matte_array_create(sizeof(matteString_t *));
+    b->instructions = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+    b->captures = matte_array_create(sizeof(matteBytecodeStubCapture_t));
+    b->captureNames = matte_array_create(sizeof(matteString_t *));
     b->stubID = g->functionStubID++;
+    b->parent = parent;
 
     #ifdef MATTE_DEBUG
         printf("COMPILING FUNCTION %d\n", b->stubID);
@@ -2507,11 +2888,23 @@ static matteFunctionBlock_t * compile_function_block(matteSyntaxGraph_t * g, mat
 
 
     // now that we have all the locals and args, we can start emitting bytecode.
+    int status;
+    do {
+        status = compile_statement(g, b, functions, &iter);
+    } while(status == 1);
+
+    if (status == -1) {
+        // should be clean
+        goto L_FAIL;
+    }
+
+
+    /*
     while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
         switch(iter->ttype) {
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
             iter = iter->next;
-            matteFunctionBlock_t * b = compile_function_block(g, functions, &iter);
+            matteFunctionBlock_t * b = compile_function_block(g, b, functions, &iter);
             if (!b) {
                 goto L_FAIL;
             }
@@ -2521,7 +2914,7 @@ static matteFunctionBlock_t * compile_function_block(matteSyntaxGraph_t * g, mat
         }
         iter = iter->next;
     }
-
+    */
 
     return b;
   L_FAIL:
@@ -2532,7 +2925,7 @@ static matteFunctionBlock_t * compile_function_block(matteSyntaxGraph_t * g, mat
 matteArray_t * matte_syntax_graph_compile(matteSyntaxGraph_t * g) {
     matteToken_t * iter = g->first;
     matteArray_t * arr = matte_array_create(sizeof(matteFunctionBlock_t *));
-    if (!compile_function_block(g, arr, &iter)) {
+    if (!compile_function_block(g, NULL, arr, &iter)) {
         return NULL;        
     }
     return arr;
