@@ -188,6 +188,7 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_PRF: return "PRF";
       case MATTE_OPCODE_NEM: return "NEM";
       case MATTE_OPCODE_NNM: return "NNM";
+      case MATTE_OPCODE_NBL: return "NBL";
       case MATTE_OPCODE_NST: return "NST";
       case MATTE_OPCODE_STC: return "STC";
       case MATTE_OPCODE_NOB: return "NOB";
@@ -255,6 +256,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             memcpy(&val, inst->data, sizeof(double));
             matteValue_t v = matte_heap_new_value(vm->heap);
             matte_value_into_number(&v, val);
+            STACK_PUSH(v);
+            break;
+          }
+          case MATTE_OPCODE_NBL: {
+            double val;
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            matte_value_into_boolean(&v, inst->data[0]);
             STACK_PUSH(v);
             break;
           }

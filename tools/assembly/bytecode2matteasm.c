@@ -99,7 +99,11 @@ uint8_t * print_function(uint8_t * iter, uint32_t * size) {
             case MATTE_OPCODE_NEM:
                 printf("nem\n");
                 break;
-            
+
+            case MATTE_OPCODE_NBL:
+                printf("nbl %d\n", data.bytes[0]);
+                break;
+
 
             case MATTE_OPCODE_NNM:
                 printf("nnm %g\n", *(double*)data.bytes);

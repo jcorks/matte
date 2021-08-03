@@ -254,6 +254,16 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                 }               
             } else if (
                 oc0 == 'n' &&
+                oc1 == 'b' &&
+                oc2 == 'l'
+            ) {
+                inst->opcode = MATTE_OPCODE_NBL;
+                if (sscanf(line, "%"SCNu32" nbl %d", &inst->line, inst->data[0]) != 2) {
+                    printf("ERROR on line %d: unrecognized nbl format. Syntax: [line] nnm [1 or 0]\n", lineN);
+                    exit(1);
+                }   
+            } else if (
+                oc0 == 'n' &&
                 oc1 == 's' &&
                 oc2 == 't'
             ) {

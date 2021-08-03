@@ -212,6 +212,13 @@ New Number (NNM)
     pops:
     pushes:
         - new value (number) (read-only)
+
+New Number (NBL) 
+    args:
+        - 1-byte boolean (0 or 1)
+    pops:
+    pushes:
+        - new value (boolean) (read-only)
     
 New String (NST)
     args:

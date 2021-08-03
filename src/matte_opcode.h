@@ -12,6 +12,8 @@ typedef enum {
     MATTE_OPCODE_NEM,
     // push new number,
     MATTE_OPCODE_NNM,
+    // push new boolean,
+    MATTE_OPCODE_NBL,
     // push new string
     MATTE_OPCODE_NST,
     MATTE_OPCODE_STC,
