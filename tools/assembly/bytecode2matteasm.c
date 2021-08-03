@@ -188,9 +188,6 @@ uint8_t * print_function(uint8_t * iter, uint32_t * size) {
                     case MATTE_OPERATOR_POW: printf("**\n"); break;
                     case MATTE_OPERATOR_EQ: printf("==\n"); break;
                     case MATTE_OPERATOR_BITWISE_NOT: printf("~\n"); break;
-                    case MATTE_OPERATOR_TOSTRING: printf("TS\n"); break;
-                    case MATTE_OPERATOR_TONUMBER: printf("TN\n"); break;
-                    case MATTE_OPERATOR_TOBOOLEAN: printf("TB\n"); break;
                     case MATTE_OPERATOR_POINT: printf("->\n"); break;
                     case MATTE_OPERATOR_POUND: printf("#\n"); break;
                     case MATTE_OPERATOR_TERNARY: printf("?\n"); break;
@@ -199,7 +196,6 @@ uint8_t * print_function(uint8_t * iter, uint32_t * size) {
                     case MATTE_OPERATOR_LESS: printf("<\n"); break;
                     case MATTE_OPERATOR_GREATEREQ: printf(">=\n"); break;
                     case MATTE_OPERATOR_LESSEQ: printf("<=\n"); break;
-                    case MATTE_OPERATOR_TYPENAME: printf("TY\n"); break; 
                     case MATTE_OPERATOR_SPECIFY: printf("::\n"); break;
                     case MATTE_OPERATOR_TRANSFORM: printf("<>\n"); break;
                     case MATTE_OPERATOR_NOTEQ: printf("!=\n"); break;
@@ -239,6 +235,18 @@ uint8_t * print_function(uint8_t * iter, uint32_t * size) {
                         break;
                     case MATTE_EXT_CALL_IMPORT:
                         printf("import\n");
+                        break;
+                    case MATTE_EXT_CALL_TONUMBER:
+                        printf("tonumber\n");
+                        break;
+                    case MATTE_EXT_CALL_TOSTRING:
+                        printf("tostring\n");
+                        break;
+                    case MATTE_EXT_CALL_TOBOOLEAN:
+                        printf("toboolean\n");
+                        break;
+                    case MATTE_EXT_CALL_TYPENAME:
+                        printf("typename\n");
                         break;
 
                 }

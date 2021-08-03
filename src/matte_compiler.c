@@ -2709,14 +2709,6 @@ matteOperator_t string_to_operator(const matteString_t * s) {
         break;
 
         case '~': return MATTE_OPERATOR_BITWISE_NOT; break;
-        case 'T':
-        switch(opopcode1) {
-            case 'S': return MATTE_OPERATOR_TOSTRING; break;
-            case 'N': return MATTE_OPERATOR_TONUMBER; break;
-            case 'B': return MATTE_OPERATOR_TOBOOLEAN; break;
-            case 'Y': return MATTE_OPERATOR_TYPENAME; break;
-            default:;
-        }
         break;
 
         case '#': return MATTE_OPERATOR_POUND; break;

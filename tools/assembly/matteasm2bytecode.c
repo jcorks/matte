@@ -435,15 +435,7 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                     break;
 
                   case '~': inst->data[0] = MATTE_OPERATOR_BITWISE_NOT; break;
-                  case 'T':
-                    switch(opopcode1) {
-                      case 'S': inst->data[0] = MATTE_OPERATOR_TOSTRING; break;
-                      case 'N': inst->data[0] = MATTE_OPERATOR_TONUMBER; break;
-                      case 'B': inst->data[0] = MATTE_OPERATOR_TOBOOLEAN; break;
-                      case 'Y': inst->data[0] = MATTE_OPERATOR_TYPENAME; break;
-                      default:;
-                    }
-                    break;
+
 
                   case '#': inst->data[0] = MATTE_OPERATOR_POUND; break;
                   case '?': inst->data[0] = MATTE_OPERATOR_TERNARY; break;
@@ -484,6 +476,14 @@ static const void function_to_stub(FILE * f, uint16_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOREACH;
                 } else if (!strcmp("match", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_MATCH;
+                } else if (!strcmp("tostring", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TOSTRING;
+                } else if (!strcmp("tonumber", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TONUMBER;
+                } else if (!strcmp("toboolean", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TOBOOLEAN;
+                } else if (!strcmp("typename", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TYPENAME;
                 } else if (!strcmp("getExternalFunction", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_GETEXTERNALFUNCTION;
                 } else {

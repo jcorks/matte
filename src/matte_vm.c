@@ -130,11 +130,8 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
 
 static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue_t a) {
     switch(op) {
-      case MATTE_OPERATOR_TONUMBER:    return vm_operator__tonumber(vm, a);
       case MATTE_OPERATOR_NOT:         return vm_operator__not(vm, a);
       case MATTE_OPERATOR_BITWISE_NOT: return vm_operator__bitwise_not(vm, a);
-      case MATTE_OPERATOR_TOSTRING:    return vm_operator__tostring(vm, a);
-      case MATTE_OPERATOR_TOBOOLEAN:   return vm_operator__toboolean(vm, a);
       case MATTE_OPERATOR_POUND:       return vm_operator__pound(vm, a);
       case MATTE_OPERATOR_TOKEN:       return vm_operator__token(vm, a);
       case MATTE_OPERATOR_TYPENAME:    return vm_operator__typename(vm, a);
@@ -179,6 +176,18 @@ static matteValue_t vm_ext_call_2(matteVM_t * vm, uint64_t call, matteValue_t a,
     }
 }
 
+static matteValue_t vm_ext_call_1(matteVM_t * vm, uint64_t call, matteValue_t a) {
+    switch(call) {
+      case MATTE_EXT_CALL_TONUMBER:   return vm_ext_call__tonumber(vm, a);
+      case MATTE_EXT_CALL_TOSTRING:   return vm_ext_call__tostring(vm, a);
+      case MATTE_EXT_CALL_TOBOOLEAN:  return vm_ext_call__toboolean(vm, a);
+      case MATTE_EXT_CALL_TYPENAME:   return vm_ext_call__typename(vm, a);
+      default:
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
+        return matte_heap_new_value(vm->heap);
+      
+    }
+}
 
 
 
@@ -457,6 +466,23 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint64_t call = *(uint64_t*)inst->data;
             switch(call) {
               case MATTE_EXT_CALL_NOOP: break;
+
+              case MATTE_EXT_CALL_TONUMBER:
+              case MATTE_EXT_CALL_TOSTRING:
+              case MATTE_EXT_CALL_TOBOOLEAN:
+              case MATTE_EXT_CALL_TYPENAME: {
+                if (STACK_SIZE() < 1) {
+                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 1 arguments."));                
+                } else {
+                    matteValue_t a = STACK_POP();
+                    matteValue_t v = vm_ext_call_2(vm, call, a);
+                    matte_heap_recycle(a);
+                    STACK_PUSH(v); // already refd
+                }
+                break;
+              }
+              
+
               case MATTE_EXT_CALL_FOREACH:
               case MATTE_EXT_CALL_WHILE: {
                 if (STACK_SIZE() < 2) {
@@ -573,12 +599,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 
                 case MATTE_OPERATOR_NOT:
                 case MATTE_OPERATOR_BITWISE_NOT:
-                case MATTE_OPERATOR_TOSTRING:
-                case MATTE_OPERATOR_TONUMBER:
-                case MATTE_OPERATOR_TOBOOLEAN:
                 case MATTE_OPERATOR_POUND:
-                case MATTE_OPERATOR_TOKEN:
-                case MATTE_OPERATOR_TYPENAME: {
+                case MATTE_OPERATOR_TOKEN:{
                     if (STACK_SIZE() < 1) {
                         matte_vm_raise_error_string(vm, MATTE_STR_CAST("OPR operator requires 1 operand."));                        
                     } else {
