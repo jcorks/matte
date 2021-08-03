@@ -1,4 +1,4 @@
-@Point <= (x_, y_) {
+@Point <- (x_, y_) {
     @x = gate(x_ == empty, 0, x_);
     @y = gate(y_ == empty, 0, y_);
     // new declarations are always "empty"
@@ -6,23 +6,23 @@
 
     // object or something
     @instance = {
-        getX : <= {return x;},
-        getY : <= {return y;},
+        getX : <- {return x;},
+        getY : <- {return y;},
 
-        moveTo : <= (newX, newY) {
+        moveTo : <- (newX, newY) {
             x = newX;
             y = newY;
 
             when(onMove != empty) : onMove();
         },
 
-        setOnMove : <= (func) {
+        setOnMove : <- (func) {
             onMove = func;
         }
     };
     
     instance.operator = {
-        '+' : <= (a, b) {
+        '+' :  <- (a, b) {
             // refers back to function context
             return context(a.x + b.x, a.y + b.y);
         }
@@ -31,5 +31,9 @@
     return instance;
 };
 
-@p1 = Point(100, 200);
-@p2 = p1 + Point(300, 400);
+(<-{
+    @p1 = Point(100, 200);
+    @p2 = p1 + Point(300, 400);
+})();
+
+
