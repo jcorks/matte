@@ -7,8 +7,8 @@
 #include <assert.h>
 
 struct matteBytecodeStub_t {
-    uint16_t fileID;
-    uint16_t stubID;
+    uint32_t fileID;
+    uint32_t stubID;
     
     matteString_t ** argNames;
     matteString_t ** localNames;
@@ -43,8 +43,8 @@ static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
     matteBytecodeStub_t * out = calloc(1, sizeof(matteBytecodeStub_t));
     uint32_t i;
     
-    ADVANCE(uint16_t, out->fileID);
-    ADVANCE(uint16_t, out->stubID);
+    ADVANCE(uint32_t, out->fileID);
+    ADVANCE(uint32_t, out->stubID);
     ADVANCE(uint8_t, out->argCount);
     out->argNames = malloc(sizeof(matteString_t *)*out->argCount);
     for(i = 0; i < out->argCount; ++i) {
@@ -87,11 +87,11 @@ void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
 }
 
 
-uint16_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t * stub) {
+uint32_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t * stub) {
     return stub->fileID;
 }
 
-uint16_t matte_bytecode_stub_get_id(const matteBytecodeStub_t * stub) {
+uint32_t matte_bytecode_stub_get_id(const matteBytecodeStub_t * stub) {
     return stub->stubID;
 }
 

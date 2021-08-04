@@ -63,7 +63,7 @@ void matte_vm_add_stubs(matteVM_t *, const matteArray_t *);
 // inserting a CAL instruction.
 matteValue_t matte_vm_run_script(
     matteVM_t *, 
-    uint16_t fileid, 
+    uint32_t fileid, 
     const matteArray_t * args
 );
 

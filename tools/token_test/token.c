@@ -45,5 +45,5 @@ int main(int argc, char ** args) {
 
     uint32_t byteLen;
     uint8_t * d = dump_bytes(args[1], &byteLen);
-    matte_compiler_run(d, byteLen, &byteLen, onError);
+    matte_compiler_run(d, byteLen, &byteLen, onError, 1);
 }

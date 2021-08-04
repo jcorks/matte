@@ -42,10 +42,10 @@ static uint32_t i__;
 
 
 uint8_t * print_function(uint8_t * iter, uint32_t * size) {
-    uint16_t id = CHOMP(uint16_t);
+    uint32_t id = CHOMP(uint32_t);
     printf("fileid %d\n\n", id);
   
-    id = CHOMP(uint16_t);
+    id = CHOMP(uint32_t);
     printf("function %d\n", id);
     
     // arguments
@@ -159,7 +159,7 @@ uint8_t * print_function(uint8_t * iter, uint32_t * size) {
             
             case MATTE_OPCODE_CAL:
                 a = *(uint32_t*)data.bytes;
-                printf("nar %d\n", a);
+                printf("cal %d\n", a);
                 break;            
             
             case MATTE_OPCODE_ARF:

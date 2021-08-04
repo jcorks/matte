@@ -7,7 +7,8 @@ uint8_t * matte_compiler_run(
     const uint8_t * source, 
     uint32_t len,
     uint32_t * size,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch)
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
+    uint32_t fileID
 );
 
 #endif

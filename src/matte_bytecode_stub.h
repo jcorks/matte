@@ -57,12 +57,12 @@ void matte_bytecode_stub_destroy(matteBytecodeStub_t * b);
 // Returns the fileid that the stub was given.
 // fileids are only valid if all stubs come from the same parser 
 // instance.
-uint16_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t *);
+uint32_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t *);
 
 // Gets the id, local to the file.
 // stub ids are only valid if all stubs come from the same parser 
 // instance.
-uint16_t matte_bytecode_stub_get_id(const matteBytecodeStub_t *);
+uint32_t matte_bytecode_stub_get_id(const matteBytecodeStub_t *);
 
 
 // Gets the count of arguments to this function.

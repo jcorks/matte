@@ -79,7 +79,7 @@ static void vm_pop_frame(matteVM_t * vm) {
 }
 
 
-static matteBytecodeStub_t * vm_find_stub(matteVM_t * vm, uint16_t fileid, uint16_t stubid) {
+static matteBytecodeStub_t * vm_find_stub(matteVM_t * vm, uint32_t fileid, uint32_t stubid) {
     matteTable_t * subt = matte_table_find_by_uint(vm->stubIndex, fileid);
     if (!subt) return NULL;
     return matte_table_find_by_uint(subt, stubid);
@@ -134,7 +134,6 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_BITWISE_NOT: return vm_operator__bitwise_not(vm, a);
       case MATTE_OPERATOR_POUND:       return vm_operator__pound(vm, a);
       case MATTE_OPERATOR_TOKEN:       return vm_operator__token(vm, a);
-      case MATTE_OPERATOR_TYPENAME:    return vm_operator__typename(vm, a);
 
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled OPR operator"));                        
@@ -388,10 +387,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
 
           case MATTE_OPCODE_CAL: {
-            if (STACK_SIZE() == 0) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to run CAL opcode when stack is empty."))    ;
-                break;
-            }
 
             uint32_t argcount;
             memcpy(&argcount, inst->data, sizeof(uint32_t));
@@ -400,17 +395,21 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 break;
             }
 
-            matteValue_t function = STACK_POP();
 
 
             matteArray_t * args = matte_array_create(sizeof(matteValue_t));
+            matte_array_set_size(args, argcount);
+
             uint32_t i;
             for(i = 0; i < argcount; ++i) {
                 matteValue_t v = STACK_POP();
                 matteValue_t c = matte_heap_new_value(vm->heap);
                 matte_value_into_copy(&c, v);
-                matte_array_push(args, c);
+                matte_array_at(args, matteValue_t, argcount-i-1) = c;
             }
+
+            matteValue_t function = STACK_POP();
+
 
             matteValue_t result = matte_vm_call(vm, function, args);
 
@@ -475,7 +474,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 1 arguments."));                
                 } else {
                     matteValue_t a = STACK_POP();
-                    matteValue_t v = vm_ext_call_2(vm, call, a);
+                    matteValue_t v = vm_ext_call_1(vm, call, a);
                     matte_heap_recycle(a);
                     STACK_PUSH(v); // already refd
                 }
@@ -582,8 +581,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     if (STACK_SIZE() < 2) {
                         matte_vm_raise_error_string(vm, MATTE_STR_CAST("OPR operator requires 2 operands."));                        
                     } else {
-                        matteValue_t a = STACK_POP();
                         matteValue_t b = STACK_POP();
+                        matteValue_t a = STACK_POP();
                         matteValue_t v = vm_operator_2(
                             vm,
                             inst->data[0],
@@ -724,7 +723,7 @@ matteValue_t matte_vm_call(
         // this is used to call external c functions. stubID refers to 
         // which index within externalFunction.
         // In this case, a new stackframe is NOT pushed.
-        uint16_t external = matte_bytecode_stub_get_id(matte_value_get_bytecode_stub(d));
+        uint32_t external = matte_bytecode_stub_get_id(matte_value_get_bytecode_stub(d));
         if (external >= matte_array_get_size(vm->externalFunctionIndex)) {
             return matte_heap_new_value(vm->heap);            
         }
@@ -820,7 +819,7 @@ matteValue_t matte_vm_call(
 
 matteValue_t matte_vm_run_script(
     matteVM_t * vm, 
-    uint16_t fileid, 
+    uint32_t fileid, 
     const matteArray_t * args
 ) {
     matteValue_t func = matte_heap_new_value(vm->heap);
@@ -903,9 +902,9 @@ void matte_vm_set_external_function(
 
 
     ExternalFunctionSet_t * set;    
-    uint16_t * id = matte_table_find(vm->externalFunctions, identifier);
+    uint32_t * id = matte_table_find(vm->externalFunctions, identifier);
     if (!id) {
-        id = malloc(sizeof(uint16_t));
+        id = malloc(sizeof(uint32_t));
         *id = matte_array_get_size(vm->externalFunctionIndex);
         matte_array_set_size(vm->externalFunctionIndex, *id+1);
     }
@@ -921,15 +920,15 @@ matteValue_t matte_vm_get_external_function_as_value(
     matteVM_t * vm,
     matteString_t * identifier
 ) {
-    uint16_t * id = matte_table_find(vm->externalFunctions, identifier);
+    uint32_t * id = matte_table_find(vm->externalFunctions, identifier);
     if (!id) {
         return matte_heap_new_value(vm->heap);
     }
     // to do this, we have a special stub ROM that 
     // will always run an external function
     typedef struct {
-        uint16_t filestub;
-        uint16_t stubid;
+        uint32_t filestub;
+        uint32_t stubid;
     } fakestub;
 
     fakestub f;

@@ -11,7 +11,7 @@
 #define TRUE 1
 
 
-static uint16_t fileid = 1;
+static uint32_t fileid = 1;
 static uint32_t lineN = 0;    
 static char * line;
 static FILE * out;
@@ -62,8 +62,8 @@ static unistring read_unistring_ascii(const char * line) {
     return out;
 }
 
-static const void function_to_stub(FILE * f, uint16_t id) {
-    uint16_t stubid = id;
+static const void function_to_stub(FILE * f, uint32_t id) {
+    uint32_t stubid = id;
     uint8_t nargs = 0;
     uint8_t nlocals = 0;
     uint16_t ncaptures = 0;
@@ -95,8 +95,8 @@ static const void function_to_stub(FILE * f, uint16_t id) {
     while(next_line(f)) {
         if (line[0] == 0) continue; // empty
         if (!strncmp(line, "function", strlen("function"))) {
-            uint16_t substubid;
-            if (sscanf(line, "function %"SCNu16"", &substubid) != 1) {
+            uint32_t substubid;
+            if (sscanf(line, "function %"SCNu32"", &substubid) != 1) {
                 printf("ERROR on line %d: function needs number unsigned 16bit number id\n", lineN);
                 exit(1);
             }
@@ -175,8 +175,8 @@ static const void function_to_stub(FILE * f, uint16_t id) {
             }
 
             uint32_t i;
-            fwrite(&fileid, 1, sizeof(uint16_t), out);
-            fwrite(&stubid, 1, sizeof(uint16_t), out);
+            fwrite(&fileid, 1, sizeof(uint32_t), out);
+            fwrite(&stubid, 1, sizeof(uint32_t), out);
             fwrite(&nargs, 1, sizeof(uint8_t), out);
             for(i = 0; i < nargs; ++i) {
                 fwrite(&argNames[i].len, 1, sizeof(uint32_t), out);
@@ -551,13 +551,13 @@ int main(int argc, char ** argv) {
         // comment
         if (line[0] == 0) continue; // empty
         if (!strncmp(line, "fileid", strlen("fileid"))) {
-            if (sscanf(line, "fileid %"SCNu16"", &fileid) != 1) {
+            if (sscanf(line, "fileid %"SCNu32"", &fileid) != 1) {
                 printf("ERROR on line %d: fileid needs number unsigned 16bit number if\n", lineN);
                 exit(1);
             }
         } else if (!strncmp(line, "function", strlen("function"))) {
-            uint16_t substubid;
-            if (sscanf(line, "function %"SCNu16"", &substubid) != 1) {
+            uint32_t substubid;
+            if (sscanf(line, "function %"SCNu32"", &substubid) != 1) {
                 printf("ERROR on line %d: function needs unsigned 16bit number id\n", lineN);
                 exit(1);
             }
