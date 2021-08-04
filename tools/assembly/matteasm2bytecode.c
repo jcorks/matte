@@ -468,10 +468,8 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_GATE;
                 } else if (!strcmp("while", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_WHILE;
-                } else if (!strcmp("for3", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR3;
-                } else if (!strcmp("for4", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR4;
+                } else if (!strcmp("for", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR;
                 } else if (!strcmp("foreach", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOREACH;
                 } else if (!strcmp("match", m)) {

@@ -1,6 +1,13 @@
 
 
-static matteValue_t vm_ext_call__gate(matteVM_t * vm, matteValue_t a, matteValue_t b, matteValue_t c) {
+static matteValue_t vm_ext_call__gate(matteVM_t * vm, matteArray_t * args, void * userData) {
+    #ifdef MATTE_DEBUG
+        assert(matte_array_get_size(args) == 3);
+    #endif
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+    matteValue_t b = matte_array_at(args, matteValue_t, 1);
+    matteValue_t c = matte_array_at(args, matteValue_t, 2);
+
     int condition = matte_value_as_boolean(a); // uh?? we need to stop if theres an error
 
     if (condition) {
@@ -15,7 +22,14 @@ static matteValue_t vm_ext_call__gate(matteVM_t * vm, matteValue_t a, matteValue
 }
 
 
-static matteValue_t vm_ext_call__while(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_ext_call__while(matteVM_t * vm, matteArray_t * args, void * userData) {
+    #ifdef MATTE_DEBUG
+        assert(matte_array_get_size(args) == 3);
+    #endif
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+    matteValue_t b = matte_array_at(args, matteValue_t, 1);
+    matteValue_t c = matte_array_at(args, matteValue_t, 2);
+
     if (!matte_value_is_callable(b)) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("While requires second argument to be a function."));
         return matte_heap_new_value(vm->heap);
@@ -29,65 +43,84 @@ static matteValue_t vm_ext_call__while(matteVM_t * vm, matteValue_t a, matteValu
 
 
 
-static matteValue_t vm_ext_call__for3(matteVM_t * vm, matteValue_t a, matteValue_t b, matteValue_t c) {
-    if (!matte_value_is_callable(c)) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("This version of 'for' requires third argument to be a function."));
-        return matte_heap_new_value(vm->heap);
-    }
-    double current = matte_value_as_number(a);
-    double end     = matte_value_as_number(b);
+static matteValue_t vm_ext_call__for(matteVM_t * vm, matteArray_t * args, void * userData) {
+    #ifdef MATTE_DEBUG
+        assert(matte_array_get_size(args) == 3 || matte_array_get_size(args) == 4);
+    #endif
+    if (matte_array_get_size(args) == 3) {
 
-    while(current < end) {
-        matteValue_t result = matte_vm_call(vm, c, matte_array_empty());
-        if (result.binID != 0) {
-            current = matte_value_as_number(result);
-        } else {
-            current += 1;
+        matteValue_t a = matte_array_at(args, matteValue_t, 0);
+        matteValue_t b = matte_array_at(args, matteValue_t, 1);
+        matteValue_t c = matte_array_at(args, matteValue_t, 2);
+
+        if (!matte_value_is_callable(c)) {
+            matte_vm_raise_error_string(vm, MATTE_STR_CAST("This version of 'for' requires third argument to be a function."));
+            return matte_heap_new_value(vm->heap);
         }
-        matte_heap_recycle(result);
-    }
+        double current = matte_value_as_number(a);
+        double end     = matte_value_as_number(b);
 
-    return matte_heap_new_value(vm->heap);
-}
-
-
-static matteValue_t vm_ext_call__for4(matteVM_t * vm, matteValue_t a, matteValue_t b, matteValue_t c, matteValue_t d) {
-    if (!matte_value_is_callable(d)) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("This version of 'for' requires last argument to be a function."));
-        return matte_heap_new_value(vm->heap);
-    }
-    double current = matte_value_as_number(a);
-    double end     = matte_value_as_number(b);
-    double incr    = matte_value_as_number(c);
-
-    if (incr < 0) {
-        while(current > end) {
-            matteValue_t result = matte_vm_call(vm, d, matte_array_empty());
-            if (result.binID != 0) {
-                current = matte_value_as_number(result);
-            } else {
-                current += incr;
-            }
-            matte_heap_recycle(result);
-        }
-
-    } else {
         while(current < end) {
-            matteValue_t result = matte_vm_call(vm, d, matte_array_empty());
+            matteValue_t result = matte_vm_call(vm, c, matte_array_empty());
             if (result.binID != 0) {
                 current = matte_value_as_number(result);
             } else {
-                current += incr;
+                current += 1;
             }
             matte_heap_recycle(result);
         }
 
-    }
+        return matte_heap_new_value(vm->heap);
+    } else {
+        matteValue_t a = matte_array_at(args, matteValue_t, 0);
+        matteValue_t b = matte_array_at(args, matteValue_t, 1);
+        matteValue_t c = matte_array_at(args, matteValue_t, 2);
+        matteValue_t d = matte_array_at(args, matteValue_t, 3);
 
-    return matte_heap_new_value(vm->heap);
+        if (!matte_value_is_callable(d)) {
+            matte_vm_raise_error_string(vm, MATTE_STR_CAST("This version of 'for' requires last argument to be a function."));
+            return matte_heap_new_value(vm->heap);
+        }
+        double current = matte_value_as_number(a);
+        double end     = matte_value_as_number(b);
+        double incr    = matte_value_as_number(c);
+
+        if (incr < 0) {
+            while(current > end) {
+                matteValue_t result = matte_vm_call(vm, d, matte_array_empty());
+                if (result.binID != 0) {
+                    current = matte_value_as_number(result);
+                } else {
+                    current += incr;
+                }
+                matte_heap_recycle(result);
+            }
+
+        } else {
+            while(current < end) {
+                matteValue_t result = matte_vm_call(vm, d, matte_array_empty());
+                if (result.binID != 0) {
+                    current = matte_value_as_number(result);
+                } else {
+                    current += incr;
+                }
+                matte_heap_recycle(result);
+            }
+
+        }
+
+        return matte_heap_new_value(vm->heap);
+
+    }
 }
 
-static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+
+static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteArray_t * args, void * userData) {
+    #ifdef MATTE_DEBUG
+        assert(matte_array_get_size(args) == 2);
+    #endif
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+    matteValue_t b = matte_array_at(args, matteValue_t, 1);
     if (b.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("Foreach requires first argument to be a object."));
         return matte_heap_new_value(vm->heap);
@@ -97,13 +130,23 @@ static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteValue_t a, matteVa
 }
 
 
-static matteValue_t vm_ext_call__tonumber(matteVM_t * vm, matteValue_t a) {
+static matteValue_t vm_ext_call__tonumber(matteVM_t * vm, matteArray_t * args, void * userData) {
+    #ifdef MATTE_DEBUG
+        assert(matte_array_get_size(args) == 1);
+    #endif
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+
     matteValue_t result = matte_heap_new_value(vm->heap);
     matte_value_into_number(&result, matte_value_as_number(a));
     return result;
 }
 
-static matteValue_t vm_ext_call__tostring(matteVM_t * vm, matteValue_t a) {
+static matteValue_t vm_ext_call__tostring(matteVM_t * vm, matteArray_t * args, void * userData) {
+    #ifdef MATTE_DEBUG
+        assert(matte_array_get_size(args) == 1);
+    #endif
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+
     matteValue_t result = matte_heap_new_value(vm->heap);
     matteString_t * str = matte_value_as_string(a);
     if (str)
@@ -111,12 +154,21 @@ static matteValue_t vm_ext_call__tostring(matteVM_t * vm, matteValue_t a) {
     matte_string_destroy(str);
     return result;
 }
-static matteValue_t vm_ext_call__toboolean(matteVM_t * vm, matteValue_t a) {
+static matteValue_t vm_ext_call__toboolean(matteVM_t * vm, matteArray_t * args, void * userData) {
+    #ifdef MATTE_DEBUG
+        assert(matte_array_get_size(args) == 1);
+    #endif
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
     matteValue_t result = matte_heap_new_value(vm->heap);
     matte_value_into_boolean(&result, matte_value_as_boolean(a));
     return result;
 }
-static matteValue_t vm_ext_call__typename(matteVM_t * vm, matteValue_t a) {
+static matteValue_t vm_ext_call__typename(matteVM_t * vm, matteArray_t * args, void * userData) {
+    #ifdef MATTE_DEBUG
+        assert(matte_array_get_size(args) == 1);
+    #endif
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
       case MATTE_VALUE_TYPE_EMPTY:   matte_value_into_string(&result, MATTE_STR_CAST("empty")); break;
@@ -125,4 +177,24 @@ static matteValue_t vm_ext_call__typename(matteVM_t * vm, matteValue_t a) {
       case MATTE_VALUE_TYPE_OBJECT:  matte_value_into_string(&result, MATTE_STR_CAST("object")); break;
     }
     return result;
+}
+
+
+static matteValue_t vm_ext_call__noop(matteVM_t * vm, matteArray_t * args, void * userData) {
+    assert(!"NOT IMPLEMENTED");
+}
+
+
+static matteValue_t vm_ext_call__match(matteVM_t * vm, matteArray_t * args, void * userData) {
+    assert(!"NOT IMPLEMENTED");
+}
+
+
+static matteValue_t vm_ext_call__import(matteVM_t * vm, matteArray_t * args, void * userData) {
+    assert(!"NOT IMPLEMENTED");
+}
+
+
+static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteArray_t * args, void * userData) {
+    assert(!"NOT IMPLEMENTED");
 }

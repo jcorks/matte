@@ -218,11 +218,8 @@ uint8_t * print_function(uint8_t * iter, uint32_t * size) {
                     case MATTE_EXT_CALL_WHILE:
                         printf("while\n");
                         break;
-                    case MATTE_EXT_CALL_FOR3:
-                        printf("for3\n");
-                        break;
-                    case MATTE_EXT_CALL_FOR4:
-                        printf("for4\n");
+                    case MATTE_EXT_CALL_FOR:
+                        printf("for\n");
                         break;
                     case MATTE_EXT_CALL_FOREACH:
                         printf("foreach\n");

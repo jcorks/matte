@@ -357,9 +357,8 @@ External call (EXT)
             
           
     pops:
-        - n values based on args defined for external call
     pushes:
-        - result of call
+        - a new function object that, when called, runs the function
 
 
 Pop stack values (POP)

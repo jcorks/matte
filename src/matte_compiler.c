@@ -21,6 +21,21 @@ typedef enum {
     MATTE_TOKEN_LITERAL_STRING,
     MATTE_TOKEN_LITERAL_BOOLEAN,
     MATTE_TOKEN_LITERAL_EMPTY,
+
+    MATTE_TOKEN_EXTERNAL_NOOP,
+    MATTE_TOKEN_EXTERNAL_GATE,
+    MATTE_TOKEN_EXTERNAL_WHILE,
+    MATTE_TOKEN_EXTERNAL_FOR,
+    MATTE_TOKEN_EXTERNAL_FOREACH,
+    MATTE_TOKEN_EXTERNAL_MATCH,
+    MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
+    MATTE_TOKEN_EXTERNAL_IMPORT,
+    MATTE_TOKEN_EXTERNAL_TOSTRING,
+    MATTE_TOKEN_EXTERNAL_TONUMBER,
+    MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
+    MATTE_TOKEN_EXTERNAL_TYPENAME,
+
+
     MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, // (
     MATTE_TOKEN_EXPRESSION_GROUP_END, // )
     MATTE_TOKEN_ASSIGNMENT,
@@ -307,6 +322,18 @@ uint8_t * matte_compiler_run(
         MATTE_TOKEN_LITERAL_STRING, MATTE_STR_CAST("String Literal"),
         MATTE_TOKEN_LITERAL_BOOLEAN, MATTE_STR_CAST("Boolean Literal"),
         MATTE_TOKEN_LITERAL_EMPTY, MATTE_STR_CAST("Empty Literal"),
+        MATTE_TOKEN_EXTERNAL_NOOP, MATTE_STR_CAST("no-op built-in"),
+        MATTE_TOKEN_EXTERNAL_GATE, MATTE_STR_CAST("Gate built-in"),
+        MATTE_TOKEN_EXTERNAL_WHILE, MATTE_STR_CAST("While built-in"),
+        MATTE_TOKEN_EXTERNAL_FOR, MATTE_STR_CAST("For built-in"),
+        MATTE_TOKEN_EXTERNAL_FOREACH, MATTE_STR_CAST("Foreach built-in"),
+        MATTE_TOKEN_EXTERNAL_MATCH, MATTE_STR_CAST("Match built-in"),
+        MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION, MATTE_STR_CAST("Get External Function built-in"),
+        MATTE_TOKEN_EXTERNAL_IMPORT, MATTE_STR_CAST("Import built-in"),
+        MATTE_TOKEN_EXTERNAL_TOSTRING, MATTE_STR_CAST("String cast built-in"),
+        MATTE_TOKEN_EXTERNAL_TONUMBER, MATTE_STR_CAST("Number cast built-in"),
+        MATTE_TOKEN_EXTERNAL_TOBOOLEAN, MATTE_STR_CAST("Boolean cast built-in"),
+        MATTE_TOKEN_EXTERNAL_TYPENAME, MATTE_STR_CAST("Typename built-in"),
         MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, MATTE_STR_CAST("Expression '('"),
         MATTE_TOKEN_EXPRESSION_GROUP_END, MATTE_STR_CAST("Expression ')'"),
         MATTE_TOKEN_ASSIGNMENT, MATTE_STR_CAST("Assignment Operator '='"),
@@ -355,6 +382,20 @@ uint8_t * matte_compiler_run(
             MATTE_TOKEN_LITERAL_NUMBER,
             MATTE_TOKEN_LITERAL_EMPTY,
             MATTE_TOKEN_LITERAL_STRING,
+
+            MATTE_TOKEN_EXTERNAL_NOOP,
+            MATTE_TOKEN_EXTERNAL_GATE,
+            MATTE_TOKEN_EXTERNAL_WHILE,
+            MATTE_TOKEN_EXTERNAL_FOR,
+            MATTE_TOKEN_EXTERNAL_FOREACH,
+            MATTE_TOKEN_EXTERNAL_MATCH,
+            MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
+            MATTE_TOKEN_EXTERNAL_IMPORT,
+            MATTE_TOKEN_EXTERNAL_TOSTRING,
+            MATTE_TOKEN_EXTERNAL_TONUMBER,
+            MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
+            MATTE_TOKEN_EXTERNAL_TYPENAME,
+
             0
         ),
         matte_syntax_graph_node_end(),
@@ -1185,6 +1226,55 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       }
       case MATTE_TOKEN_LITERAL_EMPTY: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "empty");
+        break;
+      }
+
+      case MATTE_TOKEN_EXTERNAL_NOOP: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "noop");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_GATE: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "gate");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_WHILE: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "while");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_FOR: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "for");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_FOREACH: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "foreach");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_MATCH: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "match");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "getExternalFunction");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_IMPORT: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "import");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TOSTRING: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "String");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TONUMBER: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Number");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TOBOOLEAN: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Boolean");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TYPENAME: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "type");
         break;
       }
 

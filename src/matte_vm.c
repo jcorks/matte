@@ -39,6 +39,9 @@ struct matteVM_t {
     // string -> id into externalFunctionIndex;
     matteTable_t * externalFunctions;
     matteArray_t * externalFunctionIndex;
+
+    // symbolic stubs for all the ext calls.
+    matteBytecodeStub_t * extStubs[MATTE_EXT_CALL_TYPENAME+1];
 };
 
 
@@ -141,52 +144,7 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
     }
 }
 
-static matteValue_t vm_ext_call_4(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b, matteValue_t c, matteValue_t d) {
-    switch(call) {
-      case MATTE_EXT_CALL_FOR4: return vm_ext_call__for4(vm, a, b, c, d);
 
-      default:
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
-        return matte_heap_new_value(vm->heap);      
-    }
-
-}
-
-static matteValue_t vm_ext_call_3(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b, matteValue_t c) {
-    switch(call) {
-      case MATTE_EXT_CALL_GATE: return vm_ext_call__gate(vm, a, b, c);
-      case MATTE_EXT_CALL_FOR3: return vm_ext_call__for3(vm, a, b, c);
-
-      default:
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
-        return matte_heap_new_value(vm->heap);      
-    }
-
-}
-
-static matteValue_t vm_ext_call_2(matteVM_t * vm, uint64_t call, matteValue_t a, matteValue_t b) {
-    switch(call) {
-      case MATTE_EXT_CALL_WHILE:   return vm_ext_call__while  (vm, a, b);
-      case MATTE_EXT_CALL_FOREACH: return vm_ext_call__foreach(vm, a, b);
-      default:
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
-        return matte_heap_new_value(vm->heap);
-      
-    }
-}
-
-static matteValue_t vm_ext_call_1(matteVM_t * vm, uint64_t call, matteValue_t a) {
-    switch(call) {
-      case MATTE_EXT_CALL_TONUMBER:   return vm_ext_call__tonumber(vm, a);
-      case MATTE_EXT_CALL_TOSTRING:   return vm_ext_call__tostring(vm, a);
-      case MATTE_EXT_CALL_TOBOOLEAN:  return vm_ext_call__toboolean(vm, a);
-      case MATTE_EXT_CALL_TYPENAME:   return vm_ext_call__typename(vm, a);
-      default:
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled EXT operation"));                        
-        return matte_heap_new_value(vm->heap);
-      
-    }
-}
 
 
 
@@ -463,79 +421,19 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
           case MATTE_OPCODE_EXT: {
             uint64_t call = *(uint64_t*)inst->data;
-            switch(call) {
-              case MATTE_EXT_CALL_NOOP: break;
-
-              case MATTE_EXT_CALL_TONUMBER:
-              case MATTE_EXT_CALL_TOSTRING:
-              case MATTE_EXT_CALL_TOBOOLEAN:
-              case MATTE_EXT_CALL_TYPENAME: {
-                if (STACK_SIZE() < 1) {
-                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 1 arguments."));                
-                } else {
-                    matteValue_t a = STACK_POP();
-                    matteValue_t v = vm_ext_call_1(vm, call, a);
-                    matte_heap_recycle(a);
-                    STACK_PUSH(v); // already refd
-                }
-                break;
-              }
-              
-
-              case MATTE_EXT_CALL_FOREACH:
-              case MATTE_EXT_CALL_WHILE: {
-                if (STACK_SIZE() < 2) {
-                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 2 arguments."));                
-                } else {
-                    matteValue_t a = STACK_POP();
-                    matteValue_t b = STACK_POP();
-                    matteValue_t v = vm_ext_call_2(vm, call, a, b);
-                    matte_heap_recycle(a);
-                    matte_heap_recycle(b);
-                    STACK_PUSH(v); // already refd
-                }
-                break;
-              }
-              case MATTE_EXT_CALL_FOR3:
-              case MATTE_EXT_CALL_GATE: {
-                if (STACK_SIZE() < 3) {
-                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 3 arguments."));                
-                } else {
-                    matteValue_t a = STACK_POP();
-                    matteValue_t b = STACK_POP();
-                    matteValue_t c = STACK_POP();
-                    matteValue_t v = vm_ext_call_3(vm, call, a, b, c);
-                    matte_heap_recycle(a);
-                    matte_heap_recycle(b);
-                    matte_heap_recycle(c);
-                    STACK_PUSH(v); // already refd
-                }
-                break;
-              }
-
-              case MATTE_EXT_CALL_FOR4: {
-                if (STACK_SIZE() < 4) {
-                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: operation requires 4 arguments."));                
-                } else {
-                    matteValue_t a = STACK_POP();
-                    matteValue_t b = STACK_POP();
-                    matteValue_t c = STACK_POP();
-                    matteValue_t d = STACK_POP();
-                    matteValue_t v = vm_ext_call_4(vm, call, a, b, c, d);
-                    matte_heap_recycle(a);
-                    matte_heap_recycle(b);
-                    matte_heap_recycle(c);
-                    matte_heap_recycle(d);
-                    STACK_PUSH(v); // already refd
-                }
-                break;
-              }
-
-
-              default:;
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: unknown EXT command"));                
-                
+            if (call >= matte_array_get_size(vm->externalFunctionIndex)) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: unknown external call."));                
+                break;        
             }
+            matteBytecodeStub_t * stub = vm->extStubs[call];
+            if (stub == NULL) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("EXT opcode data referenced non-existent stub (either parser error OR bytecode was reused erroneously)"));
+                break;
+            }
+
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            matte_value_into_new_function_ref(&v, stub);
+            STACK_PUSH(v);
             break;
           }
           case MATTE_OPCODE_RET: {
@@ -674,6 +572,26 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 }
 
 
+static matteBytecodeStub_t * make_ext_stub(matteExtCall_t ext) {
+    typedef struct {
+        uint32_t fileID;
+        uint32_t stubID;
+    } FakeID;
+    FakeID id = {
+        0, ext
+    };
+    matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+        (uint8_t*)&id, 
+        sizeof(FakeID)
+    );
+    
+    matteBytecodeStub_t * out = matte_array_at(stubs, matteBytecodeStub_t *, 0);
+
+    matte_array_destroy(stubs);
+    return out;
+
+}
+
 matteVM_t * matte_vm_create() {
     matteVM_t * vm = calloc(1, sizeof(matteVM_t));
     vm->stubs = matte_array_create(sizeof(matteBytecodeStub_t*));
@@ -684,6 +602,86 @@ matteVM_t * matte_vm_create() {
     vm->externalFunctionIndex = matte_array_create(sizeof(ExternalFunctionSet_t));
     vm->heap = matte_heap_create(vm);
     vm->errors = matte_array_create(sizeof(matteValue_t));
+
+    // add built in functions
+    ExternalFunctionSet_t * set;    
+    matte_array_set_size(vm->externalFunctionIndex, MATTE_EXT_CALL_TYPENAME);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_NOOP);
+    set->userFunction = vm_ext_call__noop;
+    set->userData = NULL;
+    set->nArgs = 0;
+    vm->extStubs[MATTE_EXT_CALL_NOOP] = make_ext_stub(MATTE_EXT_CALL_NOOP);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_GATE);
+    set->userFunction = vm_ext_call__gate;
+    set->userData = NULL;
+    set->nArgs = 3;
+    vm->extStubs[MATTE_EXT_CALL_GATE] = make_ext_stub(MATTE_EXT_CALL_GATE);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_WHILE);
+    set->userFunction = vm_ext_call__while;
+    set->userData = NULL;
+    set->nArgs = 2;
+    vm->extStubs[MATTE_EXT_CALL_WHILE] = make_ext_stub(MATTE_EXT_CALL_WHILE);
+
+
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_FOR);
+    set->userFunction = vm_ext_call__for;
+    set->userData = NULL;
+    set->nArgs = 4;
+    vm->extStubs[MATTE_EXT_CALL_FOR] = make_ext_stub(MATTE_EXT_CALL_FOR);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_FOREACH);
+    set->userFunction = vm_ext_call__foreach;
+    set->userData = NULL;
+    set->nArgs = 2;
+    vm->extStubs[MATTE_EXT_CALL_FOREACH] = make_ext_stub(MATTE_EXT_CALL_FOREACH);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_MATCH);
+    set->userFunction = vm_ext_call__match;
+    set->userData = NULL;
+    set->nArgs = 2;
+    vm->extStubs[MATTE_EXT_CALL_MATCH] = make_ext_stub(MATTE_EXT_CALL_MATCH);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_IMPORT);
+    set->userFunction = vm_ext_call__import;
+    set->userData = NULL;
+    set->nArgs = 2;
+    vm->extStubs[MATTE_EXT_CALL_IMPORT] = make_ext_stub(MATTE_EXT_CALL_IMPORT);
+
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_TOBOOLEAN);
+    set->userFunction = vm_ext_call__toboolean;
+    set->userData = NULL;
+    set->nArgs = 1;
+    vm->extStubs[MATTE_EXT_CALL_TOBOOLEAN] = make_ext_stub(MATTE_EXT_CALL_TOBOOLEAN);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_TOSTRING);
+    set->userFunction = vm_ext_call__tostring;
+    set->userData = NULL;
+    set->nArgs = 1;
+    vm->extStubs[MATTE_EXT_CALL_TOSTRING] = make_ext_stub(MATTE_EXT_CALL_TOSTRING);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_TONUMBER);
+    set->userFunction = vm_ext_call__tonumber;
+    set->userData = NULL;
+    set->nArgs = 1;
+    vm->extStubs[MATTE_EXT_CALL_TONUMBER] = make_ext_stub(MATTE_EXT_CALL_TONUMBER);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_TYPENAME);
+    set->userFunction = vm_ext_call__typename;
+    set->userData = NULL;
+    set->nArgs = 1;
+    vm->extStubs[MATTE_EXT_CALL_TYPENAME] = make_ext_stub(MATTE_EXT_CALL_TYPENAME);
+
+    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, MATTE_EXT_CALL_GETEXTERNALFUNCTION);
+    set->userFunction = vm_ext_call__getexternalfunction;
+    set->userData = NULL;
+    set->nArgs = 1;
+    vm->extStubs[MATTE_EXT_CALL_GETEXTERNALFUNCTION] = make_ext_stub(MATTE_EXT_CALL_GETEXTERNALFUNCTION);
+
     return vm;
 }
 

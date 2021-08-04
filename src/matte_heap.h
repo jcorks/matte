@@ -67,7 +67,6 @@ matteValue_t * matte_value_object_array_at_unsafe(matteValue_t v, uint32_t index
 // 
 void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);
 
-
 matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t);
 
 // Gets all captured values by the function. If not a function, returns NULL
