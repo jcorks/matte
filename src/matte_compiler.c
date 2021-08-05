@@ -132,7 +132,7 @@ int matte_tokenizer_peek_next(matteTokenizer_t *);
 matteToken_t * matte_tokenizer_next(matteTokenizer_t *, matteTokenType_t);
 
 // Returns whether the tokenizer has reached the end of the inout text.
-int matte_tokenizer_is_end(const matteTokenizer_t *);
+int matte_tokenizer_is_end(matteTokenizer_t *);
 
 // prints a token to stdout
 void matte_token_print(matteToken_t * t);
@@ -290,17 +290,7 @@ static void * matte_function_block_array_to_bytecode(
     uint32_t fileID
 );
 
-
-
-uint8_t * matte_compiler_run(
-    const uint8_t * source, 
-    uint32_t len,
-    uint32_t * size,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
-    uint32_t fileID
-) {
-    matteTokenizer_t * w = matte_tokenizer_create(source, len);
-    matteSyntaxGraph_t * st = matte_syntax_graph_create(w, fileID, onError);
+static void generate_graph(matteSyntaxGraph_t * st) {
     matte_syntax_graph_register_constructs(
         st,
         MATTE_SYNTAX_CONSTRUCT_EXPRESSION, MATTE_STR_CAST("Expression"),
@@ -366,6 +356,8 @@ uint8_t * matte_compiler_run(
         MATTE_TOKEN_RETURN, MATTE_STR_CAST("'return' Statement"),
 
         MATTE_TOKEN_STATEMENT_END, MATTE_STR_CAST("Statement End ';'"),
+        MATTE_TOKEN_MARKER_EXPRESSION_END, MATTE_STR_CAST("[marker]"),
+
         NULL
     );
 
@@ -446,7 +438,7 @@ uint8_t * matte_compiler_run(
                 matte_syntax_graph_node_end(),
                 NULL,
                 matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_SEPARATOR),
-                matte_syntax_graph_node_to_parent(3), // back to arg expression
+                matte_syntax_graph_node_to_parent(4), // back to arg expression
                 NULL,
                 NULL
             ),
@@ -605,7 +597,7 @@ uint8_t * matte_compiler_run(
                     matte_syntax_graph_node_end(),
                     NULL,
                     matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_STATIC_SEPARATOR),
-                    matte_syntax_graph_node_to_parent(6),
+                    matte_syntax_graph_node_to_parent(7),
                     NULL,
                     NULL
                 ),
@@ -621,7 +613,7 @@ uint8_t * matte_compiler_run(
                     matte_syntax_graph_node_end(),
                     NULL,
                     matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_STATIC_SEPARATOR),
-                    matte_syntax_graph_node_to_parent(7),
+                    matte_syntax_graph_node_to_parent(8),
                     NULL,
                     NULL
                 ),
@@ -771,6 +763,7 @@ uint8_t * matte_compiler_run(
         matte_syntax_graph_node_split(
             matte_syntax_graph_node_split(
                 matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_NEW_FUNCTION),
+                matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
                 matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
                 matte_syntax_graph_node_end(),
                 NULL,
@@ -808,6 +801,44 @@ uint8_t * matte_compiler_run(
         matte_syntax_graph_node_end(),
         NULL 
     );
+}
+
+
+void matte_compiler_tokenize(
+    const uint8_t * source, 
+    uint32_t len,
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
+    uint32_t fileID
+) {
+    matteTokenizer_t * w = matte_tokenizer_create(source, len);
+    matteSyntaxGraph_t * st = matte_syntax_graph_create(w, fileID, onError);
+    generate_graph(st);
+
+
+   
+    // use the text walker to generate an array of tokens for 
+    // the entire source. Basic case here allows you to 
+    // filter out any poorly formed contextual tokens
+    int success;
+    while((success = matte_syntax_graph_continue(st, MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT))) {
+        if (matte_tokenizer_is_end(w)) break;
+    }
+    if (!success) {
+        return;
+    }
+    matte_syntax_graph_print(st);
+}
+
+uint8_t * matte_compiler_run(
+    const uint8_t * source, 
+    uint32_t len,
+    uint32_t * size,
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
+    uint32_t fileID
+) {
+    matteTokenizer_t * w = matte_tokenizer_create(source, len);
+    matteSyntaxGraph_t * st = matte_syntax_graph_create(w, fileID, onError);
+    generate_graph(st);
 
 
    
@@ -822,7 +853,6 @@ uint8_t * matte_compiler_run(
         *size = 0;
         return NULL;
     }
-    matte_syntax_graph_print(st);
 
     // then walk through the tokens and group them together.
     // a majority of compilation errors will likely happen here, 
@@ -1111,7 +1141,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             }
         }
         double f;
-        if (sscanf(matte_string_get_c_str(out), "%f", &f) == 1) {
+        if (sscanf(matte_string_get_c_str(out), "%lf", &f) == 1) {
             t->character+=matte_string_get_length(out);
             t->backup = t->iter;
 
@@ -1351,6 +1381,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
 
           case '|':
+            t->character++;
+            t->backup = t->iter;
             c = utf8_next_char(&t->iter);
             switch(c) {
               case '|':
@@ -1365,8 +1397,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 break;
 
               default:
-                t->character++;
-                t->backup = t->iter;
+                t->iter = t->backup;
                 return new_token(
                     matte_string_create_from_c_str("|", c),
                     currentLine,
@@ -1378,10 +1409,12 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
 
           case '&':
+            t->character++;
+            t->backup = t->iter;
             c = utf8_next_char(&t->iter);
             switch(c) {
               case '&':
-                t->character+=2;
+                t->character++;
                 t->backup = t->iter;
                 return new_token(
                     matte_string_create_from_c_str("&%c", c),
@@ -1392,8 +1425,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 break;
 
               default:
-                t->character++;
-                t->backup = t->iter;
+                t->iter = t->backup;
                 return new_token(
                     matte_string_create_from_c_str("&", c),
                     currentLine,
@@ -1405,12 +1437,14 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
 
           case '<':
+            t->character++;
+            t->backup = t->iter;
             c = utf8_next_char(&t->iter);
             switch(c) {
               case '<':
               case '=':
               case '>':
-                t->character+=2;
+                t->character++;
                 t->backup = t->iter;
                 return new_token(
                     matte_string_create_from_c_str("<%c", c),
@@ -1421,8 +1455,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 break;
 
               default:
-                t->character++;
-                t->backup = t->iter;
+                t->iter = t->backup;
                 return new_token(
                     matte_string_create_from_c_str("<", c),
                     currentLine,
@@ -1434,11 +1467,13 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
 
           case '>':
+            t->character++;
+            t->backup = t->iter;
             c = utf8_next_char(&t->iter);
             switch(c) {
               case '>':
               case '=':
-                t->character+=2;
+                t->character++;
                 t->backup = t->iter;
                 return new_token(
                     matte_string_create_from_c_str(">%c", c),
@@ -1449,8 +1484,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 break;
 
               default:
-                t->character++;
-                t->backup = t->iter;
+                t->iter = t->backup;
                 return new_token(
                     matte_string_create_from_c_str(">", c),
                     currentLine,
@@ -1461,10 +1495,12 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             break;
 
           case '*':
+            t->character++;
+            t->backup = t->iter;
             c = utf8_next_char(&t->iter);
             switch(c) {
               case '*':
-                t->character+=2;
+                t->character++;
                 t->backup = t->iter;
                 return new_token(
                     matte_string_create_from_c_str("*%c", c),
@@ -1475,8 +1511,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 break;
 
               default:
-                t->character++;
-                t->backup = t->iter;
+                t->iter = t->backup;
                 return new_token(
                     matte_string_create_from_c_str("*", c),
                     currentLine,
@@ -1551,10 +1586,12 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
 
           case '-':
+            t->character++;
+            t->backup = t->iter;
             c = utf8_next_char(&t->iter);
             switch(c) {
               case '>':
-                t->character+=2;
+                t->character++;
                 t->backup = t->iter;
                 return new_token(
                     matte_string_create_from_c_str("-%c", c),
@@ -1565,8 +1602,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 break;
 
               default:
-                t->character++;
-                t->backup = t->iter;
+                t->iter = t->backup;
                 return new_token(
                     matte_string_create_from_c_str("-", c),
                     currentLine,
@@ -1746,7 +1782,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 }
 
 // Returns whether the tokenizer has reached the end of the inout text.
-int matte_tokenizer_is_end(const matteTokenizer_t * t){
+int matte_tokenizer_is_end(matteTokenizer_t * t){
+    tokenizer_strip(t);
     return t->iter[0] == 0;
 }
 
@@ -2684,6 +2721,7 @@ static matteArray_t * push_variable_name(
     );
     if (referrable != 0xffffffff) {
         write_instruction__prf(inst, iter->line, referrable);
+        *src = iter->next;
         return inst;
     } else {
         // first look through existing captures
@@ -2877,7 +2915,7 @@ struct matteExpressionNode_t {
     
     // 2-operand operator for this node and the next
     // -1 for none;
-    matteOperator_t postOp;
+    int postOp;
 
     // starts at 0 for a same-level expression
     int appearanceID;
@@ -2911,18 +2949,19 @@ static int op_to_precedence(int op) {
       case MATTE_OPERATOR_POINT: // -> 2 operands
         return 1;
 
-      case MATTE_OPERATOR_ADD:
-      case MATTE_OPERATOR_SUB:
-        return 2;
 
       case MATTE_OPERATOR_NOT:
       case MATTE_OPERATOR_BITWISE_NOT:
-        return 3;
+        return 2;
 
       case MATTE_OPERATOR_DIV:
       case MATTE_OPERATOR_MULT:
       case MATTE_OPERATOR_MODULO: // % 2 operands
-        return 4; 
+        return 3; 
+
+      case MATTE_OPERATOR_ADD:
+      case MATTE_OPERATOR_SUB:
+        return 4;
 
 
       case MATTE_OPERATOR_SHIFT_LEFT: // << 2 operands
@@ -3036,7 +3075,7 @@ static matteArray_t * compile_value(
 
       case MATTE_TOKEN_LITERAL_NUMBER: {
         double val = 0.0;
-        sscanf(matte_string_get_c_str(iter->text), "%f", &val);
+        sscanf(matte_string_get_c_str(iter->text), "%lf", &val);
         write_instruction__nnm(inst, iter->line, val);
         *src = iter->next;
         return inst;
@@ -3194,11 +3233,14 @@ static matteArray_t * compile_function_call(
         }
         merge_instructions(inst, exp); // push argument
         argCount++;
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_SEPARATOR)
+            iter = iter->next; // skip ,
     }
 
     
     write_instruction__cal(inst, iter->line, argCount);
     *src = iter->next; // skip )
+    return inst;
 
   L_FAIL:;
     matte_array_destroy(inst);
@@ -3227,6 +3269,7 @@ static matteArray_t * compile_expression(
         switch(iter->ttype) {
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
             matteToken_t * start = iter;
+            iter = iter->next;
             matteFunctionBlock_t * b = compile_function_block(g, b, functions, &iter);
             if (!b) {
                 goto L_FAIL;
@@ -3279,7 +3322,7 @@ static matteArray_t * compile_expression(
             break;
           }
         }
-
+        iter = iter->next;
     }
     
     iter = *src;
@@ -3312,7 +3355,11 @@ static matteArray_t * compile_expression(
         // and have computed arguments passed to it
         if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_BEGIN) {
             matteArray_t * funcInst = compile_function_call(g, block, functions, &iter);
-            merge_instructions(valueInst, funcInst);
+            if (funcInst) {
+                merge_instructions(valueInst, funcInst);
+            } else {
+                goto L_FAIL;
+            }
         }
 
 
@@ -3345,13 +3392,15 @@ static matteArray_t * compile_expression(
     uint32_t len = matte_array_get_size(nodes);
     for(i = 0; i < len; ++i) {
         matteExpressionNode_t * n = matte_array_at(nodes, matteExpressionNode_t *, i);
+
         // one operand always is applied before the 2op (post op)
         if (n->preOp > -1) {
             write_instruction__opr(n->value, n->line, n->preOp);
         }
+
         // for 2-operand instructions, the first node is merged with the second node by 
         // putting instructions to compute it in order. 
-        if (n->postOp) {
+        if (n->postOp > -1) {
             // [1] op [2] -> [1 2 op]
             merge_instructions(n->next->value, n->value);
             write_instruction__opr(n->next->value, n->next->line, n->postOp);
@@ -3459,6 +3508,15 @@ static int compile_statement(
             }
         }
 
+        uint32_t gl = get_local_referrable(g, block, iter);
+        if (gl != 0xffffffff) {
+            iter = iter->next;
+        } else {
+            // bad referrable
+            return -1;
+        }
+        
+
         // declaration only, no code
         if (iter->ttype == MATTE_TOKEN_STATEMENT_END) break;
         if (iter->ttype == MATTE_TOKEN_ASSIGNMENT) {
@@ -3470,13 +3528,9 @@ static int compile_statement(
             return -1;
         }
         merge_instructions(block->instructions, inst);
-        uint32_t gl = get_local_referrable(g, block, iter);
-        if (gl != 0xffffffff) {
-            write_instruction__arf(block->instructions, oln, gl);
-        } else {
-            // bad referrable
-            return -1;
-        }
+        write_instruction__arf(block->instructions, oln, gl);
+
+
         break;
       }
 
@@ -3602,6 +3656,7 @@ static matteFunctionBlock_t * compile_function_block(
     int status;
     do {
         status = compile_statement(g, b, functions, &iter);
+        if (!(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END)) break;
     } while(status == 1);
 
     if (status == -1) {
@@ -3609,7 +3664,12 @@ static matteFunctionBlock_t * compile_function_block(
         goto L_FAIL;
     }
 
-
+    // for every except stubID == 0, there should be an end brace here. Consume it.
+    if (iter && iter->ttype == MATTE_TOKEN_FUNCTION_END) {
+        *src = iter->next;
+    } else {
+        *src = iter;
+    }
 
     return b;
   L_FAIL:
@@ -3648,6 +3708,7 @@ void * matte_function_block_array_to_bytecode(
     uint32_t * size, 
     uint32_t fileID
 ) {
+    *size = 0;
     matteArray_t * byteout = matte_array_create(sizeof(uint8_t));
     uint32_t i;
     uint32_t len = matte_array_get_size(arr);
@@ -3683,8 +3744,9 @@ void * matte_function_block_array_to_bytecode(
     }
 
 
-    uint8_t * out = malloc(matte_array_get_size(byteout));
-    memcpy(out, matte_array_get_data(byteout), matte_array_get_size(byteout));
+    *size = matte_array_get_size(byteout);
+    uint8_t * out = malloc(*size);
+    memcpy(out, matte_array_get_data(byteout), *size);
 
     matte_array_destroy(byteout);
     return out;

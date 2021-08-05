@@ -45,5 +45,14 @@ int main(int argc, char ** args) {
 
     uint32_t byteLen;
     uint8_t * d = dump_bytes(args[1], &byteLen);
-    matte_compiler_run(d, byteLen, &byteLen, onError, 1);
+    uint8_t * output = matte_compiler_run(d, byteLen, &byteLen, onError, 1);
+
+    if (output && byteLen) {
+        FILE * f = fopen("a.out", "wb");
+        fwrite(output, 1, byteLen, f);
+        fclose(f);
+    } else {
+        printf("Compilation failed. No file written.\n");
+    }
+    return 0;
 }

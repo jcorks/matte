@@ -1,4 +1,4 @@
-#include "../../src/matte_opcode.h"
+#include "../src/matte_opcode.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -258,10 +258,12 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                 oc2 == 'l'
             ) {
                 inst->opcode = MATTE_OPCODE_NBL;
-                if (sscanf(line, "%"SCNu32" nbl %d", &inst->line, inst->data[0]) != 2) {
+                int val;
+                if (sscanf(line, "%"SCNu32" nbl %d", &inst->line, &val) != 2) {
                     printf("ERROR on line %d: unrecognized nbl format. Syntax: [line] nnm [1 or 0]\n", lineN);
                     exit(1);
                 }   
+                inst->data[0] = val;
             } else if (
                 oc0 == 'n' &&
                 oc1 == 's' &&
@@ -526,50 +528,49 @@ static const void function_to_stub(FILE * f, uint32_t id) {
     }
 }
 
-int main(int argc, char ** argv) {
-    if (argc != 3) {
-        printf("usage: m2bc [input Matte assembly] [output raw bytecode]\n");
-        return 0;
-    }
-
-    FILE * f = fopen(argv[1], "r");
-    out = fopen(argv[2], "wb"); 
-    if (!f) {
-        printf("Could not open input file %s\n", argv[1]);
-        return 1;
-    }
+void matte_assemble(char ** assemblyFiles, uint32_t n, const char * output) {
+    out = fopen(output, "wb"); 
     if (!out) {
-        printf("Could not open output file %s\n", argv[2]);
-        return 1;
+        printf("Could not open output file %s\n", output);
+        exit(1);
     }
 
 
-
-    while(next_line(f)) {
-        // comment
-        if (line[0] == 0) continue; // empty
-        if (!strncmp(line, "fileid", strlen("fileid"))) {
-            if (sscanf(line, "fileid %"SCNu32"", &fileid) != 1) {
-                printf("ERROR on line %d: fileid needs number unsigned 16bit number if\n", lineN);
-                exit(1);
-            }
-        } else if (!strncmp(line, "function", strlen("function"))) {
-            uint32_t substubid;
-            if (sscanf(line, "function %"SCNu32"", &substubid) != 1) {
-                printf("ERROR on line %d: function needs unsigned 16bit number id\n", lineN);
-                exit(1);
-            }
-            function_to_stub(f, substubid);
-        } else {
-            printf("ERROR on line %d: parse error (not in function, and no function present?)\n", lineN);
+    uint32_t i;
+    for(i = 0; i < n; ++i) {
+        FILE * f = fopen(assemblyFiles[i], "r");
+        if (!f) {
+            printf("Could not open input file %s\n", assemblyFiles[i]);
             exit(1);
-
         }
+
+
+
+        while(next_line(f)) {
+            // comment
+            if (line[0] == 0) continue; // empty
+            if (!strncmp(line, "fileid", strlen("fileid"))) {
+                if (sscanf(line, "fileid %"SCNu32"", &fileid) != 1) {
+                    printf("ERROR on line %d: fileid needs number unsigned 16bit number if\n", lineN);
+                    exit(1);
+                }
+            } else if (!strncmp(line, "function", strlen("function"))) {
+                uint32_t substubid;
+                if (sscanf(line, "function %"SCNu32"", &substubid) != 1) {
+                    printf("ERROR on line %d: function needs unsigned 16bit number id\n", lineN);
+                    exit(1);
+                }
+                function_to_stub(f, substubid);
+            } else {
+                printf("ERROR on line %d: parse error (not in function, and no function present?)\n", lineN);
+                exit(1);
+
+            }
+        }
+
+        fclose(f);
     }
-
     fclose(out);
-    fclose(f);
-
 
 
 }
