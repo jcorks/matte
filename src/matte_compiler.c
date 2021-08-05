@@ -3723,15 +3723,16 @@ void * matte_function_block_array_to_bytecode(
         matteFunctionBlock_t * block = matte_array_at(arr, matteFunctionBlock_t *, i);
         WRITE_BYTES(uint32_t, fileID);
         WRITE_BYTES(uint32_t, block->stubID);
-        nSlots = matte_array_get_size(block->locals);
-        WRITE_BYTES(uint8_t, nSlots);
-        for(n = 0; n < nSlots; ++n) {
-            write_unistring(byteout, matte_array_at(block->locals, matteString_t *, n));
-        }
         nSlots = matte_array_get_size(block->args);
         WRITE_BYTES(uint8_t, nSlots);
         for(n = 0; n < nSlots; ++n) {
             write_unistring(byteout, matte_array_at(block->args, matteString_t *, n));
+        }
+
+        nSlots = matte_array_get_size(block->locals);
+        WRITE_BYTES(uint8_t, nSlots);
+        for(n = 0; n < nSlots; ++n) {
+            write_unistring(byteout, matte_array_at(block->locals, matteString_t *, n));
         }
 
         nCaps = matte_array_get_size(block->captures);
