@@ -358,6 +358,12 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                 inst->opcode = MATTE_OPCODE_OSN;
             } else if (
                 oc0 == 'o' &&
+                oc1 == 'l' &&
+                oc2 == 'k'
+            ) {
+                inst->opcode = MATTE_OPCODE_OLK;
+            } else if (
+                oc0 == 'o' &&
                 oc1 == 'p' &&
                 oc2 == 'r'
             ) {

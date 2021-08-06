@@ -33,6 +33,8 @@ typedef enum {
     MATTE_OPCODE_ARF,
     // assign object member
     MATTE_OPCODE_OSN,
+    // lookup member
+    MATTE_OPCODE_OLK,
 
     // general purpose operator code.
     MATTE_OPCODE_OPR,

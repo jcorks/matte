@@ -150,8 +150,13 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 break;            
 
             case MATTE_OPCODE_OSN:
-                fprintf(fout, "nso\n");
+                fprintf(fout, "osn\n");
                 break;            
+
+            case MATTE_OPCODE_OLK:
+                fprintf(fout, "olk\n");
+                break;            
+
                 
             case MATTE_OPCODE_OPR:
                 fprintf(fout, "opr ");

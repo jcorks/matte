@@ -9,6 +9,7 @@ struct matte_t {
 matte_t * matte_create() {
     matte_t * m = calloc(1, sizeof(matte_t));
     m->vm = matte_vm_create();
+    return m;
 }
 
 

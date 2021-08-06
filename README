@@ -286,7 +286,15 @@ Assign Object Member (OSN)
         - one value for key
         - one value for new value 
     pushes:
-        - the target
+        - the new value
+    
+Assign Object Member (OLK)
+    args:
+    pops:
+        - one value for key (top)
+        - one value for target 
+    pushes:
+        - the lookup value
     
 
 Operator (OPR)

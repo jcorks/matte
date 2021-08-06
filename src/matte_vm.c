@@ -166,6 +166,7 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_CAL: return "CAL";
       case MATTE_OPCODE_ARF: return "ARF";
       case MATTE_OPCODE_OSN: return "OSN";
+      case MATTE_OPCODE_OLK: return "OLK";
       case MATTE_OPCODE_OPR: return "OPR";
       case MATTE_OPCODE_EXT: return "EXT";
       case MATTE_OPCODE_POP: return "POP";
@@ -193,6 +194,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         inst = program+frame->pc++;
         #ifdef MATTE_DEBUG
             printf("CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", vm->stacksize, frame->pc, opcode_to_str(inst->opcode), matte_array_get_size(frame->valueStack));
+            fflush(stdout);
         #endif
 
         switch(inst->opcode) {
@@ -249,7 +251,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 if (i < len)
                     if (vals[1] != 0) matte_string_append_char(str, vals[1]);
 
-                if (frame->pc < instCount)
+                if (frame->pc < instCount && i < len-1)
                     inst = program+(frame->pc++);
             }
 
@@ -316,7 +318,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_NSO: {
             uint32_t len;
             memcpy(&len, inst->data, 4);
-            if (STACK_SIZE()*2 < len) {
+            if (STACK_SIZE() < len*2) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("Static object cannot be created. (insufficient stack size)"));
                 break;
             }
@@ -325,12 +327,12 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t i;
             matteArray_t * args = matte_array_create(sizeof(matteValue_t));
 
-            matteValue_t t;
+            matteValue_t va, ke;
             for(i = 0; i < len; ++i) {
-                t = STACK_POP();
-                matte_array_push(args, t);  
-                t = STACK_POP();
-                matte_array_push(args, t);  
+                va = STACK_POP();
+                ke = STACK_POP();
+                matte_array_push(args, ke);  
+                matte_array_push(args, va);  
             }
 
             matte_value_into_new_object_literal_ref(&v, args);
@@ -414,10 +416,27 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matte_value_object_set(object, key, val);
             
             matte_heap_recycle(key);
-            matte_heap_recycle(val);            
-            STACK_PUSH(object); // dont recycle since back in stack
+            matte_heap_recycle(object);            
+            STACK_PUSH(val); // dont recycle since back in stack
             break;
           }    
+
+          case MATTE_OPCODE_OLK: {
+            if (STACK_SIZE() < 2) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: OLK opcode requires 2 on the stack."));                
+                break;        
+            }
+            matteValue_t key = STACK_POP();
+            matteValue_t object = STACK_POP();
+            
+            matteValue_t output = matte_value_object_access(object, key);
+            
+            matte_heap_recycle(key);
+            matte_heap_recycle(object);            
+            STACK_PUSH(output);
+            break;
+          }    
+
 
           case MATTE_OPCODE_EXT: {
             uint64_t call = *(uint64_t*)inst->data;

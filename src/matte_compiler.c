@@ -368,31 +368,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
     ///////////////
     ///////////////
 
-    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Literal Value"), MATTE_SYNTAX_CONSTRUCT_VALUE,
-        matte_syntax_graph_node_token_group(
-            MATTE_TOKEN_LITERAL_BOOLEAN,
-            MATTE_TOKEN_LITERAL_NUMBER,
-            MATTE_TOKEN_LITERAL_EMPTY,
-            MATTE_TOKEN_LITERAL_STRING,
 
-            MATTE_TOKEN_EXTERNAL_NOOP,
-            MATTE_TOKEN_EXTERNAL_GATE,
-            MATTE_TOKEN_EXTERNAL_WHILE,
-            MATTE_TOKEN_EXTERNAL_FOR,
-            MATTE_TOKEN_EXTERNAL_FOREACH,
-            MATTE_TOKEN_EXTERNAL_MATCH,
-            MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
-            MATTE_TOKEN_EXTERNAL_IMPORT,
-            MATTE_TOKEN_EXTERNAL_TOSTRING,
-            MATTE_TOKEN_EXTERNAL_TONUMBER,
-            MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
-            MATTE_TOKEN_EXTERNAL_TYPENAME,
-
-            0
-        ),
-        matte_syntax_graph_node_end(),
-        NULL
-    ); 
 
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Variable"), MATTE_SYNTAX_CONSTRUCT_VALUE,
         matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
@@ -465,20 +441,28 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         NULL
     );
 
-    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Dot Accessor"), MATTE_SYNTAX_CONSTRUCT_POSTFIX,
+    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Dot Accessor + Assignment"), MATTE_SYNTAX_CONSTRUCT_POSTFIX,
         matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_ACCESSOR_DOT),
         matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
-        matte_syntax_graph_node_end(),    
+        matte_syntax_graph_node_split(
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_POSTFIX),
+            matte_syntax_graph_node_to_parent(2),    
+            NULL,
+
+            matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_end(),    
+            NULL,
+
+            matte_syntax_graph_node_end(),    
+            NULL,
+
+            NULL
+        ),
         NULL
     );
 
 
-    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Assignment"), MATTE_SYNTAX_CONSTRUCT_POSTFIX,
-        matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-        matte_syntax_graph_node_end(),    
-        NULL
-    );
 
 
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Function Call"), MATTE_SYNTAX_CONSTRUCT_POSTFIX,
@@ -533,6 +517,70 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         ),
         NULL 
     );
+
+    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Literal Value"), MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
+        matte_syntax_graph_node_token_group(
+            MATTE_TOKEN_LITERAL_BOOLEAN,
+            MATTE_TOKEN_LITERAL_NUMBER,
+            MATTE_TOKEN_LITERAL_EMPTY,
+            MATTE_TOKEN_LITERAL_STRING,
+
+            MATTE_TOKEN_EXTERNAL_NOOP,
+            MATTE_TOKEN_EXTERNAL_GATE,
+            MATTE_TOKEN_EXTERNAL_WHILE,
+            MATTE_TOKEN_EXTERNAL_FOR,
+            MATTE_TOKEN_EXTERNAL_FOREACH,
+            MATTE_TOKEN_EXTERNAL_MATCH,
+            MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
+            MATTE_TOKEN_EXTERNAL_IMPORT,
+            MATTE_TOKEN_EXTERNAL_TOSTRING,
+            MATTE_TOKEN_EXTERNAL_TONUMBER,
+            MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
+            MATTE_TOKEN_EXTERNAL_TYPENAME,
+
+            0
+        ),
+        matte_syntax_graph_node_split(
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_POSTFIX),
+            matte_syntax_graph_node_to_parent(2),    
+            NULL,
+
+            matte_syntax_graph_node_end(),    
+            NULL,
+
+            NULL
+        ),
+        NULL 
+    ); 
+
+    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Variable Access / Assignment"), MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
+        matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
+        matte_syntax_graph_node_split(
+
+            matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_end(),    
+            NULL,
+
+            matte_syntax_graph_node_split(
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_POSTFIX),
+                matte_syntax_graph_node_to_parent(2),    
+                NULL,
+
+                matte_syntax_graph_node_end(),    
+                NULL,
+
+                NULL
+            ),
+            NULL,
+            NULL
+
+        ),
+        NULL
+    );
+
+
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Simple Value"), MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
         matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_VALUE),
         matte_syntax_graph_node_split(
@@ -3058,7 +3106,7 @@ static void expression_node_sort(matteArray_t * nodes) {
 //
 // Returned is an array of instructions that, if run
 // push exactly one value on the stack 
-static matteArray_t * compile_value(
+static matteArray_t * compile_base_value(
     matteSyntaxGraph_t * g, 
     matteFunctionBlock_t * block,
     matteArray_t * functions, 
@@ -3138,10 +3186,11 @@ static matteArray_t * compile_value(
 
             // special case: variable name is treated like a string for convenience
             if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME &&
-                iter->next->ttype == MATTE_TOKEN_OBJECT_DEF_PROP) {
-
+                iter->next->next->ttype == MATTE_TOKEN_OBJECT_DEF_PROP) {
+                
                 write_instruction__nst_stc(inst, iter->line, iter->text);
                 iter = iter->next; // skip name
+                iter = iter->next; // skip marker
                 
 
 
@@ -3212,6 +3261,68 @@ static matteArray_t * compile_value(
     matte_array_destroy(inst);
     return NULL;               
 
+}
+
+static matteArray_t * compile_function_call(
+    matteSyntaxGraph_t * g, 
+    matteFunctionBlock_t * block,
+    matteArray_t * functions, 
+    matteToken_t ** src
+);
+static matteArray_t * compile_value(
+    matteSyntaxGraph_t * g, 
+    matteFunctionBlock_t * block,
+    matteArray_t * functions, 
+    matteToken_t ** src
+) {
+    matteArray_t * inst = compile_base_value(
+        g, 
+        block,
+        functions, 
+        src
+    );
+    matteToken_t * iter = *src;
+    if (!inst) return NULL;
+
+    // any value can have "special" postfix operations 
+    // applied to it repeatedly
+
+    for(;;) {
+        // any value can be computed to an object, which means 
+        // any value should syntactically allow for the dot accessor:
+        if (iter->ttype == MATTE_TOKEN_OBJECT_ACCESSOR_DOT) {            
+            iter = iter->next; // skip .
+            // if so, the next will be a variable name
+            if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
+                write_instruction__nst_stc(inst, iter->line, iter->text);
+                write_instruction__olk(inst, iter->line);
+                iter = iter->next;
+            } else {
+                matte_syntax_graph_print_compile_error(g, iter, "Dot accessor expects variable name-style member to access as a string.");
+                matte_array_destroy(inst);
+                return NULL;               
+            }
+
+        // function calls are kind of like special operators
+        // here, they use the compiled value above as the function object 
+        // and have computed arguments passed to it
+        } else if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_BEGIN) {
+            matteArray_t * funcInst = compile_function_call(g, block, functions, &iter);
+            if (funcInst) {
+                merge_instructions(inst, funcInst);
+            } else {
+                matte_array_destroy(inst);
+                return NULL;               
+            }
+        } //else if (square brackets accessor)
+
+        else {
+            // no more post ops
+            break;
+        }
+    }
+    *src = iter;
+    return inst;
 }
 
 
@@ -3350,17 +3461,9 @@ static matteArray_t * compile_expression(
             goto L_FAIL;
         }
 
-        // function calls are kind of like special operators
-        // here, they use the compiled value above as the function object 
-        // and have computed arguments passed to it
-        if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_BEGIN) {
-            matteArray_t * funcInst = compile_function_call(g, block, functions, &iter);
-            if (funcInst) {
-                merge_instructions(valueInst, funcInst);
-            } else {
-                goto L_FAIL;
-            }
-        }
+
+
+
 
 
         if (iter->ttype == MATTE_TOKEN_GENERAL_OPERATOR2) {
@@ -3487,10 +3590,12 @@ static int compile_statement(
             // error reporting handled by compile_expression
             return -1;            
         }
+        write_instruction__ret(ret, oln);
         
         merge_instructions(block->instructions, cond);
         write_instruction__skp_insert(block->instructions, oln, matte_array_get_size(ret));
         merge_instructions(block->instructions, ret);    
+
         iter = iter->next; // skip ;
         break;
       }
@@ -3500,13 +3605,6 @@ static int compile_statement(
       case MATTE_TOKEN_DECLARE: {
         uint32_t oln = iter->line;
         iter = iter->next; // declaration
-        if (varConst) {
-            if (iter->ttype != MATTE_TOKEN_ASSIGNMENT &&
-                iter->ttype != MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
-                matte_syntax_graph_print_compile_error(g, iter, "Constants must be explicitly set when declared.");
-                return -1;
-            }
-        }
 
         uint32_t gl = get_local_referrable(g, block, iter);
         if (gl != 0xffffffff) {
@@ -3515,7 +3613,14 @@ static int compile_statement(
             // bad referrable
             return -1;
         }
-        
+        if (varConst) {
+            if (iter->ttype != MATTE_TOKEN_ASSIGNMENT &&
+                iter->ttype != MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+                matte_syntax_graph_print_compile_error(g, iter, "Constants must be explicitly set when declared.");
+                return -1;
+            }
+        }
+
 
         // declaration only, no code
         if (iter->ttype == MATTE_TOKEN_STATEMENT_END) break;

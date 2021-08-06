@@ -58,6 +58,7 @@ static void write_instruction__nst_stc(matteArray_t * insts, uint32_t lineNumber
         memcpy(inst.data, &c, sizeof(uint32_t));
         i++;
         if (i < len) {
+            c = matte_string_get_char(str, i);
             memcpy(inst.data+sizeof(uint32_t), &c, sizeof(uint32_t));
         }
 
@@ -125,6 +126,14 @@ static void write_instruction__osn(matteArray_t * insts, uint32_t lineNumber) {
     inst.opcode = MATTE_OPCODE_OSN;
     matte_array_push(insts, inst);
 }
+
+static void write_instruction__olk(matteArray_t * insts, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_OLK;
+    matte_array_push(insts, inst);
+}
+
 
 static void write_instruction__opr(matteArray_t * insts, uint32_t lineNumber, int op) {
     matteBytecodeStubInstruction_t inst;

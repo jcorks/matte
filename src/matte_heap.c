@@ -301,7 +301,7 @@ void matte_value_into_new_object_literal_ref(matteValue_t * v, const matteArray_
     
     for(i = 0; i < len/2; ++i) {
         matteValue_t key   = matte_array_at(arr, matteValue_t, i);
-        matteValue_t value = matte_array_at(arr, matteValue_t, i);
+        matteValue_t value = matte_array_at(arr, matteValue_t, i+1);
         
         object_put_prop(d, key, value);
     }
