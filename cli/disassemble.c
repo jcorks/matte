@@ -229,8 +229,11 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                     case MATTE_EXT_CALL_TOBOOLEAN:
                         fprintf(fout, "toboolean\n");
                         break;
-                    case MATTE_EXT_CALL_TYPENAME:
-                        fprintf(fout, "typename\n");
+                    case MATTE_EXT_CALL_INTROSPECT:
+                        fprintf(fout, "introspect\n");
+                        break;
+                    case MATTE_EXT_CALL_PRINT:
+                        fprintf(fout, "print\n");
                         break;
 
                 }

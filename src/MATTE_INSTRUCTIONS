@@ -149,7 +149,7 @@ static void write_instruction__ext(matteArray_t * insts, uint32_t lineNumber, ma
     inst.lineNumber = lineNumber;
     inst.opcode = MATTE_OPCODE_EXT;
     uint64_t prop = ext;
-    memcpy(inst.data, &ext, sizeof(uint64_t));
+    memcpy(inst.data, &prop, sizeof(uint64_t));
     matte_array_push(insts, inst);
 }
 

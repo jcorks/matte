@@ -33,7 +33,8 @@ typedef enum {
     MATTE_TOKEN_EXTERNAL_TOSTRING,
     MATTE_TOKEN_EXTERNAL_TONUMBER,
     MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
-    MATTE_TOKEN_EXTERNAL_TYPENAME,
+    MATTE_TOKEN_EXTERNAL_INTROSPECT,
+    MATTE_TOKEN_EXTERNAL_PRINT,
 
 
     MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, // (
@@ -323,7 +324,8 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         MATTE_TOKEN_EXTERNAL_TOSTRING, MATTE_STR_CAST("String cast built-in"),
         MATTE_TOKEN_EXTERNAL_TONUMBER, MATTE_STR_CAST("Number cast built-in"),
         MATTE_TOKEN_EXTERNAL_TOBOOLEAN, MATTE_STR_CAST("Boolean cast built-in"),
-        MATTE_TOKEN_EXTERNAL_TYPENAME, MATTE_STR_CAST("Typename built-in"),
+        MATTE_TOKEN_EXTERNAL_INTROSPECT, MATTE_STR_CAST("Introspect built-in"),
+        MATTE_TOKEN_EXTERNAL_PRINT, MATTE_STR_CAST("Print built-in"),
         MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, MATTE_STR_CAST("Expression '('"),
         MATTE_TOKEN_EXPRESSION_GROUP_END, MATTE_STR_CAST("Expression ')'"),
         MATTE_TOKEN_ASSIGNMENT, MATTE_STR_CAST("Assignment Operator '='"),
@@ -528,15 +530,16 @@ static void generate_graph(matteSyntaxGraph_t * st) {
             MATTE_TOKEN_EXTERNAL_NOOP,
             MATTE_TOKEN_EXTERNAL_GATE,
             MATTE_TOKEN_EXTERNAL_WHILE,
-            MATTE_TOKEN_EXTERNAL_FOR,
             MATTE_TOKEN_EXTERNAL_FOREACH,
+            MATTE_TOKEN_EXTERNAL_FOR,
             MATTE_TOKEN_EXTERNAL_MATCH,
             MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
             MATTE_TOKEN_EXTERNAL_IMPORT,
             MATTE_TOKEN_EXTERNAL_TOSTRING,
             MATTE_TOKEN_EXTERNAL_TONUMBER,
             MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
-            MATTE_TOKEN_EXTERNAL_TYPENAME,
+            MATTE_TOKEN_EXTERNAL_INTROSPECT,
+            MATTE_TOKEN_EXTERNAL_PRINT,
 
             0
         ),
@@ -1351,11 +1354,14 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Boolean");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_TYPENAME: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "type");
+      case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "introspect");
         break;
       }
-
+      case MATTE_TOKEN_EXTERNAL_PRINT: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "print");
+        break;
+      }
       case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
         break;
@@ -2744,9 +2750,6 @@ static uint32_t get_local_referrable(
     //block = block->parent;
     //}
 
-    matteString_t * m = matte_string_create_from_c_str("Could not find local referrable of the given name '%s'", iter->text);
-    matte_syntax_graph_print_compile_error(g, iter, matte_string_get_c_str(m));
-    matte_string_destroy(m);
     return 0xffffffff;
 }
 
@@ -2795,15 +2798,15 @@ static matteArray_t * push_variable_name(
             for(i = 0; i < len; ++i) {
                 if (matte_string_test_eq(iter->text, matte_array_at(block->args, matteString_t *, i))) {
                     matteBytecodeStubCapture_t capture;
-                    capture.stubID = blockSrc->stubID;
+                    capture.stubID = block->stubID;
                     capture.referrable = i+1;
-                    matte_array_push(blockSrc->captures, capture);
                     write_instruction__prf(
                         inst, iter->line, 
                         1+matte_array_get_size(blockSrc->locals)+
                           matte_array_get_size(blockSrc->args) +
                           matte_array_get_size(blockSrc->captures)
                     );
+                    matte_array_push(blockSrc->captures, capture);
                     matteString_t * str = matte_string_clone(iter->text);
                     matte_array_push(blockSrc->captureNames, iter->text);
                     *src = iter->next;
@@ -2816,15 +2819,15 @@ static matteArray_t * push_variable_name(
             for(i = 0; i < len; ++i) {
                 if (matte_string_test_eq(iter->text, matte_array_at(block->locals, matteString_t *, i))) {
                     matteBytecodeStubCapture_t capture;
-                    capture.stubID = blockSrc->stubID;
+                    capture.stubID = block->stubID;
                     capture.referrable = i+offset;
-                    matte_array_push(blockSrc->captures, capture);
                     write_instruction__prf(
                         inst, iter->line, 
                         1+matte_array_get_size(blockSrc->locals)+
                           matte_array_get_size(blockSrc->args) +
                           matte_array_get_size(blockSrc->captures)
                     );
+                    matte_array_push(blockSrc->captures, capture);
                     matteString_t * str = matte_string_clone(iter->text);
                     matte_array_push(blockSrc->captureNames, iter->text);
                     *src = iter->next;
@@ -2837,7 +2840,7 @@ static matteArray_t * push_variable_name(
     }
 
 
-    matteString_t * m = matte_string_create_from_c_str("Undefined variable '%s'", iter->text);
+    matteString_t * m = matte_string_create_from_c_str("Undefined variable '%s'", matte_string_get_c_str(iter->text));
     matte_syntax_graph_print_compile_error(g, iter, matte_string_get_c_str(m));
     matte_string_destroy(m);
 
@@ -2989,6 +2992,9 @@ struct matteExpressionNode_t {
 //
 // Though.... i have a vague feeling that evil lurks here...
 // an old, inherent evil...
+    
+#define POST_OP_SYMBOLIC__ASSIGN_REFERRABLE 9001
+#define POST_OP_SYMBOLIC__ASSIGN_MEMBER     9002
 static int op_to_precedence(int op) {
     switch(op) {
       case MATTE_OPERATOR_POUND: // # 1 operand
@@ -3047,6 +3053,11 @@ static int op_to_precedence(int op) {
       case MATTE_OPERATOR_CARET: // ^ 2 operands
 
         return 13;
+
+
+      case POST_OP_SYMBOLIC__ASSIGN_MEMBER:
+      case POST_OP_SYMBOLIC__ASSIGN_REFERRABLE:
+        return 99;
     }
     return 999;
 }
@@ -3110,7 +3121,8 @@ static matteArray_t * compile_base_value(
     matteSyntaxGraph_t * g, 
     matteFunctionBlock_t * block,
     matteArray_t * functions, 
-    matteToken_t ** src
+    matteToken_t ** src,
+    int * lvalue
 ) {
     matteToken_t * iter = *src;
     matteArray_t * inst = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
@@ -3140,8 +3152,27 @@ static matteArray_t * compile_base_value(
         return inst;
       }
 
+
+      case MATTE_TOKEN_EXTERNAL_PRINT: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_PRINT);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_FOREACH: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_FOREACH);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_INTROSPECT);
+        *src = iter->next;
+        return inst;
+      }
+
+
       case MATTE_TOKEN_VARIABLE_NAME: {
         matte_array_destroy(inst);
+        *lvalue = 1;
         return push_variable_name(
             g, 
             block,
@@ -3273,13 +3304,16 @@ static matteArray_t * compile_value(
     matteSyntaxGraph_t * g, 
     matteFunctionBlock_t * block,
     matteArray_t * functions, 
-    matteToken_t ** src
+    matteToken_t ** src,
+    int * lvalue
 ) {
+    *lvalue = 0;
     matteArray_t * inst = compile_base_value(
         g, 
         block,
         functions, 
-        src
+        src,
+        lvalue
     );
     matteToken_t * iter = *src;
     if (!inst) return NULL;
@@ -3296,13 +3330,15 @@ static matteArray_t * compile_value(
             if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
                 write_instruction__nst_stc(inst, iter->line, iter->text);
                 write_instruction__olk(inst, iter->line);
+                *lvalue = 1;
                 iter = iter->next;
             } else {
                 matte_syntax_graph_print_compile_error(g, iter, "Dot accessor expects variable name-style member to access as a string.");
                 matte_array_destroy(inst);
                 return NULL;               
             }
-
+        // TODO HERE: []
+        
         // function calls are kind of like special operators
         // here, they use the compiled value above as the function object 
         // and have computed arguments passed to it
@@ -3381,7 +3417,7 @@ static matteArray_t * compile_expression(
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
             matteToken_t * start = iter;
             iter = iter->next;
-            matteFunctionBlock_t * b = compile_function_block(g, b, functions, &iter);
+            matteFunctionBlock_t * b = compile_function_block(g, block, functions, &iter);
             if (!b) {
                 goto L_FAIL;
             }
@@ -3437,10 +3473,14 @@ static matteArray_t * compile_expression(
     }
     
     iter = *src;
-    
+
+
+
     // the idea is that an expression is a series of compute nodes
     // whose order of computation depends on its preceding operator
     int appearanceID = 0;
+    int lvalue;
+    int vstartType;
     matteExpressionNode_t * prev = NULL;
     while(iter->ttype != MATTE_TOKEN_MARKER_EXPRESSION_END) {
         int preOp = -1;
@@ -3456,19 +3496,42 @@ static matteArray_t * compile_expression(
 
         // by this point, all complex sub-expressions would have been 
         // reduced, so now we can just work with raw values
-        matteArray_t * valueInst = compile_value(g, block, functions, &iter);
+        vstartType = iter->ttype;
+        matteArray_t * valueInst = compile_value(g, block, functions, &iter, &lvalue);
         if (!valueInst) {
             goto L_FAIL;
         }
 
-
-
-
-
-
         if (iter->ttype == MATTE_TOKEN_GENERAL_OPERATOR2) {
             // operator first
             postOp = string_to_operator(iter->text);
+            iter = iter->next;
+        } else if (iter->ttype == MATTE_TOKEN_ASSIGNMENT) {
+            if (!lvalue) {
+                matte_syntax_graph_print_compile_error(g, iter, "Assignment operator in expression requires writable value on left-hand side of the assignment.");
+                goto L_FAIL;
+            }
+            uint32_t size = matte_array_get_size(valueInst);
+            matteBytecodeStubInstruction_t undo = matte_array_at(valueInst, matteBytecodeStubInstruction_t, size-1);
+
+            // Heres the fun part: lvalues are either
+            // values that got reduced to a referrable OR an expression dot access OR a table lookup result.
+            if (vstartType == MATTE_TOKEN_VARIABLE_NAME) {
+                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE;                
+                #ifdef MATTE_DEBUG
+                    assert(undo.opcode == MATTE_OPCODE_PRF);
+                #endif
+            } else {
+                // for handling assignment for the dot access and the [] lookup, 
+                // the OLK instruction will be removed. This leaves both the 
+                // object AND the key on the stack (since OLK would normally consume both)
+                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE;
+                matte_array_set_size(valueInst, size-1);
+                #ifdef MATTE_DEBUG
+                    assert(undo.opcode == MATTE_OPCODE_OLK);
+                #endif
+            }
+
             iter = iter->next;
         }
         matteExpressionNode_t * exp = new_expression_node(
@@ -3504,9 +3567,31 @@ static matteArray_t * compile_expression(
         // for 2-operand instructions, the first node is merged with the second node by 
         // putting instructions to compute it in order. 
         if (n->postOp > -1) {
-            // [1] op [2] -> [1 2 op]
-            merge_instructions(n->next->value, n->value);
-            write_instruction__opr(n->next->value, n->next->line, n->postOp);
+            switch(n->postOp) {
+              case POST_OP_SYMBOLIC__ASSIGN_REFERRABLE: {
+                uint32_t instSize = matte_array_get_size(n->value);
+                matteBytecodeStubInstruction_t lastPRF = matte_array_at(n->value, matteBytecodeStubInstruction_t, instSize-1);
+                matte_array_set_size(n->value, instSize-1);
+                uint32_t referrable;
+                memcpy(&referrable, &lastPRF.data[0], sizeof(uint32_t));
+
+                #ifdef MATTE_DEBUG
+                    assert(lastPRF.opcode == MATTE_OPCODE_PRF);
+                #endif
+                merge_instructions(n->next->value, n->value);
+                write_instruction__arf(n->next->value, n->next->line, referrable);
+                break;
+              }
+              case POST_OP_SYMBOLIC__ASSIGN_MEMBER:
+                merge_instructions(n->next->value, n->value);
+                write_instruction__osn(n->next->value, n->next->line);
+                break;
+              default:
+                // [1] op [2] -> [1 2 op]
+                merge_instructions(n->next->value, n->value);
+                write_instruction__opr(n->next->value, n->next->line, n->postOp);
+
+            }
 
             // Remove all trances of n. Sorry!
             for(si = i+1; si < len; ++si) {
@@ -3568,9 +3653,15 @@ static int compile_statement(
             // error reporting handled by compile_expression
             return -1;
         }
-        // when computed, should leave one value on the stack
-        merge_instructions(block->instructions, inst);
-        write_instruction__ret(block->instructions, oln);
+        // empty return
+        if (matte_array_get_size(inst) == 0) {
+            write_instruction__nem(block->instructions, oln);
+            write_instruction__ret(block->instructions, oln);
+        } else {
+            // when computed, should leave one value on the stack
+            merge_instructions(block->instructions, inst);
+            write_instruction__ret(block->instructions, oln);
+        }
         iter = iter->next; // skip ;
         break;
       }
@@ -3610,7 +3701,9 @@ static int compile_statement(
         if (gl != 0xffffffff) {
             iter = iter->next;
         } else {
-            // bad referrable
+            matteString_t * m = matte_string_create_from_c_str("Could not find local referrable of the given name '%s'", matte_string_get_c_str(iter->text));
+            matte_syntax_graph_print_compile_error(g, iter, matte_string_get_c_str(m));
+            matte_string_destroy(m);
             return -1;
         }
         if (varConst) {

@@ -81,39 +81,35 @@ parsing primitives:
 
     
 // type primitives
-- ALL VALUES:
-    .string (string representation, calls toString())
-    .number (number representation, calls toNumber())
-    .boolean (boolean representation, calls toBoolean())
-
 - boolean
 - number
 - string    
 - object 
-    // returns whether object is callable
-    .isCallable()    
-    // returns an array of object keys 
-    .keys()
-    // returns an array of object values
-    .values()
-    .pairs()
-    // returns number of keys
-    .count 
+
     
     // function that acts has a handler for member access.
     // Always writable (is bypassed if writing to the "accessor" member)
     .accessor
     
-    // function that acts as a handler for member writing
+    // function that acts as a handler for member writing.
+    // By default, all assignments to object members is allowed. However,
+    // if an assigner is present and is a callable function, this function 
+    // is called on every assignment of a member before assignment occurs. This 
+    // allows usercode to intercept, and possibly deny, assignment in general.
+    // The function receives 3 arguments: the object itself, the key, and the value.
+    // If the function returns the boolean "false", then assignment does not 
+    // take place. If the function returns anything else, behavior continues 
+    // as though no assigner were present.
     .assigner 
     
+
     // given an object, defines a handler for when performing 
     // an operator and this object is the first operand.
     //
     
         @obj = {}
         obj.operator = {
-            '+' : <=(a, b) {
+            '+' : <-(a, b) {
                 return 100 + b;
             }
         }
@@ -131,14 +127,115 @@ parsing primitives:
 
 
     //
-    .operator()
+    .operator
     
     .finalizer (writable)
 
-    .toString  (writeable, return string)
-    .toNumber  (writeable, return number)
-    .toBoolean (writeable, return boolean)
-    
+// introspection
+Built in introspect function gives you additional information
+and functionality when desired:
+
+introspect(value)
+
+returns an inspection object. Each introspection object has the 
+following properties:
+
+{
+    // the bound value to this introspection object
+    value : value
+
+    // returns the type of the object as a string
+    type() : string 
+
+    // if type is "object", the following are useful,
+
+        // Returns a unique ID for this object
+        // returns empty if not an object.
+        objectID() : string
+
+        // returns a numbered list (array) of keys for this object 
+        // returns empty if not an object.
+        keys() : object
+
+        // returns a numbered list (array) of values for this object     
+        // returns empty if not an object.
+        values() : object
+
+        // returns a numbered list (array) of key-value pair arrays
+        // returns empty if not an object.
+        pairs() : object
+
+        // returns the object's number of key-value pairs 
+        size() : object
+
+        // returns whether the object only has numbered keys
+        isArray(): boolean
+
+        // returns whether the object is callable
+        isCallable(): boolean
+
+
+
+    // if type is "string" the following are useful 
+
+        // returns the number of characters in the string 
+        // Returns empty if not a string.
+        length() : number
+
+        // returns the character at the given index (0-indexed)
+        // Returns empty if not a string.
+        charAt(index): string
+
+        // returns the integer representation of the character at the given index.
+        // Returns empty if not a string.
+        charCodeAt(index): number
+
+
+    // if the type is "number" the following are useful 
+        // returns the number as an integer.
+        // return empty if not a number
+        floor(): number
+
+        // returns the number as an integer.
+        // return empty if not a number
+        ceil(): number
+
+
+        // Rounds the number
+        // return empty if not a number
+        round(): number
+
+        // Returns the radian form of the number assuming that the 
+        // source number is in degrees
+        toRadians(): number
+
+        // Returns the radian form of the number assuming that the 
+        // source number is in degrees
+        toDegrees(): number
+
+        // Returns the radian form of the number assuming that the 
+        // source number is in degrees
+        sin(): number
+
+        // Returns the radian form of the number assuming that the 
+        // source number is in degrees
+        cos(): number
+
+        // source number is in radians
+        tan(): number
+
+        abs(): number
+
+        // returns whether the number is NaN.
+        // return empty if not a number
+        isNaN(): boolean
+
+
+
+}
+
+
+
 // parsing goodies 
 
 - inline list 
@@ -396,3 +493,5 @@ Pop stack values (SKP)
     pops:
         - 1 value for boolean condition
     pushes:
+
+

@@ -149,7 +149,7 @@ void matte_vm_set_external_function(
     matteVM_t * vm, 
     matteString_t * identifier,
     uint8_t nArgs,
-    matteValue_t (*)(matteVM_t *, matteArray_t * args, void * userData),
+    matteValue_t (*)(matteVM_t *, matteValue_t fn, matteArray_t * args, void * userData),
     void * userData
 );
 

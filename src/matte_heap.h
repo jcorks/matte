@@ -101,7 +101,10 @@ matteValue_t matte_value_object_access(matteValue_t, matteValue_t key);
 // string object as a key.
 matteValue_t matte_value_object_access_string(matteValue_t, const matteString_t *);
 
-
+// If the value is an object, returns a new object with numbered 
+// keys pointing to the keys of the original objects. If not an object,
+// empty is returned
+matteValue_t matte_value_object_keys(matteValue_t);
 
 // attempts to run a VM call for each key-value pair within the object.
 // If object is not an object, no action is taken (and no error is raised.)

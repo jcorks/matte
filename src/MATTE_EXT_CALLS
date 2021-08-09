@@ -1,6 +1,6 @@
 
 
-static matteValue_t vm_ext_call__gate(matteVM_t * vm, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__gate(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     #ifdef MATTE_DEBUG
         assert(matte_array_get_size(args) == 3);
     #endif
@@ -22,7 +22,7 @@ static matteValue_t vm_ext_call__gate(matteVM_t * vm, matteArray_t * args, void 
 }
 
 
-static matteValue_t vm_ext_call__while(matteVM_t * vm, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__while(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     #ifdef MATTE_DEBUG
         assert(matte_array_get_size(args) == 3);
     #endif
@@ -43,7 +43,7 @@ static matteValue_t vm_ext_call__while(matteVM_t * vm, matteArray_t * args, void
 
 
 
-static matteValue_t vm_ext_call__for(matteVM_t * vm, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__for(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     #ifdef MATTE_DEBUG
         assert(matte_array_get_size(args) == 3 || matte_array_get_size(args) == 4);
     #endif
@@ -115,7 +115,7 @@ static matteValue_t vm_ext_call__for(matteVM_t * vm, matteArray_t * args, void *
 }
 
 
-static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     #ifdef MATTE_DEBUG
         assert(matte_array_get_size(args) == 2);
     #endif
@@ -130,7 +130,7 @@ static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteArray_t * args, vo
 }
 
 
-static matteValue_t vm_ext_call__tonumber(matteVM_t * vm, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__tonumber(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     #ifdef MATTE_DEBUG
         assert(matte_array_get_size(args) == 1);
     #endif
@@ -141,7 +141,7 @@ static matteValue_t vm_ext_call__tonumber(matteVM_t * vm, matteArray_t * args, v
     return result;
 }
 
-static matteValue_t vm_ext_call__tostring(matteVM_t * vm, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__tostring(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     #ifdef MATTE_DEBUG
         assert(matte_array_get_size(args) == 1);
     #endif
@@ -154,7 +154,7 @@ static matteValue_t vm_ext_call__tostring(matteVM_t * vm, matteArray_t * args, v
     matte_string_destroy(str);
     return result;
 }
-static matteValue_t vm_ext_call__toboolean(matteVM_t * vm, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__toboolean(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     #ifdef MATTE_DEBUG
         assert(matte_array_get_size(args) == 1);
     #endif
@@ -163,38 +163,35 @@ static matteValue_t vm_ext_call__toboolean(matteVM_t * vm, matteArray_t * args, 
     matte_value_into_boolean(&result, matte_value_as_boolean(a));
     return result;
 }
-static matteValue_t vm_ext_call__typename(matteVM_t * vm, matteArray_t * args, void * userData) {
-    #ifdef MATTE_DEBUG
-        assert(matte_array_get_size(args) == 1);
-    #endif
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);
 
-    matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
-      case MATTE_VALUE_TYPE_EMPTY:   matte_value_into_string(&result, MATTE_STR_CAST("empty")); break;
-      case MATTE_VALUE_TYPE_BOOLEAN: matte_value_into_string(&result, MATTE_STR_CAST("boolean")); break;
-      case MATTE_VALUE_TYPE_NUMBER:  matte_value_into_string(&result, MATTE_STR_CAST("number")); break;
-      case MATTE_VALUE_TYPE_OBJECT:  matte_value_into_string(&result, MATTE_STR_CAST("object")); break;
+
+static matteValue_t vm_ext_call__noop(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    assert(!"NOT IMPLEMENTED");
+}
+
+
+static matteValue_t vm_ext_call__match(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    assert(!"NOT IMPLEMENTED");
+}
+
+
+static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    assert(!"NOT IMPLEMENTED");
+}
+
+
+static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    assert(!"NOT IMPLEMENTED");
+}
+static matteValue_t vm_ext_call__print(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    if (matte_array_get_size(args)) {
+        matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+        if (str) {
+            printf("%s\n", matte_string_get_c_str(str));
+        } else {
+            printf("<not string coercible>\n");
+        }
+        fflush(stdout);
     }
-    return result;
-}
-
-
-static matteValue_t vm_ext_call__noop(matteVM_t * vm, matteArray_t * args, void * userData) {
-    assert(!"NOT IMPLEMENTED");
-}
-
-
-static matteValue_t vm_ext_call__match(matteVM_t * vm, matteArray_t * args, void * userData) {
-    assert(!"NOT IMPLEMENTED");
-}
-
-
-static matteValue_t vm_ext_call__import(matteVM_t * vm, matteArray_t * args, void * userData) {
-    assert(!"NOT IMPLEMENTED");
-}
-
-
-static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteArray_t * args, void * userData) {
-    assert(!"NOT IMPLEMENTED");
+    return matte_heap_new_value(vm->heap);
 }

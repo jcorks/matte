@@ -488,10 +488,12 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_TONUMBER;
                 } else if (!strcmp("toboolean", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_TOBOOLEAN;
-                } else if (!strcmp("typename", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TYPENAME;
+                } else if (!strcmp("introspect", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_INTROSPECT;
                 } else if (!strcmp("getExternalFunction", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_GETEXTERNALFUNCTION;
+                } else if (!strcmp("print", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_PRINT;
                 } else {
                     printf("ERROR on line %d: unrecognized external opcode\n", lineN);
                     exit(1);
