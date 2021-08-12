@@ -16,3 +16,7 @@ matte_t * matte_create() {
 matteVM_t * matte_get_vm(matte_t * m) {
     return m->vm;
 }
+
+void matte_destroy(matte_t * m) {
+    // cleanup here.
+}

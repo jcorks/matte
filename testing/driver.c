@@ -83,7 +83,6 @@ int main() {
         matte_string_concat_printf(infile, "test%d.mt", TESTID);
         matte_string_concat_printf(outfile, "test%d.out", TESTID);
 
-        printf("Running test %s...\n", matte_string_get_c_str(infile));
 
         uint32_t lenBytes;
         uint8_t * src = dump_bytes(matte_string_get_c_str(infile), &lenBytes);
@@ -92,6 +91,7 @@ int main() {
             printf("Couldn't open source %s\n", matte_string_get_c_str(infile));
             exit(1);
         }
+        printf("Running test %s...\n", matte_string_get_c_str(infile));
 
         uint32_t outByteLen;
         uint8_t * outBytes = matte_compiler_run(

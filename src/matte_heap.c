@@ -362,7 +362,6 @@ void matte_value_into_new_function_ref(matteValue_t * v, matteBytecodeStub_t * s
                 matte_array_push(d->functionCaptures, ref);
                 break;
             }
-            frameIndex++;
         }
         if (frameIndex == deep) {
             matte_vm_raise_error_string(v->heap->vm, MATTE_STR_CAST("Could not find captured variable!"));
@@ -819,7 +818,7 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
     
     uint32_t i;
     uint32_t len = matte_array_get_size(sweep);
-    #ifdef MATTE_DEBUG
+    #ifdef MATTE_DEBUG__HEAP
         if (len) {
             printf("BEGINNING SWEEP\n");
         }
@@ -843,7 +842,7 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
 
             // might have been saved by finalizer
             if (m->refs == 0) {
-                #ifdef MATTE_DEBUG
+                #ifdef MATTE_DEBUG__HEAP
                     printf("--RECYCLING OBJECT %d\n", m->heapID);
                 #endif
                 // watch out!!!! might have been re-entered in toSweep if finalizer 

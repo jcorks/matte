@@ -193,7 +193,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
     while(frame->pc < instCount) {
         inst = program+frame->pc++;
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__VM
             printf("from line %d, CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", inst->lineNumber, vm->stacksize, frame->pc, opcode_to_str(inst->opcode), matte_array_get_size(frame->valueStack));
             fflush(stdout);
         #endif

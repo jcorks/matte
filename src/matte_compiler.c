@@ -2163,7 +2163,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
 ) {
     if (matte_table_find(graph->tried, node)) return NULL;
     matte_table_insert(graph->tried, node, (void*)0x1);
-    #ifdef MATTE_DEBUG
+    #ifdef MATTE_DEBUG__COMPILER
         static int level = 0;
         level++;
     #endif
@@ -2174,7 +2174,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // we continue. If not, we try the next token.
       // If we exhaust all tokens, we have failed.
       case MATTE_SYNTAX_GRAPH_NODE__TOKEN: {
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__COMPILER
             int h; for(h = 0; h < level; ++h) printf("@");
             printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__TOKEN: %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
@@ -2182,7 +2182,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
         uint32_t i;
         uint32_t len = node->token.count;
         for(i = 0; i < len; ++i) {
-            #ifdef MATTE_DEBUG
+            #ifdef MATTE_DEBUG__COMPILER
                 printf("     - trying to parse token as %s...", matte_string_get_c_str(matte_array_at(graph->tokenNames, matteString_t *, node->token.refs[i])));
             #endif
 
@@ -2203,7 +2203,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
             }
 
 
-            #ifdef MATTE_DEBUG
+            #ifdef MATTE_DEBUG__COMPILER
                 printf("%s\n", newT ? "SUCCESS!": "failure");
             #endif
 
@@ -2218,7 +2218,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
                     graph->last = newT;
                 }
                 matte_table_clear(graph->tried);
-                #ifdef MATTE_DEBUG
+                #ifdef MATTE_DEBUG__COMPILER
                     level--;
                 #endif
                 return node->next;
@@ -2227,7 +2227,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
         // failure
         if (!silent)
             matte_syntax_graph_print_error(graph, node);
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__COMPILER
             level--;
         #endif
         return NULL;
@@ -2237,7 +2237,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // the node is generically able to be split into 
       // possible paths. Each are attempted in order.
       case MATTE_SYNTAX_GRAPH_NODE__SPLIT: {
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__COMPILER
             int h; for(h = 0; h < level; ++h) printf("@");
             printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__SPLIT %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
@@ -2256,7 +2256,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
             // success!
             if (n) {
                 matte_table_clear(graph->tried);
-                #ifdef MATTE_DEBUG
+                #ifdef MATTE_DEBUG__COMPILER
                     level--;
                 #endif
                 return n;
@@ -2265,7 +2265,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
         // failure
         if (!silent)
             matte_syntax_graph_print_error(graph, node);
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__COMPILER
             level--;
         #endif
         return NULL;
@@ -2275,7 +2275,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
 
       // the node gener
       case MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT: {
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__COMPILER
             printf("WALKING: @MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
 
@@ -2289,13 +2289,13 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
         if (!n) {
             if (!silent)
                 matte_syntax_graph_print_error(graph, node);
-            #ifdef MATTE_DEBUG
+            #ifdef MATTE_DEBUG__COMPILER
                 level--;
             #endif
             return NULL;
         } else {
             matte_table_clear(graph->tried);
-            #ifdef MATTE_DEBUG
+            #ifdef MATTE_DEBUG__COMPILER
                 level--;
             #endif
             return n;
@@ -2304,13 +2304,13 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
 
       // the end of a path has been reached. return
       case MATTE_SYNTAX_GRAPH_NODE__END: {
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__COMPILER
             int h; for(h = 0; h < level; ++h) printf("@");
             printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__END %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
             matte_table_clear(graph->tried);
         #endif
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__COMPILER
             level--;
         #endif
         return node;
@@ -2320,7 +2320,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // the node is a construct path
       // All top paths are tried before continuing
       case MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT: {
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__COMPILER
             int h; for(h = 0; h < level; ++h) printf("@");
             printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
@@ -2335,7 +2335,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
             matteSyntaxGraphNode_t * out = matte_syntax_graph_walk(graph, tr, node->construct, 1);
             if (out) {
                 matte_table_clear(graph->tried);
-                #ifdef MATTE_DEBUG
+                #ifdef MATTE_DEBUG__COMPILER
                     int h; for(h = 0; h < level; ++h) printf("@");
                     printf("  - PASSED initial construct node for path %s\n", matte_string_get_c_str(matte_array_at(root->pathNames, matteString_t *, i)));
                     fflush(stdout);
@@ -2345,14 +2345,14 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
                     // The only way to validly finish a path
                     if (out && out->type == MATTE_SYNTAX_GRAPH_NODE__END) {
                         matte_table_clear(graph->tried);
-                        #ifdef MATTE_DEBUG
+                        #ifdef MATTE_DEBUG__COMPILER
                             level--;
                         #endif
                         return node->next;
                     }
                 }
             } else {
-                #ifdef MATTE_DEBUG
+                #ifdef MATTE_DEBUG__COMPILER
                     int h; for(h = 0; h < level; ++h) printf("@");
                     printf("  - FAILED initial construct node for path %s\n", matte_string_get_c_str(matte_array_at(root->pathNames, matteString_t *, i)));
                     fflush(stdout);
@@ -2363,7 +2363,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
         if (!silent)
             matte_syntax_graph_print_error(graph, node);
 
-        #ifdef MATTE_DEBUG
+        #ifdef MATTE_DEBUG__COMPILER
             level--;
         #endif
         return NULL;
@@ -3437,7 +3437,6 @@ static matteArray_t * compile_expression(
                 iter = next;
             }
             start->next = end;
-            iter = iter->next;
             break;
           }
 
@@ -3528,9 +3527,19 @@ static matteArray_t * compile_expression(
             uint32_t size = matte_array_get_size(valueInst);
             matteBytecodeStubInstruction_t undo = matte_array_at(valueInst, matteBytecodeStubInstruction_t, size-1);
 
+            int isSimpleReferrable = 1;
+            uint32_t n;
+            for(n = 0; n < size; ++n) {
+                matteBytecodeStubInstruction_t u = matte_array_at(valueInst, matteBytecodeStubInstruction_t, n);
+                if (u.opcode == MATTE_OPCODE_OLK) {
+                    isSimpleReferrable = 0;
+                    break;
+                }
+            }
+
             // Heres the fun part: lvalues are either
             // values that got reduced to a referrable OR an expression dot access OR a table lookup result.
-            if (vstartType == MATTE_TOKEN_VARIABLE_NAME) {
+            if (isSimpleReferrable) {
                 postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE;                
                 #ifdef MATTE_DEBUG
                     assert(undo.opcode == MATTE_OPCODE_PRF);
@@ -3539,7 +3548,7 @@ static matteArray_t * compile_expression(
                 // for handling assignment for the dot access and the [] lookup, 
                 // the OLK instruction will be removed. This leaves both the 
                 // object AND the key on the stack (since OLK would normally consume both)
-                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE;
+                postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER;
                 matte_array_set_size(valueInst, size-1);
                 #ifdef MATTE_DEBUG
                     assert(undo.opcode == MATTE_OPCODE_OLK);
@@ -3791,7 +3800,7 @@ static matteFunctionBlock_t * compile_function_block(
     b->stubID = g->functionStubID++;
     b->parent = parent;
 
-    #ifdef MATTE_DEBUG
+    #ifdef MATTE_DEBUG__COMPILER
         printf("COMPILING FUNCTION %d\n", b->stubID);
     #endif
 
@@ -3806,7 +3815,7 @@ static matteFunctionBlock_t * compile_function_block(
             while(iter && iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
                 matteString_t * arg = matte_string_clone(iter->text);
                 matte_array_push(b->args, arg);
-                #ifdef MATTE_DEBUG
+                #ifdef MATTE_DEBUG__COMPILER
                     printf("  - Argument %d: %s\n", matte_array_get_size(b->args), matte_string_get_c_str(arg));
                 #endif
                 iter = iter->next;
@@ -3852,7 +3861,7 @@ static matteFunctionBlock_t * compile_function_block(
             
             matteString_t * local = matte_string_clone(iter->text);
             matte_array_push(b->locals, local);
-            #ifdef MATTE_DEBUG
+            #ifdef MATTE_DEBUG__COMPILER
                 printf("  - Local %d: %s\n", matte_array_get_size(b->locals), matte_string_get_c_str(local));
             #endif
         }
