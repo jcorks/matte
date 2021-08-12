@@ -477,8 +477,9 @@ double matte_value_as_number(matteValue_t v) {
 matteString_t * matte_value_as_string(matteValue_t v) {
     switch(v.binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
-        matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot convert empty into a string."));
-        return 0;
+        //matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot convert empty into a string."));
+        ///return 0;
+        return matte_string_create_from_c_str("empty");
       case MATTE_VALUE_TYPE_NUMBER: {
         double * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_NUMBER], v.objectID);
         return matte_string_create_from_c_str("%g", *m);

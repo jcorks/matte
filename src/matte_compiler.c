@@ -62,7 +62,7 @@ typedef enum {
     MATTE_TOKEN_FUNCTION_ARG_BEGIN,   
     MATTE_TOKEN_FUNCTION_ARG_SEPARATOR,   
     MATTE_TOKEN_FUNCTION_ARG_END,   
-    MATTE_TOKEN_FUNCTION_CONSTRUCTOR, // <<
+    MATTE_TOKEN_FUNCTION_CONSTRUCTOR, // <-
 
     MATTE_TOKEN_WHEN,
     MATTE_TOKEN_WHEN_RETURN,
@@ -351,7 +351,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         MATTE_TOKEN_FUNCTION_ARG_BEGIN, MATTE_STR_CAST("Function Argument List '('"),
         MATTE_TOKEN_FUNCTION_ARG_SEPARATOR, MATTE_STR_CAST("Function Argument Separator ','"),
         MATTE_TOKEN_FUNCTION_ARG_END, MATTE_STR_CAST("Function Argument List ')'"),
-        MATTE_TOKEN_FUNCTION_CONSTRUCTOR, MATTE_STR_CAST("Function Constructor '<<'"),
+        MATTE_TOKEN_FUNCTION_CONSTRUCTOR, MATTE_STR_CAST("Function Constructor '<-'"),
 
         MATTE_TOKEN_WHEN, MATTE_STR_CAST("'when' Statement"),
         MATTE_TOKEN_WHEN_RETURN, MATTE_STR_CAST("'when' Return Value Operator ':'"),
@@ -469,7 +469,6 @@ static void generate_graph(matteSyntaxGraph_t * st) {
 
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Function Call"), MATTE_SYNTAX_CONSTRUCT_POSTFIX,
         matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_CALL),
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
         matte_syntax_graph_node_end(),    
         NULL
     );
@@ -1054,7 +1053,7 @@ static void tokenizer_strip(matteTokenizer_t * t) {
                 break;
               default: // real char
                 t->iter = t->backup;
-                break;
+                return;
             }
             break;
           }
@@ -3438,8 +3437,20 @@ static matteArray_t * compile_expression(
                 iter = next;
             }
             start->next = end;
+            iter = iter->next;
             break;
           }
+
+
+          case MATTE_TOKEN_FUNCTION_ARG_BEGIN:
+            while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
+                iter = iter->next;
+            }
+            if (!iter) {
+                matte_syntax_graph_print_compile_error(g, iter, "Expression function call missing end ')'");
+                goto L_FAIL;
+            }
+            break;
           
           case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
             matteToken_t * start = iter; 
@@ -3468,8 +3479,11 @@ static matteArray_t * compile_expression(
             start->next = end;
             break;
           }
+
+          default:;
+            iter = iter->next;
+
         }
-        iter = iter->next;
     }
     
     iter = *src;
