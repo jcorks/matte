@@ -80,7 +80,9 @@ const matteString_t * matte_bytecode_stub_get_arg_name(const matteBytecodeStub_t
 // If none, NULL is returned.
 const matteString_t * matte_bytecode_stub_get_local_name(const matteBytecodeStub_t *, uint8_t);
 
-
+// Gets the pre-compiled static string by local ID.
+// These local IDs are used for NST
+const matteString_t * matte_bytecode_stub_get_string(const matteBytecodeStub_t *, uint32_t stringID);
 
 
 

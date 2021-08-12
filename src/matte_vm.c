@@ -157,7 +157,6 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_NNM: return "NNM";
       case MATTE_OPCODE_NBL: return "NBL";
       case MATTE_OPCODE_NST: return "NST";
-      case MATTE_OPCODE_STC: return "STC";
       case MATTE_OPCODE_NOB: return "NOB";
       case MATTE_OPCODE_NFN: return "NFN";
       case MATTE_OPCODE_NAR: return "NAR";
@@ -237,28 +236,16 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
 
           case MATTE_OPCODE_NST: {
-            matteString_t * str = matte_string_create();
+            uint32_t stringID;
+            memcpy(&stringID, inst->data, sizeof(uint32_t));
 
-            uint32_t vals[2];
-            uint32_t len;
-            memcpy(&len, inst->data, sizeof(uint32_t));
-            if (frame->pc < instCount)
-                inst = program+(frame->pc++);
-
-            uint32_t i;
-            for(i = 0; i < len; ++i) {
-                memcpy(vals, inst->data, 8);
-                if (vals[0] != 0) matte_string_append_char(str, vals[0]); i++;
-                if (i < len)
-                    if (vals[1] != 0) matte_string_append_char(str, vals[1]);
-
-                if (frame->pc < instCount && i < len-1)
-                    inst = program+(frame->pc++);
+            const matteString_t * str = matte_bytecode_stub_get_string(frame->stub, stringID);
+            if (!str) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("NST opcode refers to non-existent string (corrupt bytecode?)"));
+                break;
             }
-
             matteValue_t v = matte_heap_new_value(vm->heap);
             matte_value_into_string(&v, str);
-            matte_string_destroy(str);
             STACK_PUSH(v);
             break;
           }
@@ -538,10 +525,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             break;
           }
-
-          case MATTE_OPCODE_STC:
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("STC opcode only allowed as part of NST opcode stream."));    
-            break;            
+      
           default: 
             matte_vm_raise_error_string(vm, MATTE_STR_CAST("Unknown / unhandled opcode.")); 
         
@@ -617,16 +601,17 @@ static void vm_add_built_in(
     
 
     typedef struct {
-        uint32_t fileID;
-        uint32_t stubID;
-        uint8_t nargs;
+        uint8_t bytes[1+4+4+1];
     } FakeID;
-    FakeID id = {
-        0, index, nArgs
-    };
+    FakeID id = {0};
+    uint8_t nArgsU = nArgs;
+    id.bytes[0] = 1;
+    memcpy(id.bytes+1+4, &index,  sizeof(uint32_t));
+    memcpy(id.bytes+1+8, &nArgsU, sizeof(uint8_t));
+
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-        (uint8_t*)&id, 
-        sizeof(FakeID)
+        id.bytes, 
+        12
     );
     
     matteBytecodeStub_t * out = matte_array_at(stubs, matteBytecodeStub_t *, 0);

@@ -16,7 +16,6 @@ typedef enum {
     MATTE_OPCODE_NBL,
     // push new string
     MATTE_OPCODE_NST,
-    MATTE_OPCODE_STC,
     // push new empty object
     MATTE_OPCODE_NOB,
     // push new function from a compiled stub

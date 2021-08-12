@@ -270,6 +270,8 @@ struct matteFunctionBlock_t {
     matteArray_t * locals;
     // array of matteString_t *
     matteArray_t * args;
+    // array of static strings.
+    matteArray_t * strings;
     // array of matteBytecodeStubInstruction_t
     matteArray_t * instructions;
     // pointer to parent calling function
@@ -3107,6 +3109,25 @@ static void expression_node_sort(matteArray_t * nodes) {
     );
 }
 
+// retrieves a string interned to the function stub by ID to be used with nst ops.
+// If non exists, the string is added.
+static uint32_t function_intern_string(
+    matteFunctionBlock_t * b,
+    const matteString_t * str 
+) {
+    uint32_t i;
+    uint32_t len = matte_array_get_size(b->strings);
+    int found = 0;
+    // look through interned strings 
+    for(i = 0; i < len; ++i) {
+        if (matte_string_test_eq(str, matte_array_at(b->strings, matteString_t *, i))) {
+            return i;
+        }
+    }
+    str = matte_string_clone(str);
+    matte_array_push(b->strings, str);
+    return len;
+}
 
 // like compile expression, except the expression has 
 // no operators and is a "simple" value.
@@ -3146,7 +3167,7 @@ static matteArray_t * compile_base_value(
       }
 
       case MATTE_TOKEN_LITERAL_STRING: {
-        write_instruction__nst_stc(inst, iter->line, iter->text);
+        write_instruction__nst(inst, iter->line, function_intern_string(block, iter->text));
         *src = iter->next;
         return inst;
       }
@@ -3218,7 +3239,7 @@ static matteArray_t * compile_base_value(
             if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME &&
                 iter->next->next->ttype == MATTE_TOKEN_OBJECT_DEF_PROP) {
                 
-                write_instruction__nst_stc(inst, iter->line, iter->text);
+                write_instruction__nst(inst, iter->line, function_intern_string(block, iter->text));
                 iter = iter->next; // skip name
                 iter = iter->next; // skip marker
                 
@@ -3327,7 +3348,7 @@ static matteArray_t * compile_value(
             iter = iter->next; // skip .
             // if so, the next will be a variable name
             if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
-                write_instruction__nst_stc(inst, iter->line, iter->text);
+                write_instruction__nst(inst, iter->line, function_intern_string(block, iter->text));
                 write_instruction__olk(inst, iter->line);
                 *lvalue = 1;
                 iter = iter->next;
@@ -3784,6 +3805,7 @@ static int compile_statement(
 }
 
 
+
 static matteFunctionBlock_t * compile_function_block(
     matteSyntaxGraph_t * g, 
     matteFunctionBlock_t * parent,
@@ -3793,6 +3815,7 @@ static matteFunctionBlock_t * compile_function_block(
     matteToken_t * iter = *src;
     matteFunctionBlock_t * b = calloc(1, sizeof(matteFunctionBlock_t));
     b->args = matte_array_create(sizeof(matteString_t *));
+    b->strings = matte_array_create(sizeof(matteString_t *));
     b->locals = matte_array_create(sizeof(matteString_t *));
     b->instructions = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
     b->captures = matte_array_create(sizeof(matteBytecodeStubCapture_t));
@@ -3844,7 +3867,7 @@ static matteFunctionBlock_t * compile_function_block(
     }
 
 
-    // next find all locals
+    // next find all locals and static strings
     matteToken_t * funcStart = iter;
     while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
         if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
@@ -3864,7 +3887,7 @@ static matteFunctionBlock_t * compile_function_block(
             #ifdef MATTE_DEBUG__COMPILER
                 printf("  - Local %d: %s\n", matte_array_get_size(b->locals), matte_string_get_c_str(local));
             #endif
-        }
+        } 
         iter = iter->next;
     }
 
@@ -3937,11 +3960,14 @@ void * matte_function_block_array_to_bytecode(
     uint8_t nSlots;
     uint16_t nCaps;
     uint32_t nInst;
+    uint32_t nStrings;
 
     assert(sizeof(matteBytecodeStubInstruction_t) == sizeof(uint32_t) + sizeof(int32_t) + sizeof(uint64_t));
 
     for(i = 0; i < len; ++i) {
         matteFunctionBlock_t * block = matte_array_at(arr, matteFunctionBlock_t *, i);
+        nSlots = 1;
+        WRITE_BYTES(uint8_t, nSlots); // bytecode version
         WRITE_BYTES(uint32_t, fileID);
         WRITE_BYTES(uint32_t, block->stubID);
         nSlots = matte_array_get_size(block->args);
@@ -3955,6 +3981,13 @@ void * matte_function_block_array_to_bytecode(
         for(n = 0; n < nSlots; ++n) {
             write_unistring(byteout, matte_array_at(block->locals, matteString_t *, n));
         }
+
+        nStrings = matte_array_get_size(block->strings);
+        WRITE_BYTES(uint32_t, nStrings);
+        for(n = 0; n < nStrings; ++n) {
+            write_unistring(byteout, matte_array_at(block->strings, matteString_t *, n));
+        }
+
 
         nCaps = matte_array_get_size(block->captures);
         WRITE_BYTES(uint16_t, nCaps);

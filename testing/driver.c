@@ -92,7 +92,7 @@ int main() {
             exit(1);
         }
         printf("Running test %s...\n", matte_string_get_c_str(infile));
-
+        fflush(stdout);
         uint32_t outByteLen;
         uint8_t * outBytes = matte_compiler_run(
             src,

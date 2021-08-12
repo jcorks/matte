@@ -43,27 +43,12 @@ static void write_instruction__nbl(matteArray_t * insts, uint32_t lineNumber, in
 }
 
 
-static void write_instruction__nst_stc(matteArray_t * insts, uint32_t lineNumber, const matteString_t * str) {
+static void write_instruction__nst(matteArray_t * insts, uint32_t lineNumber, uint32_t id) {
     matteBytecodeStubInstruction_t inst;
     inst.lineNumber = lineNumber;
     inst.opcode = MATTE_OPCODE_NST;
-    uint32_t len = matte_string_get_length(str);
-    memcpy(inst.data, &len, sizeof(uint32_t));
+    memcpy(inst.data, &id, sizeof(uint32_t));
     matte_array_push(insts, inst);
-
-    uint32_t i;
-    for(i = 0; i < len; ++i) {
-        inst.opcode = MATTE_OPCODE_STC;
-        uint32_t c = matte_string_get_char(str, i);
-        memcpy(inst.data, &c, sizeof(uint32_t));
-        i++;
-        if (i < len) {
-            c = matte_string_get_char(str, i);
-            memcpy(inst.data+sizeof(uint32_t), &c, sizeof(uint32_t));
-        }
-
-        matte_array_push(insts, inst);
-    }
 }
 
 

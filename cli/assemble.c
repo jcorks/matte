@@ -67,8 +67,10 @@ static const void function_to_stub(FILE * f, uint32_t id) {
     uint8_t nargs = 0;
     uint8_t nlocals = 0;
     uint16_t ncaptures = 0;
+    uint32_t nstrings = 0;
     unistring * argNames;
     unistring * localNames;
+    unistring * strings;
     typedef struct {
         uint32_t stubid;
         uint32_t referrable;
@@ -79,7 +81,7 @@ static const void function_to_stub(FILE * f, uint32_t id) {
     int argsSet = FALSE;
     int localsSet = FALSE;
     int capturedSet = FALSE;
-
+    int stringsSet = FALSE;
     typedef struct {
         uint32_t line;
         int32_t opcode;
@@ -89,20 +91,30 @@ static const void function_to_stub(FILE * f, uint32_t id) {
     instruction * instructions = 0;
     uint32_t instructionsCount = 0;
     uint32_t instructionsAlloc = 0;
-
+    uint8_t bytecodeVersion = 1;
 
 
     while(next_line(f)) {
         if (line[0] == 0) continue; // empty
-        if (!strncmp(line, "function", strlen("function"))) {
-            uint32_t substubid;
-            if (sscanf(line, "function %"SCNu32"", &substubid) != 1) {
-                printf("ERROR on line %d: function needs number unsigned 16bit number id\n", lineN);
+        if (!strncmp(line, "strings", strlen("strings"))) {
+            if (sscanf(line, "strings=%"SCNu32"", &nstrings) != 1) {
+                printf("ERROR on line %d: unable to parse string count. Syntax: strings=[0-UINT32_MAX]\n", lineN);
                 exit(1);
             }
-            function_to_stub(f, substubid);
 
-        } else if (!strncmp(line, "args", strlen("args"))) {
+
+            strings = malloc(sizeof(unistring)*nstrings);
+            uint32_t i;
+            for(i = 0; i < nstrings; ++i) {
+                if(!next_line(f)) {
+                    printf("ERROR on line %d: ended early (strings expected)\n", lineN);
+                    exit(1);                    
+                }
+                strings[i] = read_unistring_ascii(line);
+            }
+
+            stringsSet = TRUE;
+        }  else if (!strncmp(line, "args", strlen("args"))) {
             if (sscanf(line, "args=%"SCNu8"", &nargs) != 1) {
                 printf("ERROR on line %d: unable to parse arg count. Syntax: arg=[0-255]\n", lineN);
                 exit(1);
@@ -175,6 +187,7 @@ static const void function_to_stub(FILE * f, uint32_t id) {
             }
 
             uint32_t i;
+            fwrite(&bytecodeVersion, 1, sizeof(uint8_t), out);
             fwrite(&fileid, 1, sizeof(uint32_t), out);
             fwrite(&stubid, 1, sizeof(uint32_t), out);
             fwrite(&nargs, 1, sizeof(uint8_t), out);
@@ -191,6 +204,14 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                 free(localNames[i].data);
             }
             free(localNames);
+            fwrite(&nstrings, 1, sizeof(uint32_t), out);
+            for(i = 0; i < nstrings; ++i) {
+                fwrite(&strings[i].len, 1, sizeof(uint32_t), out);
+                fwrite(strings[i].data, strings[i].len, sizeof(int32_t), out);
+                free(strings[i].data);
+            }
+            free(strings);
+
             fwrite(&ncaptures, 1, sizeof(uint16_t), out);
             fwrite(captures, ncaptures, sizeof(captureData), out);
             free(captures);
@@ -199,10 +220,11 @@ static const void function_to_stub(FILE * f, uint32_t id) {
             fwrite(instructions, instructionsCount, sizeof(instruction), out);
             free(instructions);
 
-            printf("Assembled fn %5d: args?%3d locals?%3d captures?%5d. Ops: %d\n",
+            printf("Assembled fn %5d: args?%3d locals?%3d strings?%5d captures?%5d.Ops: %d\n",
                 (int)stubid,
                 nargs,
                 nlocals,
+                nstrings,
                 ncaptures,
                 instructionsCount
             );
@@ -260,7 +282,7 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                 inst->opcode = MATTE_OPCODE_NBL;
                 int val;
                 if (sscanf(line, "%"SCNu32" nbl %d", &inst->line, &val) != 2) {
-                    printf("ERROR on line %d: unrecognized nbl format. Syntax: [line] nnm [1 or 0]\n", lineN);
+                    printf("ERROR on line %d: unrecognized nbl format. Syntax: [line] nbl [1 or 0]\n", lineN);
                     exit(1);
                 }   
                 inst->data[0] = val;
@@ -269,30 +291,12 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                 oc1 == 's' &&
                 oc2 == 't'
             ) {
-                char * lr = strstr(line, "nst");
-                unistring str = read_unistring_ascii(lr+3);
-
                 inst->opcode = MATTE_OPCODE_NST;
-                uint32_t srcline = inst->line;             
-                *(uint32_t*)inst->data = str.len;
-                uint32_t lenLeft = str.len;
-                uint32_t iter = 0;
-                while(lenLeft) {
-                    if (instructionsAlloc == instructionsCount) {
-                        instructionsAlloc *= 10+1.4*instructionsAlloc;
-                        instructions = realloc(instructions, instructionsAlloc*sizeof(instruction));
-                    }
-                    inst = instructions+(instructionsCount++);
-                    inst->opcode = MATTE_OPCODE_STC;
-                    inst->line = srcline;
-                    memcpy(inst->data, &str.data[iter], sizeof(int32_t));
-                    lenLeft--; iter++;
-                    if (lenLeft) {
-                        memcpy(inst->data+sizeof(int32_t), &str.data[iter], sizeof(int32_t));
-                        lenLeft--; iter++;
-                    }
-                }
-                free(str.data);
+                int val;
+                if (sscanf(line, "%"SCNu32" nst %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized nst format. Syntax: [line] nst [string id]\n", lineN);
+                    exit(1);
+                }   
             } else if (
                 oc0 == 'n' &&
                 oc1 == 'o' &&

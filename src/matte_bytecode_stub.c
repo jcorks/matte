@@ -12,6 +12,8 @@ struct matteBytecodeStub_t {
     
     matteString_t ** argNames;
     matteString_t ** localNames;
+    matteString_t ** strings;
+
     matteBytecodeStubCapture_t * captures; 
     matteBytecodeStubInstruction_t * instructions;
 
@@ -19,6 +21,7 @@ struct matteBytecodeStub_t {
     uint8_t localCount;
     uint16_t capturedCount;
     uint32_t instructionCount;
+    uint32_t stringCount;
 };  
 
 // prevents incomplete advances
@@ -42,7 +45,9 @@ static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
 static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
     matteBytecodeStub_t * out = calloc(1, sizeof(matteBytecodeStub_t));
     uint32_t i;
-    
+    uint8_t ver;
+    ADVANCE(uint8_t, ver);
+    if (ver != 1) return out;
     ADVANCE(uint32_t, out->fileID);
     ADVANCE(uint32_t, out->stubID);
     ADVANCE(uint8_t, out->argCount);
@@ -55,6 +60,11 @@ static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
     for(i = 0; i < out->localCount; ++i) {
         out->localNames[i] = chomp_string(bytes, left);    
     }        
+    ADVANCE(uint32_t, out->stringCount);
+    out->strings = malloc(sizeof(matteString_t *)*out->stringCount);
+    for(i = 0; i < out->stringCount; ++i) {
+        out->strings[i] = chomp_string(bytes, left);    
+    }       
     ADVANCE(uint16_t, out->capturedCount);
     if (out->capturedCount) {
         out->captures = calloc(sizeof(matteBytecodeStubCapture_t), out->capturedCount);
@@ -116,6 +126,10 @@ const matteString_t * matte_bytecode_stub_get_local_name(const matteBytecodeStub
     return stub->localNames[i];
 }
 
+const matteString_t * matte_bytecode_stub_get_string(const matteBytecodeStub_t * stub, uint32_t i) {
+    if (i >= stub->stringCount) return NULL;
+    return stub->strings[i];
+}
 
 
 const matteBytecodeStubCapture_t * matte_bytecode_stub_get_captures(

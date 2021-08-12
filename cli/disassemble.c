@@ -24,6 +24,11 @@ static uint32_t i__;
 
 
 uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
+    uint8_t ver = CHOMP(uint8_t);
+    if (ver != 1) {
+        return NULL;        
+    }
+
     uint32_t id = CHOMP(uint32_t);
     fprintf(fout, "fileid %d\n\n", id);
   
@@ -47,6 +52,14 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
         fprintf(fout, "    \"%s\"\n", matte_string_get_c_str(nextString));
     }
 
+    // strings 
+    count = CHOMP(uint32_t);
+    fprintf(fout, "  strings=%d\n", (int)count);
+    for(i = 0; i < count; ++i) {
+        CHOMP_STRING();
+        fprintf(fout, "    \"%s\"\n", matte_string_get_c_str(nextString));
+    }
+
 
     // captures
     count = CHOMP(uint16_t);
@@ -56,6 +69,7 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
         int b = CHOMP(uint32_t);
         fprintf(fout, "    %d %d\n", a, b);
     }
+
 
 
 
@@ -92,29 +106,7 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 break;
 
             case MATTE_OPCODE_NST:
-                fprintf(fout, "nst \"");
-    
-                uint32_t len = *(uint32_t*)data.bytes;
-                for(n = 0; n < len; ++n) {
-                    lineNumber = CHOMP(uint32_t);
-                    opcode = CHOMP(int32_t);        
-                    data = CHOMP(InstructionData);
-                    i++;
-
-                    
-                    matteString_t * str = matte_string_create();
-                    matte_string_append_char(str, *(int32_t*)data.bytes); n++;
-                    if (n < len)
-                        matte_string_append_char(str, *(int32_t*)(data.bytes+4));
-                    fprintf(fout, "%s", matte_string_get_c_str(str));
-                    matte_string_destroy(str);
-                }
-                
-                fprintf(fout, "\"\n");
-                break;
-
-
-            case MATTE_OPCODE_STC:
+                fprintf(fout, "nst %d\n", *(uint32_t*)data.bytes);
                 break;
 
             case MATTE_OPCODE_NOB:
