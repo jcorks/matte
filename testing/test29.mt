@@ -1,7 +1,6 @@
-
-// Returns whether the input object 
-// has a member named "testValue" 
-// that is set to true.
+//// Test 28
+//
+// object test: literal
 <@>Point <- {
     @x = 0;
     @y = 0;

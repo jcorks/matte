@@ -564,7 +564,7 @@ matteValue_t matte_value_object_access_string(matteValue_t v, const matteString_
 }
 
 matteValue_t matte_value_object_keys(matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT || !matte_value_is_callable(v)) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return matte_heap_new_value(v.heap);
     }
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
