@@ -286,11 +286,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t v = matte_heap_new_value(vm->heap);
             uint32_t i;
             matteArray_t * args = matte_array_create(sizeof(matteValue_t));
-
+            matte_array_set_size(args, len);
             matteValue_t t;
             for(i = 0; i < len; ++i) {
-                t = STACK_POP();
-                matte_array_push(args, t);  
+                matte_array_at(args, matteValue_t, len-i-1) = STACK_POP();
             }
 
             matte_value_into_new_object_array_ref(&v, args);
@@ -418,8 +417,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 break;        
             }
             matteValue_t key = STACK_POP();
-            matteValue_t object = STACK_POP();
-            
+            matteValue_t object = STACK_POP();            
             matteValue_t output = matte_value_object_access(object, key);
             
             matte_heap_recycle(key);
@@ -611,7 +609,7 @@ static void vm_add_built_in(
 
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
         id.bytes, 
-        12
+        10
     );
     
     matteBytecodeStub_t * out = matte_array_at(stubs, matteBytecodeStub_t *, 0);

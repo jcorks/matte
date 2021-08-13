@@ -466,6 +466,28 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         NULL
     );
 
+    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Bracket Accessor + Assignment"), MATTE_SYNTAX_CONSTRUCT_POSTFIX,
+        matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_START),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_END),
+        matte_syntax_graph_node_split(
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_POSTFIX),
+            matte_syntax_graph_node_to_parent(2),    
+            NULL,
+
+            matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_end(),    
+            NULL,
+
+            matte_syntax_graph_node_end(),    
+            NULL,
+
+            NULL
+        ),
+        NULL
+    );
 
 
 
@@ -696,13 +718,14 @@ static void generate_graph(matteSyntaxGraph_t * st) {
 
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
             matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+
             matte_syntax_graph_node_split(
                 matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_ARRAY_END),
                 matte_syntax_graph_node_end(),
                 NULL,
 
                 matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_ARRAY_SEPARATOR),
-                matte_syntax_graph_node_to_parent(2),
+                matte_syntax_graph_node_to_parent(4),
                 NULL,
                 NULL
                 
@@ -1834,6 +1857,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       default:
         assert("!NOT HANDLED YET");
     }
+    assert(!"Should not be reached");
 }
 
 // Returns whether the tokenizer has reached the end of the inout text.
@@ -3216,7 +3240,9 @@ static matteArray_t * compile_base_value(
                 matte_array_destroy(inst);
                 return NULL;                
             }
-            iter = iter->next; // skip ,
+            if (iter->ttype != MATTE_TOKEN_OBJECT_ARRAY_END) 
+                iter = iter->next; // skip ,
+
             merge_instructions(inst, expInst);
             itemCount++;
         }
@@ -3285,6 +3311,8 @@ static matteArray_t * compile_base_value(
         *src = iter->next; // skip } 
         return inst;
       }
+
+
 
 
       case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: { 
@@ -3357,8 +3385,16 @@ static matteArray_t * compile_value(
                 matte_array_destroy(inst);
                 return NULL;               
             }
-        // TODO HERE: []
-        
+        } else if (iter->ttype == MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_START) {            
+            iter = iter->next; // skip [
+            matteArray_t * exp = compile_expression(g, block, functions, &iter);
+            if (!exp) {
+                matte_array_destroy(inst);
+                return NULL;               
+            }
+            merge_instructions(inst, exp); // push argument
+            write_instruction__olk(inst, iter->line);
+            iter = iter->next; // skip ]        
         // function calls are kind of like special operators
         // here, they use the compiled value above as the function object 
         // and have computed arguments passed to it
@@ -3414,6 +3450,43 @@ static matteArray_t * compile_function_call(
     return NULL;
 }
 
+
+static matteToken_t * ff_skip_inner_arg(matteToken_t * iter) {
+    iter = iter->next;
+    while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_BEGIN) {
+            ff_skip_inner_arg(iter);
+        }
+        iter = iter->next;
+    }
+    return iter;
+}
+
+
+static matteToken_t * ff_skip_inner_object_static(matteToken_t * iter) {
+    iter = iter->next;
+    while(iter && iter->ttype != MATTE_TOKEN_OBJECT_STATIC_END) {
+        if (iter->ttype == MATTE_TOKEN_OBJECT_STATIC_BEGIN) {
+            ff_skip_inner_object_static(iter);
+        }
+        iter = iter->next;
+    }
+    return iter;
+}
+
+static matteToken_t * ff_skip_inner_array_static(matteToken_t * iter) {
+    iter = iter->next;
+    while(iter && iter->ttype != MATTE_TOKEN_OBJECT_ARRAY_END) {
+        if (iter->ttype == MATTE_TOKEN_OBJECT_ARRAY_START) {
+            ff_skip_inner_array_static(iter);
+        }
+        iter = iter->next;
+    }
+    return iter;
+}
+
+
+
 // Returns an array of instructions that, when computed in order,
 // produce exactly ONE value on the stack (the evaluation of the expression).
 // returns NULL on failure. Expected to report errors 
@@ -3434,6 +3507,23 @@ static matteArray_t * compile_expression(
     // expressions. In Matte function constructors <-> definitions
     while(iter && iter->ttype != MATTE_TOKEN_MARKER_EXPRESSION_END) {
         switch(iter->ttype) {
+          case MATTE_TOKEN_OBJECT_STATIC_BEGIN: {
+            iter = ff_skip_inner_object_static(iter);
+            if (!iter) {
+                matte_syntax_graph_print_compile_error(g, iter, "Object literal missing end '}'");
+                goto L_FAIL;
+            }
+            break;
+          }
+          case MATTE_TOKEN_OBJECT_ARRAY_START: {
+            iter = ff_skip_inner_array_static(iter);
+            if (!iter) {
+                matte_syntax_graph_print_compile_error(g, iter, "Object array literal missing end ']'");
+                goto L_FAIL;
+            }
+            break;
+          }
+
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
             matteToken_t * start = iter;
             iter = iter->next;
@@ -3463,9 +3553,7 @@ static matteArray_t * compile_expression(
 
 
           case MATTE_TOKEN_FUNCTION_ARG_BEGIN:
-            while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
-                iter = iter->next;
-            }
+            iter = ff_skip_inner_arg(iter);
             if (!iter) {
                 matte_syntax_graph_print_compile_error(g, iter, "Expression function call missing end ')'");
                 goto L_FAIL;
@@ -3648,7 +3736,9 @@ static matteArray_t * compile_expression(
     if (len) {
         assert(matte_array_at(nodes, matteExpressionNode_t *, len-1)->postOp == -1);
     }
-
+    #ifdef MATTE_DEBUG
+        assert(len && "If len is 0, that means this expression has NO nodes. Which is definitely. Bad.");
+    #endif
     merge_instructions(outInst, matte_array_at(nodes, matteExpressionNode_t *, len-1)->value);
 
     // whew... now cleanup thanks

@@ -1,6 +1,6 @@
 //// Test 11
 //
 // Variable test
-@testVariable = 'Hello, ';
+@testVariable = 'Hello,';
 @otherTest = "world!";
 return testVariable + otherTest;

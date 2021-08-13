@@ -30,9 +30,9 @@ struct matteBytecodeStub_t {
 
 static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
     matteString_t * str = matte_string_create();
-    uint32_t len;
+    uint32_t len = 0;
     ADVANCE(uint32_t, len);
-    int32_t ch;
+    int32_t ch = 0;
     uint32_t i;
     for(i = 0; i < len; ++i) {
         ADVANCE(int32_t, ch);
@@ -45,7 +45,7 @@ static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
 static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
     matteBytecodeStub_t * out = calloc(1, sizeof(matteBytecodeStub_t));
     uint32_t i;
-    uint8_t ver;
+    uint8_t ver = 0;
     ADVANCE(uint8_t, ver);
     if (ver != 1) return out;
     ADVANCE(uint32_t, out->fileID);

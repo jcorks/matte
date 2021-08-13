@@ -59,8 +59,12 @@ char * dump_string(const char * filename) {
         memcpy(out+iter, chunk, chunkSize);
         iter += chunkSize;
     }
+
+    char * outReal = malloc(len+1);
+    sscanf(out, "%s", outReal);
+    free(out);
     fclose(f);
-    return out;
+    return outReal;
 }
 
 
