@@ -65,7 +65,11 @@ typedef struct {
     // call captured variables. Defined at function creation.
     matteArray_t * functionCaptures;
 
-
+    // for function objects, a reference to the original 
+    // creation context is kept. This is because referrables 
+    // can track back to original creation contexts.
+    matteValue_t origin;
+    matteValue_t origin_referrable;
     // reference count
     uint32_t refs;
     
@@ -346,29 +350,44 @@ void matte_value_into_new_function_ref(matteValue_t * v, matteBytecodeStub_t * s
     matteVMStackFrame_t frame;
     uint16_t fileid = matte_bytecode_stub_get_file_id(stub);
 
-    // TODO: can we speed this up?
-    for(i = 0; i < len; ++i) {
-        uint32_t frameIndex = 0;
-        uint32_t deep = matte_vm_get_stackframe_size(v->heap->vm);
-        for(frameIndex = 0; frameIndex < deep; ++frameIndex) {
-            frame = matte_vm_get_stackframe(v->heap->vm, frameIndex);
+    // save origin so that others may use referrables.
+    // This happens in every case EXCEPT the 0-stub function.
+    if (matte_vm_get_stackframe_size(v->heap->vm)) {
+        frame = matte_vm_get_stackframe(v->heap->vm, 0);
 
-            if (matte_bytecode_stub_get_id(frame.stub) == capturesRaw[i].stubID) {
+        matte_value_into_copy(&d->origin, frame.context);
+        matte_value_into_copy(&d->origin_referrable, frame.referrable);
+    }
+    // TODO: can we speed this up?
+    if (!len) return;
+
+
+    // referrables come from a history of creation contexts.
+    for(i = 0; i < len; ++i) {
+        matteValue_t context = frame.context;
+        matteValue_t contextReferrable = frame.referrable;
+
+        while(context.binID) {
+            matteObject_t * origin = matte_bin_fetch(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], context.objectID);
+            if (matte_bytecode_stub_get_id(origin->functionstub) == capturesRaw[i].stubID) {
                 CapturedReferrable_t ref;
                 ref.referrableSrc = matte_heap_new_value(v->heap);
-                matte_value_into_copy(&ref.referrableSrc, frame.referrable);
+                matte_value_into_copy(&ref.referrableSrc, contextReferrable);
                 ref.index = capturesRaw[i].referrable;
 
                 matte_array_push(d->functionCaptures, ref);
                 break;
             }
+            context = origin->origin;
+            contextReferrable = origin->origin_referrable;
         }
-        if (frameIndex == deep) {
+
+        if (!context.binID) {
             matte_vm_raise_error_string(v->heap->vm, MATTE_STR_CAST("Could not find captured variable!"));
             matteValue_t copy = matte_heap_new_value(v->heap);
             matte_array_push(d->functionCaptures, copy);
         }
-    }    
+    }
 }
 
 
@@ -563,6 +582,14 @@ matteValue_t matte_value_object_access_string(matteValue_t v, const matteString_
     return result;
 }
 
+matteValue_t matte_value_object_access_index(matteValue_t v, uint32_t index) {
+    matteValue_t keyO = matte_heap_new_value(v.heap);
+    matte_value_into_number(&keyO, index);
+    matteValue_t result = matte_value_object_access(v, keyO);
+    matte_heap_recycle(keyO);
+    return result;
+}
+
 matteValue_t matte_value_object_keys(matteValue_t v) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return matte_heap_new_value(v.heap);
@@ -576,12 +603,9 @@ matteValue_t matte_value_object_keys(matteValue_t v) {
     if (len) {
         for(i = 0; i < len; ++i) {
             val = matte_array_at(m->keyvalues_number, matteValue_t, i);
-            if (val.binID) { // skip empty values
-
-                matteValue_t key = matte_heap_new_value(v.heap);
-                matte_value_into_number(&key, i);
-                matte_array_push(keys, key);
-            }
+            matteValue_t key = matte_heap_new_value(v.heap);
+            matte_value_into_number(&key, i);
+            matte_array_push(keys, key);
         }
     }
 
@@ -591,11 +615,9 @@ matteValue_t matte_value_object_keys(matteValue_t v) {
         matte_table_iter_start(iter, m->keyvalues_string);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             val = *(matteValue_t*)matte_table_iter_get_value(iter);
-            if (val.binID) {
-                matteValue_t key = matte_heap_new_value(v.heap);
-                matte_value_into_string(&key, matte_table_iter_get_key(iter));
-                matte_array_push(keys, key);                
-            }
+            matteValue_t key = matte_heap_new_value(v.heap);
+            matte_value_into_string(&key, matte_table_iter_get_key(iter));
+            matte_array_push(keys, key);                
         }
         matte_table_iter_destroy(iter);
     }
@@ -607,11 +629,9 @@ matteValue_t matte_value_object_keys(matteValue_t v) {
         matte_table_iter_start(iter, m->keyvalues_object);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             val = *(matteValue_t*)matte_table_iter_get_value(iter);
-            if (val.binID) {
-                matteValue_t key = matte_heap_new_value(v.heap);
-                matte_value_into_copy(&key, *(matteValue_t*)matte_table_iter_get_key(iter));
-                matte_array_push(keys, key);    
-            }
+            matteValue_t key = matte_heap_new_value(v.heap);
+            matte_value_into_copy(&key, *(matteValue_t*)matte_table_iter_get_key(iter));
+            matte_array_push(keys, key);    
         }
         matte_table_iter_destroy(iter);
     }
@@ -633,7 +653,90 @@ matteValue_t matte_value_object_keys(matteValue_t v) {
     return val;
 }
 
+uint32_t matte_value_object_get_key_count(matteValue_t v) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+        return 0;
+    }
+    matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+    uint32_t total = 
+        matte_array_get_size(m->keyvalues_number) +
+        (m->keyvalue_true.binID?1:0) +
+        (m->keyvalue_false.binID?1:0);
 
+    // maybe maintain through get/set/remove prop?
+    if (!matte_table_is_empty(m->keyvalues_string)) {
+        matteTableIter_t * iter = matte_table_iter_create();
+        matte_table_iter_start(iter, m->keyvalues_string);
+        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+            total++;
+        }
+        matte_table_iter_destroy(iter);
+    }
+
+
+    if (!matte_table_is_empty(m->keyvalues_object)) {
+        matteTableIter_t * iter = matte_table_iter_create();
+        matte_table_iter_start(iter, m->keyvalues_object);
+        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+            total++;
+        }
+        matte_table_iter_destroy(iter);
+    }
+    return total;    
+}
+
+
+void matte_value_object_remove_key(matteValue_t v, matteValue_t key) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
+    matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+    switch(key.binID) {
+      case MATTE_VALUE_TYPE_EMPTY: return;
+      case MATTE_VALUE_TYPE_STRING: {
+        matteString_t * str = matte_bin_fetch(key.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], key.objectID);
+        matteValue_t * value = matte_table_find(m->keyvalues_string, str);
+        if (value) {
+            matte_table_remove(m->keyvalues_string, str);
+            matte_heap_recycle(*value);
+        }
+        return;
+      }
+      
+      // array lookup
+      case MATTE_VALUE_TYPE_NUMBER: {
+        double * d = matte_bin_fetch(key.heap->sortedHeaps[MATTE_VALUE_TYPE_NUMBER], key.objectID);
+        uint32_t index = (uint32_t)*d;
+        if (index >= matte_array_get_size(m->keyvalues_number)) {
+            return;
+        }
+        matte_heap_recycle(matte_array_at(m->keyvalues_number, matteValue_t, index));
+        matte_array_remove(m->keyvalues_number, index);
+        return;
+      }
+      
+      case MATTE_VALUE_TYPE_BOOLEAN: {
+        int * d = matte_bin_fetch(key.heap->sortedHeaps[MATTE_VALUE_TYPE_BOOLEAN], key.objectID);
+        if (!d) return;
+        if (*d) {
+            matte_heap_recycle(m->keyvalue_true);
+            m->keyvalue_true = matte_heap_new_value(v.heap);            
+        } else {
+            matte_heap_recycle(m->keyvalue_false);
+            m->keyvalue_false = matte_heap_new_value(v.heap);               
+        }
+        return;
+      }
+      
+      case MATTE_VALUE_TYPE_OBJECT: {           
+        matteValue_t * value = matte_table_find(m->keyvalues_object, &key);
+        if (value) {
+            matte_heap_recycle(*value);
+            matte_table_remove(m->keyvalues_object, &key);
+        }
+        return;
+      }
+    }
+
+}
 
 void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT || !matte_value_is_callable(func)) {
@@ -656,11 +759,9 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
 
         for(i = 0; i < len; ++i) {
             args[1] = matte_array_at(m->keyvalues_number, matteValue_t, i);
-            if (args[1].binID) { // skip empty values
-                *quickI = i;
-                matteValue_t r = matte_vm_call(v.heap->vm, func, MATTE_ARRAY_CAST(args, matteValue_t, 2));
-                matte_heap_recycle(r);
-            }
+            *quickI = i;
+            matteValue_t r = matte_vm_call(v.heap->vm, func, MATTE_ARRAY_CAST(args, matteValue_t, 2));
+            matte_heap_recycle(r);
         }
         matte_heap_recycle(args[0]);
     }
@@ -673,11 +774,9 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
         matte_table_iter_start(iter, m->keyvalues_string);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
-            if (args[1].binID) {
-                matte_string_set(quickI, (matteString_t*)matte_table_iter_get_key(iter));
-                matteValue_t r = matte_vm_call(v.heap->vm, func, MATTE_ARRAY_CAST(args, matteValue_t, 2));
-                matte_heap_recycle(r);
-            }
+            matte_string_set(quickI, (matteString_t*)matte_table_iter_get_key(iter));
+            matteValue_t r = matte_vm_call(v.heap->vm, func, MATTE_ARRAY_CAST(args, matteValue_t, 2));
+            matte_heap_recycle(r);
         }
         matte_heap_recycle(args[0]);
         matte_table_iter_destroy(iter);
@@ -690,11 +789,9 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
         matte_table_iter_start(iter, m->keyvalues_object);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
-            if (args[1].binID) {
-                args[0] = *(matteValue_t*)matte_table_iter_get_value(iter);
-                matteValue_t r = matte_vm_call(v.heap->vm, func, MATTE_ARRAY_CAST(args, matteValue_t, 2));
-                matte_heap_recycle(r);
-            }
+            args[0] = *(matteValue_t*)matte_table_iter_get_value(iter);
+            matteValue_t r = matte_vm_call(v.heap->vm, func, MATTE_ARRAY_CAST(args, matteValue_t, 2));
+            matte_heap_recycle(r);
         }
         matte_table_iter_destroy(iter);
     }
@@ -876,6 +973,10 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
                         matte_heap_recycle(matte_array_at(m->functionCaptures, matteValue_t, n));
                     }
                     matte_array_set_size(m->functionCaptures, 0);
+                    matte_heap_recycle(m->origin);
+                    m->origin.binID = 0;
+                    matte_heap_recycle(m->origin_referrable);
+                    m->origin_referrable.binID = 0;
                 }
                 if (!matte_table_is_empty(m->keyvalues_string)) {
                     for(matte_table_iter_start(iter, m->keyvalues_string);

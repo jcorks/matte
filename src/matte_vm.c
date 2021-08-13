@@ -182,7 +182,7 @@ static const char * opcode_to_str(int oc) {
 #define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__);
 
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
-    matteVMStackFrame_t * frame = &matte_array_at(vm->callstack, matteVMStackFrame_t, matte_array_get_size(vm->callstack)-1);
+    matteVMStackFrame_t * frame = &matte_array_at(vm->callstack, matteVMStackFrame_t, vm->stacksize-1);
     const matteBytecodeStubInstruction_t * inst;
     uint32_t instCount;
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
@@ -635,10 +635,11 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,    0, vm_ext_call__noop);
     vm_add_built_in(vm, MATTE_EXT_CALL_GATE,    3, vm_ext_call__gate);
     vm_add_built_in(vm, MATTE_EXT_CALL_WHILE,   2, vm_ext_call__while);
-    vm_add_built_in(vm, MATTE_EXT_CALL_FOR,     4, vm_ext_call__for);
+    vm_add_built_in(vm, MATTE_EXT_CALL_FOR,     2, vm_ext_call__for);
     vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, 2, vm_ext_call__foreach);
     vm_add_built_in(vm, MATTE_EXT_CALL_MATCH,   2, vm_ext_call__match);
     vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  2, vm_ext_call__import);
+    vm_add_built_in(vm, MATTE_EXT_CALL_REMOVE_KEY,  2, vm_ext_call__remove_key);
 
     vm_add_built_in(vm, MATTE_EXT_CALL_TOBOOLEAN,  1, vm_ext_call__toboolean);
     vm_add_built_in(vm, MATTE_EXT_CALL_TOSTRING,   1, vm_ext_call__tostring);
@@ -649,29 +650,29 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_GETEXTERNALFUNCTION, 1, vm_ext_call__getexternalfunction);
 
 
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TYPE, 1, vm_ext_call__introspect_type);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_OBJECT_ID, 1, vm_ext_call__introspect_object_id);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS, 1, vm_ext_call__introspect_keys);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES, 1, vm_ext_call__introspect_values);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_PAIRS, 1, vm_ext_call__introspect_pairs);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SIZE, 1, vm_ext_call__introspect_size);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISARRAY, 1, vm_ext_call__introspect_isarray);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE, 1, vm_ext_call__introspect_iscallable);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH, 1, vm_ext_call__introspect_length);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TYPE, 0, vm_ext_call__introspect_type);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_OBJECT_ID, 0, vm_ext_call__introspect_object_id);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS, 0, vm_ext_call__introspect_keys);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES, 0, vm_ext_call__introspect_values);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_PAIRS, 0, vm_ext_call__introspect_pairs);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT, 0, vm_ext_call__introspect_keycount);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISARRAY, 0, vm_ext_call__introspect_isarray);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE, 0, vm_ext_call__introspect_iscallable);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH, 0, vm_ext_call__introspect_length);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARAT, 1, vm_ext_call__introspect_charat);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARCODEAT, 1, vm_ext_call__introspect_charcodeat);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_FLOOR, 1, vm_ext_call__introspect_floor);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CEIL, 1, vm_ext_call__introspect_ceil);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ROUND, 1, vm_ext_call__introspect_round);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TORADIANS, 1, vm_ext_call__introspect_toradians);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TODEGREES, 1, vm_ext_call__introspect_todegrees);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SIN, 1, vm_ext_call__introspect_sin);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_COS, 1, vm_ext_call__introspect_cos);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TAN, 1, vm_ext_call__introspect_tan);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS, 1, vm_ext_call__introspect_abs);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN, 1, vm_ext_call__introspect_isnan);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_FLOOR, 0, vm_ext_call__introspect_floor);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CEIL, 0, vm_ext_call__introspect_ceil);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ROUND, 0, vm_ext_call__introspect_round);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TORADIANS, 0, vm_ext_call__introspect_toradians);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TODEGREES, 0, vm_ext_call__introspect_todegrees);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SIN, 0, vm_ext_call__introspect_sin);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_COS, 0, vm_ext_call__introspect_cos);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TAN, 0, vm_ext_call__introspect_tan);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS, 0, vm_ext_call__introspect_abs);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN, 0, vm_ext_call__introspect_isnan);    
 
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 1, vm_ext_call__introspect_nowrite);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
 
 
     return vm;
@@ -854,7 +855,7 @@ matteVMStackFrame_t matte_vm_get_stackframe(matteVM_t * vm, uint32_t i) {
 }
 
 uint32_t matte_vm_get_stackframe_size(const matteVM_t * vm) {
-    return matte_array_get_size(vm->callstack);
+    return vm->stacksize;
 }
 
 matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID) {

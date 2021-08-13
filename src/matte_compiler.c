@@ -30,6 +30,7 @@ typedef enum {
     MATTE_TOKEN_EXTERNAL_MATCH,
     MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
     MATTE_TOKEN_EXTERNAL_IMPORT,
+    MATTE_TOKEN_EXTERNAL_REMOVE_KEY,
     MATTE_TOKEN_EXTERNAL_TOSTRING,
     MATTE_TOKEN_EXTERNAL_TONUMBER,
     MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
@@ -323,6 +324,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         MATTE_TOKEN_EXTERNAL_MATCH, MATTE_STR_CAST("Match built-in"),
         MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION, MATTE_STR_CAST("Get External Function built-in"),
         MATTE_TOKEN_EXTERNAL_IMPORT, MATTE_STR_CAST("Import built-in"),
+        MATTE_TOKEN_EXTERNAL_REMOVE_KEY, MATTE_STR_CAST("Remove Key built-in"),
         MATTE_TOKEN_EXTERNAL_TOSTRING, MATTE_STR_CAST("String cast built-in"),
         MATTE_TOKEN_EXTERNAL_TONUMBER, MATTE_STR_CAST("Number cast built-in"),
         MATTE_TOKEN_EXTERNAL_TOBOOLEAN, MATTE_STR_CAST("Boolean cast built-in"),
@@ -558,6 +560,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
             MATTE_TOKEN_EXTERNAL_MATCH,
             MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
             MATTE_TOKEN_EXTERNAL_IMPORT,
+            MATTE_TOKEN_EXTERNAL_REMOVE_KEY,
             MATTE_TOKEN_EXTERNAL_TOSTRING,
             MATTE_TOKEN_EXTERNAL_TONUMBER,
             MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
@@ -1364,6 +1367,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       }
       case MATTE_TOKEN_EXTERNAL_IMPORT: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "import");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_REMOVE_KEY: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "removeKey");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TOSTRING: {
@@ -3207,6 +3214,16 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
+      case MATTE_TOKEN_EXTERNAL_FOR: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_FOR);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_TOSTRING: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TOSTRING);
+        *src = iter->next;
+        return inst;
+      }
       case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_INTROSPECT);
         *src = iter->next;
@@ -3649,19 +3666,21 @@ static matteArray_t * compile_expression(
             // Heres the fun part: lvalues are either
             // values that got reduced to a referrable OR an expression dot access OR a table lookup result.
             if (isSimpleReferrable) {
-                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE;                
-                #ifdef MATTE_DEBUG
-                    assert(undo.opcode == MATTE_OPCODE_PRF);
-                #endif
+                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE;        
+                if (undo.opcode != MATTE_OPCODE_PRF) {
+                    matte_syntax_graph_print_compile_error(g, iter, "Missing referrable token. (internal error)");
+                    goto L_FAIL;
+                }
             } else {
                 // for handling assignment for the dot access and the [] lookup, 
                 // the OLK instruction will be removed. This leaves both the 
                 // object AND the key on the stack (since OLK would normally consume both)
                 postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER;
                 matte_array_set_size(valueInst, size-1);
-                #ifdef MATTE_DEBUG
-                    assert(undo.opcode == MATTE_OPCODE_OLK);
-                #endif
+                if (undo.opcode != MATTE_OPCODE_OLK) {
+                    matte_syntax_graph_print_compile_error(g, iter, "Missing lookup token. (internal error)");
+                    goto L_FAIL;
+                }
             }
 
             iter = iter->next;
@@ -3707,9 +3726,10 @@ static matteArray_t * compile_expression(
                 uint32_t referrable;
                 memcpy(&referrable, &lastPRF.data[0], sizeof(uint32_t));
 
-                #ifdef MATTE_DEBUG
-                    assert(lastPRF.opcode == MATTE_OPCODE_PRF);
-                #endif
+                if (lastPRF.opcode != MATTE_OPCODE_PRF) {
+                    matte_syntax_graph_print_compile_error(g, iter, "Missing referrable token. (internal error)");
+                    goto L_FAIL;
+                }
                 merge_instructions(n->next->value, n->value);
                 write_instruction__arf(n->next->value, n->next->line, referrable);
                 break;

@@ -8,7 +8,7 @@ enum {
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_PAIRS,
-    MATTE_EXT_CALL_INTERNAL__INTROSPECT_SIZE,
+    MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISARRAY,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH,
@@ -45,7 +45,7 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
         "keys",
         "values",
         "pairs",
-        "size",
+        "keycount",
         "isArray",
         "isCallable",
 
@@ -73,7 +73,7 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_PAIRS),
-        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SIZE),
+        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISARRAY),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH),
@@ -179,9 +179,15 @@ static matteValue_t vm_ext_call__introspect_pairs(matteVM_t * vm, matteValue_t f
     assert(!"TODO");
 }
 
-static matteValue_t vm_ext_call__introspect_size(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
+        matte_value_into_number(&out, matte_value_object_get_key_count(a));
+    }
+    return out;
 }
 
 static matteValue_t vm_ext_call__introspect_isarray(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {

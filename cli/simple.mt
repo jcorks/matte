@@ -1,30 +1,52 @@
+@Array <-(staticArray) {
+    @arrBase = (<-{
+        when(staticArray) : staticArray;
+        return [];
+    })();
 
-// Returns whether the input object 
-// has a member named "testValue" 
-// that is set to true.
-<@>Point <- {
-    @x = 0;
-    @y = 0;
-
-    return {
-        getX :<- {return x;},
-        getY :<- {return y;},
-
-        move :<- (newX, newY) {
-            x = newX;
-            y = newY;
-            print("moved!: "+x+','+y);
+    print(arrBase[2]);
+    
+    @object = {};
+    @interface = {
+        length : <-{
+            return introspect(arrBase).keycount();
         },
 
-        otherVar : 102
+        push : <-{
+            return <-(obj) {
+                arrBase[introspect(arrBase).size()-1] = obj;
+            };
+        },
+
+        remove : <-{
+            return <-(index) {
+                arrBase[index] = empty;
+            };
+        },
+
+        default: <-{return empty;}
     };
+    object.toString =<- {
+        @str = '[';
+        <@>len = interface.length();
+        for([0, len], <-(i){
+            str = str + arrBase[i]; 
+            when(i != len-1):<-{
+                str = str + ',';
+            }();
+        });
+        str = str + ']';
+        return str;
+    };
+    print(object);
+
+    object.accessor =<-(obj, key){
+        return interface[key]();        
+    };
+
+    return object;
 };
 
 
-@p = Point();
-p.move(10, 10);
-
-
-foreach(p, <-(key, val) {
-    print(key + " : " + introspect(val).type());
-});
+@arr = Array([1, 2, 3]);
+print(arr);

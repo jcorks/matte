@@ -12,6 +12,8 @@ rather than rerunning the script for this VM instance.
 objects
 - if indexing objects via number, the number is ceiling'd to an integer before it becomes 
   a key. If you want to use a decimal number as a key, consider making it a string first 
+- Objects can have empty values 
+- Removing keys from object can be done with "removeKey(object, key)"
 - indexing with empty is an error.
 
 
@@ -166,7 +168,7 @@ following properties:
         pairs() : object
 
         // returns the object's number of key-value pairs 
-        size() : object
+        keycount() : object
 
         // returns whether the object only has numbered keys
         isArray(): boolean

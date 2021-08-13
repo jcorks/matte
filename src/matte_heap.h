@@ -101,10 +101,19 @@ matteValue_t matte_value_object_access(matteValue_t, matteValue_t key);
 // string object as a key.
 matteValue_t matte_value_object_access_string(matteValue_t, const matteString_t *);
 
+// Convenience function. Same as matte_value_object_access, except creates a 
+// temporary number object
+matteValue_t matte_value_object_access_index(matteValue_t, uint32_t);
+
+
 // If the value is an object, returns a new object with numbered 
 // keys pointing to the keys of the original objects. If not an object,
 // empty is returned
 matteValue_t matte_value_object_keys(matteValue_t);
+
+// Returns the number of keys within the object.
+// If not an object, 0 is returned.
+uint32_t matte_value_object_get_key_count(matteValue_t);
 
 // attempts to run a VM call for each key-value pair within the object.
 // If object is not an object, no action is taken (and no error is raised.)
@@ -115,7 +124,9 @@ void matte_value_object_foreach(matteValue_t object, matteValue_t function);
 // invokes assigner if present
 void matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value);
 
-
+// Removes a key from an object if it exists. If the value is 
+// not an object or the key does not exist, no action is taken.
+void matte_value_object_remove_key(matteValue_t, matteValue_t key);
 
 
 // if number/string/boolean: copy
