@@ -1,9 +1,5 @@
 @Array <-(staticArray) {
-    @arrBase = (<-{
-        when(staticArray) : staticArray;
-        return [];
-    })();
-
+    @arrBase = gate(staticArray) staticArray : [];
     print(arrBase[2]);
     
     @object = {};
@@ -30,10 +26,8 @@
         @str = '[';
         <@>len = interface.length();
         for([0, len], <-(i){
-            str = str + arrBase[i]; 
-            when(i != len-1):<-{
-                str = str + ',';
-            }();
+            @end = gate(i < len-1) ',' : ' ';
+            str = str + arrBase[i] + end;
         });
         str = str + ']';
         return str;

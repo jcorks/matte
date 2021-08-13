@@ -161,3 +161,11 @@ static void write_instruction__skp_insert(matteArray_t * insts, uint32_t lineNum
     memcpy(inst.data, &ninst, sizeof(uint32_t));
     matte_array_push(insts, inst);
 }
+
+static void write_instruction__asp(matteArray_t * insts, uint32_t lineNumber, uint32_t ninst) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_ASP;
+    memcpy(inst.data, &ninst, sizeof(uint32_t));
+    matte_array_push(insts, inst);
+}

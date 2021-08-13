@@ -172,6 +172,7 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_POP: return "POP";
       case MATTE_OPCODE_RET: return "RET";
       case MATTE_OPCODE_SKP: return "SKP";
+      case MATTE_OPCODE_ASP: return "ASP";
       default:
         return "???";
     }
@@ -449,7 +450,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             frame->pc = instCount;
             break;
           }    
-          // used to implement when
+          // used to implement all branching
           case MATTE_OPCODE_SKP: {
             uint32_t count = *(uint32_t*)inst->data;
             matteValue_t condition = STACK_POP();
@@ -458,7 +459,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             break;
           }    
-
+          case MATTE_OPCODE_ASP: {
+            uint32_t count = *(uint32_t*)inst->data;
+            frame->pc += count;
+            break;
+          }  
           case MATTE_OPCODE_OPR: {            
             switch(inst->data[0]) {
                 case MATTE_OPERATOR_ADD:

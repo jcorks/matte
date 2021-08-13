@@ -532,7 +532,18 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                     exit(1);                
                 }
                 
-            } else {
+            } else if (
+                oc0 == 'a' &&
+                oc1 == 's' &&
+                oc2 == 'p'
+            ) { 
+                inst->opcode = MATTE_OPCODE_ASP; 
+                if (sscanf(line, "%"SCNu32" asp %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized skp format. Syntax: [line] asp [pc skip count]\n", lineN);
+                    exit(1);                
+                }
+                
+            }else {
                 printf("ERROR on line %d: unrecognized instruction\n", lineN);
                 exit(1);
             }

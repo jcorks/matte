@@ -244,6 +244,11 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 a = *(uint32_t*)data.bytes;
                 fprintf(fout, "skp %d\n", a);
                 break;            
+            case MATTE_OPCODE_ASP:          
+                a = *(uint32_t*)data.bytes;
+                fprintf(fout, "asp %d\n", a);
+                break; 
+
             default:
                 assert("!unknown opcode encountered");
         }

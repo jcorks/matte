@@ -67,6 +67,7 @@ typedef enum {
 
     MATTE_TOKEN_WHEN,
     MATTE_TOKEN_WHEN_RETURN,
+    MATTE_TOKEN_GATE_RETURN,
     MATTE_TOKEN_RETURN,
 
     MATTE_TOKEN_STATEMENT_END, // newline OR ;
@@ -359,6 +360,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
 
         MATTE_TOKEN_WHEN, MATTE_STR_CAST("'when' Statement"),
         MATTE_TOKEN_WHEN_RETURN, MATTE_STR_CAST("'when' Return Value Operator ':'"),
+        MATTE_TOKEN_GATE_RETURN, MATTE_STR_CAST("'gate' Else Operator ':'"),
         MATTE_TOKEN_RETURN, MATTE_STR_CAST("'return' Statement"),
 
         MATTE_TOKEN_STATEMENT_END, MATTE_STR_CAST("Statement End ';'"),
@@ -545,6 +547,28 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         NULL 
     );
 
+    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Gate Expression"), MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
+        matte_syntax_graph_node_token(MATTE_TOKEN_EXTERNAL_GATE),
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+
+        matte_syntax_graph_node_token(MATTE_TOKEN_GATE_RETURN),
+
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+
+        matte_syntax_graph_node_end(),    
+        NULL
+    );
+
+
+
+
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Literal Value"), MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
         matte_syntax_graph_node_token_group(
             MATTE_TOKEN_LITERAL_BOOLEAN,
@@ -553,7 +577,6 @@ static void generate_graph(matteSyntaxGraph_t * st) {
             MATTE_TOKEN_LITERAL_STRING,
 
             MATTE_TOKEN_EXTERNAL_NOOP,
-            MATTE_TOKEN_EXTERNAL_GATE,
             MATTE_TOKEN_EXTERNAL_WHILE,
             MATTE_TOKEN_EXTERNAL_FOREACH,
             MATTE_TOKEN_EXTERNAL_FOR,
@@ -1004,7 +1027,8 @@ static matteToken_t * new_token(
 static void destroy_token(
     matteToken_t * t
 ) {
-    if (t->ttype == MATTE_TOKEN_EXPRESSION_GROUP_BEGIN) {
+    if (t->ttype == MATTE_TOKEN_EXPRESSION_GROUP_BEGIN ||
+        t->ttype == MATTE_TOKEN_EXTERNAL_GATE) {
         matte_array_destroy((matteArray_t*)t->text);
     } else {
         matte_string_destroy(t->text);
@@ -1825,7 +1849,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
         break; 
       }
-        
+      case MATTE_TOKEN_GATE_RETURN: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
+        break; 
+      }
       case MATTE_TOKEN_RETURN: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "return");  
         break;
@@ -3339,6 +3366,14 @@ static matteArray_t * compile_base_value(
         return inst;
       }
 
+
+      case MATTE_TOKEN_EXTERNAL_GATE: { 
+        matteArray_t * arr = (matteArray_t *)iter->text; // the sneaky II in action....
+        merge_instructions(inst, matte_array_clone(arr));
+        *src = iter->next;
+        return inst;
+      }
+
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
         int val;
         sscanf(matte_string_get_c_str(iter->text), "%d", &val);
@@ -3524,6 +3559,54 @@ static matteArray_t * compile_expression(
     // expressions. In Matte function constructors <-> definitions
     while(iter && iter->ttype != MATTE_TOKEN_MARKER_EXPRESSION_END) {
         switch(iter->ttype) {
+          // gate expressions mimic ternary operators in c-likes <3
+          case MATTE_TOKEN_EXTERNAL_GATE: {
+            matteToken_t * start = iter;
+            iter = iter->next; // skip "gate"
+            iter = iter->next; // skip "("
+            matteArray_t * inst = compile_expression(g, block, functions, &iter);
+            if (!inst) {
+                goto L_FAIL;
+            }
+
+            iter = iter->next; // skip ")"
+            matteArray_t * iftrue = compile_expression(g, block, functions, &iter);
+            if (!inst) {
+                goto L_FAIL;
+            }
+
+            iter = iter->next; // skip ":"
+            matteArray_t * iffalse = compile_expression(g, block, functions, &iter);
+            if (!inst) {
+                goto L_FAIL;
+            }
+
+            matteToken_t * end = iter;
+            write_instruction__skp_insert(inst, start->line, matte_array_get_size(iftrue)+1); // +1 for the ASP
+            merge_instructions(inst, iftrue);
+            write_instruction__asp(inst, start->line, matte_array_get_size(iffalse));
+            merge_instructions(inst, iffalse);
+
+            
+            // to reference this expressions value, the string is REPLACED 
+            // with a pointer to the array.
+            
+            matte_string_destroy(start->text);   // VERY SNEAKY II
+            start->text = (matteString_t *)inst; // VERY SNEAKIER II
+            
+
+            // dispose of unneeded nodes since they were compiled.
+            iter = start->next;
+            matteToken_t * next;
+            while(iter != end) {
+                next = iter->next;
+                destroy_token(iter);            
+                iter = next;
+            }
+            start->next = end;
+            break;
+          }
+
           case MATTE_TOKEN_OBJECT_STATIC_BEGIN: {
             iter = ff_skip_inner_object_static(iter);
             if (!iter) {
@@ -3934,7 +4017,7 @@ static matteFunctionBlock_t * compile_function_block(
     b->parent = parent;
 
     #ifdef MATTE_DEBUG__COMPILER
-        printf("COMPILING FUNCTION %d\n", b->stubID);
+        printf("COMPILING FUNCTION %d (line %d:%d)\n", b->stubID, iter->line, iter->character);
     #endif
 
 

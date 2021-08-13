@@ -109,35 +109,22 @@ while(statement, <={
 })
 
 
-// like ternary/if, returns either 2nd or third if 1st is true.
-@result = gate(a > b, a, b);
+// like ternary/if, returns + runs either 2nd or third if 1st is true.
+@result = gate(a > b) a : b;
 
 // switch doesn't exist, but match does!
-match(statement, {
-    0  <= {
-        Debug.print('0!');
-    },
-    
-    1  <= {
-        Debug.print('1!');
-    },
-    
-
-    // special value for no matching
-    default  <= {
-        Debug.print('Neither')
-    }
+Debug.print(match(statement){
+    (0)       : '0',
+    (1)       : '1',
+    (2, 3, 4) : '2, 3, or 4!',
+    default   : "don't know!"
 });
 
-
-
-
-// match can be also used to return different things
 @myValue = match(random(1, 4), {
-    0 <= {return "A"},
-    1 <= {return "B"},
-    2 <= {return "C"},
-    3 <= {return "D"},
+    (0) : "A",
+    (1) : "B",
+    (2) : "C",
+    (3) : "D",
 });
 
 

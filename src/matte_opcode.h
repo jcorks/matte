@@ -48,7 +48,9 @@ typedef enum {
     MATTE_OPCODE_RET,
     
     // skips PC forward if conditional is false. used for when conditional return
-    MATTE_OPCODE_SKP 
+    MATTE_OPCODE_SKP ,
+    // skips PC forward always.
+    MATTE_OPCODE_ASP
         
 } matteOpcode_t;
 
