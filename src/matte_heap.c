@@ -150,10 +150,10 @@ static void object_put_prop(matteObject_t * m, matteValue_t key, matteValue_t va
         uint32_t index = (uint32_t)*d;
         if (index >= matte_array_get_size(m->keyvalues_number)) {
             uint32_t currentLen = matte_array_get_size(m->keyvalues_number);
-            matte_array_set_size(m->keyvalues_number, currentLen);
+            matte_array_set_size(m->keyvalues_number, index+1);
             uint32_t i;
             // new entries as empty
-            for(i = currentLen; i < index; ++i) {
+            for(i = currentLen; i < index+1; ++i) {
                 matte_array_at(m->keyvalues_number, matteValue_t, i) = matte_heap_new_value(key.heap);
             }
         }

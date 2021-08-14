@@ -2867,7 +2867,7 @@ static matteArray_t * push_variable_name(
                     );
                     matte_array_push(blockSrc->captures, capture);
                     matteString_t * str = matte_string_clone(iter->text);
-                    matte_array_push(blockSrc->captureNames, iter->text);
+                    matte_array_push(blockSrc->captureNames, str);
                     *src = iter->next;
                     return inst;                    
                 }
@@ -2888,7 +2888,7 @@ static matteArray_t * push_variable_name(
                     );
                     matte_array_push(blockSrc->captures, capture);
                     matteString_t * str = matte_string_clone(iter->text);
-                    matte_array_push(blockSrc->captureNames, iter->text);
+                    matte_array_push(blockSrc->captureNames, str);
                     *src = iter->next;
                     return inst;                    
 
@@ -3246,6 +3246,11 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
+      case MATTE_TOKEN_EXTERNAL_REMOVE_KEY: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_REMOVE_KEY);
+        *src = iter->next;
+        return inst;
+      }
       case MATTE_TOKEN_EXTERNAL_TOSTRING: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TOSTRING);
         *src = iter->next;
@@ -3507,7 +3512,7 @@ static matteToken_t * ff_skip_inner_arg(matteToken_t * iter) {
     iter = iter->next;
     while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
         if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_BEGIN) {
-            ff_skip_inner_arg(iter);
+            iter = ff_skip_inner_arg(iter);
         }
         iter = iter->next;
     }
@@ -3519,7 +3524,7 @@ static matteToken_t * ff_skip_inner_object_static(matteToken_t * iter) {
     iter = iter->next;
     while(iter && iter->ttype != MATTE_TOKEN_OBJECT_STATIC_END) {
         if (iter->ttype == MATTE_TOKEN_OBJECT_STATIC_BEGIN) {
-            ff_skip_inner_object_static(iter);
+            iter = ff_skip_inner_object_static(iter);
         }
         iter = iter->next;
     }
@@ -3530,7 +3535,7 @@ static matteToken_t * ff_skip_inner_array_static(matteToken_t * iter) {
     iter = iter->next;
     while(iter && iter->ttype != MATTE_TOKEN_OBJECT_ARRAY_END) {
         if (iter->ttype == MATTE_TOKEN_OBJECT_ARRAY_START) {
-            ff_skip_inner_array_static(iter);
+            iter = ff_skip_inner_array_static(iter);
         }
         iter = iter->next;
     }
@@ -4101,6 +4106,13 @@ static matteFunctionBlock_t * compile_function_block(
         goto L_FAIL;
     }
 
+    // in the case that a user has not explicitly placed a return, then 
+    // we by default "return empty"
+    // we aren't C after all...
+    if (iter) {
+        write_instruction__nem(b->instructions, iter->line);
+        write_instruction__ret(b->instructions, iter->line);
+    }
     // for every except stubID == 0, there should be an end brace here. Consume it.
     if (iter && iter->ttype == MATTE_TOKEN_FUNCTION_END) {
         *src = iter->next;

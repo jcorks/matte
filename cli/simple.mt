@@ -1,40 +1,49 @@
+// A sample array class
 @Array <-(staticArray) {
-    @arrBase = gate(staticArray) staticArray : [];
-    print(arrBase[2]);
-    
+    @arrBase = gate(staticArray) staticArray : [];    
     @object = {};
+
+    // For simplicity, the interface is a 
+    // named property table.
     @interface = {
+        // Returns the length of the array.
         length : <-{
             return introspect(arrBase).keycount();
         },
 
+        // pushes a new value to the array.
         push : <-{
             return <-(obj) {
-                arrBase[introspect(arrBase).size()-1] = obj;
+                arrBase[introspect(arrBase).keycount()] = obj;
             };
         },
 
+        // removes the given index from the array.
         remove : <-{
             return <-(index) {
-                arrBase[index] = empty;
+                removeKey(arrBase, index);
             };
         },
 
         default: <-{return empty;}
     };
-    object.toString =<- {
+
+    // Prints a pretty version of the array contents
+    object.toString = <-{
         @str = '[';
         <@>len = interface.length();
         for([0, len], <-(i){
-            @end = gate(i < len-1) ',' : ' ';
+            @end = gate(i < len-1) ',' : '';
             str = str + arrBase[i] + end;
         });
         str = str + ']';
         return str;
     };
-    print(object);
 
-    object.accessor =<-(obj, key){
+    // The accessor intercepts accesses to supplant the 
+    // existing members of object with 
+    // a custom interface.
+    object.accessor = <-(obj, key) {
         return interface[key]();        
     };
 
@@ -42,5 +51,7 @@
 };
 
 
-@arr = Array([1, 2, 3]);
-print(arr);
+@arr = Array([1, 20, 4, 44]);
+arr.push(66);
+arr.remove(2);
+return arr;
