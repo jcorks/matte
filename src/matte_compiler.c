@@ -68,6 +68,11 @@ typedef enum {
     MATTE_TOKEN_WHEN,
     MATTE_TOKEN_WHEN_RETURN,
     MATTE_TOKEN_GATE_RETURN,
+    MATTE_TOKEN_MATCH_BEGIN, //{
+    MATTE_TOKEN_MATCH_END, //}
+    MATTE_TOKEN_MATCH_IMPLIES, //:
+    MATTE_TOKEN_MATCH_SEPARATOR, //,
+    MATTE_TOKEN_MATCH_DEFAULT, //default
     MATTE_TOKEN_RETURN,
 
     MATTE_TOKEN_STATEMENT_END, // newline OR ;
@@ -361,6 +366,12 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         MATTE_TOKEN_WHEN, MATTE_STR_CAST("'when' Statement"),
         MATTE_TOKEN_WHEN_RETURN, MATTE_STR_CAST("'when' Return Value Operator ':'"),
         MATTE_TOKEN_GATE_RETURN, MATTE_STR_CAST("'gate' Else Operator ':'"),
+        MATTE_TOKEN_MATCH_BEGIN, MATTE_STR_CAST("'match' Content Block '{'"),
+        MATTE_TOKEN_MATCH_END, MATTE_STR_CAST("'match' Content Block '}'"),
+        MATTE_TOKEN_MATCH_IMPLIES, MATTE_STR_CAST("'match' implies ':'"),
+        MATTE_TOKEN_MATCH_SEPARATOR, MATTE_STR_CAST("'match' separator ','"),
+        MATTE_TOKEN_MATCH_DEFAULT, MATTE_STR_CAST("'match' default ','"),
+
         MATTE_TOKEN_RETURN, MATTE_STR_CAST("'return' Statement"),
 
         MATTE_TOKEN_STATEMENT_END, MATTE_STR_CAST("Statement End ';'"),
@@ -566,7 +577,70 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         NULL
     );
 
+    matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Match Expression"), MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
+        matte_syntax_graph_node_token(MATTE_TOKEN_EXTERNAL_MATCH),
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
 
+        matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_BEGIN),        
+
+        matte_syntax_graph_node_split(
+            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_split(
+                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+                matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_IMPLIES),
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+                matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+
+                matte_syntax_graph_node_split(
+                    matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_SEPARATOR),
+                    matte_syntax_graph_node_to_parent(11), // back to function arg begin split, hopefully i counted right
+                    NULL,
+
+
+                    matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_END),
+                    matte_syntax_graph_node_end(),    
+                    NULL,
+                    NULL
+                ),
+                NULL,
+
+                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_SEPARATOR),
+                matte_syntax_graph_node_to_parent(4), // back to arg expression
+                NULL,
+                NULL
+            ),
+            NULL,
+
+
+            matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_DEFAULT),
+            matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_IMPLIES),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+
+            matte_syntax_graph_node_split(
+                matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_SEPARATOR),
+                matte_syntax_graph_node_to_parent(7), // back to function arg begin split, hopefully i counted right
+                NULL,
+
+
+                matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_END),
+                matte_syntax_graph_node_end(),    
+                NULL,
+                NULL
+            ),
+            NULL,
+
+
+            NULL
+        ),
+        NULL
+
+    );
 
 
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Literal Value"), MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
@@ -1028,7 +1102,8 @@ static void destroy_token(
     matteToken_t * t
 ) {
     if (t->ttype == MATTE_TOKEN_EXPRESSION_GROUP_BEGIN ||
-        t->ttype == MATTE_TOKEN_EXTERNAL_GATE) {
+        t->ttype == MATTE_TOKEN_EXTERNAL_GATE ||
+        t->ttype == MATTE_TOKEN_EXTERNAL_MATCH) {
         matte_array_destroy((matteArray_t*)t->text);
     } else {
         matte_string_destroy(t->text);
@@ -1851,6 +1926,26 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       }
       case MATTE_TOKEN_GATE_RETURN: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
+        break; 
+      }
+      case MATTE_TOKEN_MATCH_BEGIN: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '{');
+        break; 
+      }
+      case MATTE_TOKEN_MATCH_END: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '}');
+        break; 
+      }
+      case MATTE_TOKEN_MATCH_IMPLIES: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
+        break; 
+      }
+      case MATTE_TOKEN_MATCH_SEPARATOR: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
+        break; 
+      }
+      case MATTE_TOKEN_MATCH_DEFAULT: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "default");
         break; 
       }
       case MATTE_TOKEN_RETURN: {
@@ -3379,6 +3474,13 @@ static matteArray_t * compile_base_value(
         return inst;
       }
 
+      case MATTE_TOKEN_EXTERNAL_MATCH: { 
+        matteArray_t * arr = (matteArray_t *)iter->text; // the sneaky III in action....
+        merge_instructions(inst, matte_array_clone(arr));
+        *src = iter->next;
+        return inst;
+      }
+
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
         int val;
         sscanf(matte_string_get_c_str(iter->text), "%d", &val);
@@ -3542,7 +3644,201 @@ static matteToken_t * ff_skip_inner_array_static(matteToken_t * iter) {
     return iter;
 }
 
+// compiles the match statement. 
+// its not too bad! the general flow is this:
+// 1. push initial expression result
+// 2. For each match condition expression:
+//
+//       cpy
+//       [condition expression]
+//       opr ==
+//       skp 1
+//       asp [location of corresponding result expression]
+//
+//  3. Once all conditions are writte, THEN all the results are 
+//     written.
+//
+//       pop
+//       [result expression]
+//       asp [location of end of match]
+//
+//     IF the default expression exists, its expression is 
+//     THE FIRST expression in the list. If the default expression doesnt exist 
+//     it is replaced with this expression:
+//
+//        pop
+//        nem
+//        asp [location of end of match]
+//      
+// Because of this organization, MATCH OFFSETS MUST BE 
+// HANDLED VERY, VERY CAREFULLY. Blease....
+static matteArray_t * compile_match(
+    matteSyntaxGraph_t * g, 
+    matteFunctionBlock_t * block,
+    matteArray_t * functions, 
+    matteToken_t ** src
+) {
+    matteToken_t * iter = *src;
+    matteArray_t * instOut = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+    matteArray_t * defaultExpression = NULL;
+    uint32_t defaultLine = iter->line;
+    typedef struct {
+        // compiled condition instructions
+        matteArray_t * result;
+        // The index of the match result
+        uint32_t offset;
+        uint32_t line;
+    } matchresult;
 
+    // array of matteArray_t * of instructions
+    matteArray_t * resultExpressions = matte_array_create(sizeof(matchresult));
+    typedef struct {
+        // compiled condition instructions
+        matteArray_t * condition;
+        // The index of the match result
+        uint32_t matchResult;
+        uint32_t line;
+    } matchcondition;
+
+    matteArray_t * conditionExpressions = matte_array_create(sizeof(matchcondition));
+    uint32_t i;
+
+
+
+    iter = iter->next; // skip "match"
+    iter = iter->next; // skip "("
+    matteArray_t * inst = compile_expression(g, block, functions, &iter);
+    if (!inst) {
+        goto L_FAIL;
+    }
+    // no matter what, the initial expression is pushed
+    merge_instructions(instOut, inst);
+
+
+    iter = iter->next; // skip ")"
+
+
+
+
+
+    while(iter->ttype != MATTE_TOKEN_MATCH_END) {
+        iter = iter->next; // skip "{" or ",";
+        if (iter->ttype == MATTE_TOKEN_MATCH_DEFAULT) {
+            iter = iter->next; // skip default
+            iter = iter->next; // skip :
+            if (defaultExpression) {
+                matte_syntax_graph_print_compile_error(g, iter, "Duplicate 'default' case in match.");
+                goto L_FAIL;
+            }
+            defaultLine = iter->line;
+            defaultExpression = compile_expression(g, block, functions, &iter);
+            if (!defaultExpression) {
+                goto L_FAIL;
+            }            
+        } else {
+            while(iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
+                iter = iter->next; // skip ( or ,
+
+                matchcondition c;
+                c.line = iter->line;
+                matteArray_t * inst = compile_expression(g, block, functions, &iter);
+                if (!inst) {
+                    goto L_FAIL;
+                }
+                c.condition = inst;
+                c.matchResult = matte_array_get_size(resultExpressions);
+                matte_array_push(conditionExpressions, c);
+            }
+            matchresult result;
+            iter = iter->next; // skip the )
+            iter = iter->next; // skip the :
+            result.line = iter->line;
+            matteArray_t * inst = compile_expression(g, block, functions, &iter);
+            if (!inst) {
+                goto L_FAIL;
+            }    
+            result.result = inst;
+            matte_array_push(resultExpressions, result);
+        }
+
+    }
+    iter = iter->next; // skip "}";
+
+
+    // now that we have everything within it compiled,
+    // its time to assemble the table.
+
+    // distance in instructions from the "pivot", pivot 
+    // is the start of the results (always starts with)
+    // either default or the default placeholder
+    uint32_t pivotDistance = 0;
+    for(i = 0; i < matte_array_get_size(conditionExpressions); ++i) {
+        pivotDistance += 4+matte_array_get_size(matte_array_at(conditionExpressions, matchcondition, i).condition);
+    }
+
+    uint32_t endDistance = 0;
+    if (defaultExpression) {
+        endDistance += 2 + matte_array_get_size(defaultExpression);
+    } else {
+        endDistance += 3;
+    }
+    for(i = 0; i < matte_array_get_size(resultExpressions); ++i) {
+        matte_array_at(resultExpressions, matchresult, i).offset = endDistance;
+        endDistance += 2 + matte_array_get_size(matte_array_at(resultExpressions, matchresult, i).result);
+    }
+
+
+    for(i = 0; i < matte_array_get_size(conditionExpressions); ++i) {
+        matchcondition c = matte_array_at(conditionExpressions, matchcondition, i);
+        matchresult r = matte_array_at(resultExpressions, matchresult, c.matchResult);
+        uint32_t len = matte_array_get_size(c.condition);
+        write_instruction__cpy(instOut, c.line);
+        merge_instructions(instOut, c.condition);
+        write_instruction__opr(instOut, c.line, MATTE_OPERATOR_EQ);
+        write_instruction__skp_insert(instOut, c.line, 1);
+        write_instruction__asp(instOut, c.line, pivotDistance+r.offset-4);
+        pivotDistance -= 4+len;
+    }
+    assert(pivotDistance == 0);
+    matte_array_destroy(conditionExpressions);
+
+    write_instruction__pop(instOut, defaultLine, 1); endDistance--;
+    if (defaultExpression) {
+        endDistance-=matte_array_get_size(defaultExpression);
+        merge_instructions(instOut, defaultExpression);
+    } else {
+        write_instruction__nem(instOut, defaultLine);endDistance--;
+    }
+    write_instruction__asp(instOut, defaultLine, endDistance-1);endDistance--;
+
+
+    for(i = 0; i < matte_array_get_size(resultExpressions); ++i) {
+        matchresult r = matte_array_at(resultExpressions, matchresult, i);
+        uint32_t len = matte_array_get_size(r.result);
+        write_instruction__pop(instOut, defaultLine, 1);
+        merge_instructions(instOut, r.result);
+        write_instruction__asp(instOut, defaultLine, endDistance);
+        endDistance -= len + 2;
+    }
+    matte_array_destroy(resultExpressions);
+    assert(endDistance == 0);
+
+    *src = iter;
+    return instOut;
+  L_FAIL:
+    matte_array_destroy(instOut);
+    if (defaultExpression) matte_array_destroy(defaultExpression);
+    for(i = 0; i < matte_array_get_size(resultExpressions); ++i) {
+        matte_array_destroy(matte_array_at(resultExpressions, matchresult, i).result);
+    }
+    matte_array_destroy(resultExpressions);
+    for(i = 0; i < matte_array_get_size(conditionExpressions); ++i) {
+        matte_array_destroy(matte_array_at(conditionExpressions, matchcondition, i).condition);
+    }
+    matte_array_destroy(conditionExpressions);
+
+    return NULL;
+}
 
 // Returns an array of instructions that, when computed in order,
 // produce exactly ONE value on the stack (the evaluation of the expression).
@@ -3559,11 +3855,34 @@ static matteArray_t * compile_expression(
     matteArray_t * outInst = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
     matteArray_t * nodes = matte_array_create(sizeof(matteExpressionNode_t *));
 
-    // paranetheticals should be evaluated first.
+    // parentheticals should be evaluated first.
     // also!! functions are always constructed as part of 
     // expressions. In Matte function constructors <-> definitions
     while(iter && iter->ttype != MATTE_TOKEN_MARKER_EXPRESSION_END) {
         switch(iter->ttype) {
+          case MATTE_TOKEN_EXTERNAL_MATCH: {
+            matteToken_t * start = iter;
+            matteArray_t * inst = compile_match(g, block, functions, &iter);
+            if (!inst) {
+                goto L_FAIL;
+            }
+            matteToken_t * end = iter;            
+            matte_string_destroy(start->text);   // VERY SNEAKY III
+            start->text = (matteString_t *)inst; // VERY SNEAKIER III
+            
+
+            // dispose of unneeded nodes since they were compiled.
+            iter = start->next;
+            matteToken_t * next;
+            while(iter != end) {
+                next = iter->next;
+                destroy_token(iter);            
+                iter = next;
+            }
+            start->next = end;
+            break;
+          }
+
           // gate expressions mimic ternary operators in c-likes <3
           case MATTE_TOKEN_EXTERNAL_GATE: {
             matteToken_t * start = iter;

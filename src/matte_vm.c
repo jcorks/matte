@@ -170,6 +170,7 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_OPR: return "OPR";
       case MATTE_OPCODE_EXT: return "EXT";
       case MATTE_OPCODE_POP: return "POP";
+      case MATTE_OPCODE_POP: return "CPY";
       case MATTE_OPCODE_RET: return "RET";
       case MATTE_OPCODE_SKP: return "SKP";
       case MATTE_OPCODE_ASP: return "ASP";
@@ -395,6 +396,18 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             break;
           }    
+          case MATTE_OPCODE_CPY: {
+            if (!STACK_SIZE()) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: cannot CPY with empty stack"));    
+                break;
+            }       
+            matteValue_t m = STACK_POP();
+            matteValue_t cpy = matte_heap_new_value(vm->heap);
+            matte_value_into_copy(&cpy, m);
+            STACK_PUSH(m);
+            STACK_PUSH(cpy);
+            break;
+          }   
           case MATTE_OPCODE_OSN: {
             if (STACK_SIZE() < 3) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: OSN opcode requires 3 on the stack."));                

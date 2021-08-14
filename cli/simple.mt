@@ -1,6 +1,9 @@
 // A sample array class
-@Array <-(staticArray) {
-    @arrBase = gate(staticArray) staticArray : [];    
+@Array <-(staticArray){
+    @arrBase = match(staticArray) {
+        (empty) : [],
+        default : staticArray
+    };
     @object = {};
 
     // For simplicity, the interface is a 

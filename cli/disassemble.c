@@ -235,7 +235,9 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 a = *(uint32_t*)data.bytes;
                 fprintf(fout, "pop %d\n", a);
                 break;            
-
+            case MATTE_OPCODE_CPY:
+                fprintf(fout, "cpy\n", a);
+                break;
             case MATTE_OPCODE_RET:
                 fprintf(fout, "ret\n");
                 break;            

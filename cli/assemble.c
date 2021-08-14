@@ -515,6 +515,17 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                 }
                 
             } else if (
+                oc0 == 'c' &&
+                oc1 == 'p' &&
+                oc2 == 'y'
+            ) { 
+                inst->opcode = MATTE_OPCODE_CPY; 
+                if (sscanf(line, "%"SCNu32" cpy", &inst->line) != 2) {
+                    printf("ERROR on line %d: unrecognized cpy format. Syntax: [line] cpy\n", lineN);
+                    exit(1);                
+                }
+                
+            } else if (
                 oc0 == 'r' &&
                 oc1 == 'e' &&
                 oc2 == 't'
