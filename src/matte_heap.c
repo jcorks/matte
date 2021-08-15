@@ -527,7 +527,7 @@ int matte_value_as_boolean(matteValue_t v) {
       case MATTE_VALUE_TYPE_EMPTY: return 0;
       case MATTE_VALUE_TYPE_NUMBER: {
         double * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_NUMBER], v.objectID);
-        return *m == 0.0;
+        return *m != 0.0;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: {
         int * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_BOOLEAN], v.objectID);
@@ -564,10 +564,10 @@ matteValue_t matte_value_object_access(matteValue_t v, matteValue_t key) {
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
     matteValue_t * accessor;
     if ((accessor = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("accessor")))) {
-        matteValue_t args[2] = {
-            v, key
+        matteValue_t args[1] = {
+            key
         };
-        return matte_vm_call(v.heap->vm, *accessor, MATTE_ARRAY_CAST(args, matteValue_t, 2));
+        return matte_vm_call(v.heap->vm, *accessor, MATTE_ARRAY_CAST(args, matteValue_t, 1));
     } else {
         return object_lookup(m, key);
     }
@@ -828,10 +828,10 @@ void matte_value_object_set(matteValue_t v, matteValue_t key, matteValue_t value
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
     matteValue_t * assigner;
     if ((assigner = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("assigner")))) {
-        matteValue_t args[3] = {
-            v, key, value
+        matteValue_t args[2] = {
+            key, value
         };
-        matteValue_t r = matte_vm_call(v.heap->vm, *assigner, MATTE_ARRAY_CAST(args, matteValue_t, 3));
+        matteValue_t r = matte_vm_call(v.heap->vm, *assigner, MATTE_ARRAY_CAST(args, matteValue_t, 2));
         if (r.binID == MATTE_VALUE_TYPE_BOOLEAN && !matte_value_as_boolean(r)) {
         } else {
             object_put_prop(m, key, value); 

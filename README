@@ -457,7 +457,7 @@ External call (EXT)
         - uint64_t external code. VM-Defined external C functions to call.
           The following are reserved functions that the VM will always know:
           0 -> noop
-          2 -> gate   gate(condition, then_val, else_val)
+          2 -> gate   ?(condition, then_val, else_val)
           3 -> while 
           4 -> for3  for(start, end, func)
           5 -> for4  for(start, end, step, func)

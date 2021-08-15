@@ -214,3 +214,12 @@ static matteValue_t vm_ext_call__print(matteVM_t * vm, matteValue_t fn, matteArr
     }
     return matte_heap_new_value(vm->heap);
 }
+static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    if (matte_array_get_size(args)) {
+        matte_vm_raise_error(vm, matte_array_at(args, matteValue_t, 0));
+    } else {
+        matteValue_t v = matte_heap_new_value(vm->heap);
+        matte_vm_raise_error(vm, v);
+    }
+    return matte_heap_new_value(vm->heap);
+}

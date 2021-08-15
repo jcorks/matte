@@ -36,6 +36,7 @@ typedef enum {
     MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
     MATTE_TOKEN_EXTERNAL_INTROSPECT,
     MATTE_TOKEN_EXTERNAL_PRINT,
+    MATTE_TOKEN_EXTERNAL_ERROR,
 
 
     MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, // (
@@ -68,6 +69,9 @@ typedef enum {
     MATTE_TOKEN_WHEN,
     MATTE_TOKEN_WHEN_RETURN,
     MATTE_TOKEN_GATE_RETURN,
+    MATTE_TOKEN_IMPLICATION_START, //(
+    MATTE_TOKEN_IMPLICATION_END, //)
+
     MATTE_TOKEN_MATCH_BEGIN, //{
     MATTE_TOKEN_MATCH_END, //}
     MATTE_TOKEN_MATCH_IMPLIES, //:
@@ -336,6 +340,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         MATTE_TOKEN_EXTERNAL_TOBOOLEAN, MATTE_STR_CAST("Boolean cast built-in"),
         MATTE_TOKEN_EXTERNAL_INTROSPECT, MATTE_STR_CAST("Introspect built-in"),
         MATTE_TOKEN_EXTERNAL_PRINT, MATTE_STR_CAST("Print built-in"),
+        MATTE_TOKEN_EXTERNAL_ERROR, MATTE_STR_CAST("Error built-in"),
         MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, MATTE_STR_CAST("Expression '('"),
         MATTE_TOKEN_EXPRESSION_GROUP_END, MATTE_STR_CAST("Expression ')'"),
         MATTE_TOKEN_ASSIGNMENT, MATTE_STR_CAST("Assignment Operator '='"),
@@ -560,38 +565,51 @@ static void generate_graph(matteSyntaxGraph_t * st) {
 
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Gate Expression"), MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
         matte_syntax_graph_node_token(MATTE_TOKEN_EXTERNAL_GATE),
-        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
+        matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_START),
         matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
         matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_END),
 
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+        matte_syntax_graph_node_split(
+            matte_syntax_graph_node_token(MATTE_TOKEN_GATE_RETURN),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
 
-        matte_syntax_graph_node_token(MATTE_TOKEN_GATE_RETURN),
+            matte_syntax_graph_node_end(),    
+            NULL,
 
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
 
-        matte_syntax_graph_node_end(),    
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+
+            matte_syntax_graph_node_token(MATTE_TOKEN_GATE_RETURN),
+
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_end(),    
+            NULL,
+
+
+            NULL
+        ),
         NULL
     );
 
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Match Expression"), MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
         matte_syntax_graph_node_token(MATTE_TOKEN_EXTERNAL_MATCH),
-        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
+        matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_START),
         matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
         matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_END),
 
         matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_BEGIN),        
 
         matte_syntax_graph_node_split(
-            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
+            matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_START),
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
             matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_split(
-                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+                matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_END),
                 matte_syntax_graph_node_token(MATTE_TOKEN_MATCH_IMPLIES),
                 matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
                 matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
@@ -663,6 +681,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
             MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
             MATTE_TOKEN_EXTERNAL_INTROSPECT,
             MATTE_TOKEN_EXTERNAL_PRINT,
+            MATTE_TOKEN_EXTERNAL_ERROR,
 
             0
         ),
@@ -683,12 +702,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
         matte_syntax_graph_node_split(
 
-            matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-            matte_syntax_graph_node_end(),    
-            NULL,
-
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_POSTFIX),
             matte_syntax_graph_node_split(
                 matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_POSTFIX),
                 matte_syntax_graph_node_to_parent(2),    
@@ -700,6 +714,18 @@ static void generate_graph(matteSyntaxGraph_t * st) {
                 NULL
             ),
             NULL,
+
+
+
+            matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_end(),    
+            NULL,
+
+            matte_syntax_graph_node_end(),    
+            NULL,
+
             NULL
 
         ),
@@ -910,7 +936,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         NULL 
     );
 
-
+    
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("When Statement"), MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
         matte_syntax_graph_node_token(MATTE_TOKEN_WHEN),
         matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
@@ -924,7 +950,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         matte_syntax_graph_node_end(),
         NULL 
     );
-
+    
 
 
 
@@ -936,22 +962,19 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         ),
         matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
         matte_syntax_graph_node_split(
-            matte_syntax_graph_node_split(
-                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_NEW_FUNCTION),
-                matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-                matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
-                matte_syntax_graph_node_end(),
-                NULL,
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_NEW_FUNCTION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
+            matte_syntax_graph_node_end(),
+            NULL,
 
 
-                matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
-                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-                matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-                matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
-                matte_syntax_graph_node_end(),
-                NULL,
-                NULL 
-            ),
+            matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
+            matte_syntax_graph_node_end(),
+            NULL,
 
             matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
             matte_syntax_graph_node_end(),
@@ -1296,6 +1319,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             prev = t->iter;
             int c = utf8_next_char(&t->iter);
             switch(c) {
+              case '-':
               case '0':
               case '1':
               case '2':
@@ -1441,7 +1465,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
       case MATTE_TOKEN_EXTERNAL_GATE: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "gate");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "if");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_WHILE: {
@@ -1490,6 +1514,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       }
       case MATTE_TOKEN_EXTERNAL_PRINT: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "print");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_ERROR: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "error");
         break;
       }
       case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
@@ -1901,6 +1929,14 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       }
       case MATTE_TOKEN_FUNCTION_ARG_BEGIN: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
+        break;
+      }
+      case MATTE_TOKEN_IMPLICATION_START: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
+        break;
+      }
+      case MATTE_TOKEN_IMPLICATION_END: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ')');
         break;
       }
       case MATTE_TOKEN_FUNCTION_ARG_SEPARATOR: {
@@ -2330,7 +2366,6 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // If we exhaust all tokens, we have failed.
       case MATTE_SYNTAX_GRAPH_NODE__TOKEN: {
         #ifdef MATTE_DEBUG__COMPILER
-            int h; for(h = 0; h < level; ++h) printf("@");
             printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__TOKEN: %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
         #endif
@@ -2359,7 +2394,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
 
 
             #ifdef MATTE_DEBUG__COMPILER
-                printf("%s\n", newT ? "SUCCESS!": "failure");
+                printf("%s (line %d:%d)\n", newT ? "SUCCESS!": "failure", graph->tokenizer->line, graph->tokenizer->character);
             #endif
 
             // success!!!
@@ -2393,7 +2428,6 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // possible paths. Each are attempted in order.
       case MATTE_SYNTAX_GRAPH_NODE__SPLIT: {
         #ifdef MATTE_DEBUG__COMPILER
-            int h; for(h = 0; h < level; ++h) printf("@");
             printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__SPLIT %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
 
@@ -2460,7 +2494,6 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // the end of a path has been reached. return
       case MATTE_SYNTAX_GRAPH_NODE__END: {
         #ifdef MATTE_DEBUG__COMPILER
-            int h; for(h = 0; h < level; ++h) printf("@");
             printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__END %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
             matte_table_clear(graph->tried);
@@ -2476,7 +2509,6 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // All top paths are tried before continuing
       case MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT: {
         #ifdef MATTE_DEBUG__COMPILER
-            int h; for(h = 0; h < level; ++h) printf("@");
             printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
 
@@ -2491,7 +2523,6 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
             if (out) {
                 matte_table_clear(graph->tried);
                 #ifdef MATTE_DEBUG__COMPILER
-                    int h; for(h = 0; h < level; ++h) printf("@");
                     printf("  - PASSED initial construct node for path %s\n", matte_string_get_c_str(matte_array_at(root->pathNames, matteString_t *, i)));
                     fflush(stdout);
 
@@ -2508,7 +2539,6 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
                 }
             } else {
                 #ifdef MATTE_DEBUG__COMPILER
-                    int h; for(h = 0; h < level; ++h) printf("@");
                     printf("  - FAILED initial construct node for path %s\n", matte_string_get_c_str(matte_array_at(root->pathNames, matteString_t *, i)));
                     fflush(stdout);
 
@@ -3331,6 +3361,11 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
+      case MATTE_TOKEN_EXTERNAL_ERROR: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_ERROR);
+        *src = iter->next;
+        return inst;
+      }
       case MATTE_TOKEN_EXTERNAL_FOREACH: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_FOREACH);
         *src = iter->next;
@@ -3351,6 +3386,16 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
+      case MATTE_TOKEN_EXTERNAL_TONUMBER: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TONUMBER);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_TOBOOLEAN: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TOBOOLEAN);
+        *src = iter->next;
+        return inst;
+      }      
       case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_INTROSPECT);
         *src = iter->next;
@@ -3621,6 +3666,18 @@ static matteToken_t * ff_skip_inner_arg(matteToken_t * iter) {
     return iter;
 }
 
+static matteToken_t * ff_skip_inner_bracket(matteToken_t * iter) {
+    iter = iter->next;
+    while(iter && iter->ttype != MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_END) {
+        if (iter->ttype == MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_START) {
+            iter = ff_skip_inner_bracket(iter);
+        }
+        iter = iter->next;
+    }
+    return iter;
+}
+
+
 
 static matteToken_t * ff_skip_inner_object_static(matteToken_t * iter) {
     iter = iter->next;
@@ -3736,7 +3793,7 @@ static matteArray_t * compile_match(
                 goto L_FAIL;
             }            
         } else {
-            while(iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
+            while(iter->ttype != MATTE_TOKEN_IMPLICATION_END) {
                 iter = iter->next; // skip ( or ,
 
                 matchcondition c;
@@ -3817,8 +3874,8 @@ static matteArray_t * compile_match(
         uint32_t len = matte_array_get_size(r.result);
         write_instruction__pop(instOut, defaultLine, 1);
         merge_instructions(instOut, r.result);
-        write_instruction__asp(instOut, defaultLine, endDistance);
         endDistance -= len + 2;
+        write_instruction__asp(instOut, defaultLine, endDistance);
     }
     matte_array_destroy(resultExpressions);
     assert(endDistance == 0);
@@ -3894,16 +3951,35 @@ static matteArray_t * compile_expression(
             }
 
             iter = iter->next; // skip ")"
-            matteArray_t * iftrue = compile_expression(g, block, functions, &iter);
-            if (!inst) {
-                goto L_FAIL;
+            matteArray_t * iftrue;
+            matteArray_t * iffalse;
+            // only true, else empty
+            if (iter->ttype == MATTE_TOKEN_GATE_RETURN)  {
+                iter = iter->next; // skip :
+                iftrue = compile_expression(g, block, functions, &iter);
+                if (!inst) {
+                    goto L_FAIL;
+                }
+
+                iffalse = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+                write_instruction__nem(iffalse, start->line);
+            // both if and else specified
+            } else {
+                iftrue = compile_expression(g, block, functions, &iter);
+                if (!inst) {
+                    goto L_FAIL;
+                }
+    
+                iter = iter->next; // skip ":"
+
+                iffalse = compile_expression(g, block, functions, &iter);
+                if (!inst) {
+                    goto L_FAIL;
+                }
             }
 
-            iter = iter->next; // skip ":"
-            matteArray_t * iffalse = compile_expression(g, block, functions, &iter);
-            if (!inst) {
-                goto L_FAIL;
-            }
+
+
 
             matteToken_t * end = iter;
             write_instruction__skp_insert(inst, start->line, matte_array_get_size(iftrue)+1); // +1 for the ASP
@@ -3980,6 +4056,13 @@ static matteArray_t * compile_expression(
             iter = ff_skip_inner_arg(iter);
             if (!iter) {
                 matte_syntax_graph_print_compile_error(g, iter, "Expression function call missing end ')'");
+                goto L_FAIL;
+            }
+            break;
+          case MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_START:
+            iter = ff_skip_inner_bracket(iter);
+            if (!iter) {
+                matte_syntax_graph_print_compile_error(g, iter, "Barcket accessor missing end ']'");
                 goto L_FAIL;
             }
             break;
@@ -4226,7 +4309,6 @@ static int compile_statement(
         iter = iter->next; // skip ;
         break;
       }
-
       case MATTE_TOKEN_WHEN: {
         uint32_t oln = iter->line;
         iter = iter->next; // skip when 
@@ -4251,7 +4333,6 @@ static int compile_statement(
         iter = iter->next; // skip ;
         break;
       }
-
       case MATTE_TOKEN_DECLARE_CONST:
         varConst = 1;
       case MATTE_TOKEN_DECLARE: {
@@ -4314,7 +4395,7 @@ static int compile_statement(
         return 0;
     }
 
-    while(iter->ttype == MATTE_TOKEN_STATEMENT_END) {
+    while(iter && iter->ttype == MATTE_TOKEN_STATEMENT_END) {
         iter = iter->next;
     }
     *src = iter;

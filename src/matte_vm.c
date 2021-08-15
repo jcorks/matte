@@ -170,7 +170,7 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_OPR: return "OPR";
       case MATTE_OPCODE_EXT: return "EXT";
       case MATTE_OPCODE_POP: return "POP";
-      case MATTE_OPCODE_POP: return "CPY";
+      case MATTE_OPCODE_CPY: return "CPY";
       case MATTE_OPCODE_RET: return "RET";
       case MATTE_OPCODE_SKP: return "SKP";
       case MATTE_OPCODE_ASP: return "ASP";
@@ -196,6 +196,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         inst = program+frame->pc++;
         #ifdef MATTE_DEBUG__VM
             printf("from line %d, CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", inst->lineNumber, vm->stacksize, frame->pc, opcode_to_str(inst->opcode), matte_array_get_size(frame->valueStack));
+            if (matte_array_get_size(frame->valueStack))
+                matte_value_print(matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1));
             fflush(stdout);
         #endif
 
@@ -663,7 +665,8 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_TOSTRING,   1, vm_ext_call__tostring);
     vm_add_built_in(vm, MATTE_EXT_CALL_TONUMBER,   1, vm_ext_call__tonumber);
     vm_add_built_in(vm, MATTE_EXT_CALL_INTROSPECT, 1, vm_ext_call__introspect);
-    vm_add_built_in(vm, MATTE_EXT_CALL_PRINT, 1, vm_ext_call__print);
+    vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      1, vm_ext_call__print);
+    vm_add_built_in(vm, MATTE_EXT_CALL_ERROR,      1, vm_ext_call__error);
 
     vm_add_built_in(vm, MATTE_EXT_CALL_GETEXTERNALFUNCTION, 1, vm_ext_call__getexternalfunction);
 

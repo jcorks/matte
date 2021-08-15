@@ -103,7 +103,7 @@ typedef enum {
     MATTE_EXT_CALL_TOBOOLEAN, // Boolean() 1 operand
     MATTE_EXT_CALL_INTROSPECT, // introspect() 1 arg
     MATTE_EXT_CALL_PRINT,
-
+    MATTE_EXT_CALL_ERROR,
     MATTE_EXT_CALL_GETEXTERNALFUNCTION
 
 } matteExtCall_t;

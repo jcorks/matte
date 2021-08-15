@@ -110,7 +110,7 @@ while(statement, <={
 
 
 // like ternary/if, returns + runs either 2nd or third if 1st is true.
-@result = gate(a > b) a : b;
+@result = ?(a > b) a : b;
 
 // switch doesn't exist, but match does!
 Debug.print(match(statement){
