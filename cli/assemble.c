@@ -455,12 +455,7 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                   case '^': inst->data[0] = MATTE_OPERATOR_CARET; break;
                   case '%': inst->data[0] = MATTE_OPERATOR_MODULO; break;
 
-                  case ':':
-                    switch(opopcode1) {
-                      case ':': inst->data[0] = MATTE_OPERATOR_SPECIFY; break;
-                      default:;
-                    }
-                    break;
+
                   default:
                     printf("ERROR on line %d: unknown opcode\n", lineN);
                     exit(1);

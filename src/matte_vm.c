@@ -119,7 +119,6 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_GREATER:    return vm_operator__greater     (vm, a, b);
       case MATTE_OPERATOR_LESSEQ:     return vm_operator__lesseq      (vm, a, b);
       case MATTE_OPERATOR_GREATEREQ:  return vm_operator__greatereq   (vm, a, b);
-      case MATTE_OPERATOR_SPECIFY:    return vm_operator__specify     (vm, a, b);
       case MATTE_OPERATOR_TRANSFORM:  return vm_operator__transform   (vm, a, b);
       case MATTE_OPERATOR_NOTEQ:      return vm_operator__noteq       (vm, a, b);
       case MATTE_OPERATOR_MODULO:     return vm_operator__modulo      (vm, a, b);
@@ -499,7 +498,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 case MATTE_OPERATOR_LESS:
                 case MATTE_OPERATOR_GREATEREQ:
                 case MATTE_OPERATOR_LESSEQ:
-                case MATTE_OPERATOR_SPECIFY:
                 case MATTE_OPERATOR_TRANSFORM:
                 case MATTE_OPERATOR_MODULO:
                 case MATTE_OPERATOR_CARET:

@@ -1,10 +1,10 @@
 //// Test 28
 //
 // object test: literal
-@g <- {
+@g :: {
     @local = 'test';
     return {
-        hb :<- {
+        hb : ::{
             return local;
         }
     };

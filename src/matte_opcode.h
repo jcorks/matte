@@ -80,7 +80,6 @@ typedef enum {
     MATTE_OPERATOR_LESS, // < 2 operands
     MATTE_OPERATOR_GREATEREQ, // >= 2 operands
     MATTE_OPERATOR_LESSEQ, // <= 2 operands
-    MATTE_OPERATOR_SPECIFY, // :: 2 operands
     MATTE_OPERATOR_TRANSFORM, // <> 2 operands
     MATTE_OPERATOR_NOTEQ, // != 2 operands
     MATTE_OPERATOR_MODULO, // % 2 operands

@@ -2,8 +2,8 @@
 //
 // function-object test
 @y = 21;
-@f = <-{
-    @g <- {
+@f = ::{
+    @g ::{
         return 10+70;
     };
     return g;

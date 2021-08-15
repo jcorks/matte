@@ -1,15 +1,15 @@
 //// Test 28
 //
 // object test: literal
-<@>Point <- {
+<@>Point = ::{
     @x = 0;
     @y = 0;
 
     return {
-        getX :<- {return x;},
-        getY :<- {return y;},
+        getX : ::{return x;},
+        getY : ::{return y;},
 
-        move :<- (newX, newY) {
+        move : ::(newX, newY) {
             x = newX;
             y = newY;
         },

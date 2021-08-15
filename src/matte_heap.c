@@ -436,6 +436,22 @@ void matte_value_print(matteValue_t v) {
         break;
       case MATTE_VALUE_TYPE_OBJECT: 
         printf("  Heap Type: OBJECT\n");
+        /*{
+            printf("  String Values:\n");
+            matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);            
+            matteTableIter_t * iter = matte_table_iter_create();
+            for( matte_table_iter_start(iter, m->keyvalues_string);
+                !matte_table_iter_is_end(iter);
+                 matte_table_iter_proceed(iter)) {
+
+                matteString_t * v = matte_value_as_string(*(matteValue_t*)matte_table_iter_get_value(iter));
+                printf("    \"%s\" : %s\n", 
+                    matte_string_get_c_str(matte_table_iter_get_key(iter)),
+                    v ? matte_string_get_c_str(v) : "<not string coercible>"
+                );
+
+            }
+        }*/
         break;
 
     }

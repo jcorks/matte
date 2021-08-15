@@ -48,10 +48,10 @@ typedef enum {
     MATTE_TOKEN_GENERAL_OPERATOR1,
     MATTE_TOKEN_GENERAL_OPERATOR2,
     MATTE_TOKEN_VARIABLE_NAME,
-    MATTE_TOKEN_OBJECT_STATIC_BEGIN, //{
-    MATTE_TOKEN_OBJECT_STATIC_END, //{
+    MATTE_TOKEN_OBJECT_LITERAL_BEGIN, //{
+    MATTE_TOKEN_OBJECT_LITERAL_END, //{
     MATTE_TOKEN_OBJECT_DEF_PROP, //:
-    MATTE_TOKEN_OBJECT_STATIC_SEPARATOR, //,
+    MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR, //,
     MATTE_TOKEN_OBJECT_ARRAY_START,
     MATTE_TOKEN_OBJECT_ARRAY_END,
     MATTE_TOKEN_OBJECT_ARRAY_SEPARATOR,
@@ -67,7 +67,6 @@ typedef enum {
     MATTE_TOKEN_FUNCTION_CONSTRUCTOR, // <-
 
     MATTE_TOKEN_WHEN,
-    MATTE_TOKEN_WHEN_RETURN,
     MATTE_TOKEN_GATE_RETURN,
     MATTE_TOKEN_IMPLICATION_START, //(
     MATTE_TOKEN_IMPLICATION_END, //)
@@ -350,10 +349,10 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         MATTE_TOKEN_GENERAL_OPERATOR1, MATTE_STR_CAST("Single-operand Operator"),
         MATTE_TOKEN_GENERAL_OPERATOR2, MATTE_STR_CAST("Operator"),
         MATTE_TOKEN_VARIABLE_NAME, MATTE_STR_CAST("Variable Name"),
-        MATTE_TOKEN_OBJECT_STATIC_BEGIN, MATTE_STR_CAST("Object Literal '{'"),
-        MATTE_TOKEN_OBJECT_STATIC_END, MATTE_STR_CAST("Object Literal '}'"),
+        MATTE_TOKEN_OBJECT_LITERAL_BEGIN, MATTE_STR_CAST("Object Literal '{'"),
+        MATTE_TOKEN_OBJECT_LITERAL_END, MATTE_STR_CAST("Object Literal '}'"),
         MATTE_TOKEN_OBJECT_DEF_PROP, MATTE_STR_CAST("Object Literal assignment ':'"),
-        MATTE_TOKEN_OBJECT_STATIC_SEPARATOR, MATTE_STR_CAST("Object Literal separator ','"),
+        MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR, MATTE_STR_CAST("Object Literal separator ','"),
         MATTE_TOKEN_OBJECT_ARRAY_START, MATTE_STR_CAST("Array Literal '['"),
         MATTE_TOKEN_OBJECT_ARRAY_END, MATTE_STR_CAST("Array Literal ']'"),
         MATTE_TOKEN_OBJECT_ARRAY_SEPARATOR, MATTE_STR_CAST("Array Element Separator ','"),
@@ -369,8 +368,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR, MATTE_STR_CAST("Function Constructor '<-'"),
 
         MATTE_TOKEN_WHEN, MATTE_STR_CAST("'when' Statement"),
-        MATTE_TOKEN_WHEN_RETURN, MATTE_STR_CAST("'when' Return Value Operator ':'"),
-        MATTE_TOKEN_GATE_RETURN, MATTE_STR_CAST("'gate' Else Operator ':'"),
+        MATTE_TOKEN_GATE_RETURN, MATTE_STR_CAST("'gate' Else Operator"),
         MATTE_TOKEN_MATCH_BEGIN, MATTE_STR_CAST("'match' Content Block '{'"),
         MATTE_TOKEN_MATCH_END, MATTE_STR_CAST("'match' Content Block '}'"),
         MATTE_TOKEN_MATCH_IMPLIES, MATTE_STR_CAST("'match' implies ':'"),
@@ -570,25 +568,19 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
         matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_END),
 
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+
         matte_syntax_graph_node_split(
             matte_syntax_graph_node_token(MATTE_TOKEN_GATE_RETURN),
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
             matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-
             matte_syntax_graph_node_end(),    
             NULL,
 
 
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-
-            matte_syntax_graph_node_token(MATTE_TOKEN_GATE_RETURN),
-
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_end(),    
             NULL,
-
 
             NULL
         ),
@@ -783,20 +775,21 @@ static void generate_graph(matteSyntaxGraph_t * st) {
     ///////////////
     ///////////////
     matte_syntax_graph_add_construct_path(st, MATTE_STR_CAST("Object Literal Constructor"), MATTE_SYNTAX_CONSTRUCT_NEW_OBJECT,
-        matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_STATIC_BEGIN),
+        matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_LITERAL_BEGIN),
         matte_syntax_graph_node_split(
-            matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_STATIC_END),
+            matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_LITERAL_END),
             matte_syntax_graph_node_end(),
             NULL,
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
             matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_split(
-                matte_syntax_graph_node_construct( MATTE_SYNTAX_CONSTRUCT_NEW_FUNCTION),
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_NEW_FUNCTION),
+                matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
                 matte_syntax_graph_node_split(
-                    matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_STATIC_END),
+                    matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_LITERAL_END),
                     matte_syntax_graph_node_end(),
                     NULL,
-                    matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_STATIC_SEPARATOR),
+                    matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR),
                     matte_syntax_graph_node_to_parent(7),
                     NULL,
                     NULL
@@ -809,10 +802,10 @@ static void generate_graph(matteSyntaxGraph_t * st) {
                 matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
                 matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
                 matte_syntax_graph_node_split(
-                    matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_STATIC_END),
+                    matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_LITERAL_END),
                     matte_syntax_graph_node_end(),
                     NULL,
-                    matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_STATIC_SEPARATOR),
+                    matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR),
                     matte_syntax_graph_node_to_parent(8),
                     NULL,
                     NULL
@@ -943,7 +936,6 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
         matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
         matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
-        matte_syntax_graph_node_token(MATTE_TOKEN_WHEN_RETURN),
         matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
         matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
         matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
@@ -1753,25 +1745,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             }
             break;
 
-          case ':':
-            c = utf8_next_char(&t->iter);
-            switch(c) {
-              case ':':
-                t->character+=2;
-                t->backup = t->iter;
-                return new_token(
-                    matte_string_create_from_c_str(":%c", c),
-                    currentLine,
-                    currentCh,
-                    ty
-                );            
-                break;
 
-              default:
-                t->iter = t->backup;
-                return NULL;              
-            }
-            break;
 
           case '!':
             c = utf8_next_char(&t->iter);
@@ -1880,11 +1854,11 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
         break;
       }
-      case MATTE_TOKEN_OBJECT_STATIC_BEGIN: {
+      case MATTE_TOKEN_OBJECT_LITERAL_BEGIN: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '{');
         break;          
       }
-      case MATTE_TOKEN_OBJECT_STATIC_END: {
+      case MATTE_TOKEN_OBJECT_LITERAL_END: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '}');
         break;
       }
@@ -1894,7 +1868,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;          
       }
 
-      case MATTE_TOKEN_OBJECT_STATIC_SEPARATOR: {
+      case MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
         break;
       }
@@ -1948,7 +1922,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;          
       }
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "<-");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "::");
         break;  
       }
 
@@ -1956,12 +1930,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "when");
         break;            
       }
-      case MATTE_TOKEN_WHEN_RETURN: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
-        break; 
-      }
       case MATTE_TOKEN_GATE_RETURN: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "else");
         break; 
       }
       case MATTE_TOKEN_MATCH_BEGIN: {
@@ -3112,11 +3082,7 @@ matteOperator_t string_to_operator(const matteString_t * s) {
         case '^': return MATTE_OPERATOR_CARET; break;
         case '%': return MATTE_OPERATOR_MODULO; break;
 
-        case ':':
-        switch(opopcode1) {
-            case ':': return MATTE_OPERATOR_SPECIFY; break;
-            default:;
-        }
+
         break;
         default:;
     }
@@ -3232,7 +3198,6 @@ static int op_to_precedence(int op) {
 
 
       case MATTE_OPERATOR_TERNARY:
-      case MATTE_OPERATOR_SPECIFY: // :: 2 operands
       case MATTE_OPERATOR_TRANSFORM: // <> 2 operands
       case MATTE_OPERATOR_CARET: // ^ 2 operands
 
@@ -3444,15 +3409,19 @@ static matteArray_t * compile_base_value(
 
 
       // object literal
-      case MATTE_TOKEN_OBJECT_STATIC_BEGIN: {
+      case MATTE_TOKEN_OBJECT_LITERAL_BEGIN: {
         iter = iter->next;
         uint32_t nPairs = 0;
-        while(iter->ttype != MATTE_TOKEN_OBJECT_STATIC_END) {
+        while(iter->ttype != MATTE_TOKEN_OBJECT_LITERAL_END) {
             // key : value,
+            // OR
+            // key :: function
 
             // special case: variable name is treated like a string for convenience
             if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME &&
-                iter->next->next->ttype == MATTE_TOKEN_OBJECT_DEF_PROP) {
+                (iter->next->next->ttype == MATTE_TOKEN_OBJECT_DEF_PROP ||
+                 iter->next->next->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR)
+            ) {
                 
                 write_instruction__nst(inst, iter->line, function_intern_string(block, iter->text));
                 iter = iter->next; // skip name
@@ -3474,7 +3443,10 @@ static matteArray_t * compile_base_value(
                 }
                 merge_instructions(inst, expInst);
             }
-            iter = iter->next; // skip : 
+
+            if (iter->ttype == MATTE_TOKEN_OBJECT_DEF_PROP) {
+                iter = iter->next; // skip : 
+            }// else its part of the function constructor: LEAVE IT.
 
 
 
@@ -3491,7 +3463,7 @@ static matteArray_t * compile_base_value(
             merge_instructions(inst, expInst);
 
 
-            if (iter->ttype == MATTE_TOKEN_OBJECT_STATIC_SEPARATOR)
+            if (iter->ttype == MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR)
                 iter = iter->next;                
             nPairs++;
         }
@@ -3681,8 +3653,8 @@ static matteToken_t * ff_skip_inner_bracket(matteToken_t * iter) {
 
 static matteToken_t * ff_skip_inner_object_static(matteToken_t * iter) {
     iter = iter->next;
-    while(iter && iter->ttype != MATTE_TOKEN_OBJECT_STATIC_END) {
-        if (iter->ttype == MATTE_TOKEN_OBJECT_STATIC_BEGIN) {
+    while(iter && iter->ttype != MATTE_TOKEN_OBJECT_LITERAL_END) {
+        if (iter->ttype == MATTE_TOKEN_OBJECT_LITERAL_BEGIN) {
             iter = ff_skip_inner_object_static(iter);
         }
         iter = iter->next;
@@ -3953,29 +3925,25 @@ static matteArray_t * compile_expression(
             iter = iter->next; // skip ")"
             matteArray_t * iftrue;
             matteArray_t * iffalse;
+
+            // true bit is always there
+            iftrue = compile_expression(g, block, functions, &iter);
+            if (!inst) {
+                goto L_FAIL;
+            }
+
+
             // only true, else empty
             if (iter->ttype == MATTE_TOKEN_GATE_RETURN)  {
-                iter = iter->next; // skip :
-                iftrue = compile_expression(g, block, functions, &iter);
-                if (!inst) {
-                    goto L_FAIL;
-                }
-
-                iffalse = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
-                write_instruction__nem(iffalse, start->line);
-            // both if and else specified
-            } else {
-                iftrue = compile_expression(g, block, functions, &iter);
-                if (!inst) {
-                    goto L_FAIL;
-                }
-    
                 iter = iter->next; // skip ":"
 
                 iffalse = compile_expression(g, block, functions, &iter);
                 if (!inst) {
                     goto L_FAIL;
                 }
+            } else {
+                iffalse = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+                write_instruction__nem(iffalse, start->line);
             }
 
 
@@ -4007,7 +3975,7 @@ static matteArray_t * compile_expression(
             break;
           }
 
-          case MATTE_TOKEN_OBJECT_STATIC_BEGIN: {
+          case MATTE_TOKEN_OBJECT_LITERAL_BEGIN: {
             iter = ff_skip_inner_object_static(iter);
             if (!iter) {
                 matte_syntax_graph_print_compile_error(g, iter, "Object literal missing end '}'");
@@ -4318,7 +4286,6 @@ static int compile_statement(
             return -1;
         }
         iter = iter->next; // skip )
-        iter = iter->next; // skip :
         matteArray_t * ret;
         if (!(ret = compile_expression(g, block, functions, &iter))) {
             // error reporting handled by compile_expression

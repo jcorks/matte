@@ -2,7 +2,7 @@
 //
 // value capture test 
 @y = 100;
-@f = <-{
+@f = ::{
     return y + 20;
 };
 return f();

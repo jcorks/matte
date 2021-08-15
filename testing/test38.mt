@@ -1,7 +1,7 @@
 //// Test 38
 //
 // basic matching
-<@>m <-(exp){
+<@>m :: (exp){
     return match(exp) {
         (0, 1, 2, 3) : 'below4',
         default      : 'above3'

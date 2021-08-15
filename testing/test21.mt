@@ -1,9 +1,9 @@
 //// Test 21
 //
 // value capture test 
-@f = <-{
+@f = ::{
     @y = 22;
-    @g <- {
+    @g ::{
         return y;
     };
     return g;

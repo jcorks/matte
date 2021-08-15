@@ -2,7 +2,7 @@
 //
 // empty object
 @r = {};
-r.toString =<- {
+r.toString = ::{
     return 'Testing';
 };
 return String(r);
