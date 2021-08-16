@@ -22,6 +22,13 @@ static void show_help() {
     printf("      bytecode in one invocation. Output from each source is printed\n");
     printf("      to stdout.\n\n");
 
+    printf("  debug [file]\n");
+    printf("    - When given a file, Matte will run the file in debug mode\n");
+    printf("      In this mode, matte will accept gdb-style commands before\n");
+    printf("      and during execution. When in this mode, type 'help' and\n");
+    printf("      enter for more information.\n");
+
+
     printf("  exec [file(s)]\n");
     printf("    - When given a list of files, Matte will run the files sequentially\n");
     printf("      by assuming each file is a compiled bytecode blob.\n");
@@ -82,6 +89,13 @@ int main(int argc, char ** args) {
             argc-3,
             args[argc-1]
         );
+        return 0;        
+    } else if (!strcmp(tool, "debug")) {
+        if (argc != 3) {
+            printf("Syntax: matte debug [file]\n");
+            exit(1);
+        }
+        return matte_debug(args[2]);
         return 0;        
     } else if (!strcmp(tool, "disassemble")) {
         if (argc < 3) {

@@ -43,6 +43,12 @@ struct matteVM_t {
     // symbolic stubs for all the ext calls.
     // full of matteBytecodeStub_t *
     matteArray_t * extStubs;
+
+
+    void(*debug)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, void *);
+    void * debugData;
+   
+
 };
 
 
@@ -190,15 +196,23 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     matteValue_t output = matte_heap_new_value(vm->heap);
 
 
-
+    uint32_t lastLine = 0xffffffff;
     while(frame->pc < instCount) {
         inst = program+frame->pc++;
+        // TODO: optimize out
         #ifdef MATTE_DEBUG__VM
             printf("from line %d, CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", inst->lineNumber, vm->stacksize, frame->pc, opcode_to_str(inst->opcode), matte_array_get_size(frame->valueStack));
             if (matte_array_get_size(frame->valueStack))
                 matte_value_print(matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1));
             fflush(stdout);
         #endif
+        if (vm->debug) {
+            if (lastLine != inst->lineNumber) {
+                vm->debug(vm, MATTE_VM_DEBUG_EVENT__LINE_CHANGE, matte_bytecode_stub_get_file_id(frame->stub), inst->lineNumber, vm->debugData);
+                lastLine = inst->lineNumber;
+            }
+        }
+
 
         switch(inst->opcode) {
           case MATTE_OPCODE_NOP:
@@ -965,3 +979,11 @@ matteValue_t matte_vm_get_external_function_as_value(
 
 
 
+void matte_vm_set_debug_callback(
+    matteVM_t * vm,
+    void(*debugCB)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, void *),
+    void * data
+) {
+    vm->debug = debugCB;
+    vm->debugData = data;
+}
