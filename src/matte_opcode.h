@@ -53,6 +53,10 @@ typedef enum {
     MATTE_OPCODE_SKP ,
     // skips PC forward always.
     MATTE_OPCODE_ASP,
+    // pushes a named referrable at runtime.
+    // performance heavy; is not used except for 
+    // special compilation.
+    MATTE_OPCODE_PNR,
         
 } matteOpcode_t;
 

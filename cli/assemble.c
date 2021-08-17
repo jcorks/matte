@@ -510,6 +510,17 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                 }
                 
             } else if (
+                oc0 == 'p' &&
+                oc1 == 'n' &&
+                oc2 == 'r'
+            ) { 
+                inst->opcode = MATTE_OPCODE_PNR; 
+                if (sscanf(line, "%"SCNu32" pnr %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized pop format. Syntax: [line] pnr [string id]\n", lineN);
+                    exit(1);                
+                }
+                
+            } else if (
                 oc0 == 'c' &&
                 oc1 == 'p' &&
                 oc2 == 'y'

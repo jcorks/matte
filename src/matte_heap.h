@@ -64,6 +64,11 @@ void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t 
 matteValue_t * matte_value_object_array_at_unsafe(matteValue_t v, uint32_t index);
 
 
+// Given a function object, gets the in-scope referrable identified
+// by the given name. If none can be found, an error is raised and 
+// empty is returned.
+matteValue_t matte_value_function_get_named_referrable(matteValue_t v, const matteString_t *);
+
 // 
 void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);
 

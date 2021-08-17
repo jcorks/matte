@@ -1,3 +1,32 @@
+@pObject ::(o) {
+    
+    @pspace ::(level) {
+        @str = '';
+        for([0, level], ::{
+            str = str + ' ';
+        });
+        return str;
+    };
+    @helper ::(obj, level) {
+        @poself = context;
+
+        return match(introspect(obj).type()) {
+            ('string') :    obj,
+            ('number') : ''+obj,
+            ('boolean'): ''+obj,
+            ('empty')  : 'empty',
+            ('object') : ::{
+                @output = '{\n';
+                foreach(obj, ::(key, val) {
+                    output = output + pspace(level)+(String(key))+' : '+poself(val, level+1) + ',\n';
+                });
+                output = output + pspace(level) + '}\n';
+                return output;                
+            }()
+        };
+    };
+    print(helper(o, 0));
+};
 @class ::(d) {
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.
@@ -119,7 +148,7 @@
                     error("Class interfaces can only have getters/setters and methods.");
                 }();
                 if(introspect(v).isCallable())::{
-                    out[key] = v;
+                    funcs[key] = v;
                     mthnames[key] = 'function';
                     print('ADDING CLASS function: ' + key);
                 }() else ::{
@@ -142,6 +171,7 @@
 
         if(noseal == empty) ::{
             out.accessor = ::(key) {
+                print(key);
                 when(key == 'introspect') {
                     public : {
                         variables : varnames,
@@ -156,7 +186,11 @@
                 out = funcs[key];
                 when(out) out;
 
-                error('' +key+ " does not exist within this instances class.");
+                @str = '';
+                for([0, introspect(funcs).keycount()], ::(i) {
+                    str = str + funcs[i] + ', ';
+                });
+                error('' +key+ " does not exist within this instances class." + str);
             };
 
             out.assigner = ::(key, value){
@@ -172,7 +206,7 @@
 
 
 @Array = class({
-    define : ::(this, args, classinst) {
+    define ::(this, args, classinst) {
         <@>data = if(Boolean(args) && introspect(args).type() == 'object') args else [];
          @ len = introspect(data).keycount();
 
@@ -267,4 +301,6 @@
 });
 
 @test = Array.new([1, 2, 3]);
+pObject(test);
+print(test.toString);
 print(test);

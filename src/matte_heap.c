@@ -332,6 +332,51 @@ void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t 
     }
 }
 
+matteValue_t matte_value_function_get_named_referrable(matteValue_t v, const matteString_t * name) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return matte_heap_new_value(v.heap);
+    matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+    if (!m->functionstub) return matte_heap_new_value(v.heap);
+    // claim captures immediately.
+    uint32_t i;
+    uint32_t len;
+
+
+
+    // referrables come from a history of creation contexts.
+    matteValue_t context = v;
+    matteValue_t contextReferrable = m->origin_referrable;
+
+    matteValue_t out = matte_heap_new_value(v.heap);
+
+    while(context.binID) {
+        matteObject_t * origin = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], context.objectID);
+
+
+        len = matte_bytecode_stub_arg_count(origin->functionstub);
+        for(i = 0; i < len; ++i) {
+            if (matte_string_test_eq(matte_bytecode_stub_get_arg_name(origin->functionstub, i), name)) {
+                matte_value_into_copy(&out, *matte_value_object_array_at_unsafe(contextReferrable, 1+i));
+                return out;
+            }
+        }
+        
+        len = matte_bytecode_stub_local_count(origin->functionstub);
+        for(i = 0; i < len; ++i) {
+            if (matte_string_test_eq(matte_bytecode_stub_get_local_name(origin->functionstub, i), name)) {
+                matte_value_into_copy(&out, *matte_value_object_array_at_unsafe(contextReferrable, 1+i+matte_bytecode_stub_arg_count(origin->functionstub)));
+                return out;
+            }
+        }
+
+        context = origin->origin;
+        contextReferrable = origin->origin_referrable;
+    }
+
+    matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Could not find named referrable!"));
+    return out;
+}
+
+
 void matte_value_into_new_function_ref(matteValue_t * v, matteBytecodeStub_t * stub) {
     matte_heap_recycle(*v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
@@ -528,10 +573,21 @@ matteString_t * matte_value_as_string(matteValue_t v) {
       }
 
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
-        matteValue_t * toString;
-        if ((toString = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("toString")))) {
-            return matte_value_as_string(matte_vm_call(v.heap->vm, *toString, matte_array_empty()));
+        matteValue_t toString = matte_value_object_access_string(v, MATTE_STR_CAST("toString"));
+        if (toString.binID) {
+            matteValue_t result = matte_vm_call(v.heap->vm, toString, matte_array_empty());
+            matteString_t * out = matte_value_as_string(result);
+            if (out) {
+                out = matte_string_clone(out);
+            } else {
+                out = matte_string_create_from_c_str("");
+            }
+            matte_heap_recycle(result);
+            matte_heap_recycle(toString);
+            return out;
+        } else {
+            matte_heap_recycle(toString);
+            return matte_string_create_from_c_str("object");
         }
       }
     }

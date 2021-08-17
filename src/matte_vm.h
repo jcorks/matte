@@ -164,14 +164,15 @@ matteValue_t matte_vm_get_external_function_as_value(
 
 
 typedef enum {
-    MATTE_VM_DEBUG_EVENT__LINE_CHANGE
+    MATTE_VM_DEBUG_EVENT__LINE_CHANGE,
+    MATTE_VM_DEBUG_EVENT__ERROR_RAISED
 } matteVMDebugEvent_t;
 
 
 // gets a debug event callback.
 void matte_vm_set_debug_callback(
     matteVM_t * vm,
-    void(*)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, void *),
+    void(*)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *),
     void *
 );
 

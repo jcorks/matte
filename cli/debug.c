@@ -26,7 +26,8 @@ static int keepgoing = 1;
 static int started = 0;
 static matteVM_t * vm = NULL;
 static matteArray_t * breakpoints = NULL;
-static int needsBreak = 0;
+static int stepinto = 0;
+static int stepreqframe = 0;
 static char * lastCommand = NULL;
 // fileid -> matteArray -> matteString_t *
 static matteTable_t * lines;
@@ -79,9 +80,9 @@ static void printArea() {
             printf("  ---- | \n");
         } else {
             if (i == line-1) {
-                printf("->%4d | %s\n", i, matte_string_get_c_str(matte_array_at(localLines, matteString_t *, i)));
+                printf("->%4d | %s\n", i+1, matte_string_get_c_str(matte_array_at(localLines, matteString_t *, i)));
             } else {
-                printf("  %4d | %s\n", i, matte_string_get_c_str(matte_array_at(localLines, matteString_t *, i)));
+                printf("  %4d | %s\n", i+1, matte_string_get_c_str(matte_array_at(localLines, matteString_t *, i)));
             }
         }
     }
@@ -154,12 +155,23 @@ static int execCommand() {
     } else if (!strcmp(command, "step") ||
                !strcmp(command, "s")) {
         if (started) {
-            needsBreak = 1;
+            stepinto = 1;
+            stepreqframe = -1;
             return 0;
         } else {
             printf("The script has not started yet.\n");
         }
-    } else if (!strcmp(command, "continue")) {
+    } else if (!strcmp(command, "next") ||
+               !strcmp(command, "n")) {
+        if (started) {
+            stepinto = 1;
+            stepreqframe = matte_vm_get_stackframe_size(vm);
+            return 0;
+        } else {
+            printf("The script has not started yet.\n");
+        }
+    } else if (!strcmp(command, "continue")||
+               !strcmp(command, "c")) {
         if (!started) {
             printf("The script is not currently running.\n");
         } else {
@@ -201,6 +213,37 @@ static int execCommand() {
         } else {
             printf("Already at bottom of callstack.\n");
         }
+    } else if (!strcmp(command, "print") ||    
+               !strcmp(command, "p")) {
+        if (!started) {
+            printf("The script has not started yet.\n");
+        } else {
+            matteString_t * src = matte_string_create();
+            matte_string_concat_printf(src, "return (%s);", res);
+         
+            uint32_t jitSize = 0;
+            uint8_t * jitBuffer = matte_compiler_run_with_named_references(
+                matte_string_get_c_str(src), // TODO: UTF8
+                matte_string_get_length(src),
+                &jitSize,
+                onError,
+                0xfffffffe
+            ); 
+            matte_string_destroy(src);
+            if (jitSize) {
+                matteArray_t * jitstubs = matte_bytecode_stubs_from_bytecode(
+                    jitBuffer, jitSize
+                );
+                
+                matte_vm_add_stubs(vm, jitstubs);
+                matteValue_t printOut = matte_vm_run_script(vm, 0xfffffffe, matte_array_empty());
+                
+                const matteString_t * str = matte_value_as_string(printOut);
+                if (str) {
+                    printf("%s\n", matte_string_get_c_str(str));
+                }
+            }
+        }
     } else {
         printf("Unknown command.\n");        
     }
@@ -214,12 +257,23 @@ static void onDebugEvent(
     matteVMDebugEvent_t event, 
     uint32_t file, 
     int lineNumber, 
+    matteValue_t val,
     void * data
 ) {
-   
-    if (needsBreak) {
+    if (event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED) {
+        printArea();
+        matteString_t * str = matte_value_as_string(val);
+        printf("ERROR RAISED FROM VIRTUAL MACHINE: %s\n", str ? matte_string_get_c_str(str) : "<no string info given>");
+        while(execCommand());
+        return;    
+    }
+     
+    if (stepinto &&
+        (stepreqframe == -1 ||
+         matte_vm_get_stackframe_size(vm) <= stepreqframe)
+    ) {
         stackframe = 0;
-        needsBreak = 0;
+        stepinto = 0;
         printArea();
         while(execCommand());
         return;
@@ -230,7 +284,7 @@ static void onDebugEvent(
         if (p.fileid == file &&
             p.line == lineNumber) {
             stackframe = 0;
-            printf("Breakpoint %d reached.\n");
+            printf("Breakpoint %d reached.\n", i);
             printArea();
             while(execCommand());
         }

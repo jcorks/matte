@@ -45,7 +45,7 @@ struct matteVM_t {
     matteArray_t * extStubs;
 
 
-    void(*debug)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, void *);
+    void(*debug)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t, void *);
     void * debugData;
    
 
@@ -179,6 +179,7 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_RET: return "RET";
       case MATTE_OPCODE_SKP: return "SKP";
       case MATTE_OPCODE_ASP: return "ASP";
+      case MATTE_OPCODE_PNR: return "PNR";
       default:
         return "???";
     }
@@ -208,8 +209,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         #endif
         if (vm->debug) {
             if (lastLine != inst->lineNumber) {
-                vm->debug(vm, MATTE_VM_DEBUG_EVENT__LINE_CHANGE, matte_bytecode_stub_get_file_id(frame->stub), inst->lineNumber, vm->debugData);
+                matteValue_t db = matte_heap_new_value(vm->heap);
+                vm->debug(vm, MATTE_VM_DEBUG_EVENT__LINE_CHANGE, matte_bytecode_stub_get_file_id(frame->stub), inst->lineNumber, db, vm->debugData);
                 lastLine = inst->lineNumber;
+                matte_heap_recycle(db);
             }
         }
 
@@ -226,6 +229,22 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteValue_t copy = matte_heap_new_value(vm->heap);
                 matte_value_into_copy(&copy, *v);
                 STACK_PUSH(copy);
+            }
+            break;
+          }
+          
+          case MATTE_OPCODE_PNR: {
+            uint32_t referrableStrID;
+            memcpy(&referrableStrID, inst->data, sizeof(uint32_t));
+            const matteString_t * str = matte_bytecode_stub_get_string(frame->stub, referrableStrID);
+            if (!str) {
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("No such bytecode stub string."));
+            } else {
+                matteValue_t v = matte_value_function_get_named_referrable(
+                    frame->context, 
+                    str
+                ); 
+                STACK_PUSH(v);
             }
             break;
           }
@@ -863,6 +882,20 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     matteValue_t b = matte_heap_new_value(vm->heap);
     matte_value_into_copy(&b, val);
     matte_array_push(vm->errors, b);
+    if (vm->debug) {
+        matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, 0);
+        uint32_t numinst;
+        const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
+        uint32_t line = inst[frame.pc].lineNumber;        
+        vm->debug(
+            vm,
+            MATTE_VM_DEBUG_EVENT__ERROR_RAISED,
+            matte_bytecode_stub_get_file_id(frame.stub),
+            line,
+            val,
+            vm->debugData                   
+        );
+    }
 }
 
 void matte_vm_raise_error_string(matteVM_t * vm, const matteString_t * str) {
@@ -981,7 +1014,7 @@ matteValue_t matte_vm_get_external_function_as_value(
 
 void matte_vm_set_debug_callback(
     matteVM_t * vm,
-    void(*debugCB)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, void *),
+    void(*debugCB)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t, void *),
     void * data
 ) {
     vm->debug = debugCB;

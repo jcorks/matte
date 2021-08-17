@@ -174,6 +174,15 @@ enum {
 
 
 
+// since compilation only allow for external functions 
+// on error which result in termination of valid compilation,
+// settings are controlled using statics.
+static int OPTION__NAMED_REFERENCES = 0;
+
+
+
+
+
 // Creates a new syntax tree,
 //
 // A syntax graph allows reduction of raw, UT8 text 
@@ -1019,7 +1028,8 @@ void matte_compiler_tokenize(
     matte_syntax_graph_print(st);
 }
 
-uint8_t * matte_compiler_run(
+
+static uint8_t * matte_compiler_run_base(
     const uint8_t * source, 
     uint32_t len,
     uint32_t * size,
@@ -1059,6 +1069,33 @@ uint8_t * matte_compiler_run(
     // especially those gosh darn function blocks
     return bytecode;
 }
+
+uint8_t * matte_compiler_run_with_named_references(
+    const uint8_t * source, 
+    uint32_t len,
+    uint32_t * size,
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
+    uint32_t fileID
+) {
+    OPTION__NAMED_REFERENCES = 1;
+    return matte_compiler_run_base(
+        source, len, size, onError, fileID
+    );
+}
+
+uint8_t * matte_compiler_run(
+    const uint8_t * source, 
+    uint32_t len,
+    uint32_t * size,
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
+    uint32_t fileID
+) {
+    OPTION__NAMED_REFERENCES = 0;
+    return matte_compiler_run_base(
+        source, len, size, onError, fileID
+    );
+}
+
 
 
 
@@ -2908,6 +2945,27 @@ static uint32_t get_local_referrable(
 }
 
 
+// retrieves a string interned to the function stub by ID to be used with nst ops.
+// If non exists, the string is added.
+static uint32_t function_intern_string(
+    matteFunctionBlock_t * b,
+    const matteString_t * str 
+) {
+    uint32_t i;
+    uint32_t len = matte_array_get_size(b->strings);
+    int found = 0;
+    // look through interned strings 
+    for(i = 0; i < len; ++i) {
+        if (matte_string_test_eq(str, matte_array_at(b->strings, matteString_t *, i))) {
+            return i;
+        }
+    }
+    str = matte_string_clone(str);
+    matte_array_push(b->strings, str);
+    return len;
+}
+
+
 
 // attempts to return an array of additional instructions to push a variable onto the stack.
 // returns 0 on failure
@@ -2918,7 +2976,7 @@ static matteArray_t * push_variable_name(
 ) {
     matteToken_t * iter = *src;
     matteArray_t * inst = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
-
+    matteFunctionBlock_t * blockOrig = block;
     uint32_t referrable = get_local_referrable(
         g,
         block,
@@ -2993,13 +3051,19 @@ static matteArray_t * push_variable_name(
         }
     }
 
+    if (OPTION__NAMED_REFERENCES) {
+        uint32_t i = function_intern_string(blockOrig, iter->text);
+        write_instruction__pnr(inst, iter->line, i);
+        *src = iter->next;
+        return inst;
+    } else {
+        matteString_t * m = matte_string_create_from_c_str("Undefined variable '%s'", matte_string_get_c_str(iter->text));
+        matte_syntax_graph_print_compile_error(g, iter, matte_string_get_c_str(m));
+        matte_string_destroy(m);
 
-    matteString_t * m = matte_string_create_from_c_str("Undefined variable '%s'", matte_string_get_c_str(iter->text));
-    matte_syntax_graph_print_compile_error(g, iter, matte_string_get_c_str(m));
-    matte_string_destroy(m);
-
-    matte_array_destroy(inst);
-    return NULL;
+        matte_array_destroy(inst);
+        return NULL;
+    }
 }
 
 
@@ -3257,25 +3321,6 @@ static void expression_node_sort(matteArray_t * nodes) {
     );
 }
 
-// retrieves a string interned to the function stub by ID to be used with nst ops.
-// If non exists, the string is added.
-static uint32_t function_intern_string(
-    matteFunctionBlock_t * b,
-    const matteString_t * str 
-) {
-    uint32_t i;
-    uint32_t len = matte_array_get_size(b->strings);
-    int found = 0;
-    // look through interned strings 
-    for(i = 0; i < len; ++i) {
-        if (matte_string_test_eq(str, matte_array_at(b->strings, matteString_t *, i))) {
-            return i;
-        }
-    }
-    str = matte_string_clone(str);
-    matte_array_push(b->strings, str);
-    return len;
-}
 
 // like compile expression, except the expression has 
 // no operators and is a "simple" value.
