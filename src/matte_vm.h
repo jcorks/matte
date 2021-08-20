@@ -33,12 +33,22 @@ DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 typedef struct matteArray_t matteArray_t;
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
+typedef struct matteVMStackFrame_t matteVMStackFrame_t;
 #include "matte_heap.h"
 
 
 
 typedef struct matteVM_t matteVM_t;
 
+
+
+typedef enum {
+    MATTE_VM_DEBUG_EVENT__LINE_CHANGE,
+    MATTE_VM_DEBUG_EVENT__ERROR_RAISED
+} matteVMDebugEvent_t;
+
+
+#define MATTE_VM_DEBUG_FILE 0xfffffffe
 
 
 
@@ -75,6 +85,41 @@ matteValue_t matte_vm_call(
     const matteArray_t * args
 );
 
+// Attempts to just-in-time compile and run source
+// at the given scope. If failure occurs, whether in running or 
+// in compilation, the error function will be run set and the empty 
+// value will always be returned. Else, the result of the 
+// expression will be returned. In the case of error,
+// The VM's error stack should not be affected.
+//
+// The source is treated as if it were a full function, thus the result 
+// returned is whatever your function returns. In other words,
+// all the lines of course given should be function statements,
+// and if a meaningful value is desired, the return or when statements 
+// should be used.
+//
+// Depending on the chosen scope, variables that arent declared 
+// within the given source will attempt to be linked to 
+// the variables accesible within the stackframe scope.
+// This is dependent on the functions being compiled with 
+// "named references" which are purely used for debugging 
+// purposes such as this. 
+//
+// Because named references are used for debugging, there is 
+// a possibility that the original source code for the functions 
+// running in scope were not cmpiled with valid or accurate names.
+// This will cause the debug source to fail to run and generate an 
+// error. As such, this is best for debugging your own source 
+// rather than inspecting external / unknown sources.
+//
+matteValue_t matte_vm_run_scoped_debug_source(
+    matteVM_t *,
+    const matteString_t * expression,
+    int callstackIndex,
+    void(*onError)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *),
+    void * onErrorData
+);    
+
 // raises an error
 void matte_vm_raise_error(matteVM_t *, matteValue_t);
 
@@ -86,7 +131,7 @@ void matte_vm_raise_error_string(matteVM_t *, const matteString_t *);
 // Represents a stack frame within the current execution of the stub.
 // The validity of the matteValue_t * values is only granted as so 
 // until the next matte_vm call.
-typedef struct {
+struct matteVMStackFrame_t {
     // the stub of the current function
     // If the stackframe is invalid, this will be NULL and no other values 
     // will be valid.
@@ -116,7 +161,7 @@ typedef struct {
     // working array of values utilized by this function. (matteValue_t)
     matteArray_t * valueStack;
     
-} matteVMStackFrame_t;
+};
 
 
 
@@ -163,10 +208,6 @@ matteValue_t matte_vm_get_external_function_as_value(
 );
 
 
-typedef enum {
-    MATTE_VM_DEBUG_EVENT__LINE_CHANGE,
-    MATTE_VM_DEBUG_EVENT__ERROR_RAISED
-} matteVMDebugEvent_t;
 
 
 // gets a debug event callback.

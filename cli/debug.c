@@ -55,9 +55,21 @@ static void split_lines(uint32_t fileid, const uint8_t * data, uint32_t size) {
     matte_table_insert_by_uint(lines, fileid, localLines);
 }
 
-static void onError(const matteString_t * s, uint32_t line, uint32_t ch) {
+static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * nu) {
     printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
     fflush(stdout);
+}
+
+static void printCommandError(
+    matteVM_t * vm, 
+    matteVMDebugEvent_t event, 
+    uint32_t file, 
+    int lineNumber, 
+    matteValue_t val,
+    void * data
+) {
+    if(event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED)
+        printf("Error while evaluating print command: %s\n", matte_string_get_c_str(matte_value_as_string(val)));
 }
 
 #define PRINT_AREA_LINES 20
@@ -215,35 +227,31 @@ static int execCommand() {
         }
     } else if (!strcmp(command, "print") ||    
                !strcmp(command, "p")) {
-        if (!started) {
-            printf("The script has not started yet.\n");
-        } else {
-            matteString_t * src = matte_string_create();
-            matte_string_concat_printf(src, "return (%s);", res);
-         
-            uint32_t jitSize = 0;
-            uint8_t * jitBuffer = matte_compiler_run_with_named_references(
-                matte_string_get_c_str(src), // TODO: UTF8
-                matte_string_get_length(src),
-                &jitSize,
-                onError,
-                0xfffffffe
-            ); 
-            matte_string_destroy(src);
-            if (jitSize) {
-                matteArray_t * jitstubs = matte_bytecode_stubs_from_bytecode(
-                    jitBuffer, jitSize
-                );
-                
-                matte_vm_add_stubs(vm, jitstubs);
-                matteValue_t printOut = matte_vm_run_script(vm, 0xfffffffe, matte_array_empty());
-                
-                const matteString_t * str = matte_value_as_string(printOut);
-                if (str) {
-                    printf("%s\n", matte_string_get_c_str(str));
-                }
+
+        matteString_t * src = matte_string_create();
+        matte_string_concat_printf(src, "return (%s);", res);
+
+
+        matteValue_t output = matte_vm_run_scoped_debug_source(
+            vm,
+            src,
+            stackframe,
+            printCommandError,
+            NULL
+        );
+
+        const matteString_t * str = matte_value_as_string(output);
+        if (str) {
+            if (output.binID == MATTE_VALUE_TYPE_STRING) {
+                printf("'%s'\n", matte_string_get_c_str(str));
+            } else {
+                printf("%s\n", matte_string_get_c_str(str));            
             }
         }
+        matte_string_destroy(src);  
+
+        matte_heap_recycle(output);
+
     } else {
         printf("Unknown command.\n");        
     }
@@ -317,8 +325,9 @@ int matte_debug(const char * input) {
         src,
         lenBytes,
         &outByteLen,
+        1,
         onError,
-        1
+        NULL
     );
 
 

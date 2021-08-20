@@ -6,9 +6,8 @@ typedef struct matteString_t matteString_t;
 typedef struct matteVM_t matteVM_t;
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 typedef struct matteArray_t matteArray_t;
+typedef struct matteVMStackFrame_t matteVMStackFrame_t;
 #include <stdint.h>
-
-
 typedef struct matteHeap_t matteHeap_t;
 
 
@@ -67,7 +66,7 @@ matteValue_t * matte_value_object_array_at_unsafe(matteValue_t v, uint32_t index
 // Given a function object, gets the in-scope referrable identified
 // by the given name. If none can be found, an error is raised and 
 // empty is returned.
-matteValue_t matte_value_function_get_named_referrable(matteValue_t v, const matteString_t *);
+matteValue_t matte_value_frame_get_named_referrable(matteVMStackFrame_t *, const matteString_t *);
 
 // 
 void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);

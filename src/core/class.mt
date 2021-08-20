@@ -1,5 +1,5 @@
 @pObject ::(o) {
-    
+    @already = {};
     @pspace ::(level) {
         @str = '';
         for([0, level], ::{
@@ -16,11 +16,14 @@
             ('boolean'): ''+obj,
             ('empty')  : 'empty',
             ('object') : ::{
+                when(already[obj] == true) '[already printed]';
+                 
                 @output = '{\n';
                 foreach(obj, ::(key, val) {
-                    output = output + pspace(level)+(String(key))+' : '+poself(val, level+1) + ',\n';
+                    output = output + pspace(level)+(AsString(key))+' : '+poself(val, level+1) + ',\n';
                 });
                 output = output + pspace(level) + '}\n';
+                already[obj] = true;
                 return output;                
             }()
         };
@@ -150,7 +153,7 @@
                 if(introspect(v).isCallable())::{
                     funcs[key] = v;
                     mthnames[key] = 'function';
-                    print('ADDING CLASS function: ' + key);
+                    //print('ADDING CLASS function: ' + key);
                 }() else ::{
                     setters[key] = v.set;
                     getters[key] = v.get;
@@ -171,7 +174,6 @@
 
         if(noseal == empty) ::{
             out.accessor = ::(key) {
-                print(key);
                 when(key == 'introspect') {
                     public : {
                         variables : varnames,
@@ -207,26 +209,48 @@
 
 @Array = class({
     define ::(this, args, classinst) {
-        <@>data = if(Boolean(args) && introspect(args).type() == 'object') args else [];
+        <@>data = if(AsBoolean(args) && introspect(args).type() == 'object') args else [];
          @ len = introspect(data).keycount();
 
         this.interface({
+            // Read/write variable.
+            // Returns/Sets the length of the array.
             length : {
                 get :: {
                     return len;
+                },
+                
+                set ::(newV) {
+                    len = newV;
+                    @o = data[len];
+                    data[len] = o;
                 }
             },
 
+            // Function, 1 argument. 
+            // No return value.
+            // Adds an additional element to the array.
             push :: (nm) {
                 data[len] = nm;
                 len = len + 1;
             },
 
+            // Function, 1 argument.
+            // Returns.
+            // Removes the element at the specified index and returns it.
+            // Like all array operations, the specified index is 
+            // 0-indexed.
             remove ::(nm) {
                 when(nm < 0 || nm >= len) empty;
+                @out = data[nm];
                 removeKey(data, nm);
+                return out;
             },
 
+
+            // Function, no arguments.
+            // Returns.
+            // Creates a new array object that is a shallow copy of this one.
             clone :: {
                 @out = classinst.new();
                 for([0, len], ::(i){
@@ -235,9 +259,15 @@
                 return out;
             },
 
+            // Function, one argument, optional.
+            // No return value.
+            // Re-arranges the contents of the array to be 
+            // sorted according to the given comparator.
+            // If no comparator is given, a default one using the 
+            // "<" operator is used instead.
             sort ::(cmp) {
                 // ensures a comparator exists if there isnt one.
-                cmp = if(Boolean(cmp)) cmp else ::(a, b) {
+                cmp = if(AsBoolean(cmp)) cmp else ::(a, b) {
                     when(a < b) -1;
                     when(a > b)  1;
                     return 0;
@@ -257,39 +287,86 @@
 
                 // l/r pivots
                 @left = 0;
-                @right = len;
+                @right = len-1;
 
 
-                @subsort :: (cmp, left, right) {
-                    @last;
-                    @mid = INT((left+right) / 2);
-
-                    @vl = left;
-                    @vr = mid;
-                    @vt;
-
-                    swap(vl, vr);
-                    last = left;
-                    for([left+1, right+1], ::(i) {
-                        vt = i;
-                        when(cmp(data[vl], data[vt]) > 0)::{
-                            last = last+1;
-                            //v3 = last;
-                            swap(vt, last);
+                @partition ::(left, right) {
+                    @pivot = data[right];
+                    @i = left-1;
+                    
+                    for([left, right], ::(j) {
+                        when(cmp(data[j], pivot) < 0)::{
+                            i = i + 1;
+                            swap(i, j);
                         }();
                     });
-                    swap(vl, last);
-                    context(cmp, left, last-1);
-                    context(cmp, last+1, right);
+                    swap(i+1, right);             
+                    return i + 1;
+                };
+
+                @subsort :: (cmp, left, right) {
+                    when(right <= left) empty;
+
+                    @pi = partition(left, right);
+                    
+                    context(cmp, left, pi-1);
+                    context(cmp, pi+1, right);
                 };
 
                 subsort(cmp, left, right);
             },
 
+            // returns a new array thats a subset of
+            subset ::(from, to) {
+                @out = classinst.new();
+                when(from >= to) out;
+                
+                from = if(from <  0)   0     else from;                
+                to   = if(to   >= len) len-1 else from;                
+                
+                for([from, to+1], ::(i){
+                    out.push(data[i]);
+                });
+                return out;
+            },
+            
+            // Function, one argument.
+            // Returns.
+            // Returns a new array of all elements that meet the condition 
+            // given. "cond" should be an array that accepts at least one argument.
+            // The first argument is the value.
+            filter ::(cond) {
+                @out = classinst.new();
+                foreach(data, ::(v){
+                    when(cond(v)) out.push(v);
+                });            
+                return out;
+            },
+            
+            
+            // linear search
+            find ::(inval) {
+                @index = -1;
+                for([0, len], ::(i){
+                    when(data[i] == inval)::{
+                        index = i;
+                        return len;
+                    }(); 
+                });            
+                return index;
+            },
+            
+            binarySearch::(val, cmp) {
+                error("not done yet");
+            },
+
+
+
+
             toString ::{
                 @str = '[';
                 for([0, len], ::(i){
-                    str = str + (String(data[i]));
+                    str = str + (AsString(data[i]));
                     when(i != len-1)::{
                         str = str + ', ';
                     }();
@@ -300,7 +377,136 @@
     }
 });
 
-@test = Array.new([1, 2, 3]);
-pObject(test);
-print(test.toString);
+
+@String = class({
+    define ::(this, args, classinst) {
+        @str = if(args) AsString(args) else "";
+        @intr = introspect(str);
+        @len = intr.length();
+        this.interface({
+            length : {
+                get :: { 
+                    return len;
+                }
+            },
+            
+            data : {
+                get ::{
+                    return str;
+                }
+            },
+            
+            // returns the index at which the 
+            // substring is at. If the substring is 
+            // not contained within the string, -1 is returned.
+            search::(sub){
+                @index = -1;
+                @sublen = sub.length;
+                @self_is = intr;
+                @sub_is = introspect(sub.data);
+                
+                @checksub::(i){
+                    @found = true;
+                    for([0, sublen], ::(j){
+                        when(self_is.charCodeAt(i+j) !=
+                              sub_is.charCodeAt(j)) ::{
+                            found = false;
+                            return sublen;
+                        }();
+                    });
+                    return found;
+                };
+                for([0, len], ::(i){
+                    when(checksub(i, sub)) ::{
+                        index = i;
+                        return len;
+                    }();
+                });
+                
+                return index;
+            },
+            
+            
+            count::(sub) {
+                @count = 0;
+                @sublen = sub.length;
+                @self_is = intr;
+                @sub_is = introspect(sub.data);
+                
+                @checksub::(i){
+                    @found = true;
+                    for([0, sublen], ::(j){
+                        when(self_is.charCodeAt(i+j) !=
+                              sub_is.charCodeAt(j)) ::{
+                            found = false;
+                            return sublen;
+                        }();
+                    });
+                    return found;
+                };
+                for([0, len], ::(i){
+                    when(checksub(i, sub)) ::{
+                        count = count+1;
+                    }();
+                });
+                
+                return count;
+            },
+            
+            charCodeAt::(i) {
+                return intr.charCodeAt(i);  
+            },
+
+            charAt::(i) {
+                return intr.charAt(i);  
+            },
+            
+            valueize::{
+                @out = Array.new();
+                for([0, len], ::(i){
+                    out.push(this.charCodeAt(i));
+                });
+                return out;
+            },
+
+            characterize::{
+                @out = Array.new();
+                for([0, len], ::(i){
+                    out.push(this.charAt(i));
+                });
+                return out;
+            },
+            
+            substr::(from, to) {
+                @out = '';
+                from = if(from < 0  ) 0     else from;
+                to   = if(to  >= len) len   else to+1;
+                
+                for([from, to], ::(i){
+                    out = out + this.charAt(i);
+                }); 
+                return classinst.new(out);
+            },
+
+            split::(dl){
+                return '1';                  
+            },
+
+            toString :: {
+                return str;
+            }   
+        });
+    }
+});
+
+
+
+@test = Array.new([4, 2, 6, 3, 10, 1, 0, -40, 349, 0, 10, 43]);
 print(test);
+test.sort();
+print(test);
+
+
+@t = String.new("Test!s");
+print(t.substr(0, 2));
+

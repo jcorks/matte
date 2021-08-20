@@ -61,7 +61,7 @@ static void show_help() {
 }
 
 
-static void onError(const matteString_t * s, uint32_t line, uint32_t ch) {
+static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata) {
     printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
     fflush(stdout);
 }
@@ -124,8 +124,9 @@ int main(int argc, char ** args) {
             matte_compiler_tokenize(
                 dump,
                 fsize,
+                1,
                 onError,
-                1
+                NULL
             );
             free(dump);
         }
@@ -202,8 +203,9 @@ int main(int argc, char ** args) {
             source,
             sourceLen,
             &outByteLen,
+            fileID,
             onError,
-            fileID
+            NULL
         );
 
         if (!outBytes) {
@@ -263,8 +265,9 @@ int main(int argc, char ** args) {
                 src,
                 lenBytes,
                 &outByteLen,
+                i+1,
                 onError,
-                i+1
+                NULL
             );
 
             free(src);

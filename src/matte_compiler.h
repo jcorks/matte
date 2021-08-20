@@ -13,11 +13,15 @@ uint8_t * matte_compiler_run(
     // Output length of the bytecode buffer.
     uint32_t * size,
 
+    // The fileID to use for this source.
+    uint32_t fileID,
+
     // If an error occurs, this function will be called detailing what 
     // went wrong.
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
-    // The fileID to use for this source.
-    uint32_t fileID
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+
+    // the user data supplied to the on error callback.
+    void * data
 );
 
 
@@ -38,11 +42,15 @@ uint8_t * matte_compiler_run_with_named_references(
     // Output length of the bytecode buffer.
     uint32_t * size,
 
+    // The fileID to use for this source.
+    uint32_t fileID,
+
     // If an error occurs, this function will be called detailing what 
     // went wrong.
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
-    // The fileID to use for this source.
-    uint32_t fileID
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+
+    // the user data supplied to the on error callback.
+    void * data
 );
 
 
@@ -55,11 +63,16 @@ void matte_compiler_tokenize(
     const uint8_t * source, 
     // The length of the source text.
     uint32_t len,
+    // The fileID to use for this source.
+    uint32_t fileID,
+
     // If an error occurs this function will be called detailing 
     // what went wrong.
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
-    // The fileID to use for this source.
-    uint32_t fileID
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    
+    // the user data supplied to the on error callback.
+    void * data
+
 );
 
 

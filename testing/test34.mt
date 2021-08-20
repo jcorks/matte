@@ -5,4 +5,4 @@
 r.toString = ::{
     return 'Testing';
 };
-return String(r);
+return AsString(r);

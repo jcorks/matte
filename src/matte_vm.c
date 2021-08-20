@@ -5,6 +5,7 @@
 #include "matte_bytecode_stub.h"
 #include "matte_string.h"
 #include "matte_opcode.h"
+#include "matte_compiler.h"
 #include <stdlib.h>
 #include <string.h>
 #ifdef MATTE_DEBUG
@@ -48,6 +49,11 @@ struct matteVM_t {
     void(*debug)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t, void *);
     void * debugData;
    
+    // last line (for debug line change)  
+    uint32_t lastLine;
+
+    // stackframe index for debug calls.
+    int namedRefIndex;
 
 };
 
@@ -197,7 +203,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     matteValue_t output = matte_heap_new_value(vm->heap);
 
 
-    uint32_t lastLine = 0xffffffff;
     while(frame->pc < instCount) {
         inst = program+frame->pc++;
         // TODO: optimize out
@@ -208,10 +213,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             fflush(stdout);
         #endif
         if (vm->debug) {
-            if (lastLine != inst->lineNumber) {
+            if (vm->lastLine != inst->lineNumber) {
                 matteValue_t db = matte_heap_new_value(vm->heap);
                 vm->debug(vm, MATTE_VM_DEBUG_EVENT__LINE_CHANGE, matte_bytecode_stub_get_file_id(frame->stub), inst->lineNumber, db, vm->debugData);
-                lastLine = inst->lineNumber;
+                vm->lastLine = inst->lineNumber;
                 matte_heap_recycle(db);
             }
         }
@@ -240,11 +245,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             if (!str) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("No such bytecode stub string."));
             } else {
-                matteValue_t v = matte_value_function_get_named_referrable(
-                    frame->context, 
-                    str
-                ); 
-                STACK_PUSH(v);
+                matteVMStackFrame_t f = matte_vm_get_stackframe(vm, vm->namedRefIndex+1);
+                if (f.context.binID) {
+                    matteValue_t v = matte_value_frame_get_named_referrable(
+                        &f, 
+                        str
+                    ); 
+                    STACK_PUSH(v);
+                }
             }
             break;
           }
@@ -878,6 +886,84 @@ matteValue_t matte_vm_run_script(
     return result;
 }
 
+
+static void debug_compile_error(
+    const matteString_t * s,
+    uint32_t line,
+    uint32_t ch,
+    void * data
+) {
+    matteVM_t * vm = data;
+    matteValue_t v = matte_heap_new_value(vm->heap);
+    matte_value_into_string(&v, s);
+    vm->debug(
+        vm,
+        MATTE_VM_DEBUG_EVENT__ERROR_RAISED,
+        MATTE_VM_DEBUG_FILE,
+        line, 
+        v,
+        vm->debugData
+    );
+    matte_heap_recycle(v);
+}
+
+matteValue_t matte_vm_run_scoped_debug_source(
+    matteVM_t * vm,
+    const matteString_t * src,
+    int callstackIndex,
+    void(*onError)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *),
+    void * onErrorData
+) {
+    vm->namedRefIndex = callstackIndex;
+    void(*realDebug)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *) = vm->debug;
+    void * realDebugData = vm->debugData;
+    
+    // override current VM stuff
+    vm->debug = onError;
+    vm->debugData = onErrorData;
+    matteArray_t * errors = matte_array_clone(vm->errors);
+    matte_array_clear(vm->errors);    
+ 
+    uint32_t jitSize = 0;
+    uint8_t * jitBuffer = matte_compiler_run_with_named_references(
+        matte_string_get_c_str(src), // TODO: UTF8
+        matte_string_get_length(src),
+        &jitSize,
+        MATTE_VM_DEBUG_FILE,
+        debug_compile_error,
+        vm
+    ); 
+    matteValue_t result;
+    if (jitSize) {
+        matteArray_t * jitstubs = matte_bytecode_stubs_from_bytecode(
+            jitBuffer, jitSize
+        );
+        
+        matte_vm_add_stubs(vm, jitstubs);
+        result = matte_vm_run_script(vm, MATTE_VM_DEBUG_FILE, matte_array_empty());
+
+    } else {
+        result = matte_heap_new_value(vm->heap);
+    }
+    
+    // revert vm state 
+    vm->debug = realDebug;
+    vm->debugData = realDebugData;
+    uint32_t i;
+    uint32_t len = matte_array_get_size(vm->errors);
+    for(i = 0; i < len; ++i) {
+        matte_heap_recycle(matte_array_at(vm->errors, matteValue_t, i));        
+    }
+    len = matte_array_get_size(errors);
+    matte_array_set_size(vm->errors, len);
+    for(i = 0; i < len; ++i) {
+        matte_array_at(vm->errors, matteValue_t, i) = matte_array_at(errors, matteValue_t, i);        
+    }
+    matte_array_destroy(errors);
+    
+    return result;
+}
+
 void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     matteValue_t b = matte_heap_new_value(vm->heap);
     matte_value_into_copy(&b, val);
@@ -901,10 +987,8 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
 void matte_vm_raise_error_string(matteVM_t * vm, const matteString_t * str) {
     matteValue_t b = matte_heap_new_value(vm->heap);
     matte_value_into_string(&b, str);
-    #ifdef MATTE_DEBUG
-        printf("ERROR raised from VM: %s\n", matte_string_get_c_str(str)); 
-    #endif
-    matte_array_push(vm->errors, b);
+    matte_vm_raise_error(vm, b);
+    matte_heap_recycle(b);
 }
 
 

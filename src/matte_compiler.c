@@ -190,7 +190,8 @@ static int OPTION__NAMED_REFERENCES = 0;
 matteSyntaxGraph_t * matte_syntax_graph_create(
     matteTokenizer_t *,
     uint32_t fileID,
-    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch)
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata), 
+    void * userdata
 );
 
 
@@ -1006,11 +1007,12 @@ static void generate_graph(matteSyntaxGraph_t * st) {
 void matte_compiler_tokenize(
     const uint8_t * source, 
     uint32_t len,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
-    uint32_t fileID
+    uint32_t fileID,
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata),
+    void * userdata
 ) {
     matteTokenizer_t * w = matte_tokenizer_create(source, len);
-    matteSyntaxGraph_t * st = matte_syntax_graph_create(w, fileID, onError);
+    matteSyntaxGraph_t * st = matte_syntax_graph_create(w, fileID, onError, userdata);
     generate_graph(st);
 
 
@@ -1033,11 +1035,12 @@ static uint8_t * matte_compiler_run_base(
     const uint8_t * source, 
     uint32_t len,
     uint32_t * size,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
-    uint32_t fileID
+    uint32_t fileID,
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void * userdata
 ) {
     matteTokenizer_t * w = matte_tokenizer_create(source, len);
-    matteSyntaxGraph_t * st = matte_syntax_graph_create(w, fileID, onError);
+    matteSyntaxGraph_t * st = matte_syntax_graph_create(w, fileID, onError, userdata);
     generate_graph(st);
 
 
@@ -1074,12 +1077,13 @@ uint8_t * matte_compiler_run_with_named_references(
     const uint8_t * source, 
     uint32_t len,
     uint32_t * size,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
-    uint32_t fileID
+    uint32_t fileID,
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void * userdata
 ) {
     OPTION__NAMED_REFERENCES = 1;
     return matte_compiler_run_base(
-        source, len, size, onError, fileID
+        source, len, size, fileID, onError, userdata
     );
 }
 
@@ -1087,12 +1091,13 @@ uint8_t * matte_compiler_run(
     const uint8_t * source, 
     uint32_t len,
     uint32_t * size,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch),
-    uint32_t fileID
+    uint32_t fileID,
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void * userdata
 ) {
     OPTION__NAMED_REFERENCES = 0;
     return matte_compiler_run_base(
-        source, len, size, onError, fileID
+        source, len, size, fileID, onError, userdata
     );
 }
 
@@ -1395,8 +1400,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
       case MATTE_TOKEN_LITERAL_STRING: {
         int c = utf8_next_char(&t->iter);
+        int single = 0;
         switch(c) {
           case '\'':
+            single = 1;
           case '"':
             t->character++;
             break;
@@ -1411,27 +1418,63 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             c = utf8_next_char(&t->iter);
             switch(c) {
               case '\'':
+                if (!single) {
+                    matte_string_append_char(text, c);                    
+                    break;
+                } else {
+                    goto L_END_STRING;                
+                }
               case '"':
-                // end, cleanup;
-                t->backup = t->iter;    
-                t->character+=2+matte_string_get_length(text);
-                return new_token(
-                    text,
-                    currentLine,
-                    currentCh,
-                    ty
-                );
-                break;
+                if (single) {
+                    matte_string_append_char(text, c);                    
+                    break;
+                } else {
+                    goto L_END_STRING;
+                }
+                
+ 
               case 0:
                 t->iter = t->backup;
                 matte_string_destroy(text);
                 return NULL;            
+                
+              case '\\': // escape character 
+                switch(utf8_next_char(&t->iter)) {
+                  case 'n':
+                    matte_string_append_char(text, '\n');
+                    break;
+                  case 't':
+                    matte_string_append_char(text, '\t');
+                    break;
+                  case 'b':
+                    matte_string_append_char(text, '\b');
+                    break;
+                  case 'r':
+                    matte_string_append_char(text, '\r');
+                    break;
+                  default:
+                    t->iter = t->backup;
+                    matte_string_destroy(text);
+                    return NULL;            
+                  
+                }    
+                break;           
 
               default:
                 matte_string_append_char(text, c);
                 break;
             }
         }
+      L_END_STRING:
+        // end, cleanup;
+        t->backup = t->iter;    
+        t->character+=2+matte_string_get_length(text);
+        return new_token(
+            text,
+            currentLine,
+            currentCh,
+            ty
+        );
         break;
       }
 
@@ -1526,15 +1569,15 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TOSTRING: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "String");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "AsString");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TONUMBER: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Number");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "AsNumber");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TOBOOLEAN: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Boolean");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "AsBoolean");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
@@ -2129,19 +2172,22 @@ struct matteSyntaxGraph_t {
 
     uint32_t fileID;
 
-    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch);
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata);
+    void * onErrorData;
 };
 
 
 matteSyntaxGraph_t * matte_syntax_graph_create(
     matteTokenizer_t * t,
     uint32_t fileID,
-    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch)
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata),
+    void * userdata
 ) {
     matteSyntaxGraph_t * out = calloc(1, sizeof(matteTokenizer_t));
     out->tokenizer = t;
     out->first = out->last = NULL;
     out->onError = onError;
+    out->onErrorData = userdata;
     out->fileID = fileID;
     out->tokenNames = matte_array_create(sizeof(matteString_t *));
     out->constructRoots = matte_array_create(sizeof(matteSyntaxGraphRoot_t *));
@@ -2291,7 +2337,8 @@ static void matte_syntax_graph_print_error(
     graph->onError(
         message,
         matte_tokenizer_current_line(graph->tokenizer),
-        matte_tokenizer_current_character(graph->tokenizer)
+        matte_tokenizer_current_character(graph->tokenizer),
+        graph->onErrorData
     );
     matte_string_destroy(message);
 }
@@ -2574,7 +2621,7 @@ int matte_syntax_graph_continue(
     int constructID
 ) {
     if (constructID < 0 || constructID >= matte_array_get_size(graph->constructRoots)) {
-        graph->onError(MATTE_STR_CAST("Internal error (no such constrctID)"), 0, 0);
+        graph->onError(MATTE_STR_CAST("Internal error (no such constrctID)"), 0, 0, graph->onErrorData);
         return 0;
     }
 
@@ -2850,7 +2897,8 @@ static void matte_syntax_graph_print_compile_error(
     graph->onError(
         message,
         t->line,
-        t->character
+        t->character,
+        graph->onErrorData
     );
     matte_string_destroy(message);
 }
