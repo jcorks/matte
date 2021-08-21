@@ -313,6 +313,8 @@ static void * matte_function_block_array_to_bytecode(
     uint32_t fileID
 );
 
+
+
 static void generate_graph(matteSyntaxGraph_t * st) {
     matte_syntax_graph_register_constructs(
         st,
@@ -1128,6 +1130,45 @@ static int utf8_next_char(uint8_t ** source) {
     return val;
 }
 
+
+static matteString_t * consume_variable_name(uint8_t ** src) {
+    int c = utf8_next_char(src);
+
+    matteString_t * varname = matte_string_create();
+    // not allowed to start with number
+    switch(c) {
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+        return varname;
+    }
+
+    int valid = 1;
+    while(valid) {
+        valid = (c > 47 && c < 58)  || // nums
+                (c > 64 && c < 91)  || // uppercase
+                (c > 96 && c < 123) || // lowercase
+                (c == '_') || // underscore
+                (c > 127); // other things / unicode stuff
+
+        if (valid) {
+            matte_string_append_char(varname, c);
+        } else {
+            *src -= 1;
+            break;
+        }
+        c = utf8_next_char(src);
+    }
+    return varname;
+}
+
 #define MAX_ASCII_BUFLEN 256
 
 struct matteTokenizer_t {
@@ -1298,6 +1339,35 @@ static matteToken_t * matte_tokenizer_consume_char(
 
 }
 
+static matteToken_t * matte_tokenizer_consume_exact(
+    matteTokenizer_t * t,
+    uint32_t line,
+    uint32_t ch,
+    matteTokenType_t ty,
+    const char * cha
+) {
+    const char * str = cha;
+     
+    while(*cha) {
+        int c = utf8_next_char(&t->iter);   
+        if (c == *cha) {
+            cha++;
+        } else {
+            t->iter = t->backup;
+            return NULL;
+        }
+    }
+    t->character += strlen(cha);
+    t->backup = t->iter;
+
+    return new_token(
+        matte_string_create_from_c_str("%s", str),
+        line,
+        ch,
+        ty
+    );            
+}
+
 static matteToken_t * matte_tokenizer_consume_word(
     matteTokenizer_t * t,
     uint32_t line,
@@ -1305,29 +1375,22 @@ static matteToken_t * matte_tokenizer_consume_word(
     matteTokenType_t ty,
     const char * word
 ) {
-    uint32_t len = strlen(word);
-    uint32_t i;
-    int pass = 1;
-    for(i = 0; i < len; ++i) {
-        if (utf8_next_char(&t->iter) != word[i]) {
-            pass = 0;
-            break;
-        }
-    }
-    if (pass) {
-        t->character += len;
+    matteString_t * str = consume_variable_name(&t->iter);
+    if (matte_string_test_eq(str, MATTE_STR_CAST(word))) {
+        t->character += matte_string_get_length(str);
         t->backup = t->iter;
+        
         return new_token(
-            matte_string_create_from_c_str("%s", word),
+            str,
             line,
             ch,
             ty
         );
-
     } else {
-        t->iter = t->backup;
+        t->iter = t->backup;        
+        matte_string_destroy(str);
         return NULL;
-    }     
+    }
 }
 
 
@@ -1883,44 +1946,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
       case MATTE_TOKEN_VARIABLE_NAME: {
-        int c = utf8_next_char(&t->iter);
-
-        // not allowed to start with number
-        switch(c) {
-          case '0':
-          case '1':
-          case '2':
-          case '3':
-          case '4':
-          case '5':
-          case '6':
-          case '7':
-          case '8':
-          case '9':
-            t->iter = t->backup;
-            return NULL;
-        }
-
-        int valid = 1;
-        matteString_t * varname = matte_string_create();
-        while(valid) {
-            valid = (c > 48 && c < 58)  || // nums
-                    (c > 64 && c < 91)  || // uppercase
-                    (c > 96 && c < 123) || // lowercase
-                    (c == '_') || // underscore
-                    (c > 127); // other things / unicode stuff
-
-            if (valid) {
-                t->character++;
-                t->backup = t->iter;
-                matte_string_append_char(varname, c);
-            } else {
-                t->iter = t->backup;
-                break;
-            }
-            c = utf8_next_char(&t->iter);
-        }
+        matteString_t * varname = consume_variable_name(&t->iter);
         if (matte_string_get_length(varname)) {
+            t->character += matte_string_get_length(varname);
+            t->backup = t->iter;
             return new_token(
                 varname,
                 currentLine,
@@ -1928,6 +1957,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 ty
             );
         } else {
+            t->iter = t->backup;
             matte_string_destroy(varname);
             return NULL;
         }
@@ -1969,7 +1999,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
       case MATTE_TOKEN_DECLARE_CONST: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "<@>");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<@>");
         break;          
       }
 
@@ -2002,7 +2032,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;          
       }
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "::");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "::");
         break;  
       }
 
@@ -4340,8 +4370,9 @@ static int compile_statement(
     matteToken_t ** src
 ) {
     matteToken_t * iter = *src;
-    while(iter->ttype == MATTE_TOKEN_STATEMENT_END) {
-        iter = iter->next;
+    if (iter->ttype == MATTE_TOKEN_STATEMENT_END) {
+        *src = iter->next;
+        return 1;
     }
     if (!iter) {
         *src = NULL;
@@ -4555,17 +4586,18 @@ static matteFunctionBlock_t * compile_function_block(
 
 
     // now that we have all the locals and args, we can start emitting bytecode.
-    int status;
-    do {
-        status = compile_statement(g, b, functions, &iter);
-        if (!(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END)) break;
-    } while(status == 1);
+    if (iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
+        int status;
+        do {
+            status = compile_statement(g, b, functions, &iter);
+            if (!(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END)) break;
+        } while(status == 1);
 
-    if (status == -1) {
-        // should be clean
-        goto L_FAIL;
+        if (status == -1) {
+            // should be clean
+            goto L_FAIL;
+        }
     }
-
     // in the case that a user has not explicitly placed a return, then 
     // we by default "return empty"
     // we aren't C after all...

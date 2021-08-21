@@ -508,5 +508,5 @@ print(test);
 
 
 @t = String.new("Test!s");
-print(t.substr(0, 2));
+print(t.characterize());
 
