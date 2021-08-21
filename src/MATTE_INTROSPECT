@@ -142,6 +142,7 @@ static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn
       case MATTE_VALUE_TYPE_BOOLEAN: matte_value_into_string(&result, MATTE_STR_CAST("boolean")); break;
       case MATTE_VALUE_TYPE_NUMBER:  matte_value_into_string(&result, MATTE_STR_CAST("number")); break;
       case MATTE_VALUE_TYPE_OBJECT:  matte_value_into_string(&result, MATTE_STR_CAST("object")); break;
+      case MATTE_VALUE_TYPE_STRING:  matte_value_into_string(&result, MATTE_STR_CAST("string")); break;
     }
     return result;
 }

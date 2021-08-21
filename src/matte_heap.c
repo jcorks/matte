@@ -90,9 +90,6 @@ static matteValue_t object_lookup(matteObject_t * m, matteValue_t key) {
       case MATTE_VALUE_TYPE_EMPTY: return out;
       case MATTE_VALUE_TYPE_STRING: {
         matteString_t * str = matte_bin_fetch(key.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], key.objectID);
-        if (matte_string_test_eq(str, MATTE_STR_CAST("characterize"))) {
-            printf("HERE\n");
-        }
         matteValue_t * value = matte_table_find(m->keyvalues_string, str);
         if (value) {
             matte_value_into_copy(&out, *value);
@@ -144,9 +141,6 @@ static void object_put_prop(matteObject_t * m, matteValue_t key, matteValue_t va
       case MATTE_VALUE_TYPE_EMPTY: return; // SHOULD NEVER ENTER. if it would, memory leak.
       case MATTE_VALUE_TYPE_STRING: {
         matteString_t * str = matte_bin_fetch(key.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], key.objectID);
-        if (matte_string_test_eq(str, MATTE_STR_CAST("characterize"))) {
-            printf("HERE\n");
-        }
         matteValue_t * value = matte_table_find(m->keyvalues_string, str);
         if (value) {
             matte_heap_recycle(*value);
@@ -305,6 +299,10 @@ void matte_value_into_new_object_ref(matteValue_t * v) {
     matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
     d->heapID = v->objectID;
     d->refs = 1;
+    #ifdef MATTE_DEBUG__HEAP
+        printf("INCR (NEW EMPTY OBJ) %d: %d\n", d->heapID, d->refs);
+    #endif
+
 }
 
 void matte_value_into_new_object_literal_ref(matteValue_t * v, const matteArray_t * arr) {
@@ -313,6 +311,9 @@ void matte_value_into_new_object_literal_ref(matteValue_t * v, const matteArray_
     matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
     d->heapID = v->objectID;
     d->refs = 1;
+    #ifdef MATTE_DEBUG__HEAP
+        printf("INCR (NEW OBJ LITERAL) %d: %d\n", d->heapID, d->refs);
+    #endif
 
 
     uint32_t i;
@@ -334,6 +335,9 @@ void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t 
     matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
     d->heapID = v->objectID;
     d->refs = 1;
+    #ifdef MATTE_DEBUG__HEAP
+        printf("INCR (NEW ARRAY LITERAL)%d: %d\n", d->heapID, d->refs);
+    #endif
 
     uint32_t i;
     uint32_t len = matte_array_get_size(args);
@@ -423,6 +427,10 @@ void matte_value_into_new_function_ref(matteValue_t * v, matteBytecodeStub_t * s
     d->heapID = v->objectID;
     d->refs = 1;
     d->functionstub = stub;
+    #ifdef MATTE_DEBUG__HEAP
+        printf("INCR (NEW FUNCTION)%d: %d\n", d->heapID, d->refs);
+    #endif
+
 
     // claim captures immediately.
     uint32_t i;
@@ -739,7 +747,7 @@ matteValue_t matte_value_object_keys(matteValue_t v) {
         assert(m->refs != 0xffffffff);
     #endif
     matteArray_t * keys = matte_array_create(sizeof(matteValue_t));
-    matteValue_t val = matte_heap_new_value(v.heap);
+    matteValue_t val;
     // first number 
     uint32_t i;
     uint32_t len = matte_array_get_size(m->keyvalues_number);
@@ -791,7 +799,7 @@ matteValue_t matte_value_object_keys(matteValue_t v) {
         matte_value_into_boolean(&key, 0);
         matte_array_push(keys, key);
     }
-
+    val = matte_heap_new_value(v.heap);
     matte_value_into_new_object_array_ref(&val, keys);
     return val;
 }
@@ -926,9 +934,6 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
             matte_string_set(quickI, (matteString_t*)matte_table_iter_get_key(iter));
-            if (matte_string_test_eq(quickI, MATTE_STR_CAST("characterize"))) {
-                printf("HERE\n");
-            }
             matteValue_t r = matte_vm_call(v.heap->vm, func, MATTE_ARRAY_CAST(args, matteValue_t, 2));
             matte_heap_recycle(r);
         }
@@ -1030,6 +1035,10 @@ void matte_value_into_copy(matteValue_t * to, matteValue_t from) {
             assert(m->refs != 0xffffffff);
         #endif
         m->refs++;
+        #ifdef MATTE_DEBUG__HEAP
+            printf("INCR (COPY)%d: %d\n", m->heapID, m->refs);
+        #endif
+
         *to = from;
         return;
       }
@@ -1050,6 +1059,10 @@ void matte_heap_recycle(matteValue_t v) {
         #endif
         if (m->refs) {
             m->refs--;
+            #ifdef MATTE_DEBUG__HEAP
+                printf("DECR %d: %d\n", m->heapID, m->refs);
+            #endif
+
             // should guarantee no repeats
             if (m->refs == 0)
                 matte_table_insert(v.heap->toSweep, m, (void*)0x1);                
@@ -1146,7 +1159,7 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
                     uint32_t n;
                     uint32_t subl = matte_array_get_size(m->functionCaptures);
                     for(n = 0; n < subl; ++n) {
-                        matte_heap_recycle(matte_array_at(m->functionCaptures, matteValue_t, n));
+                        matte_heap_recycle(matte_array_at(m->functionCaptures, CapturedReferrable_t, n).referrableSrc);
                     }
                     matte_array_set_size(m->functionCaptures, 0);
                     matte_heap_recycle(m->origin);

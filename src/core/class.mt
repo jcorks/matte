@@ -400,6 +400,8 @@
             // substring is at. If the substring is 
             // not contained within the string, -1 is returned.
             search::(sub){
+                sub = if (introspect(sub).type() == 'string') String.new(sub) else sub;
+
                 @index = -1;
                 @sublen = sub.length;
                 @self_is = intr;
@@ -428,6 +430,8 @@
             
             
             count::(sub) {
+                sub = if (introspect(sub).type() == 'string') String.new(sub) else sub;
+            
                 @count = 0;
                 @sublen = sub.length;
                 @self_is = intr;
@@ -488,8 +492,22 @@
                 return classinst.new(out);
             },
 
-            split::(dl){
-                return '1';                  
+            split::(dl) {
+                dl = if (introspect(dl).type() == 'string') String.new(dl) else dl;
+                when(dl.length != 1)  error("Split expects a single-character string");
+                 
+                @out = Array.new();
+                @curstr = '';
+                for([0, len], ::(i){
+                    if (this.charAt(i) == dl.data) ::{
+                        out.push(classinst.new(curstr));
+                        curstr = '';
+                    }() else ::{
+                        curstr = curstr + this.charAt(i);
+                    }();
+                });
+                out.push(classinst.new(curstr));
+                return out;
             },
 
             toString :: {
@@ -504,9 +522,11 @@
 @test = Array.new([4, 2, 6, 3, 10, 1, 0, -40, 349, 0, 10, 43]);
 print(test);
 test.sort();
-print(test);
+print('' + test + '\n\n');
 
 
-@t = String.new("Test!s");
-print(t.characterize());
+@t = String.new("Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.");
+print(t.split(' '));
+print(t.count(' '));
+
 
