@@ -5,8 +5,9 @@ toplevel statements are run as if within a function definition.
 When import() is called, the given script is run. When the script 
 returns, the return value is then returned from the import() call.
 Once import is called on a script, calling import() again with 
-the same script path will return that same first-produced object 
+the same script path will return that same first-produced result 
 rather than rerunning the script for this VM instance.
+
 
 
 objects

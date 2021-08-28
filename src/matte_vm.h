@@ -208,7 +208,13 @@ matteValue_t matte_vm_get_external_function_as_value(
 );
 
 
+// Associates a script name with a new fileID.
+// if the string is already associated with a script, 
+uint32_t matte_vm_register_new_script_name(matteVM_t * vm, const matteString_t * str);
 
+// Gets a script name by fileID. If none is associated, NULL is 
+// returned.
+const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t fileid);
 
 // gets a debug event callback.
 void matte_vm_set_debug_callback(

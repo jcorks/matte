@@ -190,7 +190,7 @@ static int OPTION__NAMED_REFERENCES = 0;
 matteSyntaxGraph_t * matte_syntax_graph_create(
     matteTokenizer_t *,
     uint32_t fileID,
-    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata), 
+    void (*onError)(const matteString_t * errMessage, uint32_t fileID,  uint32_t line, uint32_t ch, void * userdata), 
     void * userdata
 );
 
@@ -1010,7 +1010,7 @@ void matte_compiler_tokenize(
     const uint8_t * source, 
     uint32_t len,
     uint32_t fileID,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata),
+    void(*onError)(const matteString_t * s, uint32_t fileID, uint32_t line, uint32_t ch, void * userdata),
     void * userdata
 ) {
     matteTokenizer_t * w = matte_tokenizer_create(source, len);
@@ -1038,7 +1038,7 @@ static uint8_t * matte_compiler_run_base(
     uint32_t len,
     uint32_t * size,
     uint32_t fileID,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void(*onError)(const matteString_t * s, uint32_t fileID, uint32_t line, uint32_t ch, void *),
     void * userdata
 ) {
     matteTokenizer_t * w = matte_tokenizer_create(source, len);
@@ -1080,7 +1080,7 @@ uint8_t * matte_compiler_run_with_named_references(
     uint32_t len,
     uint32_t * size,
     uint32_t fileID,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void(*onError)(const matteString_t * s, uint32_t fileID, uint32_t line, uint32_t ch, void *),
     void * userdata
 ) {
     OPTION__NAMED_REFERENCES = 1;
@@ -1094,7 +1094,7 @@ uint8_t * matte_compiler_run(
     uint32_t len,
     uint32_t * size,
     uint32_t fileID,
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void(*onError)(const matteString_t * s, uint32_t fileID, uint32_t line, uint32_t ch, void *),
     void * userdata
 ) {
     OPTION__NAMED_REFERENCES = 0;
@@ -2202,7 +2202,7 @@ struct matteSyntaxGraph_t {
 
     uint32_t fileID;
 
-    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata);
+    void (*onError)(const matteString_t * errMessage, uint32_t fileID, uint32_t line, uint32_t ch, void * userdata);
     void * onErrorData;
 };
 
@@ -2210,7 +2210,7 @@ struct matteSyntaxGraph_t {
 matteSyntaxGraph_t * matte_syntax_graph_create(
     matteTokenizer_t * t,
     uint32_t fileID,
-    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata),
+    void (*onError)(const matteString_t * errMessage, uint32_t fileID, uint32_t line, uint32_t ch, void * userdata),
     void * userdata
 ) {
     matteSyntaxGraph_t * out = calloc(1, sizeof(matteTokenizer_t));
@@ -2366,6 +2366,7 @@ static void matte_syntax_graph_print_error(
 
     graph->onError(
         message,
+        graph->fileID,
         matte_tokenizer_current_line(graph->tokenizer),
         matte_tokenizer_current_character(graph->tokenizer),
         graph->onErrorData
@@ -2651,7 +2652,7 @@ int matte_syntax_graph_continue(
     int constructID
 ) {
     if (constructID < 0 || constructID >= matte_array_get_size(graph->constructRoots)) {
-        graph->onError(MATTE_STR_CAST("Internal error (no such constrctID)"), 0, 0, graph->onErrorData);
+        graph->onError(MATTE_STR_CAST("Internal error (no such constrctID)"), graph->fileID, 0, 0, graph->onErrorData);
         return 0;
     }
 
@@ -2926,6 +2927,7 @@ static void matte_syntax_graph_print_compile_error(
     matteString_t * message = matte_string_create_from_c_str("Compile Error: %s", asciiMessage);
     graph->onError(
         message,
+        graph->fileID,
         t->line,
         t->character,
         graph->onErrorData

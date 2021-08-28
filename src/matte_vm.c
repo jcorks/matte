@@ -55,6 +55,10 @@ struct matteVM_t {
     // stackframe index for debug calls.
     int namedRefIndex;
 
+
+    // table of all run script results in the VM.
+    matteTable_t * imported;
+
 };
 
 
@@ -690,6 +694,8 @@ matteVM_t * matte_vm_create() {
     vm->heap = matte_heap_create(vm);
     vm->errors = matte_array_create(sizeof(matteValue_t));
     vm->extStubs = matte_array_create(sizeof(matteBytecodeStub_t *));
+    vm->imported = matte_table_create_hash_matte_string();
+    
     // add built in functions
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,    0, vm_ext_call__noop);
     vm_add_built_in(vm, MATTE_EXT_CALL_GATE,    3, vm_ext_call__gate);

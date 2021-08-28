@@ -194,10 +194,6 @@ static matteValue_t vm_ext_call__match(matteVM_t * vm, matteValue_t fn, matteArr
 }
 
 
-static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"NOT IMPLEMENTED");
-}
-
 
 static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     assert(!"NOT IMPLEMENTED");
@@ -223,3 +219,118 @@ static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, matteArr
     }
     return matte_heap_new_value(vm->heap);
 }
+
+
+
+
+#include "CORE_ROM";
+
+static void import_compile_error(
+    const matteString_t * str,
+    uint32_t fileid,
+    uint32_t line,
+    uint32_t ch,
+    void * data
+) {
+    matteVM_t * vm = data;
+    matteString_t * str = matte_string_create();
+    const matteString_t * filename = matte_vm_get_script_name_by_id(vm, fileid);
+    matte_string_concat_printf(str, "Error while compiling imported file %s: ", matte_string_get_c_str(filename);
+    matte_string_concat(str, filename);
+    matte_vm_raise_error_string(vm, str);    
+    matte_string_destroy(str);
+    
+}
+
+static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    if (matte_array_get_size(args) < 1) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("import() requires at least one argument"));
+        return matte_heap_new_value(vm->heap);    
+    }
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+    matteString_t * str = matte_value_as_string(&a);
+    if (!str) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("import() requires value to be string coercible"));
+        return matte_heap_new_value(vm->heap);
+    }
+
+    // first, see if the requested script has been preloaded
+    matteValue_t * v = matte_table_find(vm->imported, str);
+    if (*v) {
+        matteValue_t cpy = matte_heap_new_value(vm->heap);
+        matte_value_into_copy(&a, *v);
+        return cpy;
+    }
+    
+    
+    // then, the built-in available imports are checked.
+    
+    uint32_t srcLen = 0;
+    uint8_t * src = NULL;
+    char ** iter = MATTE_CORE_ROM;
+    while(*iter) {
+        if (!strcmp(iter[0], matte_string_get_c_str(str))) {
+            // found!
+            uint32_t srcLen = 0;
+            uint8_t * romSrc = matte_string_base64_to_bytes(MATTE_STR_CAST(iter[0]), &romSrcLen);
+            break;
+        }
+        iter+=2;
+    }
+    
+    
+    // finally, just use the user
+    uint32_t fileID = 0;
+    if (!src || !srcLen) {
+        src = vm->userImport(
+            vm,
+            str,
+            &fileID, // user is able to identify aliases
+            &srcLen,
+            void * userImportData
+        );
+    }
+
+
+    if (!src || !srcLen) {
+        matte_string_concat_printf(str, "Could not find script '%s'.", matte_string_get_c_str(str);
+        matte_vm_raise_error_string(vm, str);    
+        matte_string_destroy(str);
+        return matte_heap_new_value(vm->heap);    
+    }
+
+    if (!fileID)
+        fileID = matte_vm_register_new_script_name(vm, str);
+        
+        
+    uint32_t romLen = 0;
+    uint8_t * rom = matte_compiler_run(
+        src, 
+        srcLen, 
+        &romLen, 
+        fileID,
+        import_compile_error,
+        vm
+    );
+    
+    if (rom && romLen) {
+        matteValue_t cached = matte_vm_run_script(
+            vm,
+            fileID,
+            matte_array_empty
+        );
+        
+        matteValue_t * ref = malloc(sizeof(matteValue_t *));
+        *ref = cached;
+        matte_table_insert(vm->imported, str, ref);
+        
+        matteValue_t cpy = matte_heap_new_value(vm->heap);
+        matte_value_into_copy(&a, *v);
+        return cpy;
+    }
+    
+    // already would have raised an error, no need for another.
+    return matte_heap_new_value(vm->heap);    
+
+}
+

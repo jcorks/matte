@@ -1,0 +1,6 @@
+The files here consist of the core libraries. The following 
+files are mapped to strings:
+
+class.mt  -> Core.Class
+array.mt  -> Core.Array
+string.mt -> Core.String

@@ -18,7 +18,7 @@ uint8_t * matte_compiler_run(
 
     // If an error occurs, this function will be called detailing what 
     // went wrong.
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void(*onError)(const matteString_t * s, uint32_t fileid, uint32_t line, uint32_t ch, void *),
 
     // the user data supplied to the on error callback.
     void * data
@@ -47,7 +47,7 @@ uint8_t * matte_compiler_run_with_named_references(
 
     // If an error occurs, this function will be called detailing what 
     // went wrong.
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void(*onError)(const matteString_t * s, uint32_t fileid, uint32_t line, uint32_t ch, void *),
 
     // the user data supplied to the on error callback.
     void * data
@@ -68,7 +68,7 @@ void matte_compiler_tokenize(
 
     // If an error occurs this function will be called detailing 
     // what went wrong.
-    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void(*onError)(const matteString_t * s, uint32_t fileid, uint32_t line, uint32_t ch, void *),
     
     // the user data supplied to the on error callback.
     void * data
