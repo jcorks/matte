@@ -63,6 +63,17 @@ matteHeap_t * matte_vm_get_heap(matteVM_t *);
 // Ownership of the stubs is transferred.
 void matte_vm_add_stubs(matteVM_t *, const matteArray_t *);
 
+void matte_vm_set_import(
+    matteVM_t * vm,
+    uint8_t * (*)(
+        matteVM_t *,
+        const matteString_t * importPath,
+        uint32_t * preexistingFileID,
+        uint32_t * dataLength,
+        void * usrdata
+    )
+);
+
 // Runs the root functional stub of the file
 // The value result of stub is returned. Empty if no result.
 //
@@ -192,7 +203,7 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 // given will return a function object that, when called, calls this C function.
 void matte_vm_set_external_function(
     matteVM_t * vm, 
-    matteString_t * identifier,
+    const matteString_t * identifier,
     uint8_t nArgs,
     matteValue_t (*)(matteVM_t *, matteValue_t fn, matteArray_t * args, void * userData),
     void * userData
@@ -208,9 +219,8 @@ matteValue_t matte_vm_get_external_function_as_value(
 );
 
 
-// Associates a script name with a new fileID.
-// if the string is already associated with a script, 
-uint32_t matte_vm_register_new_script_name(matteVM_t * vm, const matteString_t * str);
+// Gets an unused fileid
+uint32_t matte_vm_get_new_file_id(matteVM_t * vm);
 
 // Gets a script name by fileID. If none is associated, NULL is 
 // returned.

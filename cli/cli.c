@@ -1,9 +1,4 @@
-#include "../src/matte.h"
-#include "../src/matte_vm.h"
-#include "../src/matte_bytecode_stub.h"
-#include "../src/matte_array.h"
-#include "../src/matte_string.h"
-#include "../src/matte_compiler.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +56,7 @@ static void show_help() {
 }
 
 
-static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata) {
+static void onError(const matteString_t * s, uint32_t fileid, uint32_t line, uint32_t ch, void * userdata) {
     printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
     fflush(stdout);
 }
@@ -138,6 +133,8 @@ int main(int argc, char ** args) {
 
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
+        matte_vm_add_system_symbols(vm);
+
 
         matteArray_t * fileID = matte_array_create(sizeof(uint32_t));
         int n = argc-2;
@@ -250,9 +247,14 @@ int main(int argc, char ** args) {
         
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
+        matte_vm_add_system_symbols(vm);
+
+        int * FILEIDS = malloc(sizeof(int)*len);
+
 
         // first compile all and add them 
         for(i = 0; i < len; ++i) {
+            FILEIDS[i] = matte_vm_get_new_file_id(vm);
             uint32_t lenBytes;
             uint8_t * src = dump_bytes(args[i+1], &lenBytes);
             if (!src || !lenBytes) {
@@ -265,7 +267,7 @@ int main(int argc, char ** args) {
                 src,
                 lenBytes,
                 &outByteLen,
-                i+1,
+                FILEIDS[i],
                 onError,
                 NULL
             );
@@ -283,7 +285,7 @@ int main(int argc, char ** args) {
 
         matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
         for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_vm_run_script(vm, i+1, arr);
+            matteValue_t v = matte_vm_run_script(vm, FILEIDS[i], arr);
             printf("> %s\n", matte_string_get_c_str(matte_value_as_string(v)));
         }
         

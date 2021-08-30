@@ -473,8 +473,8 @@ static const void function_to_stub(FILE * f, uint32_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_NOOP;
                 } else if (!strcmp("gate", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_GATE;
-                } else if (!strcmp("while", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_WHILE;
+                } else if (!strcmp("loop", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_LOOP;
                 } else if (!strcmp("for", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR;
                 } else if (!strcmp("foreach", m)) {

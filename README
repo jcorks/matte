@@ -459,7 +459,7 @@ External call (EXT)
           The following are reserved functions that the VM will always know:
           0 -> noop
           2 -> gate   ?(condition, then_val, else_val)
-          3 -> while 
+          3 -> loop 
           4 -> for3  for(start, end, func)
           5 -> for4  for(start, end, step, func)
           6 -> foreach

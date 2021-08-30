@@ -37,13 +37,14 @@ int main() {
     fprintf(
         out,
         "// Core ROM files as strings. From makerom.c \n"
-        "static char * MATTE_CORE_ROM[] =\n"
+        "static char * MATTE_CORE_ROM[] = {\n"
     );
 
     char * files[] = {
-        "class.mt",  "Core.Class",
-        "array.mt",  "Core.Array",
-        "string.mt", "Core.String",
+        "class.mt",  "Matte.Class",
+        "array.mt",  "Matte.Array",
+        "string.mt", "Matte.String",
+        "core.mt",   "Matte.Core",
         NULL
     };
     

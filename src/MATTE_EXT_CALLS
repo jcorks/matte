@@ -22,21 +22,21 @@ static matteValue_t vm_ext_call__gate(matteVM_t * vm, matteValue_t fn, matteArra
 }
 
 
-static matteValue_t vm_ext_call__while(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__loop(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     #ifdef MATTE_DEBUG
-        assert(matte_array_get_size(args) == 3);
+        assert(matte_array_get_size(args) == 1);
     #endif
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    matteValue_t b = matte_array_at(args, matteValue_t, 1);
-    matteValue_t c = matte_array_at(args, matteValue_t, 2);
 
-    if (!matte_value_is_callable(b)) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("While requires second argument to be a function."));
+    if (!matte_value_is_callable(a)) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("While requires only argument to be a function."));
         return matte_heap_new_value(vm->heap);
     }
-    while(matte_value_as_boolean(a)) {
-        matteValue_t result = matte_vm_call(vm, b, matte_array_empty());
+    for(;;) {
+        matteValue_t result = matte_vm_call(vm, a, matte_array_empty());
+        int resultB = matte_value_as_boolean(result);
         matte_heap_recycle(result);
+        if (!resultB) break;
     }
     return matte_heap_new_value(vm->heap);
 }
@@ -196,7 +196,20 @@ static matteValue_t vm_ext_call__match(matteVM_t * vm, matteValue_t fn, matteArr
 
 
 static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"NOT IMPLEMENTED");
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+    matteString_t * str = matte_value_as_string(a);
+    if (!str) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("getExternalFunction() requires value to be string coercible"));
+        return matte_heap_new_value(vm->heap);
+    }
+    uint32_t * id = matte_table_find(vm->externalFunctions, str);
+    if (!id) {
+        return matte_heap_new_value(vm->heap);
+    }
+
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    matte_value_into_new_function_ref(&out, matte_array_at(vm->extStubs, matteBytecodeStub_t *, *id));
+    return out;
 }
 static matteValue_t vm_ext_call__print(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     if (matte_array_get_size(args)) {
@@ -223,7 +236,13 @@ static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, matteArr
 
 
 
-#include "CORE_ROM";
+#include "CORE_ROM"
+
+
+typedef struct {
+    matteVM_t * vm;
+    matteString_t * filename;
+} VMImportCompilerData;
 
 static void import_compile_error(
     const matteString_t * str,
@@ -232,13 +251,12 @@ static void import_compile_error(
     uint32_t ch,
     void * data
 ) {
-    matteVM_t * vm = data;
-    matteString_t * str = matte_string_create();
-    const matteString_t * filename = matte_vm_get_script_name_by_id(vm, fileid);
-    matte_string_concat_printf(str, "Error while compiling imported file %s: ", matte_string_get_c_str(filename);
-    matte_string_concat(str, filename);
-    matte_vm_raise_error_string(vm, str);    
-    matte_string_destroy(str);
+    VMImportCompilerData * vmdata = data;
+    matteVM_t * vm = vmdata->vm;
+    matteString_t * strM = matte_string_create();
+    matte_string_concat_printf(strM, "Error while compiling imported file %s line %d:%d : %s", matte_string_get_c_str(vmdata->filename), line, ch, matte_string_get_c_str(str));
+    matte_vm_raise_error_string(vm, strM);    
+    matte_string_destroy(strM);
     
 }
 
@@ -248,17 +266,23 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         return matte_heap_new_value(vm->heap);    
     }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    matteString_t * str = matte_value_as_string(&a);
+    matteString_t * str = matte_value_as_string(a);
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("import() requires value to be string coercible"));
         return matte_heap_new_value(vm->heap);
     }
 
     // first, see if the requested script has been preloaded
-    matteValue_t * v = matte_table_find(vm->imported, str);
-    if (*v) {
+    uint32_t * fileidPtr = matte_table_find(vm->importPath2ID, str);
+    uint32_t fileid = fileidPtr ? *fileidPtr : 0;
+    matteValue_t * v = matte_table_find_by_uint(vm->imported, fileid);
+    if (v) {
+        #ifdef MATTE_DEBUG
+            printf("import() returning pre-computed value\n");
+            fflush(stdout);
+        #endif
         matteValue_t cpy = matte_heap_new_value(vm->heap);
-        matte_value_into_copy(&a, *v);
+        matte_value_into_copy(&cpy, *v);
         return cpy;
     }
     
@@ -271,8 +295,12 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
     while(*iter) {
         if (!strcmp(iter[0], matte_string_get_c_str(str))) {
             // found!
-            uint32_t srcLen = 0;
-            uint8_t * romSrc = matte_string_base64_to_bytes(MATTE_STR_CAST(iter[0]), &romSrcLen);
+            src = matte_string_base64_to_bytes(MATTE_STR_CAST(iter[1]), &srcLen);
+            fileid = matte_vm_get_new_file_id(vm);
+            #ifdef MATTE_DEBUG
+                printf("import() found ROM source for %s\n", matte_string_get_c_str(str));
+                fflush(stdout);
+            #endif
             break;
         }
         iter+=2;
@@ -280,55 +308,91 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
     
     
     // finally, just use the user
-    uint32_t fileID = 0;
     if (!src || !srcLen) {
+        fileid = 0;
         src = vm->userImport(
             vm,
             str,
-            &fileID, // user is able to identify aliases
+            &fileid, // user is able to identify aliases
             &srcLen,
-            void * userImportData
+            vm->userImportData
         );
+        if (fileid == 0) {
+            matteString_t * err = matte_string_create();
+            matte_string_concat_printf(str, "A file ID must be assigned by import.");
+            matte_vm_raise_error_string(vm, str);    
+            matte_string_destroy(str);
+            return matte_heap_new_value(vm->heap);    
+        }  
     }
+
+    // see if the user specified a fileID alias.
+    // the userImport can opt to give back an existing fileID.
+    // in this case, if the fileID exists, the existing 
+    // source is used.
+    if (fileid) {
+        v = matte_table_find_by_uint(vm->imported, fileid);
+        if (v) {
+            matteValue_t cpy = matte_heap_new_value(vm->heap);
+            matte_value_into_copy(&a, *v);
+            return cpy;
+        }      
+
+    } 
 
 
     if (!src || !srcLen) {
-        matte_string_concat_printf(str, "Could not find script '%s'.", matte_string_get_c_str(str);
-        matte_vm_raise_error_string(vm, str);    
-        matte_string_destroy(str);
+        matteString_t * err = matte_string_create();
+        matte_string_concat_printf(err, "Could not find script '%s'.", matte_string_get_c_str(str));
+        matte_vm_raise_error_string(vm, err);    
+        matte_string_destroy(err);
         return matte_heap_new_value(vm->heap);    
     }
 
-    if (!fileID)
-        fileID = matte_vm_register_new_script_name(vm, str);
         
         
     uint32_t romLen = 0;
+    VMImportCompilerData data;
+    data.vm = vm;
+    data.filename = str;
     uint8_t * rom = matte_compiler_run(
         src, 
         srcLen, 
         &romLen, 
-        fileID,
+        fileid,
         import_compile_error,
-        vm
+        &data
     );
     
     if (rom && romLen) {
+        matte_vm_add_stubs(vm, matte_bytecode_stubs_from_bytecode(rom, romLen));
+        free(rom);
+
+
+        matteValue_t result = matte_heap_new_value(vm->heap);
+
+        matteValue_t * ref = malloc(sizeof(matteValue_t));
+        *ref = result;
+        matte_table_insert_by_uint(vm->imported, fileid, ref);
+        
+
+        fileidPtr = malloc(sizeof(uint32_t));
+        *fileidPtr = fileid;
+        matte_table_insert(vm->importPath2ID, str, fileidPtr);   
+
+        matte_table_insert_by_uint(vm->id2importPath, fileid, str);
+
+
         matteValue_t cached = matte_vm_run_script(
             vm,
-            fileID,
-            matte_array_empty
+            fileid,
+            matte_array_empty()
         );
-        
-        matteValue_t * ref = malloc(sizeof(matteValue_t *));
-        *ref = cached;
-        matte_table_insert(vm->imported, str, ref);
-        
-        matteValue_t cpy = matte_heap_new_value(vm->heap);
-        matte_value_into_copy(&a, *v);
-        return cpy;
+        matte_value_into_copy(ref, cached);
+        return cached;
     }
-    
+
+
     // already would have raised an error, no need for another.
     return matte_heap_new_value(vm->heap);    
 

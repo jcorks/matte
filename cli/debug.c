@@ -32,6 +32,7 @@ static char * lastCommand = NULL;
 // fileid -> matteArray -> matteString_t *
 static matteTable_t * lines;
 static int stackframe = 0;
+uint32_t DEBUG_FILEID;
 
 typedef struct {
     uint32_t fileid;
@@ -55,7 +56,7 @@ static void split_lines(uint32_t fileid, const uint8_t * data, uint32_t size) {
     matte_table_insert_by_uint(lines, fileid, localLines);
 }
 
-static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * nu) {
+static void onError(const matteString_t * s, uint32_t fileid, uint32_t line, uint32_t ch, void * nu) {
     printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
     fflush(stdout);
 }
@@ -82,19 +83,26 @@ static void printArea() {
 
     // ansi clear screen
     printf("\x1b[2J");
-    printf("<file %d, line %d>\n", fileid, line);
+    printf("<file %s, line %d>\n", 
+        matte_vm_get_script_name_by_id(vm, fileid) ? 
+            matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, fileid)) 
+        : 
+            "???" , 
+        line
+    );
     int i = line;
 
     matteArray_t * localLines = matte_table_find_by_uint(lines, fileid);
-    
-    for(i = ((int)line) - PRINT_AREA_LINES/2; i < ((int)line) + PRINT_AREA_LINES/2 + 1; ++i) {
-        if (i < 0 || i >= matte_array_get_size(localLines)) {
-            printf("  ---- | \n");
-        } else {
-            if (i == line-1) {
-                printf("->%4d | %s\n", i+1, matte_string_get_c_str(matte_array_at(localLines, matteString_t *, i)));
+    if (localLines) {
+        for(i = ((int)line) - PRINT_AREA_LINES/2; i < ((int)line) + PRINT_AREA_LINES/2 + 1; ++i) {
+            if (i < 0 || i >= matte_array_get_size(localLines)) {
+                printf("  ---- | \n");
             } else {
-                printf("  %4d | %s\n", i+1, matte_string_get_c_str(matte_array_at(localLines, matteString_t *, i)));
+                if (i == line-1) {
+                    printf("->%4d | %s\n", i+1, matte_string_get_c_str(matte_array_at(localLines, matteString_t *, i)));
+                } else {
+                    printf("  %4d | %s\n", i+1, matte_string_get_c_str(matte_array_at(localLines, matteString_t *, i)));
+                }
             }
         }
     }
@@ -137,7 +145,7 @@ static int execCommand() {
         if (!started) {
             started = 1;
             matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
-            matte_vm_run_script(vm, 1, arr);
+            matte_vm_run_script(vm, DEBUG_FILEID, arr);
 
 
         printf("Execution complete.\n");
@@ -199,10 +207,13 @@ static int execCommand() {
                 uint32_t numinst;
                 const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
 
+                uint32_t fileid = matte_bytecode_stub_get_file_id(frame.stub);
+                const matteString_t * fileName = matte_vm_get_script_name_by_id(vm, fileid);
+
                 if (i == stackframe) {
-                    printf(" -> @%d: file %d, line %d\n", i, matte_bytecode_stub_get_file_id(frame.stub), inst[frame.pc].lineNumber);
+                    printf(" -> @%d: <%s>, line %d\n", i, fileName ? matte_string_get_c_str(fileName) : "???", inst[frame.pc].lineNumber);
                 } else {
-                    printf("    @%d: file %d, line %d\n", i, matte_bytecode_stub_get_file_id(frame.stub), inst[frame.pc].lineNumber);
+                    printf("    @%d: <%s>, line %d\n", i, fileName ? matte_string_get_c_str(fileName) : "???", inst[frame.pc].lineNumber);
                 }
             }
 
@@ -304,6 +315,8 @@ static void onDebugEvent(
 int matte_debug(const char * input) {
     matte_t * m = matte_create();
     vm = matte_get_vm(m);
+    matte_vm_add_system_symbols(vm);
+    DEBUG_FILEID = matte_vm_get_new_file_id(vm);
     matte_vm_set_debug_callback(vm, onDebugEvent, NULL);
     printf("Compiling %s...\n", input);
     fflush(stdout);    
@@ -325,7 +338,7 @@ int matte_debug(const char * input) {
         src,
         lenBytes,
         &outByteLen,
-        1,
+        DEBUG_FILEID,
         onError,
         NULL
     );

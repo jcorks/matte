@@ -1,4 +1,4 @@
-<@>class = import('Core.Class');
+<@>class = import('Matte.Class');
 
 @Array = class({
     define ::(this, args, classinst) {

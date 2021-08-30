@@ -21,12 +21,12 @@
 
 ///////// functions
 // no args
-@myFunction <= {
+@myFunction :: {
     return 2+2
 }
 
 // 2 args
-@myFunctionWithArguments <= (a, b) {
+@myFunctionWithArguments :: (a, b) {
     return a + b;
 }
 
@@ -59,7 +59,7 @@ myFunctionWithArguments(myFunction(), a);
 // when() is conditional returning.
 // it can be used to create compact implementations
 // if a when condition is false, nothing is returned
-@hi_low_mid <= (a, b) {
+@hi_low_mid :: (a, b) {
     when(a < b) : "lo"
     when(a > b) : "hi"
 
@@ -73,7 +73,7 @@ myFunctionWithArguments(myFunction(), a);
 
 // for is a special function 
 
-for([from, to], <= (i) {
+for([from, to], :: (i) {
     Debug.print(i);
     // return modified i
     
@@ -83,34 +83,38 @@ for([from, to], <= (i) {
 // for with custom increment of -1
 // if arg 3 is above 0, the loop continues until i > to
 // if arg 3 is below 0, the loop continues until i < to
-for([from, to, -1], <= (i) {
+for([from, to, -1], :: (i) {
     Debug.print(i);
     // return modified i
 });
 
 
 // foreach within object.
-foreach(object, <=(key, value) {
+foreach(object, ::(key, value) {
     Debug.print(key, value);
 });
 
 
 
-// while is also a function
+// while doesnt exist, but loop does!
+// loop, when given a function, runs the function 
+// at least once. The functions return value is then 
+// converted to a boolean; if true, the function is 
+// run again, if false, the function is not run again.
 // 
 @statement = true;
-while(statement, <={
+loop(::{
     myFunction();
 
 
 
     // conditionally return    
-    when(!someEarlyCondition):empty
+    return shouldIContinue();
 })
 
 
 // like ternary/if, returns + runs either 2nd or third if 1st is true.
-@result = ?(a > b) a : b;
+@result = if(a > b) a : b;
 
 // switch doesn't exist, but match does!
 Debug.print(match(statement){
@@ -138,7 +142,7 @@ map.newProperty = 3;
 @inlineMap = {
     newProperty : 3,
     otherproperty : 'aaa',
-    funcProperty <= {
+    funcProperty :: {
         return 2+6;
     }
 };
@@ -147,11 +151,11 @@ map.newProperty = 3;
 // objects support an accessor value 
 // that acts a key checker. this supercedes normal 
 // object access.
-map.accessor <= (object, key) {
+map.accessor :: (object, key) {
     @output
 
-    match(key, <= {
-        a : <= {
+    match(key, :: {
+        a : :: {
             output = 100;
         }
     
@@ -159,10 +163,10 @@ map.accessor <= (object, key) {
     return output
 }
 
-map.assigner <= (object, key, value) {
+map.assigner :: (object, key, value) {
     @specialVal;
-    match(key, <= {
-        a <= {
+    match(key, :: {
+        a :: {
             specialVal = value;
         }    
     });
@@ -172,7 +176,7 @@ map.assigner <= (object, key, value) {
 // error handling
 // all function contexts have an errorHandler variable.
 // If an error is thrown, the current stackframe's errorHandler is run.
-.errorHandler <= (err) {
+.errorHandler :: (err) {
     Debug.log('Handled error!' + err.message);
 }
 
@@ -184,7 +188,7 @@ error({myData:1, message:'Aaa!'});
 
 // class 
 @MyClass = class({
-    constructor <= (obj, args) {
+    constructor :: (obj, args) {
         // declare local variables
         @value0 = 0;
         @value1 = 0;
@@ -198,30 +202,30 @@ error({myData:1, message:'Aaa!'});
         obj.interface({
             // public variable
             publicMember0 : {
-                set <= (v) {
+                set :: (v) {
                     value0 = v;
                 },
 
-                get <= () {
+                get :: () {
                     return value0;
                 }
             },
 
             // public variable, write-only            
             publicMember1 : {
-                set <= (v) {
+                set :: (v) {
                     value1 = v;
                 }
             },
 
             wasArgSet : {
-                get <= () {
+                get :: () {
                     return value2 == empty;
                 }
             }
             
             // public function, adds both variables (and the constant)
-            add <= () {
+            add :: () {
                 return value0 + value1 + constant;
             }
         });

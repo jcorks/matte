@@ -58,8 +58,79 @@ struct matteVM_t {
 
     // table of all run script results in the VM.
     matteTable_t * imported;
+    matteTable_t * importPath2ID;
+    matteTable_t * id2importPath;
+
+    // import for scripts
+    uint8_t * (*userImport)(
+        matteVM_t *,
+        const matteString_t * importPath,
+        uint32_t * preexistingFileID,
+        uint32_t * dataLength,
+        void * usrdata
+    );
+    void * userImportData;
+    matteTable_t * defaultImport_table;
+    uint32_t nextID;
+
+
+
 
 };
+
+
+static uint8_t * vm_default_import(
+    matteVM_t * vm,
+    const matteString_t * importPath,
+    uint32_t * fileid,
+    uint32_t * dataLength,
+    void * usrdata
+) {
+    uint32_t * id = matte_table_find(vm->defaultImport_table, importPath);
+    if (id) {
+        *dataLength = 0;
+        *fileid = *id;
+        return NULL;
+    }
+
+
+    FILE * f = fopen(matte_string_get_c_str(importPath), "rb");
+    if (!f) {
+        *dataLength = 0;
+        return NULL;
+    }
+
+    #define DEFAULT_DUMP_SIZE 1024
+    char * msg = malloc(DEFAULT_DUMP_SIZE);
+    uint32_t totalLen = 0;
+    uint32_t len;
+    while(len = fread(msg, 1, DEFAULT_DUMP_SIZE, f)) {
+        totalLen += len;
+    }
+    fseek(f, SEEK_SET, 0);
+    uint8_t * outBuffer = malloc(totalLen);
+    uint8_t * iter = outBuffer;
+    while(len = fread(msg, 1, DEFAULT_DUMP_SIZE, f)) {
+        memcpy(iter, msg, len);
+        iter += len;
+    }
+    free(msg);
+    fclose(f);
+    id = malloc(sizeof(uint32_t));
+    *id = matte_vm_get_new_file_id(vm);
+    matte_table_insert(vm->defaultImport_table, importPath, id);
+
+    *fileid = *id;
+    *dataLength = totalLen;
+    return outBuffer;
+}
+
+// todo: how to we implement this in a way that we dont "waste"
+// IDs by failed /excessive calls to this when the IDs arent used?
+uint32_t matte_vm_get_new_file_id(matteVM_t * vm) {
+    return vm->nextID++;
+}
+
 
 
 typedef struct {
@@ -694,12 +765,17 @@ matteVM_t * matte_vm_create() {
     vm->heap = matte_heap_create(vm);
     vm->errors = matte_array_create(sizeof(matteValue_t));
     vm->extStubs = matte_array_create(sizeof(matteBytecodeStub_t *));
-    vm->imported = matte_table_create_hash_matte_string();
-    
+    vm->importPath2ID = matte_table_create_hash_matte_string();
+    vm->id2importPath = matte_table_create_hash_pointer();
+    vm->imported = matte_table_create_hash_pointer();
+    vm->userImport = vm_default_import;
+    vm->defaultImport_table = matte_table_create_hash_matte_string();
+    vm->nextID = 1;
+
     // add built in functions
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,    0, vm_ext_call__noop);
     vm_add_built_in(vm, MATTE_EXT_CALL_GATE,    3, vm_ext_call__gate);
-    vm_add_built_in(vm, MATTE_EXT_CALL_WHILE,   2, vm_ext_call__while);
+    vm_add_built_in(vm, MATTE_EXT_CALL_LOOP,    1, vm_ext_call__loop);
     vm_add_built_in(vm, MATTE_EXT_CALL_FOR,     2, vm_ext_call__for);
     vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, 2, vm_ext_call__foreach);
     vm_add_built_in(vm, MATTE_EXT_CALL_MATCH,   2, vm_ext_call__match);
@@ -742,6 +818,10 @@ matteVM_t * matte_vm_create() {
 
 
     return vm;
+}
+
+const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t fileid) {
+    return matte_table_find_by_uint(vm->id2importPath, fileid);
 }
 
 void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr) {
@@ -895,6 +975,7 @@ matteValue_t matte_vm_run_script(
 
 static void debug_compile_error(
     const matteString_t * s,
+    uint32_t fileid,
     uint32_t line,
     uint32_t ch,
     void * data
@@ -1043,7 +1124,7 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 
 void matte_vm_set_external_function(
     matteVM_t * vm, 
-    matteString_t * identifier,
+    const matteString_t * identifier,
     uint8_t nArgs,
     matteValue_t (*userFunction)(matteVM_t *, matteValue_t, matteArray_t * args, void * userData),
     void * userData
@@ -1058,11 +1139,17 @@ void matte_vm_set_external_function(
         id = malloc(sizeof(uint32_t));
         *id = matte_array_get_size(vm->externalFunctionIndex);
         matte_array_set_size(vm->externalFunctionIndex, *id+1);
+        matte_table_insert(vm->externalFunctions, identifier, id);
     }
-    set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, *id);
-    set->userFunction = userFunction;
-    set->userData = userData;
-    set->nArgs = nArgs;
+
+    vm_add_built_in(
+        vm,
+        *id, 
+        nArgs, 
+        userFunction
+    );
+
+
 }
 
 // Gets a new function object that, when called, calls the registered 

@@ -1,4 +1,5 @@
-<@>class = import('Core.Class');
+<@>class = import('Matte.Class');
+<@>Array = import('Matte.Array');
 @String = class({
     define ::(this, args, classinst) {
         @str = if(args) AsString(args) else "";
@@ -49,6 +50,27 @@
                 return index;
             },
             
+
+            replace::(sub, with) {
+                with = if (introspect(with).type() == 'string') String.new(with) else with;
+                sub  = if (introspect(sub).type()  == 'string') String.new(sub)  else sub;
+                
+                loop(::{
+                    <@> index = this.search(sub);
+                    when(index == -1) false;
+
+                    str = this.substr(0, index-1).data 
+                          + with.data 
+                          + this.substr(
+                            index+sub.length, 
+                            this.length-1
+                          ).data;
+                    intr = introspect(str);
+                    len = intr.length();
+                    return true;
+                });
+
+            },
             
             count::(sub) {
                 sub = if (introspect(sub).type() == 'string') String.new(sub) else sub;
@@ -115,7 +137,7 @@
 
             split::(dl) {
                 dl = if (introspect(dl).type() == 'string') String.new(dl) else dl;
-                when(dl.length != 1)  error("Split expects a single-character string");
+                when(dl.length != 1)  error("Split expects a single-character string.");
                  
                 @out = Array.new();
                 @curstr = '';

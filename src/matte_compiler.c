@@ -24,7 +24,7 @@ typedef enum {
 
     MATTE_TOKEN_EXTERNAL_NOOP,
     MATTE_TOKEN_EXTERNAL_GATE,
-    MATTE_TOKEN_EXTERNAL_WHILE,
+    MATTE_TOKEN_EXTERNAL_LOOP,
     MATTE_TOKEN_EXTERNAL_FOR,
     MATTE_TOKEN_EXTERNAL_FOREACH,
     MATTE_TOKEN_EXTERNAL_MATCH,
@@ -339,7 +339,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
         MATTE_TOKEN_LITERAL_EMPTY, MATTE_STR_CAST("Empty Literal"),
         MATTE_TOKEN_EXTERNAL_NOOP, MATTE_STR_CAST("no-op built-in"),
         MATTE_TOKEN_EXTERNAL_GATE, MATTE_STR_CAST("Gate built-in"),
-        MATTE_TOKEN_EXTERNAL_WHILE, MATTE_STR_CAST("While built-in"),
+        MATTE_TOKEN_EXTERNAL_LOOP, MATTE_STR_CAST("While built-in"),
         MATTE_TOKEN_EXTERNAL_FOR, MATTE_STR_CAST("For built-in"),
         MATTE_TOKEN_EXTERNAL_FOREACH, MATTE_STR_CAST("Foreach built-in"),
         MATTE_TOKEN_EXTERNAL_MATCH, MATTE_STR_CAST("Match built-in"),
@@ -673,7 +673,7 @@ static void generate_graph(matteSyntaxGraph_t * st) {
             MATTE_TOKEN_LITERAL_STRING,
 
             MATTE_TOKEN_EXTERNAL_NOOP,
-            MATTE_TOKEN_EXTERNAL_WHILE,
+            MATTE_TOKEN_EXTERNAL_LOOP,
             MATTE_TOKEN_EXTERNAL_FOREACH,
             MATTE_TOKEN_EXTERNAL_FOR,
             MATTE_TOKEN_EXTERNAL_MATCH,
@@ -1603,8 +1603,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "if");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_WHILE: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "while");
+      case MATTE_TOKEN_EXTERNAL_LOOP: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "loop");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_FOR: {
@@ -3461,8 +3461,23 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
+      case MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_GETEXTERNALFUNCTION);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_LOOP: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_LOOP);
+        *src = iter->next;
+        return inst;
+      }
       case MATTE_TOKEN_EXTERNAL_FOR: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_FOR);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_IMPORT: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_IMPORT);
         *src = iter->next;
         return inst;
       }
