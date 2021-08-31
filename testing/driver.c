@@ -10,7 +10,7 @@
 
 static int TESTID = 1;
 
-static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata) {
+static void onError(const matteString_t * s, uint32_t fileid, uint32_t line, uint32_t ch, void * userdata) {
     printf("TEST COMPILE FAILURE ON TEST: %d\n:", TESTID);
     printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
     fflush(stdout);

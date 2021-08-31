@@ -18,5 +18,6 @@ matteVM_t * matte_get_vm(matte_t * m) {
 }
 
 void matte_destroy(matte_t * m) {
-    // cleanup here.
+    matte_vm_destroy(m->vm);
+    free(m);
 }

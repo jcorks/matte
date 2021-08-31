@@ -250,6 +250,9 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     return out;
 }
 
+void matte_heap_destroy(matteVM_t * vm) {
+    
+}
 
 
 matteValue_t matte_heap_new_value(matteHeap_t * h) {

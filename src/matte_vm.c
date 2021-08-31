@@ -14,7 +14,6 @@
 #endif
 
 struct matteVM_t {
-    matteArray_t * stubs;
 
     // stubIndex[fileid] -> [stubid]
     matteTable_t * stubIndex;
@@ -756,7 +755,6 @@ static void vm_add_built_in(
 
 matteVM_t * matte_vm_create() {
     matteVM_t * vm = calloc(1, sizeof(matteVM_t));
-    vm->stubs = matte_array_create(sizeof(matteBytecodeStub_t*));
     vm->callstack = matte_array_create(sizeof(matteVMStackFrame_t));
     vm->stubIndex = matte_table_create_hash_pointer();
     vm->interruptOps = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
@@ -818,6 +816,39 @@ matteVM_t * matte_vm_create() {
 
 
     return vm;
+}
+
+void matte_vm_destroy(matteVM_t * vm) {
+    matteTableIter_t * iter = matte_table_iter_create();
+    matteTableIter_t * subiter = matte_table_iter_create();
+
+    for(matte_table_iter_start(iter, vm->stubIndex);
+        !matte_table_iter_is_end(iter);
+        matte_table_iter_proceed(iter)) {
+        
+        matteTable_t * table = matte_table_iter_get_value(iter);
+
+        for(matte_table_iter_start(subiter, table);
+            !matte_table_iter_is_end(subiter);
+            matte_table_iter_proceed(subiter)) {
+            matte_bytecode_stub_destroy((void*)matte_table_iter_get_key(subiter));
+        }
+
+        matte_table_destroy(table);
+    }
+
+
+    uint32_t i;
+    uint32_t len = matte_array_get_size(vm->callstack);
+    for(i = 0; i < len; ++i) {
+        matte_array_destroy(matte_array_at(vm->callstack, matteVMStackFrame_t, i).valueStack);
+    }
+    matte_array_destroy(vm->callstack);
+
+
+    matte_table_iter_destroy(iter);
+    matte_table_iter_destroy(subiter);
+    free(vm);
 }
 
 const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t fileid) {
