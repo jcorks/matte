@@ -68,7 +68,11 @@ static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_
       case MATTE_VALUE_TYPE_STRING: { 
         matteString_t * astr = matte_value_as_string(a);
         matteString_t * bstr = matte_value_as_string(b);
-        if (!astr || !bstr) return result;
+        if (!astr || !bstr) {
+            if (astr) matte_string_destroy(astr);
+            if (bstr) matte_string_destroy(bstr);
+            return result; 
+        }
         
         matteString_t * str = matte_string_clone(astr);
         matte_string_concat(str, bstr);
@@ -77,6 +81,8 @@ static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_
             &result, 
             str
         );
+        matte_string_destroy(astr);
+        matte_string_destroy(bstr);
         
         matte_string_destroy(str);
         break;

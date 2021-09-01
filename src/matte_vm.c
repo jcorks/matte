@@ -718,10 +718,10 @@ static void vm_add_built_in(
 ) {
     ExternalFunctionSet_t * set;
     if (matte_array_get_size(vm->externalFunctionIndex) <= index) {
-        matte_array_set_size(vm->externalFunctionIndex, index);
+        matte_array_set_size(vm->externalFunctionIndex, index+1);
     }
     if (matte_array_get_size(vm->extStubs) <= index) {
-        matte_array_set_size(vm->extStubs, index);
+        matte_array_set_size(vm->extStubs, index+1);
     }
 
     set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, index);
@@ -831,21 +831,77 @@ void matte_vm_destroy(matteVM_t * vm) {
         for(matte_table_iter_start(subiter, table);
             !matte_table_iter_is_end(subiter);
             matte_table_iter_proceed(subiter)) {
-            matte_bytecode_stub_destroy((void*)matte_table_iter_get_key(subiter));
+            matte_bytecode_stub_destroy((void*)matte_table_iter_get_value(subiter));
         }
 
         matte_table_destroy(table);
     }
+    matte_table_destroy(vm->stubIndex);
+
+    for(matte_table_iter_start(iter, vm->defaultImport_table);
+        !matte_table_iter_is_end(iter);
+        matte_table_iter_proceed(iter)) {
+        
+        free(matte_table_iter_get_value(iter));
+    }
+    matte_table_destroy(vm->defaultImport_table);
+
+
+
+    for(matte_table_iter_start(iter, vm->imported);
+        !matte_table_iter_is_end(iter);
+        matte_table_iter_proceed(iter)) {
+        
+        free(matte_table_iter_get_value(iter));
+    }
+    matte_table_destroy(vm->imported);
+
+    for(matte_table_iter_start(iter, vm->id2importPath);
+        !matte_table_iter_is_end(iter);
+        matte_table_iter_proceed(iter)) {
+        
+        matte_string_destroy(matte_table_iter_get_value(iter));
+    }
+    matte_table_destroy(vm->id2importPath);
+
+    for(matte_table_iter_start(iter, vm->importPath2ID);
+        !matte_table_iter_is_end(iter);
+        matte_table_iter_proceed(iter)) {
+        
+        free(matte_table_iter_get_value(iter));
+    }
+    matte_table_destroy(vm->importPath2ID);
+
+
+    for(matte_table_iter_start(iter, vm->externalFunctions);
+        !matte_table_iter_is_end(iter);
+        matte_table_iter_proceed(iter)) {
+        
+        free(matte_table_iter_get_value(iter));
+    }
+    matte_table_destroy(vm->externalFunctions);
+
 
 
     uint32_t i;
     uint32_t len = matte_array_get_size(vm->callstack);
     for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(vm->callstack, matteVMStackFrame_t, i).prettyName);
         matte_array_destroy(matte_array_at(vm->callstack, matteVMStackFrame_t, i).valueStack);
     }
+
+    len = matte_array_get_size(vm->extStubs);
+    for(i = 0; i < len; ++i) {
+        matte_bytecode_stub_destroy(matte_array_at(vm->extStubs, matteBytecodeStub_t *, i));
+    }
+    matte_array_destroy(vm->extStubs);
+
+
+    matte_array_destroy(vm->interruptOps);
+    matte_array_destroy(vm->errors);
     matte_array_destroy(vm->callstack);
-
-
+    matte_array_destroy(vm->externalFunctionIndex); // copy, safe
+    matte_heap_destroy(vm->heap);
     matte_table_iter_destroy(iter);
     matte_table_iter_destroy(subiter);
     free(vm);

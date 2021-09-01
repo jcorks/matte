@@ -110,17 +110,17 @@ static int matte_syntax_graph_continue(
 //
 // A syntax graph allows reduction of raw, UT8 text 
 // into parsible tokens. 
-matteSyntaxGraphWalker_t * matte_syntax_graph_walker_create(
+static matteSyntaxGraphWalker_t * matte_syntax_graph_walker_create(
     matteTokenizer_t *,
     uint32_t fileID,
     void (*onError)(const matteString_t * errMessage, uint32_t fileID,  uint32_t line, uint32_t ch, void * userdata), 
     void * userdata
 );
 
-
+static void matte_syntax_graph_walker_destroy(matteSyntaxGraphWalker_t *);
 
 // Returns the first parsed token from the user source
-matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraphWalker_t * g);
+static matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraphWalker_t * g);
 
 // compiles all nodes into bytecode function blocks.
 typedef struct matteFunctionBlock_t matteFunctionBlock_t;
@@ -143,10 +143,46 @@ struct matteFunctionBlock_t {
     matteArray_t * captureNames;
 };
 
+static void function_block_destroy(matteFunctionBlock_t * t) {
+    uint32_t i;
+    uint32_t len;
+    matte_array_destroy(t->instructions); // safe
+    matte_array_destroy(t->captures); // safe
+
+    len = matte_array_get_size(t->locals);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(t->locals, matteString_t *, i));        
+    }
+    matte_array_destroy(t->locals);
+
+    len = matte_array_get_size(t->args);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(t->args, matteString_t *, i));        
+    }
+    matte_array_destroy(t->args);
+
+    len = matte_array_get_size(t->strings);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(t->strings, matteString_t *, i));        
+    }
+    matte_array_destroy(t->strings);
+
+
+    len = matte_array_get_size(t->captureNames);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(t->captureNames, matteString_t *, i));        
+    }
+    matte_array_destroy(t->captureNames);
+    free(t);
+
+}
+
+
 // converts all graph nodes into an array of matteFunctionBlock_t
 static matteArray_t * matte_syntax_graph_compile(matteSyntaxGraphWalker_t * g);
 static void matte_syntax_graph_print(matteSyntaxGraphWalker_t * g);
 
+// transers ownership of the array and frees it and its contents.
 static void * matte_function_block_array_to_bytecode(
     matteArray_t * arr, 
     uint32_t * size, 
@@ -173,10 +209,14 @@ void matte_compiler_tokenize(
     while((success = matte_syntax_graph_continue(st, MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT))) {
         if (matte_tokenizer_is_end(w)) break;
     }
+
+    matte_tokenizer_destroy(w);
     if (!success) {
+        matte_syntax_graph_walker_destroy(st);
         return;
     }
     matte_syntax_graph_print(st);
+    matte_syntax_graph_walker_destroy(st);
 }
 
 
@@ -200,8 +240,10 @@ static uint8_t * matte_compiler_run_base(
     while((success = matte_syntax_graph_continue(st, MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT))) {
         if (matte_tokenizer_is_end(w)) break;
     }
+    matte_tokenizer_destroy(w);
     if (!success) {
         *size = 0;
+        matte_syntax_graph_walker_destroy(st);
         return NULL;
     }
 
@@ -215,6 +257,8 @@ static uint8_t * matte_compiler_run_base(
     matteArray_t * arr = matte_syntax_graph_compile(st);
 
     void * bytecode = matte_function_block_array_to_bytecode(arr, size, fileID);
+    matte_syntax_graph_walker_destroy(st);
+
 
     // cleanup :(
     // especially those gosh darn function blocks
@@ -323,7 +367,6 @@ struct matteTokenizer_t {
     uint8_t * source;
     uint32_t line;
     uint32_t character;
-    matteArray_t * tokens;
 
     char asciiBuffer[MAX_ASCII_BUFLEN+1];
 };
@@ -371,14 +414,6 @@ matteTokenizer_t * matte_tokenizer_create(const uint8_t * data, uint32_t byteCou
 }
 
 void matte_tokenizer_destroy(matteTokenizer_t * t) {
-    uint32_t i;
-    uint32_t len = matte_array_get_size(t->tokens);
-    for(i = 0; i < len; ++i) {
-        matteToken_t * token = matte_array_at(t->tokens, matteToken_t *, i);
-        matte_string_destroy(token->text);
-        free(token);
-    }    
-    matte_array_destroy(t->tokens);
     free(t->source);
     free(t);
 }
@@ -1320,6 +1355,18 @@ matteSyntaxGraphWalker_t * matte_syntax_graph_walker_create(
         GRAPHSRC = matte_syntax_graph_create();
     }
     return out;
+}
+
+
+void matte_syntax_graph_walker_destroy(matteSyntaxGraphWalker_t * t) {
+    matteToken_t * iter = t->first;
+    while(iter) {
+        matteToken_t * next = iter->next;
+        destroy_token(iter);
+        iter = next;
+    }
+    matte_table_destroy(t->tried);
+    free(t);
 }
 
 
@@ -3533,6 +3580,8 @@ void * matte_function_block_array_to_bytecode(
         nInst = matte_array_get_size(block->instructions);
         WRITE_BYTES(uint32_t, nInst);
         WRITE_NBYTES(nInst * sizeof(matteBytecodeStubInstruction_t), matte_array_get_data(block->instructions));
+
+        function_block_destroy(block);
     }
 
 
@@ -3541,5 +3590,6 @@ void * matte_function_block_array_to_bytecode(
     memcpy(out, matte_array_get_data(byteout), *size);
 
     matte_array_destroy(byteout);
+    matte_array_destroy(arr);
     return out;
 }

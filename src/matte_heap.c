@@ -227,6 +227,17 @@ static void * create_object() {
 
 static void destroy_object(void * d) {
     matteObject_t * out = d;
+    matteTableIter_t * iter = matte_table_iter_create();
+    for(matte_table_iter_start(iter, out->keyvalues_string);
+        !matte_table_iter_is_end(iter);
+        matte_table_iter_proceed(iter)
+    ) {
+        free(matte_table_iter_get_value(iter));
+    }
+
+    matte_table_iter_destroy(iter);
+
+
     matte_table_destroy(out->keyvalues_string);
     matte_table_destroy(out->keyvalues_object);
     matte_array_destroy(out->keyvalues_number);
@@ -250,8 +261,13 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     return out;
 }
 
-void matte_heap_destroy(matteVM_t * vm) {
-    
+void matte_heap_destroy(matteHeap_t * h) {
+    matte_table_destroy(h->toSweep);
+    matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_NUMBER]);
+    matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_BOOLEAN]);
+    matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_STRING]);
+    matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT]);
+    free(h);
 }
 
 
@@ -648,9 +664,7 @@ matteString_t * matte_value_as_string(matteValue_t v) {
         if (toString.binID) {
             matteValue_t result = matte_vm_call(v.heap->vm, toString, matte_array_empty());
             matteString_t * out = matte_value_as_string(result);
-            if (out) {
-                out = matte_string_clone(out);
-            } else {
+            if (!out) {
                 out = matte_string_create_from_c_str("");
             }
             matte_heap_recycle(result);
@@ -804,6 +818,7 @@ matteValue_t matte_value_object_keys(matteValue_t v) {
     }
     val = matte_heap_new_value(v.heap);
     matte_value_into_new_object_array_ref(&val, keys);
+    matte_array_destroy(keys);
     return val;
 }
 

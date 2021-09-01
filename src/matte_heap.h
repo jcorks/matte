@@ -18,7 +18,7 @@ typedef struct matteHeap_t matteHeap_t;
 
 matteHeap_t * matte_heap_create(matteVM_t *);
 
-void matte_heap_destroy(matteVM_t *);
+void matte_heap_destroy(matteHeap_t *);
 
 typedef enum {
     MATTE_VALUE_TYPE_EMPTY,

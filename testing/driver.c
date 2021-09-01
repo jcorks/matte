@@ -79,8 +79,7 @@ int main() {
     int testNo = 0;
     matteArray_t * args = matte_array_create(sizeof(matteValue_t));  
     for(;;) {
-        matte_t * m = matte_create();
-        matteVM_t * vm = matte_get_vm(m);
+
 
         matte_string_clear(infile);
         matte_string_clear(outfile);
@@ -91,6 +90,11 @@ int main() {
         uint32_t lenBytes;
         uint8_t * src = dump_bytes(matte_string_get_c_str(infile), &lenBytes);
         if (!src) break;
+
+        matte_t * m = matte_create();
+        matteVM_t * vm = matte_get_vm(m);
+
+
         if (!lenBytes) {
             printf("Couldn't open source %s\n", matte_string_get_c_str(infile));
             exit(1);
@@ -116,8 +120,10 @@ int main() {
 
         matteArray_t * arr = matte_bytecode_stubs_from_bytecode(outBytes, outByteLen);
         matte_vm_add_stubs(vm, arr);
+        matte_array_destroy(arr);
+        free(outBytes);
 
-        matteValue_t v = matte_vm_run_script(vm, i+1, arr);
+        matteValue_t v = matte_vm_run_script(vm, i+1, matte_array_empty());
 
         char * outstr = dump_string(matte_string_get_c_str(outfile));
         if (!outstr) {
@@ -127,16 +133,20 @@ int main() {
         matteString_t * outputText = matte_string_create();
         matte_string_concat_printf(outputText, outstr);
 
-        if (!matte_string_test_eq(outputText, matte_value_as_string(v))) {
+        matteString_t * resultText = matte_value_as_string(v);
+        if (!matte_string_test_eq(outputText, resultText)) {
             printf("Test failed!!\nExpected output   : %s\nReal output       : %s\n", outstr, matte_string_get_c_str(matte_value_as_string(v)));
             exit(1);
         }
+        matte_string_destroy(resultText);
         free(outstr);
         TESTID++;
-
+        matte_string_destroy(outputText);
         matte_destroy(m);
     }
-
+    matte_array_destroy(args);
+    matte_string_destroy(infile);
+    matte_string_destroy(outfile);
     printf("Tests pass.");
     return 0;
 }

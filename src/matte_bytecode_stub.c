@@ -25,7 +25,16 @@ struct matteBytecodeStub_t {
 };  
 
 // prevents incomplete advances
-#define ADVANCE(__T__, __v__) {uint32_t v__ = sizeof(__T__) <= *left ? sizeof(__T__) : *left; memcpy(&(__v__), *bytes, v__); *left-=v__;*bytes+=v__;}
+#define ADVANCE(__T__, __v__) {\
+    int32_t v__ = sizeof(__T__) <= *left ? \
+        sizeof(__T__) \
+    : \
+        *left; \
+    memcpy(&(__v__), *bytes, v__); \
+    *left-=v__;*bytes+=v__;\
+}
+
+
 #define ADVANCEN(__N__, __v__) {uint32_t v__ = __N__ <= *left ? __N__ : *left; memcpy(&(__v__), *bytes, v__); *left-=v__; *bytes+=v__;}
 
 static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
@@ -78,6 +87,25 @@ static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
     return out;    
 }
 
+void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
+    uint32_t i;
+    for(i = 0; i < b->argCount; ++i) {
+        matte_string_destroy(b->argNames[i]);
+    }     
+    free(b->argNames);   
+    for(i = 0; i < b->localCount; ++i) {
+        matte_string_destroy(b->localNames[i]);
+    }     
+    free(b->localNames);   
+    for(i = 0; i < b->stringCount; ++i) {
+        matte_string_destroy(b->strings[i]);
+    }     
+    free(b->strings);   
+    free(b->captures);
+    free(b->instructions);
+    free(b);
+}
+
 
 
 matteArray_t * matte_bytecode_stubs_from_bytecode(
@@ -92,9 +120,6 @@ matteArray_t * matte_bytecode_stubs_from_bytecode(
     return arr;
 }
 
-void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
-    assert("todo");
-}
 
 
 uint32_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t * stub) {

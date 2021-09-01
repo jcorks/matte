@@ -34,9 +34,6 @@ enum {
 static matteValue_t introspection_object_create(matteVM_t * vm) {
     matteValue_t obj = matte_heap_new_value(vm->heap);
     matte_value_into_new_object_ref(&obj);
-    matteValue_t * mref = malloc(sizeof(matteValue_t));
-    *mref = obj;
-    matte_value_set_object_userdata(obj, mref);
 
 
 
@@ -96,16 +93,19 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
 
     uint32_t i;
     uint32_t len = sizeof(functions) / sizeof(matteBytecodeStub_t *);
+    matteValue_t index0 = matte_heap_new_value(vm->heap);
+    matte_value_into_number(&index0, 0);
     for(i = 0; i < len; ++i) {
         matteValue_t key = matte_heap_new_value(vm->heap);
         matteValue_t value = matte_heap_new_value(vm->heap);
 
         matte_value_into_string(&key, MATTE_STR_CAST(names[i]));
         matte_value_into_new_function_ref(&value, functions[i]);
-        matte_value_set_object_userdata(value, mref);
+        matte_value_object_set(value, index0, obj);
 
         matte_value_object_set(obj, key, value);
     }
+    matte_heap_recycle(index0);
 
     // disable writing
     /*
@@ -135,7 +135,7 @@ static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, mat
 
 
 static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
     matteValue_t result = matte_heap_new_value(vm->heap);
@@ -152,7 +152,7 @@ static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn
 
 
 static matteValue_t vm_ext_call__introspect_object_id(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
     matteValue_t result = matte_heap_new_value(vm->heap);
@@ -163,7 +163,7 @@ static matteValue_t vm_ext_call__introspect_object_id(matteVM_t * vm, matteValue
 }
 
 static matteValue_t vm_ext_call__introspect_keys(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
@@ -183,7 +183,7 @@ static matteValue_t vm_ext_call__introspect_pairs(matteVM_t * vm, matteValue_t f
 }
 
 static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -199,7 +199,7 @@ static matteValue_t vm_ext_call__introspect_isarray(matteVM_t * vm, matteValue_t
 }
 
 static matteValue_t vm_ext_call__introspect_iscallable(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     matteValue_t out = matte_heap_new_value(vm->heap);
     matte_value_into_boolean(&out, matte_value_is_callable(a));
@@ -208,11 +208,13 @@ static matteValue_t vm_ext_call__introspect_iscallable(matteVM_t * vm, matteValu
 }
 
 static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     if (a.binID == MATTE_VALUE_TYPE_STRING) {
         matteValue_t len = matte_heap_new_value(vm->heap);
-        matte_value_into_number(&len, matte_string_get_length(matte_value_as_string(a)));
+        matteString_t * strVal = matte_value_as_string(a);
+        matte_value_into_number(&len, matte_string_get_length(strVal));
+        matte_string_destroy(strVal);
         matte_heap_recycle(a);
         return len;
     }
@@ -221,7 +223,7 @@ static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t 
 }
 
 static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
     uint32_t key;
@@ -241,7 +243,9 @@ static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t 
     if (a.binID == MATTE_VALUE_TYPE_STRING) {
         matteValue_t strV = matte_heap_new_value(vm->heap);
         matteString_t * str = matte_string_create();
-        matte_string_append_char(str, matte_string_get_char(matte_value_as_string(a), key));
+        matteString_t * strVal = matte_value_as_string(a);
+        matte_string_append_char(str, matte_string_get_char(strVal, key));
+        matte_string_destroy(strVal);
         matte_value_into_string(&strV, str);
         matte_string_destroy(str);
         return strV;
@@ -251,7 +255,7 @@ static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t 
 }
 
 static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
     uint32_t key;
@@ -278,7 +282,7 @@ static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValu
 }
 
 static matteValue_t vm_ext_call__introspect_floor(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t src = *(matteValue_t *)matte_value_get_object_userdata(fn);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
