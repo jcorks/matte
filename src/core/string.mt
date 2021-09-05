@@ -28,6 +28,8 @@
                 @sublen = sub.length;
                 @self_is = intr;
                 @sub_is = introspect(sub.data);
+
+                when(sublen == 0) -1;
                 
                 @checksub::(i){
                     @found = true;
@@ -50,6 +52,23 @@
                 return index;
             },
             
+            contains::(sub) {
+                return this.search(sub) != -1;
+            },
+
+            containsAny::(arr) {
+                <@>vals = introspect(arr).values();
+                <@>len = introspect(vals).keycount();
+                @contains = false;
+                for([0, len], ::(i) {
+                    when (this.contains(vals[i])) ::{
+                        contains = true;
+                        return len;
+                    }();
+                });
+                return contains;
+            },
+
 
             replace::(sub, with) {
                 with = if (introspect(with).type() == 'string') String.new(with) else with;
@@ -107,6 +126,14 @@
             charAt::(i) {
                 return intr.charAt(i);  
             },
+
+            removeChar::(i) {
+                when(len < 1) empty;
+                @newsmall = this.substr(1, len-1);
+                str = newsmall.data;
+                intr = introspect(str);
+                len = intr.length();
+            },
             
             valueize::{
                 @out = Array.new();
@@ -160,3 +187,4 @@
     }
 });
 
+return String;

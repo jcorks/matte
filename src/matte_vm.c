@@ -271,6 +271,9 @@ static const char * opcode_to_str(int oc) {
 
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
     matteVMStackFrame_t * frame = &matte_array_at(vm->callstack, matteVMStackFrame_t, vm->stacksize-1);
+    #ifdef MATTE_DEBUG__VM
+        const matteString_t * str = matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub));
+    #endif
     const matteBytecodeStubInstruction_t * inst;
     uint32_t instCount;
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
@@ -281,9 +284,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         inst = program+frame->pc++;
         // TODO: optimize out
         #ifdef MATTE_DEBUG__VM
-            printf("from line %d, CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", inst->lineNumber, vm->stacksize, frame->pc, opcode_to_str(inst->opcode), matte_array_get_size(frame->valueStack));
             if (matte_array_get_size(frame->valueStack))
                 matte_value_print(matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1));
+            printf("from %s, line %d, CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", str ? matte_string_get_c_str(str) : "???", inst->lineNumber, vm->stacksize, frame->pc, opcode_to_str(inst->opcode), matte_array_get_size(frame->valueStack));
             fflush(stdout);
         #endif
         if (vm->debug) {
@@ -376,10 +379,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_NFN: {
             uint32_t ids[2];
             memcpy(ids, inst->data, 8);
-            if (ids[0] == 0) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("NFN opcode is NOT allowed to reference fileid 0?? (corrupt bytecode?)"));
-                break;
-            }
+
             matteBytecodeStub_t * stub = vm_find_stub(vm, ids[0], ids[1]);
 
             if (stub == NULL) {
@@ -732,17 +732,18 @@ static void vm_add_built_in(
     
 
     typedef struct {
-        uint8_t bytes[1+4+4+1];
+        uint8_t bytes[1+4+1];
     } FakeID;
     FakeID id = {0};
     uint8_t nArgsU = nArgs;
     id.bytes[0] = 1;
-    memcpy(id.bytes+1+4, &index,  sizeof(uint32_t));
-    memcpy(id.bytes+1+8, &nArgsU, sizeof(uint8_t));
+    memcpy(id.bytes+1+0, &index,  sizeof(uint32_t));
+    memcpy(id.bytes+1+4, &nArgsU, sizeof(uint8_t));
 
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+        0,
         id.bytes, 
-        10
+        6
     );
     
     matteBytecodeStub_t * out = matte_array_at(stubs, matteBytecodeStub_t *, 0);
@@ -801,6 +802,7 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH, 0, vm_ext_call__introspect_length);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARAT, 1, vm_ext_call__introspect_charat);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARCODEAT, 1, vm_ext_call__introspect_charcodeat);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SETSIZE, 1, vm_ext_call__introspect_setsize);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_FLOOR, 0, vm_ext_call__introspect_floor);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CEIL, 0, vm_ext_call__introspect_ceil);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ROUND, 0, vm_ext_call__introspect_round);    
@@ -1062,7 +1064,6 @@ matteValue_t matte_vm_run_script(
 
 static void debug_compile_error(
     const matteString_t * s,
-    uint32_t fileid,
     uint32_t line,
     uint32_t ch,
     void * data
@@ -1103,14 +1104,13 @@ matteValue_t matte_vm_run_scoped_debug_source(
         matte_string_get_c_str(src), // TODO: UTF8
         matte_string_get_length(src),
         &jitSize,
-        MATTE_VM_DEBUG_FILE,
         debug_compile_error,
         vm
     ); 
     matteValue_t result;
     if (jitSize) {
         matteArray_t * jitstubs = matte_bytecode_stubs_from_bytecode(
-            jitBuffer, jitSize
+            MATTE_VM_DEBUG_FILE, jitBuffer, jitSize
         );
         
         matte_vm_add_stubs(vm, jitstubs);
@@ -1260,7 +1260,7 @@ matteValue_t matte_vm_get_external_function_as_value(
     f.filestub = 0;
     f.stubid = *id;
 
-    matteArray_t * arr = matte_bytecode_stubs_from_bytecode((uint8_t*)&f, sizeof(uint32_t));
+    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(0, (uint8_t*)&f, sizeof(uint32_t));
     if (matte_array_get_size(arr) == 0) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("External function conversion failed (truncated stub was denied?)"));
     }

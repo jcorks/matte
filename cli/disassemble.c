@@ -29,10 +29,8 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
         return NULL;        
     }
 
-    uint32_t id = CHOMP(uint32_t);
-    fprintf(fout, "fileid %d\n\n", id);
   
-    id = CHOMP(uint32_t);
+    uint32_t id = CHOMP(uint32_t);
     fprintf(fout, "function %d\n", id);
     
     // arguments
@@ -113,10 +111,9 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 fprintf(fout, "nob\n");
                 break;            
             case MATTE_OPCODE_NFN:
-                a = *(uint32_t*)data.bytes;
-                b = *(uint32_t*)(data.bytes+4);
+                a = *(uint32_t*)(&data.bytes[4]);
                 
-                fprintf(fout, "nfn %d %d\n", a, b);
+                fprintf(fout, "nfn %d\n", a);
                 break;            
 
             case MATTE_OPCODE_NAR:

@@ -6,6 +6,7 @@
 // with Matte as a shell language.
 return class({
     define::(this, args, classinst) {
+        @_print = getExternalFunction("system_print");
 
         @_getcwd = getExternalFunction("system_getcwd");
         @_setcwd = getExternalFunction("system_setcwd");
@@ -19,28 +20,32 @@ return class({
 
         @_readString = getExternalFunction("system_readString");
 
+
         @files = Array.new();
         
         
         this.interface({
             ////// IO
             
-            // prints to stdout
-            print : getExternalFunction("system_print"),
-            
-            // prints to stdout use string interpolation
-            printf ::(fmt, arr) {
-                <@> str = String.new(fmt);
-                <@> spl = str.split('$$');
-                @ strout = String.new();
-
-                foreach(spl, ::(item){
-                    
-                });
+            println ::(a) {
+                _print(a + '\n');
             },
+
+            printf ::(fmt, arr) {
+                when (introspect(arr).type() != 'object')::{
+                    _print(''+fmt);
+                }();
+
+
+                <@>o = String.new(fmt);
+                foreach(arr, ::(k, v){
+                    <@>key = '$('+k+')';
+                    o.replace(key, ''+v);
+                });
+                _print(o);
+            },
+
             getln : getExternalFunction("system_getline"),
-
-
 
 
 
@@ -84,3 +89,12 @@ return class({
         });
     }    
 }).new();
+
+/*
+System.println('Hello!');
+System.printf('Now presenting variables $(0) and $(1)\n', [20, true]);
+System.println("Now tell me, what is your favorite color?");
+System.printf("> ");
+<@>color = System.getln();
+System.printf("Thats an interesting color... hmmm.. $(0)\n", [color]);
+*/

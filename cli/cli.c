@@ -34,14 +34,9 @@ static void show_help() {
     printf("    - Assuming each file is a Matte source file, a token analysis is\n");
     printf("      run on each file and printed to stdout.\n\n");
 
-    printf("  compile input-source.file fileID output.file\n");
+    printf("  compile input-source.file output.file\n");
     printf("    - Takes the given file and compiles it into a single bytecode\n");
     printf("      blob. The fileID of the given number is used\n\n");
-
-    printf("  link [file(s)] output.file\n");
-    printf("    - Takes the given bytecode blobs and combines them into a single\n");
-    printf("      bytecode blob.\n\n");
-    
 
     printf("  assemble [file(s)] output.file\n");
     printf("    - Takes the given Matte assembly files and compiles them into a \n");
@@ -56,7 +51,7 @@ static void show_help() {
 }
 
 
-static void onError(const matteString_t * s, uint32_t fileid, uint32_t line, uint32_t ch, void * userdata) {
+static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata) {
     printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
     fflush(stdout);
 }
@@ -119,7 +114,6 @@ int main(int argc, char ** args) {
             matte_compiler_tokenize(
                 dump,
                 fsize,
-                1,
                 onError,
                 NULL
             );
@@ -146,7 +140,7 @@ int main(int argc, char ** args) {
                 printf("Couldn't open file %s\n", args[2+i]);
                 exit(1);
             }
-            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(data, len);
+            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_new_file_id(vm), data, len);
             if (arr) {
                 uint32_t j;
                 uint32_t jlen = matte_array_get_size(arr);
@@ -181,7 +175,7 @@ int main(int argc, char ** args) {
         return 0;
         
     } else if (!strcmp(tool, "compile")) {
-        if (argc != 5) {
+        if (argc != 4) {
             printf("Insufficient arguments for compile tool\n");
             exit(1);
         }
@@ -192,15 +186,12 @@ int main(int argc, char ** args) {
             exit(1);
         }
 
-        int fileID = atoi(args[3]);        
-
 
         uint32_t outByteLen;
         uint8_t * outBytes = matte_compiler_run(
             source,
             sourceLen,
             &outByteLen,
-            fileID,
             onError,
             NULL
         );
@@ -216,30 +207,6 @@ int main(int argc, char ** args) {
             exit(1);
         }
         fwrite(outBytes, 1, outByteLen, out);
-        fclose(out);
-    } else if (!strcmp(tool, "link")) {
-        if (argc < 4) {
-            printf("Insufficient arguments for link tool\n");
-            exit(1);
-        }
-
-        FILE * out = fopen(args[argc-1], "wb");
-        if (!out) {
-            printf("Couldn't open output file %s\n", args[argc-1]);
-        }
-
-        uint32_t i;
-        uint32_t len = argc-3;
-        for(i = 0; i < len; ++i) {
-            uint32_t blen;
-            uint8_t * bytes = dump_bytes(args[i+2], &blen);
-            if (!blen || !bytes) {
-                printf("Couldn't open / read input bytecode file %s\n", args[i+2]);
-                exit(1);
-            }
-
-            fwrite(bytes, 1, blen, out);
-        }
         fclose(out);
     } else { // just filenames 
         uint32_t i;
@@ -267,7 +234,6 @@ int main(int argc, char ** args) {
                 src,
                 lenBytes,
                 &outByteLen,
-                FILEIDS[i],
                 onError,
                 NULL
             );
@@ -279,7 +245,7 @@ int main(int argc, char ** args) {
             }
             
 
-            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(outBytes, outByteLen);
+            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(FILEIDS[i], outBytes, outByteLen);
             matte_vm_add_stubs(vm, arr);
         }    
 

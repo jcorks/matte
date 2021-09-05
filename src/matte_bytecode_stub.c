@@ -1,6 +1,7 @@
 #include "matte_bytecode_stub.h"
 #include "matte_string.h"
 #include "matte_array.h"
+#include "matte_opcode.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -25,17 +26,18 @@ struct matteBytecodeStub_t {
 };  
 
 // prevents incomplete advances
-#define ADVANCE(__T__, __v__) {\
-    int32_t v__ = sizeof(__T__) <= *left ? \
-        sizeof(__T__) \
-    : \
-        *left; \
-    memcpy(&(__v__), *bytes, v__); \
-    *left-=v__;*bytes+=v__;\
+
+
+#define ADVANCE(__T__, __V__) ADVANCE_SRC(sizeof(__T__), &(__V__), left, bytes);
+#define ADVANCEN(__N__, __V__) ADVANCE_SRC(__N__, &(__V__), left, bytes);
+
+static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
+    int32_t v = n <= *left ? n : *left;
+    memcpy(ptr, *bytes, v);
+    *left-=v;
+    *bytes+=v;
 }
 
-
-#define ADVANCEN(__N__, __v__) {uint32_t v__ = __N__ <= *left ? __N__ : *left; memcpy(&(__v__), *bytes, v__); *left-=v__; *bytes+=v__;}
 
 static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
     matteString_t * str = matte_string_create();
@@ -51,13 +53,13 @@ static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
 }
 
 
-static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
+static matteBytecodeStub_t * bytes_to_stub(uint32_t fileID, uint8_t ** bytes, uint32_t * left) {
     matteBytecodeStub_t * out = calloc(1, sizeof(matteBytecodeStub_t));
     uint32_t i;
     uint8_t ver = 0;
     ADVANCE(uint8_t, ver);
     if (ver != 1) return out;
-    ADVANCE(uint32_t, out->fileID);
+    out->fileID = fileID;
     ADVANCE(uint32_t, out->stubID);
     ADVANCE(uint8_t, out->argCount);
     out->argNames = malloc(sizeof(matteString_t *)*out->argCount);
@@ -84,6 +86,14 @@ static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
         out->instructions = calloc(sizeof(matteBytecodeStubInstruction_t), out->instructionCount);    
         ADVANCEN(sizeof(matteBytecodeStubInstruction_t)*out->instructionCount, out->instructions[0]);
     }
+
+    // complete linkage for NFN instructions
+    // This will help other instances know the originating
+    for(i = 0; i < out->instructionCount; ++i) {
+        if (out->instructions[i].opcode == MATTE_OPCODE_NFN) {
+            *((uint32_t*)(&out->instructions[i].data[0])) = fileID;
+        }
+    }
     return out;    
 }
 
@@ -109,12 +119,13 @@ void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
 
 
 matteArray_t * matte_bytecode_stubs_from_bytecode(
+    uint32_t fileID,
     const uint8_t * bytecodeRaw, 
     uint32_t len
 ) {
     matteArray_t * arr = matte_array_create(sizeof(matteBytecodeStub_t *));
     while(len) {
-        matteBytecodeStub_t * s = bytes_to_stub((uint8_t**)(&bytecodeRaw), &len);
+        matteBytecodeStub_t * s = bytes_to_stub(fileID, (uint8_t**)(&bytecodeRaw), &len);
         matte_array_push(arr, s);
     }
     return arr;

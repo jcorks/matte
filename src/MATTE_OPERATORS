@@ -477,9 +477,10 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matteString_t * astr = matte_value_as_string(a);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(a);
+        //TODO: fastpath for 2 strings?
         matteString_t * bstr = matte_value_as_string(b);
-        if (!astr || !bstr) return result;
+        if (!bstr) return result;
         
         matte_value_into_boolean(
             &result,
@@ -488,6 +489,7 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
                 bstr
             )
         );
+        matte_string_destroy(bstr);
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
@@ -531,9 +533,10 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matteString_t * astr = matte_value_as_string(a);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(a);
+        //TODO: fastpath for 2 strings?
         matteString_t * bstr = matte_value_as_string(b);
-        if (!astr || !bstr) return result;
+        if (!bstr) return result;
         
         matte_value_into_boolean(
             &result,
@@ -542,6 +545,7 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
                 bstr
             )
         );
+        matte_string_destroy(bstr);
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
@@ -670,17 +674,19 @@ static matteValue_t vm_operator__lesseq(matteVM_t * vm, matteValue_t a, matteVal
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matteString_t * astr = matte_value_as_string(a);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(a);
+        //TODO: fastpath for 2 strings?
         matteString_t * bstr = matte_value_as_string(b);
-        if (!astr || !bstr) return result;
+        if (!bstr) return result;
         
         matte_value_into_boolean(
             &result,
-            matte_string_compare(
+            !matte_string_compare(
                 astr,
                 bstr
             ) <= 0
         );
+        matte_string_destroy(bstr);
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 

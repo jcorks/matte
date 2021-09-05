@@ -246,7 +246,6 @@ typedef struct {
 
 static void import_compile_error(
     const matteString_t * str,
-    uint32_t fileid,
     uint32_t line,
     uint32_t ch,
     void * data
@@ -283,6 +282,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         #endif
         matteValue_t cpy = matte_heap_new_value(vm->heap);
         matte_value_into_copy(&cpy, *v);
+        matte_string_destroy(str);
         return cpy;
     }
     
@@ -305,67 +305,81 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         }
         iter+=2;
     }
-    
-    
-    // finally, just use the user
-    if (!src || !srcLen) {
+
+    uint8_t * rom = NULL;
+    uint32_t romLen = 0;
+
+    // if we have a built-in import, its actually always a 
+    // pre-compiled rom. So we can use it directly
+    if (src && srcLen) {
+        rom = src;
+        romLen = srcLen;
+    } else {
+        // finally, just use the user
         fileid = 0;
         src = vm->userImport(
             vm,
             str,
-            &fileid, // user is able to identify aliases
+            &fileid,
             &srcLen,
             vm->userImportData
         );
         if (fileid == 0) {
-            matteString_t * err = matte_string_create();
+            matte_string_clear(str);
             matte_string_concat_printf(str, "A file ID must be assigned by import.");
             matte_vm_raise_error_string(vm, str);    
             matte_string_destroy(str);
             return matte_heap_new_value(vm->heap);    
         }  
+
+        // see if the user specified a fileID alias.
+        // the userImport can opt to give back an existing fileID.
+        // in this case, if the fileID exists, the existing 
+        // source is used.
+        if (fileid) {
+            v = matte_table_find_by_uint(vm->imported, fileid);
+            if (v) {
+                matteValue_t cpy = matte_heap_new_value(vm->heap);
+                matte_value_into_copy(&a, *v);
+                matte_string_destroy(str);
+                return cpy;
+            }      
+
+        } 
+
+
+        if (!src || !srcLen) {
+            matteString_t * err = matte_string_create();
+            matte_string_concat_printf(err, "Could not find script '%s'.", matte_string_get_c_str(str));
+            matte_vm_raise_error_string(vm, err);    
+            matte_string_destroy(err);
+            matte_string_destroy(str);
+            return matte_heap_new_value(vm->heap);    
+        }
+
+            
+            
+        romLen = 0;
+        VMImportCompilerData data;
+        data.vm = vm;
+        data.filename = str;
+        rom = matte_compiler_run(
+            src, 
+            srcLen, 
+            &romLen, 
+            import_compile_error,
+            &data
+        );
+        free(src);
     }
-
-    // see if the user specified a fileID alias.
-    // the userImport can opt to give back an existing fileID.
-    // in this case, if the fileID exists, the existing 
-    // source is used.
-    if (fileid) {
-        v = matte_table_find_by_uint(vm->imported, fileid);
-        if (v) {
-            matteValue_t cpy = matte_heap_new_value(vm->heap);
-            matte_value_into_copy(&a, *v);
-            return cpy;
-        }      
-
-    } 
-
-
-    if (!src || !srcLen) {
-        matteString_t * err = matte_string_create();
-        matte_string_concat_printf(err, "Could not find script '%s'.", matte_string_get_c_str(str));
-        matte_vm_raise_error_string(vm, err);    
-        matte_string_destroy(err);
-        return matte_heap_new_value(vm->heap);    
-    }
-
-        
-        
-    uint32_t romLen = 0;
-    VMImportCompilerData data;
-    data.vm = vm;
-    data.filename = str;
-    uint8_t * rom = matte_compiler_run(
-        src, 
-        srcLen, 
-        &romLen, 
-        fileid,
-        import_compile_error,
-        &data
-    );
     
+
+
     if (rom && romLen) {
-        matte_vm_add_stubs(vm, matte_bytecode_stubs_from_bytecode(rom, romLen));
+        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(fileid, rom, romLen);
+
+        matte_vm_add_stubs(vm, stubs);
+        matte_array_destroy(stubs);
         free(rom);
 
 
@@ -394,6 +408,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
 
 
     // already would have raised an error, no need for another.
+    matte_string_destroy(str);
     return matte_heap_new_value(vm->heap);    
 
 }

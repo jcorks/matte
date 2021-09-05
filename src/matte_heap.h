@@ -64,6 +64,11 @@ void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t 
 
 matteValue_t * matte_value_object_array_at_unsafe(matteValue_t v, uint32_t index);
 
+// Under the assumption that value is a string, returns the internally
+// kept string reference. This is significantly faster for the string 
+// case, as a new string object does not need to be created.
+const matteString_t * matte_value_string_get_string_unsafe(matteValue_t v);
+
 
 // Given a function object, gets the in-scope referrable identified
 // by the given name. If none can be found, an error is raised and 
@@ -78,6 +83,12 @@ matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t);
 // Gets all captured values by the function. If not a function, returns NULL
 matteValue_t * matte_value_get_captured_value(matteValue_t, uint32_t index);
 
+// Applies the setsize operation
+// if the value is a string: it will set the size of the string. If the length is longer, new characters have the value of ' '.
+// if the value is an object: it will set the number of Number key value pairs, removing the Number keys
+// if the new size is smaller and adding them if the new size is larger. Any new 
+// entries into the object will be given the empty value.
+void matte_value_set_size(matteValue_t v, uint32_t len);
 
 // if the value points to an object, sets custom data for the object.
 void matte_value_set_object_userdata(matteValue_t, void *);
@@ -116,6 +127,9 @@ matteValue_t matte_value_object_access_index(matteValue_t, uint32_t);
 // keys pointing to the keys of the original objects. If not an object,
 // empty is returned
 matteValue_t matte_value_object_keys(matteValue_t);
+
+matteValue_t matte_value_object_values(matteValue_t);
+
 
 // Returns the number of keys within the object.
 // If not an object, 0 is returned.

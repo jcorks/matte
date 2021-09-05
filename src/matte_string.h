@@ -150,6 +150,18 @@ void matte_string_concat_printf(
 );
 
 
+/// Reduces the length of the string in characters.
+/// If the new length is larger, no action is taken.
+///
+void matte_string_truncate(
+    /// The string to truncate.
+    matteString_t * str,
+
+    /// The new length. Must be smaller than the current 
+    /// length to make an effect.
+    uint32_t newlen
+);
+
 /// Adds the given string B to the end of the given string A.
 ///
 void matte_string_concat(
