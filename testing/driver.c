@@ -10,7 +10,7 @@
 
 static int TESTID = 1;
 
-static void onError(const matteString_t * s, uint32_t fileid, uint32_t line, uint32_t ch, void * userdata) {
+static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata) {
     printf("TEST COMPILE FAILURE ON TEST: %d\n:", TESTID);
     printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
     fflush(stdout);
@@ -127,7 +127,6 @@ int main() {
             src,
             lenBytes,
             &outByteLen,
-            matte_vm_get_new_file_id(vm),
             onError,
             NULL
         );
@@ -139,7 +138,7 @@ int main() {
         }
         
 
-        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(outBytes, outByteLen);
+        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_new_file_id(vm), outBytes, outByteLen);
         matte_vm_add_stubs(vm, arr);
         matte_array_destroy(arr);
         free(outBytes);

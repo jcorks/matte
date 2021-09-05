@@ -56,7 +56,7 @@ static void split_lines(uint32_t fileid, const uint8_t * data, uint32_t size) {
     matte_table_insert_by_uint(lines, fileid, localLines);
 }
 
-static void onError(const matteString_t * s, uint32_t fileid, uint32_t line, uint32_t ch, void * nu) {
+static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * nu) {
     printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
     fflush(stdout);
 }
@@ -338,7 +338,6 @@ int matte_debug(const char * input) {
         src,
         lenBytes,
         &outByteLen,
-        DEBUG_FILEID,
         onError,
         NULL
     );
@@ -350,7 +349,7 @@ int matte_debug(const char * input) {
         exit(1);
     }
     lastCommand = strdup("");
-    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(outBytes, outByteLen);
+    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(DEBUG_FILEID, outBytes, outByteLen);
     matte_vm_add_stubs(vm, arr);
     printf("...Done! (%.2fKB to %.2fKB)\n\n", lenBytes / 1000.0, outByteLen / 1000.0);
 

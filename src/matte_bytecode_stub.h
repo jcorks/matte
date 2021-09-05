@@ -47,6 +47,7 @@ typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 //
 // Incomplete stubs are supported. If given, remaining attributes are 0.
 matteArray_t * matte_bytecode_stubs_from_bytecode(
+    uint32_t fileID,
     const uint8_t * bytecodeRaw, 
     uint32_t len
 );

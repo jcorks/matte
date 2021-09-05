@@ -379,10 +379,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_NFN: {
             uint32_t ids[2];
             memcpy(ids, inst->data, 8);
-            if (ids[0] == 0) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("NFN opcode is NOT allowed to reference fileid 0?? (corrupt bytecode?)"));
-                break;
-            }
+
             matteBytecodeStub_t * stub = vm_find_stub(vm, ids[0], ids[1]);
 
             if (stub == NULL) {
@@ -735,17 +732,18 @@ static void vm_add_built_in(
     
 
     typedef struct {
-        uint8_t bytes[1+4+4+1];
+        uint8_t bytes[1+4+1];
     } FakeID;
     FakeID id = {0};
     uint8_t nArgsU = nArgs;
     id.bytes[0] = 1;
-    memcpy(id.bytes+1+4, &index,  sizeof(uint32_t));
-    memcpy(id.bytes+1+8, &nArgsU, sizeof(uint8_t));
+    memcpy(id.bytes+1+0, &index,  sizeof(uint32_t));
+    memcpy(id.bytes+1+4, &nArgsU, sizeof(uint8_t));
 
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+        0,
         id.bytes, 
-        10
+        6
     );
     
     matteBytecodeStub_t * out = matte_array_at(stubs, matteBytecodeStub_t *, 0);
@@ -1066,7 +1064,6 @@ matteValue_t matte_vm_run_script(
 
 static void debug_compile_error(
     const matteString_t * s,
-    uint32_t fileid,
     uint32_t line,
     uint32_t ch,
     void * data
@@ -1107,14 +1104,13 @@ matteValue_t matte_vm_run_scoped_debug_source(
         matte_string_get_c_str(src), // TODO: UTF8
         matte_string_get_length(src),
         &jitSize,
-        MATTE_VM_DEBUG_FILE,
         debug_compile_error,
         vm
     ); 
     matteValue_t result;
     if (jitSize) {
         matteArray_t * jitstubs = matte_bytecode_stubs_from_bytecode(
-            jitBuffer, jitSize
+            MATTE_VM_DEBUG_FILE, jitBuffer, jitSize
         );
         
         matte_vm_add_stubs(vm, jitstubs);
@@ -1264,7 +1260,7 @@ matteValue_t matte_vm_get_external_function_as_value(
     f.filestub = 0;
     f.stubid = *id;
 
-    matteArray_t * arr = matte_bytecode_stubs_from_bytecode((uint8_t*)&f, sizeof(uint32_t));
+    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(0, (uint8_t*)&f, sizeof(uint32_t));
     if (matte_array_get_size(arr) == 0) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("External function conversion failed (truncated stub was denied?)"));
     }

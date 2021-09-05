@@ -112,8 +112,7 @@ static int matte_syntax_graph_continue(
 // into parsible tokens. 
 static matteSyntaxGraphWalker_t * matte_syntax_graph_walker_create(
     matteTokenizer_t *,
-    uint32_t fileID,
-    void (*onError)(const matteString_t * errMessage, uint32_t fileID,  uint32_t line, uint32_t ch, void * userdata), 
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata), 
     void * userdata
 );
 
@@ -185,20 +184,18 @@ static void matte_syntax_graph_print(matteSyntaxGraphWalker_t * g);
 // transers ownership of the array and frees it and its contents.
 static void * matte_function_block_array_to_bytecode(
     matteArray_t * arr, 
-    uint32_t * size, 
-    uint32_t fileID
+    uint32_t * size
 );
 
 
 void matte_compiler_tokenize(
     const uint8_t * source, 
     uint32_t len,
-    uint32_t fileID,
-    void(*onError)(const matteString_t * s, uint32_t fileID, uint32_t line, uint32_t ch, void * userdata),
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata),
     void * userdata
 ) {
     matteTokenizer_t * w = matte_tokenizer_create(source, len);
-    matteSyntaxGraphWalker_t * st = matte_syntax_graph_walker_create(w, fileID, onError, userdata);
+    matteSyntaxGraphWalker_t * st = matte_syntax_graph_walker_create(w, onError, userdata);
 
 
    
@@ -224,12 +221,11 @@ static uint8_t * matte_compiler_run_base(
     const uint8_t * source, 
     uint32_t len,
     uint32_t * size,
-    uint32_t fileID,
-    void(*onError)(const matteString_t * s, uint32_t fileID, uint32_t line, uint32_t ch, void *),
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
     void * userdata
 ) {
     matteTokenizer_t * w = matte_tokenizer_create(source, len);
-    matteSyntaxGraphWalker_t * st = matte_syntax_graph_walker_create(w, fileID, onError, userdata);
+    matteSyntaxGraphWalker_t * st = matte_syntax_graph_walker_create(w, onError, userdata);
 
 
    
@@ -256,7 +252,7 @@ static uint8_t * matte_compiler_run_base(
     // finally emit code for groups.
     matteArray_t * arr = matte_syntax_graph_compile(st);
 
-    void * bytecode = matte_function_block_array_to_bytecode(arr, size, fileID);
+    void * bytecode = matte_function_block_array_to_bytecode(arr, size);
     matte_syntax_graph_walker_destroy(st);
 
 
@@ -269,13 +265,12 @@ uint8_t * matte_compiler_run_with_named_references(
     const uint8_t * source, 
     uint32_t len,
     uint32_t * size,
-    uint32_t fileID,
-    void(*onError)(const matteString_t * s, uint32_t fileID, uint32_t line, uint32_t ch, void *),
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
     void * userdata
 ) {
     OPTION__NAMED_REFERENCES = 1;
     return matte_compiler_run_base(
-        source, len, size, fileID, onError, userdata
+        source, len, size, onError, userdata
     );
 }
 
@@ -283,13 +278,12 @@ uint8_t * matte_compiler_run(
     const uint8_t * source, 
     uint32_t len,
     uint32_t * size,
-    uint32_t fileID,
-    void(*onError)(const matteString_t * s, uint32_t fileID, uint32_t line, uint32_t ch, void *),
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
     void * userdata
 ) {
     OPTION__NAMED_REFERENCES = 0;
     return matte_compiler_run_base(
-        source, len, size, fileID, onError, userdata
+        source, len, size, onError, userdata
     );
 }
 
@@ -1336,9 +1330,8 @@ struct matteSyntaxGraphWalker_t {
     // starts at 0 (for the root)
     uint32_t functionStubID;
 
-    uint32_t fileID;
 
-    void (*onError)(const matteString_t * errMessage, uint32_t fileID, uint32_t line, uint32_t ch, void * userdata);
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata);
     void * onErrorData;
 };
 
@@ -1346,8 +1339,7 @@ static matteSyntaxGraph_t * GRAPHSRC = NULL;
 
 matteSyntaxGraphWalker_t * matte_syntax_graph_walker_create(
     matteTokenizer_t * t,
-    uint32_t fileID,
-    void (*onError)(const matteString_t * errMessage, uint32_t fileID, uint32_t line, uint32_t ch, void * userdata),
+    void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata),
     void * userdata
 ) {
     matteSyntaxGraphWalker_t * out = calloc(1, sizeof(matteTokenizer_t));
@@ -1355,7 +1347,6 @@ matteSyntaxGraphWalker_t * matte_syntax_graph_walker_create(
     out->first = out->last = NULL;
     out->onError = onError;
     out->onErrorData = userdata;
-    out->fileID = fileID;
     out->tried = matte_table_create_hash_pointer();
 
     if (!GRAPHSRC) {
@@ -1424,7 +1415,6 @@ static void matte_syntax_graph_print_error(
 
     graph->onError(
         message,
-        graph->fileID,
         matte_tokenizer_current_line(graph->tokenizer),
         matte_tokenizer_current_character(graph->tokenizer),
         graph->onErrorData
@@ -1710,7 +1700,7 @@ int matte_syntax_graph_continue(
     int constructID
 ) {
     if (!matte_syntax_graph_is_construct(GRAPHSRC, constructID)) {
-        graph->onError(MATTE_STR_CAST("Internal error (no such constrctID)"), graph->fileID, 0, 0, graph->onErrorData);
+        graph->onError(MATTE_STR_CAST("Internal error (no such constrctID)"), 0, 0, graph->onErrorData);
         return 0;
     }
 
@@ -1804,7 +1794,6 @@ static void matte_syntax_graph_print_compile_error(
     matteString_t * message = matte_string_create_from_c_str("Compile Error: %s", asciiMessage);
     graph->onError(
         message,
-        graph->fileID,
         t->line,
         t->character,
         graph->onErrorData
@@ -2521,7 +2510,6 @@ static matteArray_t * compile_base_value(
         write_instruction__nfn(
             inst, 
             iter->line,
-            g->fileID,
             val
         );
         *src = iter->next;
@@ -3019,7 +3007,7 @@ static matteArray_t * compile_expression(
             // to reference this new function as needed, the token for the 
             // function constructor will have its text modified to be an integer to the 
             matte_string_clear(start->text);
-            matte_string_concat_printf(start->text, "%d", b->stubID); // assumes same fileID
+            matte_string_concat_printf(start->text, "%d", b->stubID); 
 
             matteToken_t * end = iter;
             matte_array_push(functions, b);
@@ -3544,8 +3532,7 @@ static void write_unistring(matteArray_t * byteout, matteString_t * str) {
 
 void * matte_function_block_array_to_bytecode(
     matteArray_t * arr, 
-    uint32_t * size, 
-    uint32_t fileID
+    uint32_t * size
 ) {
     *size = 0;
     matteArray_t * byteout = matte_array_create(sizeof(uint8_t));
@@ -3563,7 +3550,6 @@ void * matte_function_block_array_to_bytecode(
         matteFunctionBlock_t * block = matte_array_at(arr, matteFunctionBlock_t *, i);
         nSlots = 1;
         WRITE_BYTES(uint8_t, nSlots); // bytecode version
-        WRITE_BYTES(uint32_t, fileID);
         WRITE_BYTES(uint32_t, block->stubID);
         nSlots = matte_array_get_size(block->args);
         WRITE_BYTES(uint8_t, nSlots);

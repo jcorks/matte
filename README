@@ -357,6 +357,12 @@ New function (NFN)
         - new value (function object)
         
     NOTE:
+        - In assembly and in raw bytecode, the fileID is ignored.
+          When creating bytecode stubs from bytecode, NFN instructions 
+          are populated with the fileid of the source fileid. So 
+          Matte assembly will only specify the file-local 
+          stub id.
+
         - once created, the stub is read and values are 
           prepared from the heap, referenced, and cached 
           in preparation for usage by PRF.

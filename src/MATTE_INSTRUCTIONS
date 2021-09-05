@@ -61,11 +61,10 @@ static void write_instruction__nob(matteArray_t * insts, uint32_t lineNumber) {
 
 
 
-static void write_instruction__nfn(matteArray_t * insts, uint32_t lineNumber, uint32_t fileID, uint32_t stubID) {
+static void write_instruction__nfn(matteArray_t * insts, uint32_t lineNumber, uint32_t stubID) {
     matteBytecodeStubInstruction_t inst;
     inst.lineNumber = lineNumber;
     inst.opcode = MATTE_OPCODE_NFN;
-    memcpy(inst.data, &fileID, sizeof(uint32_t));
     memcpy(inst.data+sizeof(uint32_t), &stubID, sizeof(uint32_t));
     matte_array_push(insts, inst);
 }
