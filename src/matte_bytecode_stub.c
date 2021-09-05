@@ -25,17 +25,18 @@ struct matteBytecodeStub_t {
 };  
 
 // prevents incomplete advances
-#define ADVANCE(__T__, __v__) {\
-    int32_t v__ = sizeof(__T__) <= *left ? \
-        sizeof(__T__) \
-    : \
-        *left; \
-    memcpy(&(__v__), *bytes, v__); \
-    *left-=v__;*bytes+=v__;\
+
+
+#define ADVANCE(__T__, __V__) ADVANCE_SRC(sizeof(__T__), &(__V__), left, bytes);
+#define ADVANCEN(__N__, __V__) ADVANCE_SRC(__N__, &(__V__), left, bytes);
+
+static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
+    int32_t v = n <= *left ? n : *left;
+    memcpy(ptr, *bytes, v);
+    *left-=v;
+    *bytes+=v;
 }
 
-
-#define ADVANCEN(__N__, __v__) {uint32_t v__ = __N__ <= *left ? __N__ : *left; memcpy(&(__v__), *bytes, v__); *left-=v__; *bytes+=v__;}
 
 static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
     matteString_t * str = matte_string_create();

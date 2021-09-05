@@ -696,6 +696,13 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                   case 'r':
                     matte_string_append_char(text, '\r');
                     break;
+                  case '"':
+                    matte_string_append_char(text, '"');
+                    break;
+                  case '\'':
+                    matte_string_append_char(text, '\'');
+                    break;
+
                   default:
                     t->iter = t->backup;
                     matte_string_destroy(text);
@@ -3511,6 +3518,10 @@ matteArray_t * matte_syntax_graph_compile(matteSyntaxGraphWalker_t * g) {
     matteFunctionBlock_t * root;
     if (!(root = compile_function_block(g, NULL, arr, &iter))) {
         return NULL;        
+    }
+    if (g->first) {
+        write_instruction__nem(root->instructions, g->first->line);
+        write_instruction__ret(root->instructions, g->first->line);
     }
     matte_array_push(arr, root);
     return arr;

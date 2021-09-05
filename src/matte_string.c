@@ -446,6 +446,15 @@ const matteString_t * matte_string_chain_proceed(matteString_t * t) {
     return t->chain;       
 }
 
+void matte_string_truncate(
+    matteString_t * str,
+    uint32_t newLen
+) {
+    if (newLen < str->len) {
+        str->len = newLen;
+        str->cstr[newLen] = 0;
+    }
+}
 
 
 

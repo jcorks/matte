@@ -283,6 +283,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         #endif
         matteValue_t cpy = matte_heap_new_value(vm->heap);
         matte_value_into_copy(&cpy, *v);
+        matte_string_destroy(str);
         return cpy;
     }
     
@@ -318,7 +319,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
             vm->userImportData
         );
         if (fileid == 0) {
-            matteString_t * err = matte_string_create();
+            matte_string_clear(str);
             matte_string_concat_printf(str, "A file ID must be assigned by import.");
             matte_vm_raise_error_string(vm, str);    
             matte_string_destroy(str);
@@ -335,6 +336,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         if (v) {
             matteValue_t cpy = matte_heap_new_value(vm->heap);
             matte_value_into_copy(&a, *v);
+            matte_string_destroy(str);
             return cpy;
         }      
 
@@ -346,6 +348,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         matte_string_concat_printf(err, "Could not find script '%s'.", matte_string_get_c_str(str));
         matte_vm_raise_error_string(vm, err);    
         matte_string_destroy(err);
+        matte_string_destroy(str);
         return matte_heap_new_value(vm->heap);    
     }
 
@@ -363,9 +366,11 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         import_compile_error,
         &data
     );
-    
+    free(src);
     if (rom && romLen) {
-        matte_vm_add_stubs(vm, matte_bytecode_stubs_from_bytecode(rom, romLen));
+        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(rom, romLen);
+        matte_vm_add_stubs(vm, stubs);
+        matte_array_destroy(stubs);
         free(rom);
 
 
@@ -394,6 +399,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
 
 
     // already would have raised an error, no need for another.
+    matte_string_destroy(str);
     return matte_heap_new_value(vm->heap);    
 
 }

@@ -1,4 +1,4 @@
-@pObject ::(o) {
+/*@pObject ::(o) {
     @already = {};
     @pspace ::(level) {
         @str = '';
@@ -29,7 +29,7 @@
         };
     };
     print(helper(o, 0));
-};
+};*/
 @class ::(d) {
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.
@@ -98,7 +98,6 @@
     };
 
     classinst.new = ::(args, noseal, outsrc) {
-        args = if(args)args else {};
         @out = outsrc;
         if(inherits) ::{
             out = if(out)out else {};
@@ -205,7 +204,7 @@
     };
     return classinst;
 };
-
+return class;
 
 
 

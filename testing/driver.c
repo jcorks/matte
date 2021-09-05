@@ -17,6 +17,27 @@ static void onError(const matteString_t * s, uint32_t fileid, uint32_t line, uin
     exit(1);
 }
 
+static void onErrorCatch(
+    matteVM_t * vm, 
+    matteVMDebugEvent_t event, 
+    uint32_t file, 
+    int lineNumber, 
+    matteValue_t value, 
+    void * data
+) {
+    if (event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED) {
+        matteString_t * str = matte_value_as_string(value);
+        printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
+        printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
+
+        if (str) {
+            matte_string_destroy(str);
+        }
+        exit(1);
+    }
+
+}
+
 void * dump_bytes(const char * filename, uint32_t * len) {
     FILE * f = fopen(filename, "rb");
     if (!f) {
@@ -69,7 +90,7 @@ char * dump_string(const char * filename) {
 
 
 int main() {
-    uint32_t i;
+    uint32_t i = 0;
     
 
 
@@ -86,13 +107,13 @@ int main() {
         matte_string_concat_printf(infile, "test%d.mt", TESTID);
         matte_string_concat_printf(outfile, "test%d.out", TESTID);
 
-
         uint32_t lenBytes;
         uint8_t * src = dump_bytes(matte_string_get_c_str(infile), &lenBytes);
         if (!src) break;
 
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
+        matte_vm_set_debug_callback(vm, onErrorCatch, NULL);
 
 
         if (!lenBytes) {
@@ -106,7 +127,7 @@ int main() {
             src,
             lenBytes,
             &outByteLen,
-            i+1,
+            matte_vm_get_new_file_id(vm),
             onError,
             NULL
         );
@@ -147,6 +168,6 @@ int main() {
     matte_array_destroy(args);
     matte_string_destroy(infile);
     matte_string_destroy(outfile);
-    printf("Tests pass.");
+    printf("Tests pass.\n");
     return 0;
 }
