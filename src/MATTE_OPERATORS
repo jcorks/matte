@@ -9,8 +9,19 @@ static matteValue_t object_get_operator(matteValue_t a, const char * operator) {
     }
     matte_heap_recycle(opSrc);
     return result;
+}
 
-
+static int object_has_operator(matteValue_t a, const char * operator) {
+    matteValue_t opSrc = matte_value_object_access_string(a, MATTE_STR_CAST("operator"));
+    matteValue_t result;
+    if (!opSrc.binID) {
+        return 0;
+    }
+    result = matte_value_object_access_string(a, MATTE_STR_CAST(operator));
+    int r = result.binID != 0;
+    matte_heap_recycle(opSrc);
+    matte_heap_recycle(result);
+    return r;  
 }
 
 static matteValue_t vm_run_object_operator_2(matteVM_t * vm, matteValue_t a, const char * operator, matteValue_t b) {
@@ -92,6 +103,7 @@ static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_
         break;
       
       case MATTE_VALUE_TYPE_OBJECT: {
+
         result = vm_run_object_operator_2(vm, a, "+", b);
         break;
       }      
@@ -501,16 +513,25 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
         break;
       
       case MATTE_VALUE_TYPE_OBJECT: {
-        result = object_get_operator(a, "==");
-        if (result.binID == MATTE_VALUE_TYPE_EMPTY)
+        if (object_has_operator(a, "==")) {
             result = vm_run_object_operator_2(vm, a, "==", b);
-        else {
-            matteValue_t v = result;
-            matteValue_t args[] = {
-                a, b
-            };
-            result = matte_vm_call(vm, v, MATTE_ARRAY_CAST(args, matteValue_t, 2));
-            matte_heap_recycle(v);
+        } else {
+            if (b.binID == 0) {
+                // if we're here, we know a is not empty, so this will always be false
+                matte_value_into_boolean(
+                    &result, 
+                    0
+                );
+            } else if (b.binID == MATTE_VALUE_TYPE_OBJECT) {
+                matte_value_into_boolean(
+                    &result, 
+                    a.objectID == b.objectID
+                );
+            } else {
+                // not defined.
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("== operator with object and non-empty or non-object values is undefined."));
+
+            }
         }
         break;
       }      
@@ -557,16 +578,25 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
         break;
       
       case MATTE_VALUE_TYPE_OBJECT: {
-        result = object_get_operator(a, "!=");
-        if (result.binID == MATTE_VALUE_TYPE_EMPTY)
+        if (object_has_operator(a, "!=")) {
             result = vm_run_object_operator_2(vm, a, "!=", b);
-        else {
-            matteValue_t v = result;
-            matteValue_t args[] = {
-                a, b
-            };
-            result = matte_vm_call(vm, v, MATTE_ARRAY_CAST(args, matteValue_t, 2));
-            matte_heap_recycle(v);
+        } else {
+            if (b.binID == 0) {
+                // if we're here, we know a is not empty, so this will always be false
+                matte_value_into_boolean(
+                    &result, 
+                    1
+                );
+            } else if (b.binID == MATTE_VALUE_TYPE_OBJECT) {
+                matte_value_into_boolean(
+                    &result, 
+                    a.objectID != b.objectID
+                );
+            } else {
+                // not defined.
+                matte_vm_raise_error_string(vm, MATTE_STR_CAST("!= operator with object and non-empty or non-object values is undefined."));
+
+            }
         }
         break;
       }      

@@ -142,8 +142,11 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
     vm->stacksize++;
     matteVMStackFrame_t * frame;
     if (matte_array_get_size(vm->callstack) < vm->stacksize) {
-        matte_array_set_size(vm->callstack, vm->stacksize);
-        frame = &matte_array_at(vm->callstack, matteVMStackFrame_t, vm->stacksize-1);
+        while(matte_array_get_size(vm->callstack) < vm->stacksize) {
+            frame = calloc(1, sizeof(matteVMStackFrame_t));
+            matte_array_push(vm->callstack, frame);
+        }
+        frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
 
         // initialize
         frame->pc = 0;
@@ -152,7 +155,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
         frame->stub = NULL;
         frame->valueStack = matte_array_create(sizeof(matteValue_t));
     } else {
-        frame = &matte_array_at(vm->callstack, matteVMStackFrame_t, vm->stacksize-1);
+        frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
         frame->stub = NULL;
         matte_string_clear(frame->prettyName);     
         matte_array_set_size(frame->valueStack, 0);
@@ -270,7 +273,7 @@ static const char * opcode_to_str(int oc) {
 #define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__);
 
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
-    matteVMStackFrame_t * frame = &matte_array_at(vm->callstack, matteVMStackFrame_t, vm->stacksize-1);
+    matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
     #ifdef MATTE_DEBUG__VM
         const matteString_t * str = matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub));
     #endif
@@ -756,7 +759,7 @@ static void vm_add_built_in(
 
 matteVM_t * matte_vm_create() {
     matteVM_t * vm = calloc(1, sizeof(matteVM_t));
-    vm->callstack = matte_array_create(sizeof(matteVMStackFrame_t));
+    vm->callstack = matte_array_create(sizeof(matteVMStackFrame_t *));
     vm->stubIndex = matte_table_create_hash_pointer();
     vm->interruptOps = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
     vm->externalFunctions = matte_table_create_hash_matte_string();
@@ -802,7 +805,7 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH, 0, vm_ext_call__introspect_length);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARAT, 1, vm_ext_call__introspect_charat);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARCODEAT, 1, vm_ext_call__introspect_charcodeat);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SETSIZE, 1, vm_ext_call__introspect_setsize);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SUBSET, 2, vm_ext_call__introspect_subset);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_FLOOR, 0, vm_ext_call__introspect_floor);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CEIL, 0, vm_ext_call__introspect_ceil);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ROUND, 0, vm_ext_call__introspect_round);    
@@ -888,8 +891,10 @@ void matte_vm_destroy(matteVM_t * vm) {
     uint32_t i;
     uint32_t len = matte_array_get_size(vm->callstack);
     for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(vm->callstack, matteVMStackFrame_t, i).prettyName);
-        matte_array_destroy(matte_array_at(vm->callstack, matteVMStackFrame_t, i).valueStack);
+        matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t *, i);
+        matte_string_destroy(frame->prettyName);
+        matte_array_destroy(frame->valueStack);
+        free(frame);
     }
 
     len = matte_array_get_size(vm->extStubs);
@@ -1168,14 +1173,14 @@ void matte_vm_raise_error_string(matteVM_t * vm, const matteString_t * str) {
 
 // Gets the requested stackframe. 0 is the currently running stackframe.
 matteVMStackFrame_t matte_vm_get_stackframe(matteVM_t * vm, uint32_t i) {
-    matteVMStackFrame_t * frames = matte_array_get_data(vm->callstack);
+    matteVMStackFrame_t ** frames = matte_array_get_data(vm->callstack);
     i = vm->stacksize - 1 - i;
     if (i >= vm->stacksize) { // invalid or overflowed
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("Invalid stackframe requested."));
         matteVMStackFrame_t err = {0};
         return err;
     }
-    return frames[i];
+    return *frames[i];
 }
 
 uint32_t matte_vm_get_stackframe_size(const matteVM_t * vm) {
@@ -1183,7 +1188,7 @@ uint32_t matte_vm_get_stackframe_size(const matteVM_t * vm) {
 }
 
 matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID) {
-    matteVMStackFrame_t * frames = matte_array_get_data(vm->callstack);
+    matteVMStackFrame_t ** frames = matte_array_get_data(vm->callstack);
     i = vm->stacksize - 1 - i;
     if (i >= vm->stacksize) { // invalid or overflowed
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("Invalid stackframe requested in referrable query."));
@@ -1192,10 +1197,10 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 
 
     // get context
-    if (referrableID < frames[i].referrableSize) {
-        return matte_value_object_array_at_unsafe(frames[i].referrable, referrableID);        
+    if (referrableID < frames[i]->referrableSize) {
+        return matte_value_object_array_at_unsafe(frames[i]->referrable, referrableID);        
     } else {
-        matteValue_t * ref = matte_value_get_captured_value(frames[i].context, referrableID - frames[i].referrableSize);
+        matteValue_t * ref = matte_value_get_captured_value(frames[i]->context, referrableID - frames[i]->referrableSize);
 
         // bad referrable
         if (!ref) {

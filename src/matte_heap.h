@@ -83,12 +83,11 @@ matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t);
 // Gets all captured values by the function. If not a function, returns NULL
 matteValue_t * matte_value_get_captured_value(matteValue_t, uint32_t index);
 
-// Applies the setsize operation
-// if the value is a string: it will set the size of the string. If the length is longer, new characters have the value of ' '.
-// if the value is an object: it will set the number of Number key value pairs, removing the Number keys
-// if the new size is smaller and adding them if the new size is larger. Any new 
-// entries into the object will be given the empty value.
-void matte_value_set_size(matteValue_t v, uint32_t len);
+// Returns a subset of the value.
+// For strings, this returns a new string object thats from the given index to the given index, inclusive.
+// For arrays, this returns anew array object thats from the given index to the given end index, inclusive.
+// If the bounds are invalid, empty is returned.
+matteValue_t matte_value_subset(matteValue_t v, uint32_t from, uint32_t to);
 
 // if the value points to an object, sets custom data for the object.
 void matte_value_set_object_userdata(matteValue_t, void *);

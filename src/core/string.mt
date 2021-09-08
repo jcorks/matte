@@ -78,12 +78,12 @@
                     <@> index = this.search(sub);
                     when(index == -1) false;
 
-                    str = this.substr(0, index-1).data 
+                    str = intr.subset(0, index-1) 
                           + with.data 
-                          + this.substr(
+                          + intr.subset(
                             index+sub.length, 
                             this.length-1
-                          ).data;
+                          );
                     intr = introspect(str);
                     len = intr.length();
                     return true;
@@ -128,11 +128,23 @@
             },
 
             removeChar::(i) {
-                when(len < 1) empty;
-                @newsmall = this.substr(1, len-1);
-                str = newsmall.data;
+                when(i < 0 || i > len) empty;
+
+                (match(i) {
+                    (0): ::{
+                        str = intr.subset(1, len-1);
+                    },
+
+                    (len-1): ::{
+                        str = intr.subset(0, len-2);
+                    },
+
+                    default: ::{
+                        str = intr.subset(0, i-1) + intr.subset(i+1, len-1);
+                    }
+                })();
                 intr = introspect(str);
-                len = intr.length();
+                len = len-1;
             },
             
             valueize::{
@@ -152,14 +164,7 @@
             },
             
             substr::(from, to) {
-                @out = '';
-                from = if(from < 0  ) 0     else from;
-                to   = if(to  >= len) len   else to+1;
-                
-                for([from, to], ::(i){
-                    out = out + this.charAt(i);
-                }); 
-                return classinst.new(out);
+                return classinst.new(intr.substr(from, to));
             },
 
             split::(dl) {

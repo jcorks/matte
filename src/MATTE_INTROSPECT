@@ -14,7 +14,7 @@ enum {
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARAT,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARCODEAT,
-    MATTE_EXT_CALL_INTERNAL__INTROSPECT_SETSIZE,
+    MATTE_EXT_CALL_INTERNAL__INTROSPECT_SUBSET,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_FLOOR,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_CEIL,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ROUND,
@@ -52,7 +52,7 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
         "length",
         "charAt",
         "charCodeAt",
-        "setSize",
+        "subset",
 
         "floor",
         "ceil",
@@ -80,7 +80,7 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARAT),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARCODEAT),
-        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SETSIZE),
+        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SUBSET),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_FLOOR),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CEIL),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ROUND),
@@ -291,26 +291,37 @@ static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValu
 
 
 // has 2 functions:
-static matteValue_t vm_ext_call__introspect_setsize(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
-    uint32_t size;
-    if (matte_array_get_size(args)) {
+    uint32_t from = 0;
+    uint32_t to = 0;
+    if (matte_array_get_size(args) >= 2) {
         matteValue_t v = matte_array_at(args, matteValue_t, 0);
         if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
-            size = matte_value_as_number(v);
+            from = matte_value_as_number(v);
         } else {
             matte_heap_recycle(a);
             return matte_heap_new_value(vm->heap);
         }
+
+        v = matte_array_at(args, matteValue_t, 1);
+        if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
+            to = matte_value_as_number(v);
+        } else {
+            matte_heap_recycle(a);
+            return matte_heap_new_value(vm->heap);
+        }
+
     } else {
         matte_heap_recycle(a);
         return matte_heap_new_value(vm->heap);
     }
 
-    matte_value_set_size(a, size);
-    return matte_heap_new_value(vm->heap);
+    matteValue_t out = matte_value_subset(a, from, to);
+    matte_heap_recycle(a);
+    return out;
 }
 
 

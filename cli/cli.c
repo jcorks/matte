@@ -201,9 +201,9 @@ int main(int argc, char ** args) {
             exit(1);
         }
 
-        FILE * out = fopen(args[4], "wb");
+        FILE * out = fopen(args[3], "wb");
         if (!out) {
-            printf("Unable to compile (output file %s inaccessible)\n", args[4]);
+            printf("Unable to compile (output file %s inaccessible)\n", args[3]);
             exit(1);
         }
         fwrite(outBytes, 1, outByteLen, out);

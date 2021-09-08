@@ -20,6 +20,13 @@
                 }
             },
 
+
+            data : {
+                get :: {
+                    return data;
+                }
+            },
+
             // Function, 1 argument. 
             // No return value.
             // Adds an additional element to the array.
@@ -165,6 +172,13 @@
                     }();
                 });
                 return str + ']';
+            },
+
+            operator : {
+                '[]' :: (key){
+                    return data[key];
+                }
+
             }
         });
     }

@@ -55,6 +55,7 @@ int main() {
         "class.mt",  "Matte.Class",
         "array.mt",  "Matte.Array",
         "string.mt", "Matte.String",
+        "json.mt",   "Matte.JSON",
         "core.mt",   "Matte.Core",
         NULL
     };

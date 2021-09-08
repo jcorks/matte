@@ -1066,7 +1066,10 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
 
 }
 
-void matte_value_set_size(matteValue_t v, uint32_t len) {
+matteValue_t matte_value_subset(matteValue_t v, uint32_t from, uint32_t to) {
+    matteValue_t out = matte_heap_new_value(v.heap);
+    if (from > to) return out;
+
     switch(v.binID) {
       case MATTE_VALUE_TYPE_OBJECT: {
         matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
@@ -1074,20 +1077,21 @@ void matte_value_set_size(matteValue_t v, uint32_t len) {
             assert(m->refs != 0xffffffff);
         #endif
 
+
         uint32_t curlen = matte_array_get_size(m->keyvalues_number);
-        uint32_t i;
-        if (len < curlen) {
-            for(i = len; i < curlen; ++i) {
-                matte_heap_recycle(matte_array_at(m->keyvalues_number, matteValue_t, i));
-            }
-            matte_array_set_size(m->keyvalues_number, len);
-        } else {
-            matteValue_t newV;
-            for(i = curlen; i < len; ++i) {
-                newV = matte_heap_new_value(v.heap);
-                matte_array_push(m->keyvalues_number, newV);                
-            }
-        }
+        if (from >= curlen || to >= curlen) return out;
+
+
+
+        matte_value_into_new_object_array_ref(
+            &out,
+            MATTE_ARRAY_CAST(
+                ((matteValue_t *)matte_array_get_data(m->keyvalues_number))+from,
+                matteValue_t,
+                (to-from)+1
+            )
+        );
+
         break;
       }
 
@@ -1095,18 +1099,14 @@ void matte_value_set_size(matteValue_t v, uint32_t len) {
       case MATTE_VALUE_TYPE_STRING: {
         matteString_t * str = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], v.objectID);
         uint32_t curlen = matte_string_get_length(str);
-        if (len < curlen) {
-            matte_string_truncate(str, len);
-        } else {
-            uint32_t i;
-            for(i = curlen; i < len; ++i) {
-                matte_string_append_char(str, ' ');
-            }
-        }
+        if (from >= curlen || to >= curlen) return out;
+
+        matte_value_into_string(&out, matte_string_get_substr(str, from, to));
       }
 
 
     }
+    return out;
 }
 
 

@@ -696,6 +696,9 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                   case '\'':
                     matte_string_append_char(text, '\'');
                     break;
+                  case '\\':
+                    matte_string_append_char(text, '\\');
+                    break;
 
                   default:
                     t->iter = t->backup;
