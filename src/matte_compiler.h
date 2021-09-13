@@ -53,7 +53,7 @@ uint8_t * matte_compiler_run_with_named_references(
 // Attempts to take the given source and do the first step of 
 // compilation and print the results. This is useful for debugging.
 // but not much else.
-void matte_compiler_tokenize(
+matteString_t * matte_compiler_tokenize(
     // the source text.
     const uint8_t * source, 
     // The length of the source text.

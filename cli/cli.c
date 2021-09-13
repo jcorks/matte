@@ -111,13 +111,18 @@ int main(int argc, char ** args) {
                 printf("Could not open input file %s\n", args[2+i]);
                 exit(1);
             }
-            matte_compiler_tokenize(
+            matteString_t * str = matte_compiler_tokenize(
                 dump,
                 fsize,
                 onError,
                 NULL
             );
             free(dump);
+
+            if (str) {
+                printf("%s\n", matte_string_get_c_str(str));
+                matte_string_destroy(str);
+            }
         }
     } else if (!strcmp(tool, "exec")) {
         if (argc < 3) {

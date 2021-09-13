@@ -1,0 +1,317 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matte Language: Quick Guide</title>
+    <style>@font-face { font-family: Consolas; src: url('Consolas.ttf');}</style>
+    <script src="matte_synbox_c.js"></script>
+    <script src="matte_synbox.js"></script>
+
+</head>
+<body>
+
+<h1>Matte Language: Quick Guide</h1>
+<br>
+<h2>1. Introduction</h2>
+
+This guide is intended for those who are already familiar with programming concepts from popular imperative languages, like Python, C/C++, C#, and Java. Matte uses a lot of the same conventions and features, with some key differences.
+<p>
+Throughout the guide, code samples will be provided. If using a javascript-enabled browser, you may hover your pointer / tap the code to get fine details about the syntax used. For example:
+<pre>
+    <@>myFunction = ::{
+        print("Hello, world!");
+    };
+    myFunction();
+</pre>
+
+<br>
+<h2>2. Overview</h2>
+
+Matte is a dynamically typed, imperative language with C-like features. You will find many concepts familiar to existing languages that match this profile.
+For example, C-line single and multiline comments are readily available:
+<pre>
+    // A comment.
+    /* A multi-line comment. */
+</pre>
+
+
+As such, every line that isnt a comment is part of a statement. Statements may span multiple lines, but <b>statements must always end in a semicolon ";"</b>
+This will generate a compilation error if missing.
+
+Remember that <b>every statement is part of a function's scope. There is only one kind of scope: function scope. This is the core of Matte as a language: everything is or part of a function.</b> This includes statements written "nakedly" outside a user-defined function. This is referred to as the toplevel or script function. 
+<b>There is no such thing as global scope.</b> Values declared at the toplevel of a script are not visible outside the script without explicit exporting.
+
+
+
+
+
+
+<br>
+<br>
+<h2>3. Variables</h2>
+
+In Matte, all variables MUST be declared before use. Spontaneous use of variables that are not declared will throw a compilation error.
+<p>
+Variables are declared with the @ symbol:
+<pre>
+    // Normal variable.
+    @myVariable;
+
+    // Immutable values will throw an error if they are changed.
+    <@>immutableVariable = 42;
+</pre>
+
+You can add an inline assignment with the declaration as well:
+<pre>
+    @myOtherVariable = 3;
+
+    // Okay to use myOtherVariable since it was declared.
+    @another = 4 + myOtherVariable;
+
+    // Displays 7
+    print(another);
+</pre>
+
+Variable names can contain any non-symbol character (other than _, which is allowed). 
+
+<br>
+<h3>3.1 Types</h3>
+
+Variables can be any type, but in most cases, they retain the type of the last assignment.
+There are only a handful of basic types within Matte:
+<ul>
+    <li><b>Empty:</b> represents a value without value. </li>
+    <pre>
+        // empty is a special value. 
+        // Values that are declared but NOT set are 
+        // given the empty value.
+        @e = empty;
+        @f;
+    </pre>
+    <li><b>Number:</b> A simple number value. Follows the semantics of double-precision IEEE 754 floating point numbers. In the standard implementation, this is accomplished with C "double" types.</li> 
+    <pre>
+        // Number values 
+        @a = 10;
+        @b = 1.4;
+        @c = (1 * 7.8) / 2;
+        @d = (a + b) / 2;    
+    </pre>
+    <li><b>Immutable String:</b> A read-only string. Created with 'single' or "double" quotes.</li>
+    <pre>
+        // string values can take single or double quotes.
+        a = '10';
+        b = "10";
+        c = "A String!";
+        d = 'Escape\ncharacters\nsupported';    
+    </pre>
+    <li><b>Boolean:</b> Either true or false.</li>
+    <pre>
+        // boolean values 
+        a = false;
+        b = true;
+        c = (1 == 2); // should be false 
+        d = (10 == 10); // should be true
+    </pre>
+    <li><b>Object:</b> a value that contains other values like a table.</li>
+    <pre>
+        // objects. They follow javascript style objects.
+        a = {}; 
+        b = {
+            member : 12,
+            'otherMember' : 30
+        };
+        // list initializer. Equivalent to setting keys with numbers.
+        c = ['a', b, 3];
+
+        // functions are also objects. Discussed in the next section
+        d = ::{};
+    </pre>
+
+</ul>
+
+<br>
+
+<br>
+<h2> 4. Functions</h2>
+In Matte functions are first-class objects. They can accept arguments, but they can also implicitly use variables using lexical "reference capture", also known as lexical closures.
+Functions are defined with the function constructor "::". It can then be followed by parantheses "()" to declare any number of argument names, then statement scope blocks "{}" to define its behavior.
+<pre>
+
+    // declare a new variable that is a function. It takes one argument 
+    // that can be referred to by "myString"
+    @myFunction = ::(myString) {
+        print(myString);
+    };
+
+    // run the function with one argument.
+    // Should print Hello, world!
+    myFunction('Hello, world!');
+
+
+
+    // If a function doesn't have any arguments, you may 
+    // omit the function argument parantheses.
+    @myOtherFunction = ::{
+        return '123';
+    };
+
+    // Should print 123
+    print(myOtherFunction());
+
+</pre>
+
+Functions are not their own type, but are callable objects. As such they can have their own members:
+
+<pre>
+
+    @fancyFunction = ::{
+        // if you ever need to refer to the function thats being called, 
+        // use the "context" keyword.
+        print(context.a + context.b);
+    };
+
+    // assign the properties "a" and "b" a new value
+    fancyFunction.a = 200;
+    fancyFunction.b = 44;
+
+
+    // should print 244
+    fancyFunction();
+
+</pre>
+
+The context keyword can always be used to refer to the running function. 
+
+
+
+
+<br>
+<h2> 5. Flow Control</h2>
+Matte's flow control is a bit different than other languages. For example, "while" and "switch" do not exist, but instead, there is "loop" and "match" respectively that do similar things. 
+
+<h3> 5.1 when</h3>
+
+When writing more algorithm-focused code, it is a common pattern in C-like languages to use an if statement to return from a function early. In Matte, this pattern is accomplished with the when statement:
+
+<pre>
+    // When assigning a function, the '=' can be ommitted optionally
+    @hi_low_mid :: (a, b) {
+        when(a < b) "lo";
+        when(a > b) "hi";
+    
+        // if no conditionals are true, when 
+        // continues on.    
+        return "mid";
+    };
+
+    // should print lo
+    print(hi_low_mid(10, 40));
+    
+
+
+    // Fibonacci sequence using "when"
+    @fib = ::(n){
+        when(n <  1) 0;
+        when(n <= 2) 1;
+        return context(n-1) + context(n-2);
+    };
+
+    print(fib(5));
+</pre>
+
+
+<h3> 5.2 match</h3>
+
+match is the analog to C-like's "switch / case". 
+Given an expression and a series of possibilities, match will compute and return a new expression, called a conclusion, for the choice that matches a possibility.
+
+<pre>
+    @statement = 1;
+
+    
+    match(statement) {
+        // The syntax is (possibility) : conclusion.
+        (0) : print("It's zero"),
+        (1) : print("It's one")
+    };
+
+
+
+    // match returns an expression, so it can be used like so.
+    // note that ONLY the conslusion
+    print(match(statement){
+        (0)       : '0',
+        (1)       : '1',
+        // if multiple possibilities lead to the same conclusion, 
+        (2, 3, 4) : '2, 3, or 4!',
+        default   : "don't know!"
+    });
+</pre>
+
+<br>
+<h3> 5.3 loop</h3>
+loop is similar to "while" in C-like languages in concept, but the behavior is different. Loop is a function 
+that takes a single argument, a function, and runs it at least once until it return false. If the function returns 
+true, the function is immediately called again.
+
+
+<pre>
+    @counter = 0;
+    loop(::{
+        // It is common (and readable) to use the when statement as a termination condition.
+        when(counter == 10) false;
+        counter = counter+1;
+        return true;
+    });
+</pre>
+
+
+<h3> 5.4 for</h3>
+
+In Matte, for() is a special function. It accepts 2 arguments, one is a 
+
+<h3> 5.5 if</h3>
+
+The if expression in matte can be used to control or avoid computation of another expression. Unlike in other languages, <b>if and else only work with one expression. If you need multiple expressions, have your expression compute to a function.</b>
+
+<pre>
+    @myVal = false;
+
+    // if computes the proceeding expression if the 
+    // expression within parentheses computes to true.
+
+    // should print false
+    if (myVal == false) print("myVal is false");
+
+    // should not print
+    if (myVal == true) print("myVal is true");
+
+
+    // if an "if" statement requires multiple statements, 
+    // a new function can be created and immediately run containing the 
+    // expressions to be run. However, in most cases, other 
+    // structures can be used to make more readable code.
+
+    // should print 42
+    if (myVal == false) ::{
+        @val = 4 * 8 + 10;
+        print(val);
+    }();
+
+    print('myVal is ' + (if (myVal) 'true' else 'false'));
+
+
+</pre>
+
+Its important to remember that, in Matte, if is an expression; it computes to a value. Specifically, it returns the computed expression.
+This makes if equivalent to the ternary ?: seen in some C-like languages.
+<pre></pre>
+
+
+
+<hr>
+Johnathan Corkery - <a href="https://github.com/jcorks">https://github.com/jcorks</a>
+</body>
+</html>
+    

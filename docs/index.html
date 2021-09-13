@@ -1,0 +1,122 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Matte Scripting Language</title>
+</head>
+<body>
+<h1>Matte Scripting Language</h1>
+
+<h2>News</h2> 
+
+<ul>
+  <li>2020-09-06:
+    <ul>
+        Nothing yet
+    </ul>
+  </li>
+</ul>
+
+<h2>Introduction</h2>
+
+Matte is a small, embeddable language geared for safe, but fast development.
+Written in C itself, it features a C-like syntax with a set of key differences 
+designed to approach problems in a more compact way.
+<p>
+The language can either be used by compiling a set of dependency-free, C sources 
+and linking C functions to Matte functions, or it can be used with a standalone 
+interpreter. The interpreter extends the language with common OS features, such 
+as I/O.
+<p>
+Main Language Features:
+<ul>
+
+<li> Small and easily embeddable with no external
+dependencies</li>
+
+<li> Dynamic, garbage collected typing system with garbage collection event callbacks</li>
+
+<li> Closures with lexical scoping</li>
+
+<li> Simple error catching </li>
+
+<li> Easily extensible </li>
+
+<li> Simple module management </li>
+
+<li> Built-in modules for classes, strings, JSON, and more </li>
+
+<li> Dump to/from VM bytecode with or without debugging symbols</li>
+
+
+</ul>
+
+Interpreter Features:
+<ul>
+
+<li> GDB-like, stepwise debugger with breakpoints</li>
+
+<li> Assemble / disassemble with intermediate bytecode</li>
+
+<li> OS feature extension module to provide a shell language-like experience for ease-of-use tasks. </li>
+
+</ul>
+
+
+
+<h2>Online Demo</h2> 
+
+The <a href="./example-lang.html">language with examples</a> can be run in-browser. 
+<p>
+
+<h2>Documentation</h2> 
+
+<ul>
+    <li><a href="./doc-quick.html">Matte Language: Quick Guide</a></li>
+    <li><a href="./doc-lang.html">Matte Language Specification</a></li>
+    <li><a href="./cli-manual.html">Matte Interpreter Manual</a></li>
+    <li><a href="./doc-lang.html">Matte Embedding Guide</a></li>
+
+</ul>
+
+
+<h2>Download</h2> 
+<ul>
+    <li>To be annouced...</li>
+</ul>
+
+
+
+<h2>Links</h2> 
+
+no github yet...
+
+</ul>
+                                        
+<h2>Licensing</h2> 
+
+The Matte language and tools referenced here are released under
+the <a href="https://opensource.org/licenses/MIT">MIT license</a>.
+<p>
+Unless otherwise specified, the Matte sources are copyright Johnathan Corkery
+
+
+
+
+<h2>Other's Projects</h2> 
+
+
+<ul>
+  <li><a href="https://duktape.org/">Duktape</a> is a great embeddable JS engine with an embedding interface similar to Lua's</li>
+</ul>
+
+<h2>Special Thanks</h2>
+
+<a href="https://bellard.org">Fabrice Bellard's</a> projects are quite inspiring. (and the "old-school" visual design of his sites are the direct inspiration for this one...)
+
+
+<hr>
+Johnathan Corkery - <a href="https://github.com/jcorks">https://github.com/jcorks</a>
+</body>
+</html>

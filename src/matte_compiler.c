@@ -179,7 +179,7 @@ static void function_block_destroy(matteFunctionBlock_t * t) {
 
 // converts all graph nodes into an array of matteFunctionBlock_t
 static matteArray_t * matte_syntax_graph_compile(matteSyntaxGraphWalker_t * g);
-static void matte_syntax_graph_print(matteSyntaxGraphWalker_t * g);
+static matteString_t * matte_syntax_graph_print(matteSyntaxGraphWalker_t * g);
 
 // transers ownership of the array and frees it and its contents.
 static void * matte_function_block_array_to_bytecode(
@@ -188,7 +188,7 @@ static void * matte_function_block_array_to_bytecode(
 );
 
 
-void matte_compiler_tokenize(
+matteString_t * matte_compiler_tokenize(
     const uint8_t * source, 
     uint32_t len,
     void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata),
@@ -210,10 +210,11 @@ void matte_compiler_tokenize(
     matte_tokenizer_destroy(w);
     if (!success) {
         matte_syntax_graph_walker_destroy(st);
-        return;
+        return NULL;
     }
-    matte_syntax_graph_print(st);
+    matteString_t * out = matte_syntax_graph_print(st);
     matte_syntax_graph_walker_destroy(st);
+    return out;
 }
 
 
@@ -532,7 +533,7 @@ static matteToken_t * matte_tokenizer_consume_exact(
             return NULL;
         }
     }
-    t->character += strlen(cha);
+    t->character += strlen(str);
     t->backup = t->iter;
 
     return new_token(
@@ -652,6 +653,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
     
         
         matteString_t * text = matte_string_create();
+        matte_string_append_char(text, c);
         for(;;) {
             c = utf8_next_char(&t->iter);
             switch(c) {
@@ -715,8 +717,9 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         }
       L_END_STRING:
         // end, cleanup;
-        t->backup = t->iter;    
-        t->character+=2+matte_string_get_length(text);
+        t->backup = t->iter;  
+        matte_string_append_char(text, c);
+        t->character+=matte_string_get_length(text);
         return new_token(
             text,
             currentLine,
@@ -1737,13 +1740,15 @@ matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraphWalker_t * g) {
 
 
 
-static void matte_token_print__helper(matteSyntaxGraphWalker_t * g, matteToken_t * t) {
+static void matte_token_print__helper(matteSyntaxGraphWalker_t * g, matteToken_t * t, matteString_t * str) {
     if (t == NULL) {
-        printf("<token is NULL>\n");
-        fflush(stdout);
+        matte_string_concat_printf(str, "line:%5d\tcol:%4d\t%-40s\t%s\n", 
+            0, 0, "", ""
+        );
+
         return;
     }
-    printf("line:%5d col:%4d    %-40s'%s'\n", 
+    matte_string_concat_printf(str, "line:%5d\tcol:%4d\t%-40s\t%s\n", 
         t->line,
         t->character,
         matte_string_get_c_str(matte_syntax_graph_get_token_name(GRAPHSRC, t->ttype)),
@@ -1753,15 +1758,15 @@ static void matte_token_print__helper(matteSyntaxGraphWalker_t * g, matteToken_t
 
 }
 
-static void matte_syntax_graph_print(matteSyntaxGraphWalker_t * g) {
-    printf("Level0 Token sequence:\n");
+static matteString_t * matte_syntax_graph_print(matteSyntaxGraphWalker_t * g) {
+    matteString_t * out = matte_string_create();
     matteToken_t * t = g->first; 
-    do {
-        matte_token_print__helper(g, t);
+    while(t) {
+        matte_token_print__helper(g, t, out);
         t = t->next;
-    } while(t);
-    fflush(stdout);
+    }
 
+    return out;
 }
 
 

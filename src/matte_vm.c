@@ -8,10 +8,8 @@
 #include "matte_compiler.h"
 #include <stdlib.h>
 #include <string.h>
-#ifdef MATTE_DEBUG
-    #include <stdio.h>
-    #include <assert.h>
-#endif
+#include <stdio.h>
+#include <assert.h>
 
 struct matteVM_t {
 

@@ -116,7 +116,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_LITERAL_EMPTY, MATTE_STR_CAST("Empty Literal"),
         MATTE_TOKEN_EXTERNAL_NOOP, MATTE_STR_CAST("no-op built-in"),
         MATTE_TOKEN_EXTERNAL_GATE, MATTE_STR_CAST("Gate built-in"),
-        MATTE_TOKEN_EXTERNAL_LOOP, MATTE_STR_CAST("While built-in"),
+        MATTE_TOKEN_EXTERNAL_LOOP, MATTE_STR_CAST("Loop built-in"),
         MATTE_TOKEN_EXTERNAL_FOR, MATTE_STR_CAST("For built-in"),
         MATTE_TOKEN_EXTERNAL_FOREACH, MATTE_STR_CAST("Foreach built-in"),
         MATTE_TOKEN_EXTERNAL_MATCH, MATTE_STR_CAST("Match built-in"),
@@ -154,7 +154,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_FUNCTION_ARG_BEGIN, MATTE_STR_CAST("Function Argument List '('"),
         MATTE_TOKEN_FUNCTION_ARG_SEPARATOR, MATTE_STR_CAST("Function Argument Separator ','"),
         MATTE_TOKEN_FUNCTION_ARG_END, MATTE_STR_CAST("Function Argument List ')'"),
-        MATTE_TOKEN_FUNCTION_CONSTRUCTOR, MATTE_STR_CAST("Function Constructor '<-'"),
+        MATTE_TOKEN_FUNCTION_CONSTRUCTOR, MATTE_STR_CAST("Function Constructor '::'"),
 
         MATTE_TOKEN_WHEN, MATTE_STR_CAST("'when' Statement"),
         MATTE_TOKEN_GATE_RETURN, MATTE_STR_CAST("'gate' Else Operator"),
@@ -780,6 +780,11 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         matte_syntax_graph_node_end(),
         NULL 
     );
+    matte_syntax_graph_add_construct_path(g, MATTE_STR_CAST("Nothing"), MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
+        matte_syntax_graph_node_end(),
+        NULL 
+    );
+
 }
 
 matteSyntaxGraph_t * matte_syntax_graph_create() {
