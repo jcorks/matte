@@ -22,10 +22,11 @@ void matte_heap_destroy(matteHeap_t *);
 
 typedef enum {
     MATTE_VALUE_TYPE_EMPTY,
-    MATTE_VALUE_TYPE_NUMBER,
     MATTE_VALUE_TYPE_BOOLEAN,
+    MATTE_VALUE_TYPE_NUMBER,
     MATTE_VALUE_TYPE_STRING,
     MATTE_VALUE_TYPE_OBJECT,
+    MATTE_VALUE_TYPE_TYPE
 } matteValue_Type_t;
 
 
@@ -55,6 +56,10 @@ void matte_value_into_string(matteValue_t *, const matteString_t *);
 // Sets the type to an object that points to a new, empty object.
 void matte_value_into_new_object_ref(matteValue_t *);
 
+// Sets the type to a Type with the given typecode. Typecodes 
+// are only visible to the C / supervisor contexts.
+void matte_value_into_new_type(matteValue_t *);
+
 
 void matte_value_into_new_object_literal_ref(matteValue_t *, const matteArray_t *);
 
@@ -77,6 +82,9 @@ matteValue_t matte_value_frame_get_named_referrable(matteVMStackFrame_t *, const
 
 // 
 void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);
+
+void matte_value_into_new_typed_function_ref(matteValue_t *, matteBytecodeStub_t * stub, const matteArray_t * args);
+
 
 matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t);
 
@@ -104,10 +112,23 @@ double matte_value_as_number(matteValue_t);
 // user must free string
 matteString_t * matte_value_as_string(matteValue_t);
 
-int matte_value_as_boolean(const matteValue_t);
+int matte_value_as_boolean(matteValue_t);
 
 // returns whether the value is callable.
-int matte_value_is_callable(const matteValue_t);
+// 0 -> not callable 
+// 1 -> callable 
+// 2 -> callable + typestrict
+int matte_value_is_callable(matteValue_t);
+
+// assumes: 
+//  - the first arg is a function 
+//  - the function is typestrict
+//  - the arguments given match the bytecode stubs number of arguments
+int matte_value_object_function_pre_typecheck_unsafe(matteValue_t, const matteArray_t *);
+
+// assumes the first arg is a function and that the function is typestrict
+void matte_value_object_function_post_typecheck_unsafe(matteValue_t, matteValue_t);
+
 
 // If the value points to an object, returns the value associated with the 
 // key. This will invoke the accessor if present.
@@ -152,14 +173,33 @@ void matte_value_object_remove_key(matteValue_t, matteValue_t key);
 // else: point to same source object
 void matte_value_into_copy(matteValue_t *, matteValue_t from);
 
-
+// uniquely identifies the type (nonzero). Returns 0 if bad.
+uint32_t matte_value_type_get_typecode(matteValue_t);
 
 // returns a value to the heap.
 // if the value was pointing to an object / function,
 // that object's ref count is decremented.
 void matte_heap_recycle(matteValue_t);
 
+// Returns whether the value is of the type given by the typeobject typeobj.
+int matte_value_isa(matteValue_t, matteValue_t typeobj);
 
+// Gets a Type object of the given value.
+matteValue_t matte_value_get_type(matteValue_t);
+
+// Given a value type, returns the public name of it.
+// Every type has a name.
+const matteString_t * matte_value_type_name(matteValue_t);
+
+
+// get built-in type object
+const matteValue_t * matte_heap_get_empty_type(matteHeap_t *);
+const matteValue_t * matte_heap_get_boolean_type(matteHeap_t *);
+const matteValue_t * matte_heap_get_number_type(matteHeap_t *);
+const matteValue_t * matte_heap_get_string_type(matteHeap_t *);
+const matteValue_t * matte_heap_get_object_type(matteHeap_t *);
+const matteValue_t * matte_heap_get_type_type(matteHeap_t *);
+const matteValue_t * matte_heap_get_any_type(matteHeap_t *);
 
 void matte_heap_garbage_collect(matteHeap_t *);
 

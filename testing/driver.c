@@ -29,6 +29,23 @@ static void onErrorCatch(
         matteString_t * str = matte_value_as_string(value);
         printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
         printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
+        uint32_t stacksize = matte_vm_get_stackframe_size(vm);
+        printf("Callstack: \n");
+        uint32_t i;
+        uint32_t count;
+        for(i = 0; i < stacksize; ++i) {
+            matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, i);
+            const matteString_t * str = matte_vm_get_script_name_by_id(
+                vm, 
+                matte_bytecode_stub_get_file_id(frame.stub)
+            );
+
+            printf("(@%d, file %s, line %d)\n", 
+                i,
+                str ? matte_string_get_c_str(str) : "???",
+                (matte_bytecode_stub_get_instructions(frame.stub, &count))[frame.pc].lineNumber
+            );
+        }
 
         if (str) {
             matte_string_destroy(str);

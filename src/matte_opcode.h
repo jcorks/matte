@@ -24,7 +24,8 @@ typedef enum {
     MATTE_OPCODE_NAR,
     // push new object with defined keys and values
     MATTE_OPCODE_NSO,
-    
+    // push new type. settings object consumed.
+    MATTE_OPCODE_NTP,
     
     // push a new callstack from the given function object.
     MATTE_OPCODE_CAL,
@@ -57,6 +58,22 @@ typedef enum {
     // performance heavy; is not used except for 
     // special compilation.
     MATTE_OPCODE_PNR,
+    
+    // pushes a abuilt-in type object 
+    // 
+    // 0 -> empty 
+    // 1 -> boolean 
+    // 2 -> number 
+    // 3 -> string 
+    // 4 -> object
+    // 5 -> type (type of the type object) 
+    // 6 -> any (not physically in code, just for the vm)
+    MATTE_OPCODE_PTO,
+    
+    
+    // indicates to the VM that the next NFN is 
+    // a strict function.
+    MATTE_OPCODE_SFS
         
 } matteOpcode_t;
 

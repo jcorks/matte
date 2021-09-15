@@ -69,6 +69,15 @@ static void write_instruction__nfn(matteArray_t * insts, uint32_t lineNumber, ui
     matte_array_push(insts, inst);
 }
 
+static void write_instruction__sfs(matteArray_t * insts, uint32_t lineNumber, uint32_t sfsCount) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_SFS;
+    memcpy(inst.data, &sfsCount, sizeof(uint32_t));
+    matte_array_push(insts, inst);
+}
+
+
 
 static void write_instruction__nar(matteArray_t * insts, uint32_t lineNumber, uint32_t nItems) {
     matteBytecodeStubInstruction_t inst;
@@ -185,3 +194,12 @@ static void write_instruction__asp(matteArray_t * insts, uint32_t lineNumber, ui
     memcpy(inst.data, &ninst, sizeof(uint32_t));
     matte_array_push(insts, inst);
 }
+
+static void write_instruction__pto(matteArray_t * insts, uint32_t lineNumber, uint32_t type) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_PTO;
+    memcpy(inst.data, &type, sizeof(uint32_t));
+    matte_array_push(insts, inst);
+}
+

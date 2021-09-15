@@ -125,6 +125,10 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 a = *(uint32_t*)data.bytes;
                 fprintf(fout, "nso %d\n", a);
                 break;            
+
+            case MATTE_OPCODE_NTP:
+                fprintf(fout, "ntp\n");
+                break;            
             
 
             
@@ -235,6 +239,18 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 a = *(uint32_t*)data.bytes;
                 fprintf(fout, "pnr %d\n", a);
                 break; 
+
+            case MATTE_OPCODE_PTO:
+                a = *(uint32_t*)data.bytes;
+                fprintf(fout, "pto %d\n", a);
+                break;            
+
+            case MATTE_OPCODE_SFS:
+                a = *(uint32_t*)data.bytes;
+                fprintf(fout, "sfs %d\n", a);
+                break;            
+
+
             case MATTE_OPCODE_CPY:
                 fprintf(fout, "cpy\n");
                 break;

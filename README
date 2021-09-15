@@ -366,6 +366,26 @@ New function (NFN)
         - once created, the stub is read and values are 
           prepared from the heap, referenced, and cached 
           in preparation for usage by PRF.
+
+    
+
+    
+
+Strict Function Signature (SFS)
+    args:
+        - n type specifications. Must match the functions's 
+          arg count + 1 for the return value. 
+    pops:
+        - n values, all must be type values. 
+    pushes:
+        - nothing
+        
+    NOTE:
+        - Signals to the VM that the next function to be made 
+          is a strict function. Strict functions have user-defined 
+          type restrictions that the created function must check 
+          and adhere to. 
+
           
           
 Call function (CAL)

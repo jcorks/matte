@@ -31,6 +31,15 @@
 }
 
 
+
+
+
+
+// you can also make your own types.
+MyType = type();
+
+
+
 myFunction();
 myFunctionWithArguments(myFunction(), a);
 
@@ -247,3 +256,61 @@ instance.publicMember1 = 200;
 
 // Prints '301'
 Debug.print(instance.add());
+
+
+
+
+/////// dynamic type checking 
+
+
+
+
+// functions can also specify types for return 
+@myBooleanFunction ::(a) => Boolean {
+    return false;
+};
+
+
+// throws an error if called.
+@myBooleanFunction0 ::(a) => Boolean {
+    return 'hello';
+};
+
+
+
+// and arguments too. Optional in both cases
+@myStrictFunction ::(a => Number, b => Number) => Boolean {
+    return false;
+}
+
+// the built-in types are:
+@types = [
+    Empty,
+    Boolean,
+    Number,
+    String,
+    Object,
+    Type
+];
+
+
+// You can also create types to be used for this purpose
+@MyType = type({name:'MyType'});
+
+// MySubType is accepted where MyType is expected but not the other way around.
+@MySubType = type({name:'MySubType', inherits:MyType});
+
+// All custom types inherit from Object.
+
+// You can create objects of a type using instantiate.
+// This is equivalent to {} except the type is the given type 
+@mytypeInstance = instantiate(MyType);
+
+// NOTE: introspect(var).type() returns a Type instead of a string now
+
+
+
+
+
+
+

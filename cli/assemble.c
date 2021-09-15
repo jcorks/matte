@@ -332,6 +332,37 @@ static void function_to_stub(FILE * f, uint32_t id) {
                     printf("ERROR on line %d: unrecognized nso format. Syntax: [line] nar [number of object pairs]\n", lineN);
                     exit(1);                
                 }
+            } else if (
+                oc0 == 'p' &&
+                oc1 == 't' &&
+                oc2 == 'o'
+            ) {
+                inst->opcode = MATTE_OPCODE_PTO;
+                if (sscanf(line, "%"SCNu32" pto %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized pto format. Syntax: [line] pto [type code]\n", lineN);
+                    exit(1);                
+                }
+
+            } else if (
+                oc0 == 'n' &&
+                oc1 == 't' &&
+                oc2 == 'p'
+            ) {
+                inst->opcode = MATTE_OPCODE_NTP;
+                if (sscanf(line, "%"SCNu32" ntp", &inst->line) != 1) {
+                    printf("ERROR on line %d: unrecognized ntp format. Syntax: [line] ntp\n", lineN);
+                    exit(1);                
+                }
+            } else if (
+                oc0 == 's' &&
+                oc1 == 'f' &&
+                oc2 == 's'
+            ) {
+                inst->opcode = MATTE_OPCODE_SFS;
+                if (sscanf(line, "%"SCNu32" sfs %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized sfs format. Syntax: [line] sfs [type count]\n", lineN);
+                    exit(1);                
+                }
             }else if (
                 oc0 == 'c' &&
                 oc1 == 'a' &&

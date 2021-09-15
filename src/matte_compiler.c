@@ -125,6 +125,11 @@ static matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraphWalker_t * g)
 typedef struct matteFunctionBlock_t matteFunctionBlock_t;
 struct matteFunctionBlock_t {
     uint32_t stubID;
+    // count of typestrict types. args + 1
+    uint32_t typestrict;
+
+
+    matteArray_t * typestrict_types;
     // array of matteString_t *
     matteArray_t * locals;
     // array of matteString_t *
@@ -140,6 +145,7 @@ struct matteFunctionBlock_t {
     matteArray_t * captures;
     // array of matteString_t *, names of the captures.
     matteArray_t * captureNames;
+    
 };
 
 static void function_block_destroy(matteFunctionBlock_t * t) {
@@ -387,6 +393,8 @@ static void destroy_token(
         t->ttype == MATTE_TOKEN_EXTERNAL_GATE ||
         t->ttype == MATTE_TOKEN_EXTERNAL_MATCH) {
         matte_array_destroy((matteArray_t*)t->text);
+    } else if (t->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+        // is a pointer to a function block, so dont touch.
     } else {
         matte_string_destroy(t->text);
     }
@@ -448,9 +456,15 @@ static void tokenizer_strip(matteTokenizer_t * t) {
                 while(!(c == '/' && cprev == '*') && c != 0) {
                     cprev = c;
                     c = utf8_next_char(&t->iter);
+                    if (c == '\n') {
+                        t->line++;
+                        t->character = 1;
+                    } else {
+                        t->character++;                    
+                    }
+
                 }
                 t->backup = t->iter;
-                t->character+=skipped;
                 break;
               default: // real char
                 t->iter = t->backup;
@@ -831,6 +845,33 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "AsBoolean");
         break;
       }
+      case MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Boolean");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TYPEEMPTY: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Empty");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TYPENUMBER: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Number");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TYPESTRING: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "StringValue");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TYPEOBJECT: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Object");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TYPETYPE: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Type");
+        break;
+      }
+
+
+
       case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "introspect");
         break;
@@ -1223,6 +1264,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "::");
         break;  
       }
+      case MATTE_TOKEN_FUNCTION_TYPESPEC: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "=>");
+        break;  
+      }
 
       case MATTE_TOKEN_WHEN: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "when");
@@ -1505,7 +1550,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // If we exhaust all tokens, we have failed.
       case MATTE_SYNTAX_GRAPH_NODE__TOKEN: {
         #ifdef MATTE_DEBUG__COMPILER
-            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__TOKEN: %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
+            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__TOKEN: %s (next c == '%c')\n", matte_string_get_c_str(matte_syntax_graph_get_root(GRAPHSRC, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
         #endif
         uint32_t i;
@@ -1567,7 +1612,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // possible paths. Each are attempted in order.
       case MATTE_SYNTAX_GRAPH_NODE__SPLIT: {
         #ifdef MATTE_DEBUG__COMPILER
-            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__SPLIT %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
+            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__SPLIT %s (next c == '%c')\n", matte_string_get_c_str(matte_syntax_graph_get_root(GRAPHSRC, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
 
         #endif
@@ -1604,7 +1649,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // the node gener
       case MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT: {
         #ifdef MATTE_DEBUG__COMPILER
-            printf("WALKING: @MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
+            printf("WALKING: @MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT %s (next c == '%c')\n", matte_string_get_c_str(matte_syntax_graph_get_root(GRAPHSRC, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
 
         #endif
@@ -1633,7 +1678,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // the end of a path has been reached. return
       case MATTE_SYNTAX_GRAPH_NODE__END: {
         #ifdef MATTE_DEBUG__COMPILER
-            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__END %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
+            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__END %s (next c == '%c')\n", matte_string_get_c_str(matte_syntax_graph_get_root(GRAPHSRC, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
             matte_table_clear(graph->tried);
         #endif
@@ -1648,7 +1693,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
       // All top paths are tried before continuing
       case MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT: {
         #ifdef MATTE_DEBUG__COMPILER
-            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT %s (next c == '%c')\n", matte_string_get_c_str(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t *, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
+            printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT %s (next c == '%c')\n", matte_string_get_c_str(matte_syntax_graph_get_root(GRAPHSRC, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
             fflush(stdout);
 
         #endif
@@ -2314,7 +2359,13 @@ static matteArray_t * compile_base_value(
       }
 
       case MATTE_TOKEN_LITERAL_STRING: {
-        write_instruction__nst(inst, iter->line, function_intern_string(block, iter->text));
+        matteString_t * str = iter->text;
+        uint32_t strl = matte_string_get_length(str);
+        if(strl == 2) {
+            write_instruction__nst(inst, iter->line, function_intern_string(block, MATTE_STR_CAST("")));
+        } else {        
+            write_instruction__nst(inst, iter->line, function_intern_string(block, matte_string_get_substr(iter->text, 1, strl-2)));
+        }
         *src = iter->next;
         return inst;
       }
@@ -2374,7 +2425,41 @@ static matteArray_t * compile_base_value(
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TOBOOLEAN);
         *src = iter->next;
         return inst;
-      }      
+      } 
+      
+      case MATTE_TOKEN_EXTERNAL_TYPEEMPTY: {
+        write_instruction__pto(inst, iter->line, 0);
+        *src = iter->next;
+        return inst;
+      } 
+      case MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN: {
+        write_instruction__pto(inst, iter->line, 1);
+        *src = iter->next;
+        return inst;
+      } 
+      case MATTE_TOKEN_EXTERNAL_TYPENUMBER: {
+        write_instruction__pto(inst, iter->line, 2);
+        *src = iter->next;
+        return inst;
+      } 
+      case MATTE_TOKEN_EXTERNAL_TYPESTRING: {
+        write_instruction__pto(inst, iter->line, 3);
+        *src = iter->next;
+        return inst;
+      } 
+      case MATTE_TOKEN_EXTERNAL_TYPEOBJECT: {
+        write_instruction__pto(inst, iter->line, 4);
+        *src = iter->next;
+        return inst;
+      } 
+      case MATTE_TOKEN_EXTERNAL_TYPETYPE: {
+        write_instruction__pto(inst, iter->line, 5);
+        *src = iter->next;
+        return inst;
+      } 
+
+
+           
       case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_INTROSPECT);
         *src = iter->next;
@@ -2513,13 +2598,28 @@ static matteArray_t * compile_base_value(
       }
 
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
-        int val;
-        sscanf(matte_string_get_c_str(iter->text), "%d", &val);
-        write_instruction__nfn(
-            inst, 
-            iter->line,
-            val
-        );
+
+        matteFunctionBlock_t * fn = (matteFunctionBlock_t *)iter->text; // the sneaky IV in action....
+        if (fn->typestrict) {
+            merge_instructions(inst, matte_array_clone(fn->typestrict_types));
+            write_instruction__sfs(
+                inst, 
+                iter->line,
+                fn->typestrict
+            );
+            write_instruction__nfn(
+                inst, 
+                iter->line,
+                fn->stubID
+            );
+        
+        } else {
+            write_instruction__nfn(
+                inst, 
+                iter->line,
+                fn->stubID
+            );
+        }
         *src = iter->next;
         return inst;
       }
@@ -3013,10 +3113,11 @@ static matteArray_t * compile_expression(
                 goto L_FAIL;
             }
             // to reference this new function as needed, the token for the 
-            // function constructor will have its text modified to be an integer to the 
-            matte_string_clear(start->text);
-            matte_string_concat_printf(start->text, "%d", b->stubID); 
+            // function constructor will have its text replaced with a pointer
+            matte_string_destroy(start->text);   // VERY SNEAKY IV
+            start->text = (matteString_t *)b; // VERY SNEAKIER IV
 
+            
             matteToken_t * end = iter;
             matte_array_push(functions, b);
             // because we'll be revisiting these nodes, the internal tokens 
@@ -3421,7 +3522,44 @@ static matteFunctionBlock_t * compile_function_block(
                     printf("  - Argument %d: %s\n", matte_array_get_size(b->args), matte_string_get_c_str(arg));
                 #endif
                 iter = iter->next;
+                
+                //
+                // typestrict arguments
+                //
+                if (iter->ttype == MATTE_TOKEN_FUNCTION_TYPESPEC) { // =>
+                    iter = iter->next; // skip =>
+                    // first argument with type specified. This means we need to insert 
+                    // "any" types for the others.
+                    if (!b->typestrict_types) {
+                        b->typestrict_types = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+                        if (matte_array_get_size(b->args) != 1) {
+                            uint32_t i;
+                            uint32_t len = matte_array_get_size(b->args)-1;
+                            for(i = 0; i < len; ++i) {
+                                write_instruction__pto(b->typestrict_types, iter->line, 6); // any;
+                            }
+                        }                            
+                    }
+                    matteArray_t * expInst = compile_expression(
+                        g,
+                        parent,
+                        functions,
+                        &iter
+                    );    
+                    if (!expInst) {
+                        goto L_FAIL;
+                    }                      
+                    merge_instructions(b->typestrict_types, expInst);
+
+                } else if (b->typestrict_types) {
+                    // because the typestrict_types exists, that means we have a 
+                    // tyestrict function, so any not specified still need an "any" type 
+                    // object.
+                    write_instruction__pto(b->typestrict_types, iter->line, 6); 
+                }   
                 if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_END) break;
+                
+                
                 if (iter->ttype != MATTE_TOKEN_FUNCTION_ARG_SEPARATOR) {
                     matte_syntax_graph_print_compile_error(g, iter, "Expected ',' separator for arguments");
                     goto L_FAIL;                
@@ -3434,7 +3572,43 @@ static matteFunctionBlock_t * compile_function_block(
                 goto L_FAIL;
             }
             iter = iter->next;
+            
+            
+            //
+            // Return value type 
+            //
+            if (iter->ttype == MATTE_TOKEN_FUNCTION_TYPESPEC) {
+                iter = iter->next; // skip =>
+                if (!b->typestrict_types) {
+                    b->typestrict_types = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+
+                    uint32_t i;
+                    uint32_t len = matte_array_get_size(b->args);
+                    for(i = 0; i < len; ++i) {
+                        write_instruction__pto(b->typestrict_types, iter->line, 6); // any;
+                    }
+
+                }
+            
+                matteArray_t * expInst = compile_expression(
+                    g,
+                    parent,
+                    functions,
+                    &iter
+                );    
+                if (!expInst) {
+                    goto L_FAIL;
+                }                      
+                merge_instructions(b->typestrict_types, expInst);
+
+            } else if (b->typestrict_types) { 
+                // no return value type, but we're in strict mode. So enter an "any" type.
+                write_instruction__pto(b->typestrict_types, iter->line, 6);             
+            }
         } 
+        if (b->typestrict_types) {
+            b->typestrict = matte_array_get_size(b->args) + 1;
+        }
 
         // most situations will require that the block begin '{' token 
         // exists already. This will be true EXCEPT in the toplevel function call (root stub)

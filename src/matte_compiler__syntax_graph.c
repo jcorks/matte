@@ -126,6 +126,15 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_TOSTRING, MATTE_STR_CAST("String cast built-in"),
         MATTE_TOKEN_EXTERNAL_TONUMBER, MATTE_STR_CAST("Number cast built-in"),
         MATTE_TOKEN_EXTERNAL_TOBOOLEAN, MATTE_STR_CAST("Boolean cast built-in"),
+
+        MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN, MATTE_STR_CAST("Boolean Type object"),
+        MATTE_TOKEN_EXTERNAL_TYPEEMPTY, MATTE_STR_CAST("Empty Type object"),
+        MATTE_TOKEN_EXTERNAL_TYPENUMBER, MATTE_STR_CAST("Number Type object"),
+        MATTE_TOKEN_EXTERNAL_TYPESTRING, MATTE_STR_CAST("String Type object"),
+        MATTE_TOKEN_EXTERNAL_TYPEOBJECT, MATTE_STR_CAST("Object Type object"),
+        MATTE_TOKEN_EXTERNAL_TYPETYPE, MATTE_STR_CAST("Type Type object"),
+
+
         MATTE_TOKEN_EXTERNAL_INTROSPECT, MATTE_STR_CAST("Introspect built-in"),
         MATTE_TOKEN_EXTERNAL_PRINT, MATTE_STR_CAST("Print built-in"),
         MATTE_TOKEN_EXTERNAL_ERROR, MATTE_STR_CAST("Error built-in"),
@@ -155,6 +164,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_FUNCTION_ARG_SEPARATOR, MATTE_STR_CAST("Function Argument Separator ','"),
         MATTE_TOKEN_FUNCTION_ARG_END, MATTE_STR_CAST("Function Argument List ')'"),
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR, MATTE_STR_CAST("Function Constructor '::'"),
+        MATTE_TOKEN_FUNCTION_TYPESPEC, MATTE_STR_CAST("Function Type Specifier '=>'"),
 
         MATTE_TOKEN_WHEN, MATTE_STR_CAST("'when' Statement"),
         MATTE_TOKEN_GATE_RETURN, MATTE_STR_CAST("'gate' Else Operator"),
@@ -460,6 +470,12 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_TOSTRING,
             MATTE_TOKEN_EXTERNAL_TONUMBER,
             MATTE_TOKEN_EXTERNAL_TOBOOLEAN,
+            MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN,
+            MATTE_TOKEN_EXTERNAL_TYPENUMBER,
+            MATTE_TOKEN_EXTERNAL_TYPEEMPTY,
+            MATTE_TOKEN_EXTERNAL_TYPESTRING,
+            MATTE_TOKEN_EXTERNAL_TYPEOBJECT,
+            MATTE_TOKEN_EXTERNAL_TYPETYPE,
             MATTE_TOKEN_EXTERNAL_INTROSPECT,
             MATTE_TOKEN_EXTERNAL_PRINT,
             MATTE_TOKEN_EXTERNAL_ERROR,
@@ -549,7 +565,12 @@ static void generate_graph(matteSyntaxGraph_t * g) {
                 matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_SEPARATOR),
                 matte_syntax_graph_node_to_parent(4),
                 NULL,
-                NULL                
+                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_TYPESPEC),
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+                matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),                
+                matte_syntax_graph_node_to_parent(4),
+                NULL,                
+                NULL
             ),
             NULL,
             NULL
@@ -644,6 +665,35 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         NULL            
     );
 
+    ///////////////
+    ///////////////
+    /// Function definition {...}
+    ///////////////
+    ///////////////
+
+    matte_syntax_graph_add_construct_path(g, MATTE_STR_CAST(""), MATTE_SYNTAX_CONSTRUCT_FUNCTION_DEFINITION,
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_BEGIN),
+        matte_syntax_graph_node_split(
+            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+            matte_syntax_graph_node_end(),
+            NULL,
+
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT),
+            matte_syntax_graph_node_split(
+                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+
+                matte_syntax_graph_node_end(),
+                NULL,
+
+                matte_syntax_graph_node_to_parent(2),
+                NULL,
+                NULL
+            ),
+            NULL,
+            NULL
+        ),
+        NULL 
+    );
 
     ///////////////
     ///////////////
@@ -656,46 +706,35 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_CONSTRUCTOR),
         matte_syntax_graph_node_split(
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_VALUE_FUNCTION_CREATION_ARGS),
-            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_BEGIN),
             matte_syntax_graph_node_split(
-                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_TYPESPEC),
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+                matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),      
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_DEFINITION),                
                 matte_syntax_graph_node_end(),
                 NULL,
 
-                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT),
-                matte_syntax_graph_node_split(
-                    matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
-                    matte_syntax_graph_node_end(),
-                    NULL,
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_DEFINITION),                
+                matte_syntax_graph_node_end(),
 
-                    matte_syntax_graph_node_to_parent(2),
-                    NULL,
-                    NULL
-                ),
                 NULL,
                 NULL
             ),
             NULL,
             
-            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_BEGIN),
             matte_syntax_graph_node_split(
-                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_TYPESPEC),
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+                matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),      
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_DEFINITION),                
                 matte_syntax_graph_node_end(),
                 NULL,
 
-                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT),
-                matte_syntax_graph_node_split(
-                    matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
-                    matte_syntax_graph_node_end(),
-                    NULL,
-
-                    matte_syntax_graph_node_to_parent(2),
-                    NULL,
-                    NULL
-                ),
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_DEFINITION),                
+                matte_syntax_graph_node_end(),
                 NULL,
                 NULL
-            ),  
+            ),
             NULL,
             NULL
         ),

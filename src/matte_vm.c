@@ -247,7 +247,7 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_NFN: return "NFN";
       case MATTE_OPCODE_NAR: return "NAR";
       case MATTE_OPCODE_NSO: return "NSO";
-        
+      case MATTE_OPCODE_NTP: return "NTP";  
         
       case MATTE_OPCODE_CAL: return "CAL";
       case MATTE_OPCODE_ARF: return "ARF";
@@ -261,6 +261,8 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_SKP: return "SKP";
       case MATTE_OPCODE_ASP: return "ASP";
       case MATTE_OPCODE_PNR: return "PNR";
+      case MATTE_OPCODE_SFS: return "SFS";
+
       default:
         return "???";
     }
@@ -277,6 +279,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     #endif
     const matteBytecodeStubInstruction_t * inst;
     uint32_t instCount;
+    uint32_t sfscount = 0;
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
     matteValue_t output = matte_heap_new_value(vm->heap);
 
@@ -377,6 +380,18 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             STACK_PUSH(v);
             break;
           }
+          case MATTE_OPCODE_SFS:
+            memcpy(&sfscount, inst->data, 4);
+
+            if (frame->pc >= instCount) {
+                break;
+            }
+            inst = program+frame->pc++;
+
+            // FALLTHROUGH PURPOSEFULLY
+            
+          
+          
           case MATTE_OPCODE_NFN: {
             uint32_t ids[2];
             memcpy(ids, inst->data, 8);
@@ -388,9 +403,30 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 break;
             }
 
-            matteValue_t v = matte_heap_new_value(vm->heap);
-            matte_value_into_new_function_ref(&v, stub);
-            STACK_PUSH(v);
+            if (sfscount) {
+                matteValue_t v = matte_heap_new_value(vm->heap);
+                uint32_t i;
+                if (STACK_SIZE() < sfscount) {
+                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM internal error: too few values on stack to service SFS opcode!"));
+                    break;
+                }
+                matteValue_t * vals = calloc(sfscount, sizeof(matteValue_t));
+                // reverse order since on the stack is [retval] [arg n-1] [arg n-2]...
+                for(i = 0; i < sfscount; ++i) {
+                    vals[sfscount - i - 1] = STACK_POP();
+                }
+
+                // xfer ownership of type values
+                matte_value_into_new_typed_function_ref(&v, stub, MATTE_ARRAY_CAST(vals, matteValue_t, sfscount));
+                free(vals);
+                sfscount = 0;
+                STACK_PUSH(v);
+                
+            } else {
+                matteValue_t v = matte_heap_new_value(vm->heap);
+                matte_value_into_new_function_ref(&v, stub);
+                STACK_PUSH(v);
+            }
             break;
           }
           case MATTE_OPCODE_NAR: {
@@ -448,6 +484,31 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             matte_array_destroy(args);
 
+            STACK_PUSH(v);
+            break;
+          }
+          case MATTE_OPCODE_PTO: {
+            uint32_t typecode;
+            memcpy(&typecode, inst->data, sizeof(uint32_t));            
+            matteValue_t v;
+            
+            switch(typecode) {
+              case 0: v = *matte_heap_get_empty_type(vm->heap); break;           
+              case 1: v = *matte_heap_get_boolean_type(vm->heap); break;           
+              case 2: v = *matte_heap_get_number_type(vm->heap); break;           
+              case 3: v = *matte_heap_get_string_type(vm->heap); break;           
+              case 4: v = *matte_heap_get_object_type(vm->heap); break;           
+              case 5: v = *matte_heap_get_type_type(vm->heap); break;           
+              case 6: v = *matte_heap_get_any_type(vm->heap); break;           
+                
+            }
+            STACK_PUSH(v);
+            break;
+          }
+          
+          case MATTE_OPCODE_NTP: {
+            matteValue_t v = matte_heap_new_value(vm->heap);
+            matte_value_into_new_type(&v);
             STACK_PUSH(v);
             break;
           }
@@ -939,7 +1000,8 @@ matteValue_t matte_vm_call(
     matteValue_t func, 
     const matteArray_t * args
 ) {
-    if (!matte_value_is_callable(func)) {
+    int callable = matte_value_is_callable(func); 
+    if (!callable) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("Error: cannot call non-function value."));
         return matte_heap_new_value(vm->heap);
     }
@@ -973,9 +1035,15 @@ matteValue_t matte_vm_call(
             matte_array_push(argsReal, v);
         }
 
-
-        matteValue_t result = set->userFunction(vm, func, argsReal, set->userData);
-
+        matteValue_t result;
+        if (callable == 2) {
+            int ok = matte_value_object_function_pre_typecheck_unsafe(d, argsReal);
+            if (ok) 
+                result = set->userFunction(vm, d, argsReal, set->userData);
+            matte_value_object_function_post_typecheck_unsafe(d, result);
+        } else {
+            result = set->userFunction(vm, d, argsReal, set->userData);        
+        }
 
 
         len = matte_array_get_size(argsReal);
@@ -1010,7 +1078,17 @@ matteValue_t matte_vm_call(
                 matte_array_push(referrables, empty);
             }
         }
-
+        int ok = 1;
+        if (callable == 2 && len) { // typestrictcheck
+            ok = matte_value_object_function_pre_typecheck_unsafe(
+                d, 
+                MATTE_ARRAY_CAST(
+                    ((matteValue_t*)matte_array_get_data(referrables))+1,
+                    matteValue_t,
+                    len 
+                )
+            );
+        }
         len = matte_bytecode_stub_local_count(frame->stub);
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_heap_new_value(vm->heap);
@@ -1023,9 +1101,14 @@ matteValue_t matte_vm_call(
         frame->referrableSize = matte_array_get_size(referrables);
         matte_array_destroy(referrables);
         
-        
-        matteValue_t result = vm_execution_loop(vm);
-
+        matteValue_t result = matte_heap_new_value(vm->heap);
+        if (callable == 2) {
+            if (ok) 
+                result = vm_execution_loop(vm);
+            matte_value_object_function_post_typecheck_unsafe(d, result);
+        } else {
+            result = vm_execution_loop(vm);        
+        }
 
         // cleanup;
         matte_heap_recycle(frame->referrable);
@@ -1038,8 +1121,9 @@ matteValue_t matte_vm_call(
         // uh oh... unhandled errors...
         if (!vm->stacksize && matte_array_get_size(vm->errors)) {
             #ifdef MATTE_DEBUG
-                assert(!"Unhandled error generated!!");
+                printf("UNHANDLED ERROR: %s\n", matte_string_get_c_str(matte_value_as_string(matte_array_at(vm->errors, matteValue_t, 0))));
             #endif
+            
         }
         matte_heap_recycle(d);
         return result; // ok, vm_execution_loop returns new
