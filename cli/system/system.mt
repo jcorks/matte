@@ -1,7 +1,7 @@
 @String = import("Matte.String");
 @Class = import("Matte.Class");
 @Array = import("Matte.Array");
-@JSON = import("Matte.JSON");
+//@JSON = import("Matte.JSON");
 
 // Contains CLI-only (non-standard) extensions to work 
 // with Matte as a shell language.
@@ -21,7 +21,6 @@
 
         @_readString = getExternalFunction("system_readString");
         @_sleepms = getExternalFunction("system_sleepms");
-
 
         @files = Array.new();
         @tasks = Array.new();
@@ -190,6 +189,7 @@
     }    
 }).new();
 
+return System;
 /*
 System.println('Hello!');
 System.printf('Now presenting variables $(0) and $(1)\n', [20, true]);
@@ -213,6 +213,4 @@ System.addTask(::{
 }, 40);
 
 System.doTasks();
-
-
 */

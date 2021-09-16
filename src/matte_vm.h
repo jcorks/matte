@@ -43,8 +43,15 @@ typedef struct matteVM_t matteVM_t;
 
 
 typedef enum {
+    // Event from when the running VM 
     MATTE_VM_DEBUG_EVENT__LINE_CHANGE,
-    MATTE_VM_DEBUG_EVENT__ERROR_RAISED
+    // Event that a general error is raised from the software.
+    // This event is signaled right when the error is raised, so it may 
+    // be caught by the software.
+    MATTE_VM_DEBUG_EVENT__ERROR_RAISED,
+
+    // 
+    MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED
 } matteVMDebugEvent_t;
 
 

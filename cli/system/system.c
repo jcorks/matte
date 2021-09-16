@@ -229,6 +229,29 @@ MATTE_EXT_FN(matte_cli__system_writebytes) {
 }
 
 
+MATTE_EXT_FN(matte_cli__system_system) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    if (matte_array_get_size(args) < 1) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("system() requires the first argument to be a path to a file."));
+        return matte_heap_new_value(heap);
+    }
+
+    matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+    if (!str) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("system() requires the first argument to be string coercible."));
+        return matte_heap_new_value(heap);
+    }
+
+    matteValue_t out = matte_heap_new_value(heap);
+    matte_value_into_boolean(
+        &out,
+        system(matte_string_get_c_str(str)) == 0
+    );
+
+
+    return out;
+}
+
 
 MATTE_EXT_FN(matte_cli__system_exit) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
@@ -328,6 +351,7 @@ void matte_vm_add_system_symbols(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_writebytes"),   2, matte_cli__system_writebytes, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_exit"),   1, matte_cli__system_exit, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_time"),   0, matte_cli__system_time, NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_system"),   1, matte_cli__system_system, NULL);
 
 
     // OS specific
@@ -337,6 +361,8 @@ void matte_vm_add_system_symbols(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_setcwd"),   1, matte_cli__system_setcwd, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_cwdup"),    0, matte_cli__system_cwdup, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_getticks"),    0, matte_cli__system_getticks, NULL);
+
+
 
     /*
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_directoryenumerate"),    0, matte_cli__system_directoryenumerate, NULL);

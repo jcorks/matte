@@ -184,6 +184,8 @@
                 });
             },
 
+            system :: getExternalFunction("system_system"),
+
             exit : getExternalFunction("system_exit")
 
         });

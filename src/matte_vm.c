@@ -1123,7 +1123,19 @@ matteValue_t matte_vm_call(
             #ifdef MATTE_DEBUG
                 printf("UNHANDLED ERROR: %s\n", matte_string_get_c_str(matte_value_as_string(matte_array_at(vm->errors, matteValue_t, 0))));
             #endif
-            
+            if (vm->debug) {
+                uint32_t i;
+                for(i = 0; i < matte_array_get_size(vm->errors); ++i) {
+                    vm->debug(
+                        vm,
+                        MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED,
+                        0,
+                        0,
+                        matte_array_get_size(vm->errors, matteValue_t, i),
+                        vm->debugData                   
+                    );
+                }
+            }            
         }
         matte_heap_recycle(d);
         return result; // ok, vm_execution_loop returns new
