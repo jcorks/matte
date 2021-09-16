@@ -1324,10 +1324,10 @@ int matte_value_isa(matteValue_t v, matteValue_t typeobj) {
     }
     if (typeobj.objectID == v.heap->type_any.objectID) return 1;
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
-        return v.binID == typeobj.objectID;
+        return matte_value_get_type(v).objectID == typeobj.objectID;
     } else {
         // TODO: more complex stuff for custom type
-        return v.binID == typeobj.objectID;
+        return matte_value_get_type(v).objectID == typeobj.objectID;
     }
 }
 
@@ -1356,7 +1356,7 @@ const matteValue_t * matte_heap_get_empty_type(matteHeap_t * h) {
     return &h->type_empty;
 }
 const matteValue_t * matte_heap_get_boolean_type(matteHeap_t * h) {
-    return &h->type_type;
+    return &h->type_boolean;
 }
 const matteValue_t * matte_heap_get_number_type(matteHeap_t * h) {
     return &h->type_number;
