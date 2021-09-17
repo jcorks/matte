@@ -114,6 +114,11 @@ matteString_t * matte_value_as_string(matteValue_t);
 
 int matte_value_as_boolean(matteValue_t);
 
+// creates a new variable whose type is specified by "type".
+// Returns empty on error.
+// Assumes "type" is a valid type object.
+matteValue_t matte_value_to_type(matteValue_t, matteValue_t type);
+
 // returns whether the value is callable.
 // 0 -> not callable 
 // 1 -> callable 

@@ -67,6 +67,7 @@ typedef struct {
     matteTable_t * keyvalues_object;
     matteValue_t keyvalue_true;
     matteValue_t keyvalue_false;
+    matteTable_t * keyvalues_types;
 
 
 
@@ -143,6 +144,14 @@ static matteValue_t object_lookup(matteObject_t * m, matteValue_t key) {
         }
         return out;
       }
+      
+      case MATTE_VALUE_TYPE_TYPE: {
+        matteValue_t * value = matte_table_find_by_uint(m->keyvalues_types, key.objectID);
+        if (value) {
+            matte_value_into_copy(&out, *value);
+        }
+        return out;
+      }
     }
     return out;
 }
@@ -213,8 +222,41 @@ static void object_put_prop(matteObject_t * m, matteValue_t key, matteValue_t va
         }
         return;
       }
+      
+      case MATTE_VALUE_TYPE_TYPE: {
+        matteValue_t * value = matte_table_find_by_uint(m->keyvalues_types, key.objectID);
+        if (value) {
+            matte_heap_recycle(*value);
+            *value = out;
+        } else {
+            value = malloc(sizeof(matteValue_t));
+            *value = out;
+            matte_table_insert_by_uint(m->keyvalues_types, key.objectID, value);
+        }
+        return;
+      }
     }
 
+}
+
+// returns a type conversion operator if it exists
+static matteValue_t object_get_conv_operator(matteValue_t v, uint32_t type) {
+    matteValue_t out = matte_heap_new_value(v.heap);
+    matteValue_t operator = matte_value_object_access_string(v, MATTE_STR_CAST("operator"));
+    if (operator.binID) {
+        if (operator.binID != MATTE_VALUE_TYPE_OBJECT) {
+            matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("operator property must be an Object if it is set."));
+        } else {
+            matteValue_t key;
+            key.heap = v.heap;
+            key.binID = MATTE_VALUE_TYPE_TYPE;
+            key.objectID = type;
+            // OK: empty doesnt allocate anything
+            out = matte_value_object_access(operator, key);
+        }
+    } 
+    matte_heap_recycle(operator);
+    return out;
 }
 
 static void * create_double() {
@@ -236,6 +278,7 @@ static void destroy_string(void * d) {matte_string_destroy(d);}
 static void * create_object() {
     matteObject_t * out = calloc(1, sizeof(matteObject_t));
     out->keyvalues_string = matte_table_create_hash_matte_string();
+    out->keyvalues_types  = matte_table_create_hash_pointer();
     out->keyvalues_number = matte_array_create(sizeof(matteValue_t));
     out->keyvalues_object = matte_table_create_hash_buffer(sizeof(matteValue_t));
     out->functionCaptures = matte_array_create(sizeof(CapturedReferrable_t));
@@ -251,11 +294,18 @@ static void destroy_object(void * d) {
     ) {
         free(matte_table_iter_get_value(iter));
     }
+    for(matte_table_iter_start(iter, out->keyvalues_types);
+        !matte_table_iter_is_end(iter);
+        matte_table_iter_proceed(iter)
+    ) {
+        free(matte_table_iter_get_value(iter));
+    }
 
     matte_table_iter_destroy(iter);
 
 
     matte_table_destroy(out->keyvalues_string);
+    matte_table_destroy(out->keyvalues_types);
     matte_table_destroy(out->keyvalues_object);
     matte_array_destroy(out->keyvalues_number);
     matte_array_destroy(out->functionCaptures);
@@ -638,6 +688,11 @@ void matte_value_print(matteValue_t v) {
         printf("  Heap Type: STRING\n");
         printf("  Value:     %s\n", matte_string_get_c_str(matte_value_as_string(v)));
         break;
+      case MATTE_VALUE_TYPE_TYPE: 
+        printf("  Heap Type: TYPE\n");
+        printf("  Value:     %s\n", matte_string_get_c_str(matte_value_as_string(v)));
+        break;
+
       case MATTE_VALUE_TYPE_OBJECT: 
         printf("  Heap Type: OBJECT\n");
         /*{
@@ -714,11 +769,13 @@ double matte_value_as_number(matteValue_t v) {
         #ifdef MATTE_VERIFY__HEAP_RECYCLE
             assert(m->refs != 0xffffffff);
         #endif
-        matteValue_t * toNumber;
-        if ((toNumber = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("toNumber")))) {
-            return matte_value_as_number(matte_vm_call(v.heap->vm, *toNumber, matte_array_empty()));
+        matteValue_t operator = object_get_conv_operator(v, v.heap->type_number.objectID);
+        if (operator.binID) {
+            double num = matte_value_as_number(matte_vm_call(v.heap->vm, operator, MATTE_ARRAY_CAST(&v, matteValue_t, 1)));
+            matte_heap_recycle(operator);
+            return num;
         } else {
-            matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot convert object into a number. (no toNumber() property present.)"));
+            matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot convert object into a number. No 'Number' property in 'operator' object."));
         }
       }
     }
@@ -732,9 +789,9 @@ matteString_t * matte_value_as_string(matteValue_t v) {
         ///return 0;
         return matte_string_create_from_c_str("empty");
 
-      case MATTE_VALUE_TYPE_TYPE: 
-        return matte_string_create_from_c_str("type");
-
+      case MATTE_VALUE_TYPE_TYPE: { 
+        return matte_string_clone(matte_value_type_name(v));
+      }
       case MATTE_VALUE_TYPE_NUMBER: {
         double * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_NUMBER], v.objectID);
         return matte_string_create_from_c_str("%g", *m);
@@ -749,30 +806,88 @@ matteString_t * matte_value_as_string(matteValue_t v) {
       }
 
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteValue_t toString = matte_value_object_access_string(v, MATTE_STR_CAST("toString"));
-        if (toString.binID) {
-            matteValue_t result = matte_vm_call(v.heap->vm, toString, matte_array_empty());
-            matteString_t * out = matte_value_as_string(result);
-            if (!out) {
-                out = matte_string_create_from_c_str("");
-            }
-            matte_heap_recycle(result);
-            matte_heap_recycle(toString);
+        matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+        #ifdef MATTE_VERIFY__HEAP_RECYCLE
+            assert(m->refs != 0xffffffff);
+        #endif
+        matteValue_t operator = object_get_conv_operator(v, v.heap->type_string.objectID);
+        if (operator.binID) {
+            matteString_t * out = matte_value_as_string(matte_vm_call(v.heap->vm, operator, MATTE_ARRAY_CAST(&v, matteValue_t, 1)));
+            matte_heap_recycle(operator);
             return out;
         } else {
-            matte_heap_recycle(toString);
-            return matte_string_create_from_c_str("object");
+            matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Object has no valid conversion to string."));
+            return matte_string_create_from_c_str("");
         }
       }
     }
     return matte_string_create();
 }
 
+
+matteValue_t matte_value_to_type(matteValue_t v, matteValue_t t) {
+    matteValue_t out = matte_heap_new_value(v.heap);
+    switch(t.objectID) {
+      case 1: { // empty
+        if (v.binID != MATTE_VALUE_TYPE_EMPTY) {
+            matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("It is an error to convert any non-empty value to the Empty type."));
+        } else {
+            matte_value_into_copy(&out, v);
+        }
+
+        break;
+      }
+
+      case 6: {
+        if (v.binID != MATTE_VALUE_TYPE_TYPE) {
+            matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("It is an error to convert any non-Type value to a Type."));
+        } else {
+            matte_value_into_copy(&out, v);
+        }
+        break;
+      }
+
+      
+      case 2: {
+        matte_value_into_boolean(&out, matte_value_as_boolean(v));
+        break;
+      }
+      case 3: {
+        matte_value_into_number(&out, matte_value_as_number(v));
+        break;
+      }
+
+      case 4: {
+        matteString_t * str = matte_value_as_string(v);
+        matte_value_into_string(&out, str);
+        matte_string_destroy(str);
+        break;
+      }
+
+      case 5: {
+        if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+            matte_value_into_copy(&out, v);
+            break;
+        } else {
+            matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot convert value to Object type."));        
+        }
+      
+      }
+      
+      default:;// TODO: custom types.
+      
+      
+    
+    }
+    return out;
+}
+
 int matte_value_as_boolean(matteValue_t v) {
     switch(v.binID) {
       case MATTE_VALUE_TYPE_EMPTY: return 0;
-      case MATTE_VALUE_TYPE_TYPE: return 0;
-
+      case MATTE_VALUE_TYPE_TYPE: {
+        return 1;
+      }
       case MATTE_VALUE_TYPE_NUMBER: {
         double * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_NUMBER], v.objectID);
         return *m != 0.0;
@@ -782,6 +897,7 @@ int matte_value_as_boolean(matteValue_t v) {
         return *m;
       }
       case MATTE_VALUE_TYPE_STRING: {
+        // non-empty value
         return 1;
       }
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -789,10 +905,13 @@ int matte_value_as_boolean(matteValue_t v) {
         #ifdef MATTE_VERIFY__HEAP_RECYCLE
             assert(m->refs != 0xffffffff);
         #endif
-        matteValue_t * toBoolean;
-        if ((toBoolean = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("toBoolean")))) {
-            return matte_value_as_number(matte_vm_call(v.heap->vm, *toBoolean, matte_array_empty()));
+        matteValue_t operator = object_get_conv_operator(v, v.heap->type_boolean.objectID);
+        if (operator.binID) {
+            int out = matte_value_as_boolean(matte_vm_call(v.heap->vm, operator, MATTE_ARRAY_CAST(&v, matteValue_t, 1)));
+            matte_heap_recycle(operator);
+            return out;
         } else {
+            // non-empty
             return 1;
         }
       }
@@ -802,6 +921,7 @@ int matte_value_as_boolean(matteValue_t v) {
 
 // returns whether the value is callable.
 int matte_value_is_callable(matteValue_t v) {
+    if (v.binID == MATTE_VALUE_TYPE_TYPE) return 1;
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) return 0;
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
     #ifdef MATTE_VERIFY__HEAP_RECYCLE
@@ -843,9 +963,10 @@ void matte_value_object_function_post_typecheck_unsafe(matteValue_t v, matteValu
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
     if (!matte_value_isa(ret, matte_array_at(m->functionTypes, matteValue_t, matte_array_get_size(m->functionTypes) - 1))) {
         matteString_t * err = matte_string_create_from_c_str(
-            "Return value required to be of type %s, but was of unexpected type %s.",
+            "Return value (type: %s) is not of required type %s.",
             matte_string_get_c_str(matte_value_type_name(matte_value_get_type(ret))),
             matte_string_get_c_str(matte_value_type_name(matte_array_at(m->functionTypes, matteValue_t, matte_array_get_size(m->functionTypes) - 1)))
+
         );
         matte_vm_raise_error_string(v.heap->vm, err);
     }  
@@ -861,7 +982,7 @@ matteValue_t matte_value_object_access(matteValue_t v, matteValue_t key) {
         assert(m->refs != 0xffffffff);
     #endif
     matteValue_t * accessor;
-    if ((accessor = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("accessor")))) {
+    if ((accessor = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("getter")))) {
         matteValue_t args[1] = {
             key
         };
@@ -947,6 +1068,22 @@ matteValue_t matte_value_object_keys(matteValue_t v) {
         matte_value_into_boolean(&key, 0);
         matte_array_push(keys, key);
     }
+    
+    // then types
+    if (!matte_table_is_empty(m->keyvalues_types)) {
+        matteTableIter_t * iter = matte_table_iter_create();
+        matte_table_iter_start(iter, m->keyvalues_types);
+        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+            matteValue_t key;
+            key.heap = v.heap;
+            key.binID = MATTE_VALUE_TYPE_TYPE;
+            key.objectID = matte_table_iter_get_key_uint(iter);
+
+            matte_array_push(keys, key);                
+        }
+        matte_table_iter_destroy(iter);
+    }
+    
     val = matte_heap_new_value(v.heap);
     matte_value_into_new_object_array_ref(&val, keys);
     matte_array_destroy(keys);
@@ -1011,6 +1148,18 @@ matteValue_t matte_value_object_values(matteValue_t v) {
         matte_value_into_copy(&val, m->keyvalue_false);
         matte_array_push(vals, val);
     }
+    
+    // then types
+    if (!matte_table_is_empty(m->keyvalues_types)) {
+        matteTableIter_t * iter = matte_table_iter_create();
+        matte_table_iter_start(iter, m->keyvalues_types);
+        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+            val = matte_heap_new_value(v.heap);
+            matte_value_into_copy(&val, *(matteValue_t *)matte_table_iter_get_value(iter));
+            matte_array_push(vals, val);                
+        }
+        matte_table_iter_destroy(iter);
+    }
 
     val = matte_heap_new_value(v.heap);
     matte_value_into_new_object_array_ref(&val, vals);
@@ -1051,6 +1200,15 @@ uint32_t matte_value_object_get_key_count(matteValue_t v) {
         }
         matte_table_iter_destroy(iter);
     }
+    
+    if (!matte_table_is_empty(m->keyvalues_types)) {
+        matteTableIter_t * iter = matte_table_iter_create();
+        matte_table_iter_start(iter, m->keyvalues_types);
+        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+            total++;
+        }
+        matte_table_iter_destroy(iter);
+    }
     return total;    
 }
 
@@ -1073,6 +1231,17 @@ void matte_value_object_remove_key(matteValue_t v, matteValue_t key) {
         }
         return;
       }
+
+      case MATTE_VALUE_TYPE_TYPE: {
+        matteValue_t * value = matte_table_find_by_uint(m->keyvalues_string, key.objectID);
+        if (value) {
+            matte_table_remove_by_uint(m->keyvalues_string, key.objectID);
+            matte_heap_recycle(*value);
+            free(value);
+        }
+        return;
+      }
+
       
       // array lookup
       case MATTE_VALUE_TYPE_NUMBER: {
@@ -1188,6 +1357,20 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
         matte_heap_recycle(args[0]);
     }
 
+    if (!matte_table_is_empty(m->keyvalues_types)) {
+        matte_heap_recycle(args[0]);
+        args[0].binID = MATTE_VALUE_TYPE_TYPE;
+        matteTableIter_t * iter = matte_table_iter_create();
+        matte_table_iter_start(iter, m->keyvalues_types);
+        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+            args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
+            args[0].objectID = matte_table_iter_get_key_uint(iter);
+            matteValue_t r = matte_vm_call(v.heap->vm, func, MATTE_ARRAY_CAST(args, matteValue_t, 2));
+            matte_heap_recycle(r);
+        }
+        matte_heap_recycle(args[0]);
+        matte_table_iter_destroy(iter);
+    }
 
 }
 
@@ -1250,7 +1433,7 @@ void matte_value_object_set(matteValue_t v, matteValue_t key, matteValue_t value
         assert(m->refs != 0xffffffff);
     #endif
     matteValue_t * assigner;
-    if ((assigner = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("assigner")))) {
+    if ((assigner = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("setter")))) {
         matteValue_t args[2] = {
             key, value
         };
@@ -1521,6 +1704,18 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
                         free(v);
                     }
                     matte_table_clear(m->keyvalues_string);
+                }
+                
+                if (!matte_table_is_empty(m->keyvalues_types)) {
+                    for(matte_table_iter_start(iter, m->keyvalues_types);
+                        matte_table_iter_is_end(iter) == 0;
+                        matte_table_iter_proceed(iter)
+                    ) {
+                        matteValue_t * v = matte_table_iter_get_value(iter);
+                        matte_heap_recycle(*v);
+                        free(v);
+                    }
+                    matte_table_clear(m->keyvalues_types);
                 }
                 if (!matte_table_is_empty(m->keyvalues_object)) {
                     for(matte_table_iter_start(iter, m->keyvalues_object);

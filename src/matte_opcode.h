@@ -118,9 +118,6 @@ typedef enum {
     MATTE_EXT_CALL_MATCH,
     MATTE_EXT_CALL_IMPORT,
     MATTE_EXT_CALL_REMOVE_KEY,
-    MATTE_EXT_CALL_TOSTRING, // String() 1 operand
-    MATTE_EXT_CALL_TONUMBER, // Number() 1 operand
-    MATTE_EXT_CALL_TOBOOLEAN, // Boolean() 1 operand
     MATTE_EXT_CALL_INTROSPECT, // introspect() 1 arg
     MATTE_EXT_CALL_PRINT,
     MATTE_EXT_CALL_ERROR,

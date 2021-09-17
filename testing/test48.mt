@@ -4,8 +4,8 @@
 
 @errMessage;
 ::{
-    context.onError = :: {
-        errMessage = true;
+    context.catch = :: (t){
+        errMessage = t;
     };
 
 

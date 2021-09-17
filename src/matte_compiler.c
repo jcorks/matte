@@ -833,18 +833,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "removeKey");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_TOSTRING: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "AsString");
-        break;
-      }
-      case MATTE_TOKEN_EXTERNAL_TONUMBER: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "AsNumber");
-        break;
-      }
-      case MATTE_TOKEN_EXTERNAL_TOBOOLEAN: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "AsBoolean");
-        break;
-      }
+
       case MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Boolean");
         break;
@@ -858,7 +847,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPESTRING: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "StringValue");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "String");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPEOBJECT: {
@@ -2411,21 +2400,7 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
-      case MATTE_TOKEN_EXTERNAL_TOSTRING: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TOSTRING);
-        *src = iter->next;
-        return inst;
-      }
-      case MATTE_TOKEN_EXTERNAL_TONUMBER: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TONUMBER);
-        *src = iter->next;
-        return inst;
-      }
-      case MATTE_TOKEN_EXTERNAL_TOBOOLEAN: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TOBOOLEAN);
-        *src = iter->next;
-        return inst;
-      } 
+
       
       case MATTE_TOKEN_EXTERNAL_TYPEEMPTY: {
         write_instruction__pto(inst, iter->line, 0);

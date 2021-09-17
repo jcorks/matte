@@ -1,6 +1,7 @@
 <@>class = import('Matte.Class');
 
 @Array = class({
+    name : 'Matte.Array',
     define ::(this, args, classinst) {
         <@>data = if(AsBoolean(args) && introspect(args).type() == 'object') args else [];
          @ len = introspect(data).keycount();

@@ -141,15 +141,7 @@ static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn
     matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
-    matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
-      case MATTE_VALUE_TYPE_EMPTY:   matte_value_into_string(&result, MATTE_STR_CAST("empty")); break;
-      case MATTE_VALUE_TYPE_BOOLEAN: matte_value_into_string(&result, MATTE_STR_CAST("boolean")); break;
-      case MATTE_VALUE_TYPE_NUMBER:  matte_value_into_string(&result, MATTE_STR_CAST("number")); break;
-      case MATTE_VALUE_TYPE_OBJECT:  matte_value_into_string(&result, MATTE_STR_CAST("object")); break;
-      case MATTE_VALUE_TYPE_STRING:  matte_value_into_string(&result, MATTE_STR_CAST("string")); break;
-    }
-    return result;
+    return matte_value_get_type(a);
 }
 
 

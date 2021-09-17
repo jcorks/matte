@@ -31,8 +31,10 @@ struct matteVM_t {
     // for all values
     matteHeap_t * heap;
 
-    // queued errors
-    matteArray_t * errors;
+    // queued error object. if none, error.binID == 0
+    matteValue_t error;
+    // queued error info object. Gives info about the error that occured.
+    matteValue_t error_info;
 
     // string -> id into externalFunctionIndex;
     matteTable_t * externalFunctions;
@@ -114,7 +116,7 @@ static uint8_t * vm_default_import(
     free(msg);
     fclose(f);
     id = malloc(sizeof(uint32_t));
-    *id = matte_vm_get_new_file_id(vm);
+    *id = matte_vm_get_new_file_id(vm, importPath);
     matte_table_insert(vm->defaultImport_table, importPath, id);
 
     *fileid = *id;
@@ -124,8 +126,16 @@ static uint8_t * vm_default_import(
 
 // todo: how to we implement this in a way that we dont "waste"
 // IDs by failed /excessive calls to this when the IDs arent used?
-uint32_t matte_vm_get_new_file_id(matteVM_t * vm) {
-    return vm->nextID++;
+uint32_t matte_vm_get_new_file_id(matteVM_t * vm, const matteString_t * name) {
+    uint32_t fileid = vm->nextID++; 
+
+    uint32_t * fileidPtr = malloc(sizeof(uint32_t));
+    *fileidPtr = fileid;
+
+    matte_table_insert(vm->importPath2ID, name, fileidPtr);   
+    matte_table_insert_by_uint(vm->id2importPath, fileid, matte_string_clone(name));
+
+    return fileid;
 }
 
 
@@ -728,24 +738,25 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         // errors are checked after every instruction.
         // once encountered they are handled immediately.
         // If there is no handler, the error propogates down the callstack.
-        if (matte_array_get_size(vm->errors)) {
-            matteValue_t v = matte_value_object_access_string(frame->context, MATTE_STR_CAST("errorHandler"));
+        if (vm->error.binID) {
+            matteValue_t v = matte_value_object_access_string(frame->context, MATTE_STR_CAST("catch"));
 
             // output wont be sent since there was an error. empty will return instead.
             matte_heap_recycle(output);
 
             if (matte_value_is_callable(v)) {
-                matteArray_t * cachedErrors = matte_array_clone(vm->errors);
-                matte_array_set_size(vm->errors, 0);
+                matteValue_t cached[] = {
+                    vm->error,
+                    vm->error_info
+                };
+                vm->error.binID = 0;
 
-                uint32_t i;
-                uint32_t len = matte_array_get_size(vm->errors);
-                for(i = 0; i < len; ++i) {
-                    matteValue_t err = matte_array_at(vm->errors, matteValue_t, i);
-                    matte_vm_call(vm, v, MATTE_ARRAY_CAST(&err, matteValue_t, 1));
-                    matte_heap_recycle(err);
-                } 
-                matte_array_destroy(cachedErrors);
+
+                matte_heap_recycle(matte_vm_call(vm, v, MATTE_ARRAY_CAST(cached, matteValue_t, 2)));
+                matte_heap_recycle(cached[0]);
+                matte_heap_recycle(cached[1]);
+
+
             }
 
             return matte_heap_new_value(vm->heap);
@@ -824,7 +835,7 @@ matteVM_t * matte_vm_create() {
     vm->externalFunctions = matte_table_create_hash_matte_string();
     vm->externalFunctionIndex = matte_array_create(sizeof(ExternalFunctionSet_t));
     vm->heap = matte_heap_create(vm);
-    vm->errors = matte_array_create(sizeof(matteValue_t));
+
     vm->extStubs = matte_array_create(sizeof(matteBytecodeStub_t *));
     vm->importPath2ID = matte_table_create_hash_matte_string();
     vm->id2importPath = matte_table_create_hash_pointer();
@@ -843,9 +854,6 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  2, vm_ext_call__import);
     vm_add_built_in(vm, MATTE_EXT_CALL_REMOVE_KEY,  2, vm_ext_call__remove_key);
 
-    vm_add_built_in(vm, MATTE_EXT_CALL_TOBOOLEAN,  1, vm_ext_call__toboolean);
-    vm_add_built_in(vm, MATTE_EXT_CALL_TOSTRING,   1, vm_ext_call__tostring);
-    vm_add_built_in(vm, MATTE_EXT_CALL_TONUMBER,   1, vm_ext_call__tonumber);
     vm_add_built_in(vm, MATTE_EXT_CALL_INTROSPECT, 1, vm_ext_call__introspect);
     vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      1, vm_ext_call__print);
     vm_add_built_in(vm, MATTE_EXT_CALL_ERROR,      1, vm_ext_call__error);
@@ -964,7 +972,6 @@ void matte_vm_destroy(matteVM_t * vm) {
 
 
     matte_array_destroy(vm->interruptOps);
-    matte_array_destroy(vm->errors);
     matte_array_destroy(vm->callstack);
     matte_array_destroy(vm->externalFunctionIndex); // copy, safe
     matte_heap_destroy(vm->heap);
@@ -1006,6 +1013,18 @@ matteValue_t matte_vm_call(
         return matte_heap_new_value(vm->heap);
     }
 
+    // special case: type object as a function
+    if (func.binID == MATTE_VALUE_TYPE_TYPE) {                
+        if (matte_array_get_size(args)) {
+            return matte_value_to_type(matte_array_at(args, matteValue_t, 0), func);
+        } else {
+            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Type conversion failed (no value given to convert)."));
+            return matte_heap_new_value(vm->heap);
+        }
+    }
+
+
+    // normal function
     matteValue_t d = matte_heap_new_value(vm->heap);
     matte_value_into_copy(&d, func);
 
@@ -1119,23 +1138,24 @@ matteValue_t matte_vm_call(
         
 
         // uh oh... unhandled errors...
-        if (!vm->stacksize && matte_array_get_size(vm->errors)) {
+        if (!vm->stacksize && vm->error.binID) {
             #ifdef MATTE_DEBUG
-                printf("UNHANDLED ERROR: %s\n", matte_string_get_c_str(matte_value_as_string(matte_array_at(vm->errors, matteValue_t, 0))));
+                printf("UNHANDLED ERROR: %s\n", matte_string_get_c_str(matte_value_as_string(vm->error)));
             #endif
             if (vm->debug) {
-                uint32_t i;
-                for(i = 0; i < matte_array_get_size(vm->errors); ++i) {
-                    vm->debug(
-                        vm,
-                        MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED,
-                        0,
-                        0,
-                        matte_array_get_size(vm->errors, matteValue_t, i),
-                        vm->debugData                   
-                    );
-                }
-            }            
+                vm->debug(
+                    vm,
+                    MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED,
+                    0,
+                    0,
+                    vm->error,
+                    vm->debugData                   
+                );                
+            }     
+            matte_heap_recycle(vm->error);
+            matte_heap_recycle(vm->error_info);
+
+            vm->error.binID = 0;
         }
         matte_heap_recycle(d);
         return result; // ok, vm_execution_loop returns new
@@ -1195,8 +1215,11 @@ matteValue_t matte_vm_run_scoped_debug_source(
     // override current VM stuff
     vm->debug = onError;
     vm->debugData = onErrorData;
-    matteArray_t * errors = matte_array_clone(vm->errors);
-    matte_array_clear(vm->errors);    
+    matteValue_t error = vm->error;
+    matteValue_t error_info = vm->error_info;
+
+    vm->error.binID = 0;
+    vm->error_info.binID = 0;
  
     uint32_t jitSize = 0;
     uint8_t * jitBuffer = matte_compiler_run_with_named_references(
@@ -1222,30 +1245,125 @@ matteValue_t matte_vm_run_scoped_debug_source(
     // revert vm state 
     vm->debug = realDebug;
     vm->debugData = realDebugData;
-    uint32_t i;
-    uint32_t len = matte_array_get_size(vm->errors);
-    for(i = 0; i < len; ++i) {
-        matte_heap_recycle(matte_array_at(vm->errors, matteValue_t, i));        
-    }
-    len = matte_array_get_size(errors);
-    matte_array_set_size(vm->errors, len);
-    for(i = 0; i < len; ++i) {
-        matte_array_at(vm->errors, matteValue_t, i) = matte_array_at(errors, matteValue_t, i);        
-    }
-    matte_array_destroy(errors);
+    matte_heap_recycle(vm->error);        
+    matte_heap_recycle(vm->error_info);        
+
+    vm->error = error;
+    vm->error = error_info;
     
     return result;
 }
 
+
+/*
+{
+    callstack : {
+        length => Number,
+        frames : [
+            {
+                file : StringValue,
+                lineNumber : Number
+            },
+        
+        ]
+    }   
+}
+
+*/
+
+matteValue_t vm_info_new_object(matteVM_t * vm) {
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    matte_value_into_new_object_ref(&out);
+    
+    matteValue_t callstack = matte_heap_new_value(vm->heap);
+    matte_value_into_new_object_ref(&callstack);
+    
+    matteValue_t key = matte_heap_new_value(vm->heap);
+    matteValue_t val = matte_heap_new_value(vm->heap);
+
+    uint32_t i;
+    uint32_t len = matte_vm_get_stackframe_size(vm);
+    matte_value_into_string(&key, MATTE_STR_CAST("length"));
+    matte_value_into_number(&val, len);
+    matte_value_object_set(callstack, key, val);
+    
+    
+    matteValue_t * arr = malloc(sizeof(matteValue_t) * len);
+    matteString_t * str = matte_string_create_from_c_str("Matte Language VM callstack (%d entries):\n", len);
+    
+    for(i = 0; i < len; ++i) {
+        matteVMStackFrame_t framesrc = matte_vm_get_stackframe(vm, i);
+
+        matteValue_t frame = matte_heap_new_value(vm->heap);
+        matte_value_into_new_object_ref(&frame);
+
+        const matteString_t * filename = matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(framesrc.stub));
+        
+        matte_value_into_string(&key, MATTE_STR_CAST("file"));
+        matte_value_into_string(&val, filename ? filename : MATTE_STR_CAST("<unknown>"));        
+        matte_value_object_set(frame, key, val);
+        
+
+        
+        
+        uint32_t instcount = 0;
+        const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(framesrc.stub, &instcount);        
+        
+        matte_value_into_string(&key, MATTE_STR_CAST("lineNumber"));        
+        int lineNumber = 0;
+        if (framesrc.pc - 1 < instcount) {
+            lineNumber = inst[framesrc.pc-1].lineNumber;                
+        } 
+        matte_value_into_number(&val, lineNumber);
+        matte_value_object_set(frame, key, val);
+        arr[i] = frame;        
+        
+        matte_string_concat_printf(str, " (%d) -> %s, line %d\n", i, filename ? matte_string_get_c_str(filename) : "<unknown>", lineNumber); 
+    }
+
+
+    matte_value_into_new_object_array_ref(&val, MATTE_ARRAY_CAST(arr, matteValue_t, len));
+    free(arr);
+    matte_value_into_string(&key, MATTE_STR_CAST("frames"));
+    matte_value_object_set(callstack, key, val);
+    
+
+    
+    
+    matte_value_into_string(&key, MATTE_STR_CAST("callstack"));    
+    matte_value_object_set(out, key, callstack);
+
+
+    matte_value_into_string(&key, MATTE_STR_CAST("summary"));
+    matte_value_into_string(&val, str);
+    matte_string_destroy(str);
+    matte_value_object_set(out, key, val);
+    
+
+    matte_heap_recycle(val);
+    matte_heap_recycle(key);
+    matte_heap_recycle(callstack);
+
+    return out;
+}
+
+
 void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
+    if (vm->error.binID) {
+        #ifdef MATTE_DEBUG
+            assert(!"VM has a new error generated before previous error could be captured. This is not allowed and is /probably/ indicative of internal VM error.");
+        #endif
+    }
     matteValue_t b = matte_heap_new_value(vm->heap);
     matte_value_into_copy(&b, val);
-    matte_array_push(vm->errors, b);
+    vm->error = b;
+    vm->error_info = vm_info_new_object(vm);
+    
     if (vm->debug) {
         matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, 0);
         uint32_t numinst;
         const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
-        uint32_t line = inst[frame.pc].lineNumber;        
+        uint32_t line = inst[frame.pc-1].lineNumber;        
         vm->debug(
             vm,
             MATTE_VM_DEBUG_EVENT__ERROR_RAISED,

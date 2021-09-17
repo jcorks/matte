@@ -2,7 +2,9 @@
 //
 // empty object
 @r = {};
-r.toString = ::{
-    return 'Testing';
+r.operator = {
+    (String) ::{
+        return 'Testing';
+    }
 };
-return AsString(r);
+return String(r);

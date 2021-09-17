@@ -25,7 +25,7 @@ static void onErrorCatch(
     matteValue_t value, 
     void * data
 ) {
-    if (event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED) {
+    if (event == MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED) {
         matteString_t * str = matte_value_as_string(value);
         printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
         printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
@@ -155,7 +155,7 @@ int main() {
         }
         
 
-        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_new_file_id(vm), outBytes, outByteLen);
+        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_new_file_id(vm, infile), outBytes, outByteLen);
         matte_vm_add_stubs(vm, arr);
         matte_array_destroy(arr);
         free(outBytes);

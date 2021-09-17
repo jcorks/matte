@@ -233,6 +233,9 @@ const void * matte_table_iter_get_key(
     const matteTableIter_t * iter
 );
 
+#define matte_table_iter_get_key_uint(__T__) ((uint32_t)(uintptr_t)matte_table_iter_get_key(__T__))
+
+
 /// Returns the value for the current 
 /// key-value pair. If none, returns NULL.
 ///

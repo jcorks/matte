@@ -1,6 +1,7 @@
 <@>class = import('Matte.Class');
 <@>Array = import('Matte.Array');
 @String = class({
+    name : 'Matte.String',
     define ::(this, args, classinst) {
         @str = if(args) AsString(args) else "";
         @intr = introspect(str);

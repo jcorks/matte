@@ -227,7 +227,7 @@ matteValue_t matte_vm_get_external_function_as_value(
 
 
 // Gets an unused fileid
-uint32_t matte_vm_get_new_file_id(matteVM_t * vm);
+uint32_t matte_vm_get_new_file_id(matteVM_t * vm, const matteString_t * name);
 
 // Gets a script name by fileID. If none is associated, NULL is 
 // returned.
