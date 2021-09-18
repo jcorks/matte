@@ -5,8 +5,8 @@
     // use this object as a key
     context.auto = {};
 
-    @enumtype = type({'name':name});
-
+    @enumtype = newtype({'name':'MatteEnumerator'+context.enumID});
+    context.enumID = context.enumID+1;
 
     // creates an enum value.
     // uniquely identifiable and only comparable with other 
@@ -65,23 +65,26 @@
     
     
     @output = {};
-    output.assigner = ::{
+    output.setter = ::{
         error('Enum value is read-only');
     };
     output.getter = ::(k) => enumtype {
         return ptype[k];
     };
 }
-
+enum.enumID = 0;
 
 
 
 
 /*
-@myEnum = enum('myEnum', {
+@myEnum = enum({
     SomeValue : enum.auto,
     SomeValue1 : enum.auto,
     SomeValue2 : enum.auto,
     SomeValue3 : enum.auto,
     SomeValue4 : enum.auto
-});*/
+});
+
+
+*/

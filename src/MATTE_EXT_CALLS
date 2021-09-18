@@ -200,6 +200,11 @@ static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, matteArr
 }
 
 
+static matteValue_t vm_ext_call__type(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+
+}
+
+
 
 
 #include "CORE_ROM"

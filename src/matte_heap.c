@@ -12,6 +12,16 @@
 #ifdef MATTE_DEBUG 
     #include <assert.h>
 #endif
+
+typedef struct {
+    // name of the type
+    matteString_t * name;
+    
+    // All the typecodes that this type can validly be used as in an 
+    // isa comparison
+    matteArray_t * isa;
+} MatteTypeData;
+
 struct matteHeap_t {    
     // 1 -> number. Each pointer is just a double
     // 2 -> boolean 
@@ -40,6 +50,12 @@ struct matteHeap_t {
     matteValue_t type_object;
     matteValue_t type_type;
     matteValue_t type_any;
+    
+    // names for all types, on-demand
+    // MatteTypeData
+    matteArray_t * typecode2data;
+    
+    
 
     matteVM_t * vm;
 };
@@ -73,6 +89,9 @@ typedef struct {
 
     // has only keyvalues_number members
     int isArrayLike;
+    
+    // custom typecode.
+    uint32_t typecode;
     
     
     // stub for functions. If null, is a normal object.
@@ -324,7 +343,7 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->sortedHeaps[MATTE_VALUE_TYPE_BOOLEAN] = matte_bin_create(create_boolean, destroy_boolean);
     out->sortedHeaps[MATTE_VALUE_TYPE_STRING] = matte_bin_create(create_string, destroy_string);
     out->sortedHeaps[MATTE_VALUE_TYPE_OBJECT] = matte_bin_create(create_object, destroy_object);
-
+    out->typecode2data = matte_array_create(sizeof(MatteTypeData));
     out->toSweep = matte_table_create_hash_pointer();
 
 
@@ -336,13 +355,14 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->type_type = matte_heap_new_value(out);
     out->type_any = matte_heap_new_value(out);
 
-    matte_value_into_new_type(&out->type_empty);
-    matte_value_into_new_type(&out->type_boolean);
-    matte_value_into_new_type(&out->type_number);
-    matte_value_into_new_type(&out->type_string);
-    matte_value_into_new_type(&out->type_object);
-    matte_value_into_new_type(&out->type_type);
-    matte_value_into_new_type(&out->type_any);
+    matteValue_t dummy = {};
+    matte_value_into_new_type(&out->type_empty, dummy);
+    matte_value_into_new_type(&out->type_boolean, dummy);
+    matte_value_into_new_type(&out->type_number, dummy);
+    matte_value_into_new_type(&out->type_string, dummy);
+    matte_value_into_new_type(&out->type_object, dummy);
+    matte_value_into_new_type(&out->type_type, dummy);
+    matte_value_into_new_type(&out->type_any, dummy);
 
     return out;
 }
@@ -384,7 +404,7 @@ void matte_value_into_number(matteValue_t * v, double val) {
 }
 
 
-void matte_value_into_new_type(matteValue_t * v) {
+void matte_value_into_new_type(matteValue_t * v, matteValue_t opts) {
     matte_heap_recycle(*v);
     v->binID = MATTE_VALUE_TYPE_TYPE;
     if (v->heap->typepool == 0xffffffff) {
@@ -392,6 +412,24 @@ void matte_value_into_new_type(matteValue_t * v) {
         matte_vm_raise_error_string(v->heap->vm, MATTE_STR_CAST("Type count limit reached. No more types can be created."));
     } else {
         v->objectID = ++(v->heap->typepool);
+    }
+    i
+    MatteTypeData data;
+    if (opts.binID == MATTE_VALUE_TYPE_OBJECT) {
+        matteValue_t v = matte_value_object_access_string(opts, MATTE_STR_CAST("name"));
+        if (v.binID) {
+            data.name = matte_value_as_string(v);
+            matte_heap_recycle(v);
+        } else {
+            data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);        
+        }
+        
+        /// TODO: ISA. array for multiple inheritance please!
+        
+        
+    } else {
+        data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);
+        data.isa = NULL;
     }
 }
 
@@ -416,6 +454,7 @@ void matte_value_into_new_object_ref(matteValue_t * v) {
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
     d->heapID = v->objectID;
+    d->typecode = v->heap->type_object.objectID;
     d->refs = 1;
     #ifdef MATTE_DEBUG__HEAP
         printf("INCR (NEW EMPTY OBJ) %d: %d\n", d->heapID, d->refs);
@@ -428,6 +467,7 @@ void matte_value_into_new_object_literal_ref(matteValue_t * v, const matteArray_
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
     d->heapID = v->objectID;
+    d->typecode = v->heap->type_object.objectID;
     d->refs = 1;
     #ifdef MATTE_DEBUG__HEAP
         printf("INCR (NEW OBJ LITERAL) %d: %d\n", d->heapID, d->refs);
@@ -452,6 +492,7 @@ void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t 
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
     d->heapID = v->objectID;
+    d->typecode = v->heap->type_object.objectID;
     d->refs = 1;
     #ifdef MATTE_DEBUG__HEAP
         printf("INCR (NEW ARRAY LITERAL)%d: %d\n", d->heapID, d->refs);
@@ -568,6 +609,7 @@ void matte_value_into_new_function_ref(matteValue_t * v, matteBytecodeStub_t * s
     matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
     d->heapID = v->objectID;
     d->refs = 1;
+    d->typecode = v->heap->type_object.objectID;
     d->functionstub = stub;
     #ifdef MATTE_DEBUG__HEAP
         printf("INCR (NEW FUNCTION)%d: %d\n", d->heapID, d->refs);
@@ -1526,7 +1568,12 @@ const matteString_t * matte_value_type_name(matteValue_t v) {
       case 4:   return MATTE_STR_CAST("String");
       case 5:   return MATTE_STR_CAST("Object");
       case 6:     return MATTE_STR_CAST("Type");
-      default:; // TODO: custom types
+      default: { 
+        if (v->objectID >= matte_array_get_size(v.heap->typecode2data)) {
+            matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("VM error: no such type exists..."));                    
+        } else {
+            return matte_array_at(v.heap->typecode2data, MatteTypeData, b.objectID).name;
+      }
     }
 
     return MATTE_STR_CAST("");
@@ -1563,8 +1610,15 @@ matteValue_t matte_value_get_type(matteValue_t v) {
       case MATTE_VALUE_TYPE_BOOLEAN: return v.heap->type_boolean;
       case MATTE_VALUE_TYPE_NUMBER: return v.heap->type_number;
       case MATTE_VALUE_TYPE_STRING: return v.heap->type_string;
-      case MATTE_VALUE_TYPE_OBJECT: return v.heap->type_object;
       case MATTE_VALUE_TYPE_TYPE: return v.heap->type_type;
+      case MATTE_VALUE_TYPE_OBJECT: {
+        matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+        matteValue_t out;
+        out.binID = MATTE_VALUE_TYPE_TYPE;
+        out.objectID = m->typecode;
+        out.heap = v.heap;
+        return out;
+      }
 
     }
     return v.heap->type_empty;

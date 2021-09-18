@@ -533,6 +533,16 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
 
             }
         }
+      }
+      case MATTE_VALUE_TYPE_TYPE: {
+        if (b.binID == MATTE_VALUE_TYPE_TYPE) {
+            matte_value_into_boolean(
+                &result, 
+                a.objectID == b.objectID 
+            );
+        } else {            
+            matte_vm_raise_error_string(vm, MATTE_STR_CAST("== operator with Type and non-type is undefined."));            
+        }
         break;
       }      
     }
@@ -598,6 +608,19 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
 
             }
         }
+      case MATTE_VALUE_TYPE_TYPE: {
+        if (b.binID == MATTE_VALUE_TYPE_TYPE) {
+            matte_value_into_boolean(
+                &result, 
+                a.objectID != b.objectID 
+            );
+        } else {
+            
+            matte_vm_raise_error_string(vm, MATTE_STR_CAST("!= operator with Type and non-type is undefined."));            
+        }
+        break;
+      }      
+
         break;
       }      
     }

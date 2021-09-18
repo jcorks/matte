@@ -865,6 +865,15 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "introspect");
         break;
       }
+      case MATTE_TOKEN_EXTERNAL_TYPE: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "newtype");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_INSTANTIATE: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "instantiate");
+        break;
+      }
+
       case MATTE_TOKEN_EXTERNAL_PRINT: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "print");
         break;
@@ -2440,6 +2449,17 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
+      case MATTE_TOKEN_EXTERNAL_TYPE: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TYPE);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_INSTANTIATE: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_INSTANTIATE);
+        *src = iter->next;
+        return inst;
+      }
+      
 
 
       case MATTE_TOKEN_VARIABLE_NAME: {

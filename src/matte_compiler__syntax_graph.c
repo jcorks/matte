@@ -132,6 +132,8 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_TYPETYPE, MATTE_STR_CAST("Type Type object"),
 
 
+        MATTE_TOKEN_EXTERNAL_TYPE, MATTE_STR_CAST("Type creator built-in"),
+        MATTE_TOKEN_EXTERNAL_INSTANTIATE, MATTE_STR_CAST("Instantiate built-in"),
         MATTE_TOKEN_EXTERNAL_INTROSPECT, MATTE_STR_CAST("Introspect built-in"),
         MATTE_TOKEN_EXTERNAL_PRINT, MATTE_STR_CAST("Print built-in"),
         MATTE_TOKEN_EXTERNAL_ERROR, MATTE_STR_CAST("Error built-in"),
@@ -471,6 +473,8 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_TYPEOBJECT,
             MATTE_TOKEN_EXTERNAL_TYPETYPE,
             MATTE_TOKEN_EXTERNAL_INTROSPECT,
+            MATTE_TOKEN_EXTERNAL_TYPE,
+            MATTE_TOKEN_EXTERNAL_INSTANTIATE,
             MATTE_TOKEN_EXTERNAL_PRINT,
             MATTE_TOKEN_EXTERNAL_ERROR,
 
