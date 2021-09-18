@@ -1,35 +1,4 @@
-/*@pObject ::(o) {
-    @already = {};
-    @pspace ::(level) {
-        @str = '';
-        for([0, level], ::{
-            str = str + ' ';
-        });
-        return str;
-    };
-    @helper ::(obj, level) {
-        @poself = context;
 
-        return match(introspect(obj).type()) {
-            ('string') :    obj,
-            ('number') : ''+obj,
-            ('boolean'): ''+obj,
-            ('empty')  : 'empty',
-            ('object') : ::{
-                when(already[obj] == true) '[already printed]';
-                 
-                @output = '{\n';
-                foreach(obj, ::(key, val) {
-                    output = output + pspace(level)+(AsString(key))+' : '+poself(val, level+1) + ',\n';
-                });
-                output = output + pspace(level) + '}\n';
-                already[obj] = true;
-                return output;                
-            }()
-        };
-    };
-    print(helper(o, 0));
-};*/
 @class ::(d) {
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.
@@ -53,6 +22,7 @@
 
 
     <@> classinst = {};
+    classinst.typeobj = newtype({'name' : d.name});
     if(d.declare) d.declare();
     <@> define = d.define;
 
@@ -109,13 +79,14 @@
                 inherits.new(args, out);
             }();
         }();
-        out = if(out) out else {};
+        out = if(out) out else instantiate(classinst.typeobj);
 
         @setters;
         @getters;
         @funcs;
         @varnames;
         @mthnames;
+        @ops;
         if(out.publicVars)::{
             setters = out.setters;
             getters = out.getters;
@@ -145,8 +116,12 @@
 
         out.interface = ::(obj){
             <@> keys = introspect(obj).keys();
+            if (obj.operator) ::{
+                ops = obj.operator;
+                removeKey(obj, 'operator');
+            }();
             foreach(obj, ::(key, v) {
-                when(introspect(v).type() != 'object')::{
+                when(introspect(v).type() != Object)::{
                     error("Class interfaces can only have getters/setters and methods. (has type: " + introspect(v).type() + ")");
                 }();
                 if(introspect(v).isCallable())::{
@@ -164,7 +139,9 @@
                     };
                 }();
             });
+
         };
+
 
         define(out, args, classinst);
         removeKey(out, 'interface');
@@ -172,7 +149,7 @@
 
 
         if(noseal == empty) ::{
-            out.accessor = ::(key) {
+            out.getter = ::(key) {
                 when(key == 'introspect') {
                     public : {
                         variables : varnames,
@@ -180,6 +157,8 @@
                     }
                 };
                 when(key == 'isa') isa;
+
+                when(key == 'operator') ops;
 
                 @out = getters[key];
                 when(out) out();
@@ -194,7 +173,7 @@
                 error('' +key+ " does not exist within this instances class." + str);
             };
 
-            out.assigner = ::(key, value){
+            out.setter = ::(key, value){
                 @out = setters[key];
                 when(out) out(value);
                 error('' +key+ " does not exist within this instances class.");

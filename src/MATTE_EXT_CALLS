@@ -200,10 +200,26 @@ static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, matteArr
 }
 
 
-static matteValue_t vm_ext_call__type(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-
+static matteValue_t vm_ext_call__newtype(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (matte_array_get_size(args)) {
+        matte_value_into_new_type(&out, matte_array_at(args, matteValue_t, 0));
+    } else {
+        matte_value_into_new_type(&out, out);
+    }
+    return out;
 }
 
+static matteValue_t vm_ext_call__instantiate(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (matte_array_get_size(args) < 1) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("instantiate requires at least one argument"));
+        return out;
+    }
+
+    matte_value_into_new_object_ref_typed(&out, matte_array_at(args, matteValue_t, 0));
+    return out;
+}
 
 
 
@@ -248,8 +264,8 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
     matteValue_t * v = matte_table_find_by_uint(vm->imported, fileid);
     if (v) {
         #ifdef MATTE_DEBUG
-            printf("import() returning pre-computed value\n");
-            fflush(stdout);
+            //printf("import() returning pre-computed value\n");
+            //fflush(stdout);
         #endif
         matteValue_t cpy = matte_heap_new_value(vm->heap);
         matte_value_into_copy(&cpy, *v);

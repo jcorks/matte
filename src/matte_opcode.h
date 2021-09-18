@@ -24,8 +24,6 @@ typedef enum {
     MATTE_OPCODE_NAR,
     // push new object with defined keys and values
     MATTE_OPCODE_NSO,
-    // push new type. settings object consumed.
-    MATTE_OPCODE_NTP,
     
     // push a new callstack from the given function object.
     MATTE_OPCODE_CAL,

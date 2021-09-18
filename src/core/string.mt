@@ -3,7 +3,7 @@
 @String = class({
     name : 'Matte.String',
     define ::(this, args, classinst) {
-        @str = if(args) AsString(args) else "";
+        @str = if(args) String(args) else "";
         @intr = introspect(str);
         @len = intr.length();
         this.interface({

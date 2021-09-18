@@ -1,9 +1,11 @@
 <@>class = import('Matte.Class');
 
+
+
 @Array = class({
     name : 'Matte.Array',
     define ::(this, args, classinst) {
-        <@>data = if(AsBoolean(args) && introspect(args).type() == 'object') args else [];
+        <@>data = if(Boolean(args) && introspect(args).type() == Object) args else [];
          @ len = introspect(data).keycount();
 
         this.interface({
@@ -68,7 +70,7 @@
             // "<" operator is used instead.
             sort ::(cmp) {
                 // ensures a comparator exists if there isnt one.
-                cmp = if(AsBoolean(cmp)) cmp else ::(a, b) {
+                cmp = if(Boolean(cmp)) cmp else ::(a, b) {
                     when(a < b) -1;
                     when(a > b)  1;
                     return 0;
@@ -164,23 +166,29 @@
 
 
 
-            toString ::{
-                @str = '[';
-                for([0, len], ::(i){
-                    str = str + (AsString(data[i]));
-                    when(i != len-1)::{
-                        str = str + ', ';
-                    }();
-                });
-                return str + ']';
-            },
-
             operator : {
                 '[]' :: (key){
                     return data[key];
-                }
+                },
 
+                (String) ::{
+                    @str = '[';
+                    for([0, len], ::(i){
+                        <@> strRep = ::{
+                            context.catch = ::{};
+                            return (String(data[i]));
+                        }();
+
+                        str = str + if (strRep) strRep else ('<' + introspect(data[i]).type() + '>');
+
+                        when(i != len-1)::{
+                            str = str + ', ';
+                        }();
+                    });
+                    return str + ']';
+                }
             }
+            
         });
     }
 });

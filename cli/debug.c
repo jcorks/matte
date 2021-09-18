@@ -79,7 +79,9 @@ static void printArea() {
     uint32_t fileid = matte_bytecode_stub_get_file_id(frame.stub);
     uint32_t numinst;
     const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
-    uint32_t line = inst[frame.pc].lineNumber;
+    uint32_t line = 0;
+    if (frame.pc-1 >= 0 && frame.pc-1 < numinst)
+        line = inst[frame.pc-1].lineNumber;
 
     // ansi clear screen
     printf("\x1b[2J");
@@ -240,7 +242,7 @@ static int execCommand() {
                !strcmp(command, "p")) {
 
         matteString_t * src = matte_string_create();
-        matte_string_concat_printf(src, "return (%s);", res);
+        matte_string_concat_printf(src, "return import('debug.mt').printObject(%s);", res);
 
 
         matteValue_t output = matte_vm_run_scoped_debug_source(
@@ -253,11 +255,7 @@ static int execCommand() {
 
         const matteString_t * str = matte_value_as_string(output);
         if (str) {
-            if (output.binID == MATTE_VALUE_TYPE_STRING) {
-                printf("'%s'\n", matte_string_get_c_str(str));
-            } else {
-                printf("%s\n", matte_string_get_c_str(str));            
-            }
+            printf("%s\n", matte_string_get_c_str(str));            
         }
         matte_string_destroy(src);  
 
@@ -280,6 +278,10 @@ static void onDebugEvent(
     void * data
 ) {
     if (event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED) {
+        // error happened before stackframe could start, so its not super useful to start at 0
+        if (matte_vm_get_stackframe(vm, stackframe).pc == 0)
+            stackframe++;
+
         printArea();
         matteString_t * str = matte_value_as_string(val);
         printf("ERROR RAISED FROM VIRTUAL MACHINE: %s\n", str ? matte_string_get_c_str(str) : "<no string info given>");
@@ -316,7 +318,7 @@ int matte_debug(const char * input) {
     matte_t * m = matte_create();
     vm = matte_get_vm(m);
     matte_vm_add_system_symbols(vm);
-    DEBUG_FILEID = matte_vm_get_new_file_id(vm);
+    DEBUG_FILEID = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(input));
     matte_vm_set_debug_callback(vm, onDebugEvent, NULL);
     printf("Compiling %s...\n", input);
     fflush(stdout);    

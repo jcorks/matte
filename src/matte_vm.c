@@ -257,7 +257,6 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_NFN: return "NFN";
       case MATTE_OPCODE_NAR: return "NAR";
       case MATTE_OPCODE_NSO: return "NSO";
-      case MATTE_OPCODE_NTP: return "NTP";  
         
       case MATTE_OPCODE_CAL: return "CAL";
       case MATTE_OPCODE_ARF: return "ARF";
@@ -516,13 +515,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }
           
-          case MATTE_OPCODE_NTP: {
-            matteValue_t v = matte_heap_new_value(vm->heap);
-            matte_value_into_new_type(&v);
-            STACK_PUSH(v);
-            break;
-          }
-
+  
           case MATTE_OPCODE_CAL: {
 
             uint32_t argcount;
@@ -1365,7 +1358,9 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
         matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, 0);
         uint32_t numinst;
         const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
-        uint32_t line = inst[frame.pc-1].lineNumber;        
+        uint32_t line = 0;
+        if (frame.pc-1 < numinst && frame.pc-1 >= 0)
+            line = inst[frame.pc-1].lineNumber;        
         vm->debug(
             vm,
             MATTE_VM_DEBUG_EVENT__ERROR_RAISED,

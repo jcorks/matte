@@ -6,16 +6,16 @@
         @encodeValue ::(obj){
             @encodeSub = context;
             return match(introspect(obj).type()) {
-                ('number'): ''+obj,
-                ('string'): '\"'+obj+'\"',
-                ('boolean'): ''+obj,
-                ('object'): ::{
+                (Number): ''+obj,
+                (String): '\"'+obj+'\"',
+                (Boolean): ''+obj,
+                (Object): ::{
                     @ostr = '{';
                     foreach(obj, ::(k, v){
                         if (ostr != '{')::{
                             ostr = ostr+',';
                         }();
-                        ostr = ostr + '\"'+AsString(k)+'\":'+encodeSub(v);
+                        ostr = ostr + '\"'+String(k)+'\":'+encodeSub(v);
                     });
                     @ostr = ostr+'}';
                     return ostr;
@@ -150,7 +150,7 @@
                         };       
                     });
 
-                    return AsNumber(rawnumstr);
+                    return Number(rawnumstr);
                 }(),
                     
                    
@@ -281,16 +281,16 @@ print(JSON.encode({
         @poself = context;
 
         return match(introspect(obj).type()) {
-            ('string') :    obj,
-            ('number') : ''+obj,
-            ('boolean'): ''+obj,
-            ('empty')  : 'empty',
-            ('object') : ::{
+            (String) :    obj,
+            (Number) : ''+obj,
+            (Boolean): ''+obj,
+            (Empty)  : 'empty',
+            (Object) : ::{
                 when(already[obj] == true) '[already printed]';
                  
                 @output = '{\n';
                 foreach(obj, ::(key, val) {
-                    output = output + pspace(level)+(AsString(key))+' : '+poself(val, level+1) + ',\n';
+                    output = output + pspace(level)+(String(key))+' : '+poself(val, level+1) + ',\n';
                 });
                 output = output + pspace(level) + '}\n';
                 already[obj] = true;

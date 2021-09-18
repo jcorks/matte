@@ -202,7 +202,7 @@ static matteValue_t vm_ext_call__introspect_iscallable(matteVM_t * vm, matteValu
     matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_boolean(&out, matte_value_is_callable(a));
+    matte_value_into_boolean(&out, matte_value_is_callable(a) != 0);
     matte_heap_recycle(a);
     return out;
 }

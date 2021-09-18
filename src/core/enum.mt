@@ -1,11 +1,7 @@
-@class = import('Matte.Class');
 
+@enum ::(opts, name) {
 
-@enum ::(name, opts) {
-    // use this object as a key
-    context.auto = {};
-
-    @enumtype = newtype({'name':'MatteEnumerator'+context.enumID});
+    @enumtype = newtype({'name':if (name) name else ('MatteEnumerator'+context.enumID)});
     context.enumID = context.enumID+1;
 
     // creates an enum value.
@@ -15,27 +11,28 @@
         @val = instantiate(enumtype);
         val.numHint = numHint;
         
-        val.getter = ::() {
-            error('Enumerator value has no properties.');
-        };    
 
-        val.setter = ::(key){
-            error('Enumerator value has no properties.');
-        };    
-        
         
         val.operator = {
             // throw an error if comparing against other non-enum types
             '==' :: (other => enumtype) {
-                return numHint == enumtype.numHint;
+                return numHint == other.numHint;
             },
             
             
-            Number :: {
+            (Number) :: {
                 return numHint;
             }
         };
-    }
+
+
+
+        val.setter = ::(key){
+            error('Enumerator value has no properties.');
+        };    
+        return val;
+    };
+
 
 
 
@@ -48,7 +45,7 @@
         return match(introspect(val).type()) {
             (Number) : createEnumVal(val),
             (Object) : 
-                if(val == context.auto) ::{
+                if(val == enum.auto) ::{
                     @varOut = autoNum;
                     autoNum = autoNum + 1;
                     return createEnumVal(varOut);
@@ -57,7 +54,7 @@
             default :
                 error('Cannot give a non-number type as an enum value')
         };
-    }
+    };
     
     foreach(opts, ::(key, val) {
         ptype[key] = valToKey(val);
@@ -65,26 +62,18 @@
     
     
     @output = {};
-    output.setter = ::{
-        error('Enum value is read-only');
-    };
     output.getter = ::(k) => enumtype {
         return ptype[k];
     };
-}
+    output.setter = ::{
+        error('Enum value is read-only');
+    };
+
+    return output;
+};
 enum.enumID = 0;
+enum.auto = {};
+
+return enum;
 
 
-
-
-/*
-@myEnum = enum({
-    SomeValue : enum.auto,
-    SomeValue1 : enum.auto,
-    SomeValue2 : enum.auto,
-    SomeValue3 : enum.auto,
-    SomeValue4 : enum.auto
-});
-
-
-*/

@@ -145,7 +145,7 @@ int main(int argc, char ** args) {
                 printf("Couldn't open file %s\n", args[2+i]);
                 exit(1);
             }
-            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_new_file_id(vm), data, len);
+            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_new_file_id(vm, MATTE_STR_CAST(args[2+i])), data, len);
             if (arr) {
                 uint32_t j;
                 uint32_t jlen = matte_array_get_size(arr);
@@ -226,7 +226,7 @@ int main(int argc, char ** args) {
 
         // first compile all and add them 
         for(i = 0; i < len; ++i) {
-            FILEIDS[i] = matte_vm_get_new_file_id(vm);
+            FILEIDS[i] = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(args[i+1]));
             uint32_t lenBytes;
             uint8_t * src = dump_bytes(args[i+1], &lenBytes);
             if (!src || !lenBytes) {

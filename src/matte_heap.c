@@ -344,6 +344,8 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->sortedHeaps[MATTE_VALUE_TYPE_STRING] = matte_bin_create(create_string, destroy_string);
     out->sortedHeaps[MATTE_VALUE_TYPE_OBJECT] = matte_bin_create(create_object, destroy_object);
     out->typecode2data = matte_array_create(sizeof(MatteTypeData));
+    MatteTypeData dummyD = {};
+    matte_array_push(out->typecode2data, dummyD);
     out->toSweep = matte_table_create_hash_pointer();
 
 
@@ -413,13 +415,12 @@ void matte_value_into_new_type(matteValue_t * v, matteValue_t opts) {
     } else {
         v->objectID = ++(v->heap->typepool);
     }
-    i
     MatteTypeData data;
     if (opts.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matteValue_t v = matte_value_object_access_string(opts, MATTE_STR_CAST("name"));
-        if (v.binID) {
-            data.name = matte_value_as_string(v);
-            matte_heap_recycle(v);
+        matteValue_t val = matte_value_object_access_string(opts, MATTE_STR_CAST("name"));
+        if (val.binID) {
+            data.name = matte_value_as_string(val);
+            matte_heap_recycle(val);
         } else {
             data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);        
         }
@@ -431,6 +432,7 @@ void matte_value_into_new_type(matteValue_t * v, matteValue_t opts) {
         data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);
         data.isa = NULL;
     }
+    matte_array_push(v->heap->typecode2data, data);
 }
 
 
@@ -461,6 +463,28 @@ void matte_value_into_new_object_ref(matteValue_t * v) {
     #endif
 
 }
+
+
+void matte_value_into_new_object_ref_typed(matteValue_t * v, matteValue_t typeobj) {
+    matte_heap_recycle(*v);
+    v->binID = MATTE_VALUE_TYPE_OBJECT;
+    matteObject_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], &v->objectID);
+    d->heapID = v->objectID;
+    if (typeobj.binID != MATTE_VALUE_TYPE_TYPE) {        
+        matteString_t * str = matte_string_create_from_c_str("Cannot instantiate object without a Type. (given value is of type %s)", matte_value_type_name(matte_value_get_type(typeobj)));
+        matte_vm_raise_error_string(v->heap->vm, str);
+        matte_string_destroy(str);
+        d->typecode = v->heap->type_object.objectID;
+    } else {
+        d->typecode = typeobj.objectID;
+    }
+    d->refs = 1;
+    #ifdef MATTE_DEBUG__HEAP
+        printf("INCR (NEW EMPTY OBJ) %d: %d\n", d->heapID, d->refs);
+    #endif
+
+}
+
 
 void matte_value_into_new_object_literal_ref(matteValue_t * v, const matteArray_t * arr) {
     matte_heap_recycle(*v);
@@ -1569,10 +1593,10 @@ const matteString_t * matte_value_type_name(matteValue_t v) {
       case 5:   return MATTE_STR_CAST("Object");
       case 6:     return MATTE_STR_CAST("Type");
       default: { 
-        if (v->objectID >= matte_array_get_size(v.heap->typecode2data)) {
+        if (v.objectID >= matte_array_get_size(v.heap->typecode2data)) {
             matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("VM error: no such type exists..."));                    
-        } else {
-            return matte_array_at(v.heap->typecode2data, MatteTypeData, b.objectID).name;
+        } else
+            return matte_array_at(v.heap->typecode2data, MatteTypeData, v.objectID).name;
       }
     }
 

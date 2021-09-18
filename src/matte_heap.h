@@ -56,6 +56,12 @@ void matte_value_into_string(matteValue_t *, const matteString_t *);
 // Sets the type to an object that points to a new, empty object.
 void matte_value_into_new_object_ref(matteValue_t *);
 
+// Sets the type to an object that points to a new, empty object 
+// with the given type.
+void matte_value_into_new_object_ref_typed(matteValue_t *, matteValue_t type);
+
+
+
 // Sets the type to a Type with the given typecode. Typecode values
 // are only visible to the C / supervisor contexts.
 void matte_value_into_new_type(matteValue_t *, matteValue_t opts);

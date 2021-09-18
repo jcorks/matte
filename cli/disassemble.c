@@ -126,11 +126,6 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 fprintf(fout, "nso %d\n", a);
                 break;            
 
-            case MATTE_OPCODE_NTP:
-                fprintf(fout, "ntp\n");
-                break;            
-            
-
             
             case MATTE_OPCODE_CAL:
                 a = *(uint32_t*)data.bytes;
@@ -212,14 +207,12 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                     case MATTE_EXT_CALL_IMPORT:
                         fprintf(fout, "import\n");
                         break;
-                    case MATTE_EXT_CALL_TONUMBER:
-                        fprintf(fout, "tonumber\n");
+                    case MATTE_EXT_CALL_TYPE:
+                        fprintf(fout, "newtype\n");
                         break;
-                    case MATTE_EXT_CALL_TOSTRING:
-                        fprintf(fout, "tostring\n");
+                    case MATTE_EXT_CALL_INSTANTIATE:
+                        fprintf(fout, "instantiate\n");
                         break;
-                    case MATTE_EXT_CALL_TOBOOLEAN:
-                        fprintf(fout, "toboolean\n");
                         break;
                     case MATTE_EXT_CALL_INTROSPECT:
                         fprintf(fout, "introspect\n");

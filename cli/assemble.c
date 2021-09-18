@@ -344,16 +344,6 @@ static void function_to_stub(FILE * f, uint32_t id) {
                 }
 
             } else if (
-                oc0 == 'n' &&
-                oc1 == 't' &&
-                oc2 == 'p'
-            ) {
-                inst->opcode = MATTE_OPCODE_NTP;
-                if (sscanf(line, "%"SCNu32" ntp", &inst->line) != 1) {
-                    printf("ERROR on line %d: unrecognized ntp format. Syntax: [line] ntp\n", lineN);
-                    exit(1);                
-                }
-            } else if (
                 oc0 == 's' &&
                 oc1 == 'f' &&
                 oc2 == 's'
@@ -511,12 +501,10 @@ static void function_to_stub(FILE * f, uint32_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOREACH;
                 } else if (!strcmp("match", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_MATCH;
-                } else if (!strcmp("tostring", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TOSTRING;
-                } else if (!strcmp("tonumber", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TONUMBER;
-                } else if (!strcmp("toboolean", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TOBOOLEAN;
+                } else if (!strcmp("newtype", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TYPE;
+                } else if (!strcmp("instantiate", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_INSTANTIATE;
                 } else if (!strcmp("introspect", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_INTROSPECT;
                 } else if (!strcmp("getExternalFunction", m)) {
