@@ -32,7 +32,7 @@ static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * 
     printf(
         "Error compiling rom: %s\n(%s, line %d:%d)\n",
         matte_string_get_c_str(s),
-        str,
+        (char*)str,
         line, ch
     );
     exit(1);
@@ -56,6 +56,7 @@ int main() {
         "array.mt",  "Matte.Array",
         "string.mt", "Matte.String",
         "json.mt",   "Matte.JSON",
+        "enum.mt",   "Matte.Enum",
         "core.mt",   "Matte.Core",
         NULL
     };

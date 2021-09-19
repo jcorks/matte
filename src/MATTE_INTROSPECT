@@ -327,46 +327,91 @@ static matteValue_t vm_ext_call__introspect_floor(matteVM_t * vm, matteValue_t f
 }
 
 static matteValue_t vm_ext_call__introspect_ceil(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_number(&out, ceil(matte_value_as_number(a)));
+    return out;
 }
 
 static matteValue_t vm_ext_call__introspect_round(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_number(&out, round(matte_value_as_number(a)));
+    return out;
 }
 static matteValue_t vm_ext_call__introspect_toradians(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_number(&out, matte_value_as_number(a) * (M_PI / 180.0));
+    return out;
 }
 static matteValue_t vm_ext_call__introspect_todegrees(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_number(&out, matte_value_as_number(a) * (180.0 / M_PI));
+    return out;
 }
 
 static matteValue_t vm_ext_call__introspect_sin(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_number(&out, sin(matte_value_as_number(a)));
+    return out;
 }
 
 static matteValue_t vm_ext_call__introspect_cos(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_number(&out, cos(matte_value_as_number(a)));
+    return out;
 }
 
 static matteValue_t vm_ext_call__introspect_tan(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_number(&out, tan(matte_value_as_number(a)));
+    return out;
 }
 
 static matteValue_t vm_ext_call__introspect_abs(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_number(&out, fabs(matte_value_as_number(a)));
+    return out;
 }
 
 static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_boolean(&out, isnan(matte_value_as_number(a)));
+    return out;
 }
 
 static matteValue_t vm_ext_call__introspect_nowrite(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
