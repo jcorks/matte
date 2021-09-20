@@ -24,6 +24,7 @@ enum {
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_COS,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_TAN,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS,
+    MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN,
 
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE,
@@ -63,6 +64,7 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
         "cos",
         "tan",
         "abs",
+        "sqrt",
         "isNaN"
 
 
@@ -90,6 +92,7 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_COS),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TAN),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS),
+        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN)
 
     };
@@ -401,6 +404,17 @@ static matteValue_t vm_ext_call__introspect_abs(matteVM_t * vm, matteValue_t fn,
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
     matte_value_into_number(&out, fabs(matte_value_as_number(a)));
+    return out;
+}
+
+
+static matteValue_t vm_ext_call__introspect_sqrt(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    matte_value_into_number(&out, sqrt(matte_value_as_number(a)));
     return out;
 }
 

@@ -606,7 +606,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             prev = t->iter;
             int c = utf8_next_char(&t->iter);
             switch(c) {
-              case '-':
               case '0':
               case '1':
               case '2':
@@ -895,6 +894,61 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '=');
         break;
       }
+
+      case MATTE_TOKEN_ASSIGNMENT_ADD: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "+=");
+        break;
+      }
+      case MATTE_TOKEN_ASSIGNMENT_SUB: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "-=");
+        break;
+      }
+      case MATTE_TOKEN_ASSIGNMENT_MULT:  {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "*=");
+        break;
+      }
+
+      case MATTE_TOKEN_ASSIGNMENT_DIV: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "/=");
+        break;
+      }
+
+      case MATTE_TOKEN_ASSIGNMENT_MOD: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "%=");
+        break;
+      }
+
+      case MATTE_TOKEN_ASSIGNMENT_POW: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "**=");
+        break;
+      }
+
+      case MATTE_TOKEN_ASSIGNMENT_AND:  {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "&=");
+        break;
+      }
+
+      case MATTE_TOKEN_ASSIGNMENT_OR: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "|=");
+        break;
+      }
+
+      case MATTE_TOKEN_ASSIGNMENT_XOR: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "^=");
+        break;
+      }
+
+      case MATTE_TOKEN_ASSIGNMENT_BLEFT: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "<<=");
+        break;
+      }
+
+      case MATTE_TOKEN_ASSIGNMENT_BRIGHT: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, ">>=");
+        break;
+      }
+
+
       case MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_START: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '[');
 
@@ -916,6 +970,54 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       case MATTE_TOKEN_GENERAL_OPERATOR1: {
         int c = utf8_next_char(&t->iter);
         switch(c) {
+          case '-':
+            t->character++;
+            t->backup = t->iter;
+            c = utf8_next_char(&t->iter);
+            switch(c) {
+              case '-':
+                t->character+=2;
+                t->backup = t->iter;
+                return new_token(
+                    matte_string_create_from_c_str("-%c", c),
+                    currentLine,
+                    currentCh,
+                    ty
+                );            
+                break;
+
+              default:
+                t->iter = t->backup;
+                return new_token(
+                    matte_string_create_from_c_str("-", c),
+                    currentLine,
+                    currentCh,
+                    ty
+                );            
+            }
+            break;
+
+          case '+':
+            t->character++;
+            t->backup = t->iter;
+            c = utf8_next_char(&t->iter);
+            switch(c) {
+              case '+':
+                t->character+=2;
+                t->backup = t->iter;
+                return new_token(
+                    matte_string_create_from_c_str("+%c", c),
+                    currentLine,
+                    currentCh,
+                    ty
+                );            
+                break;
+
+              default:
+                t->iter = t->backup;
+                return NULL;          
+            }
+            break;
           case '~':
           case '!':
           case '#':
@@ -2064,17 +2166,18 @@ static matteArray_t * push_variable_name(
 }
 
 
-matteOperator_t string_to_operator(const matteString_t * s) {
+matteOperator_t string_to_operator(const matteString_t * s, matteTokenType_t hint) {
     int opopcode0 = matte_string_get_char(s, 0);
     int opopcode1 = matte_string_get_char(s, 1);
     switch(opopcode0) {
-        case '+': return MATTE_OPERATOR_ADD; break;
+        case '+': 
+        return MATTE_OPERATOR_ADD; break;
+
         case '-': 
         switch(opopcode1) {
             case '>': return MATTE_OPERATOR_POINT; break;
-            default:;
         }
-        return MATTE_OPERATOR_SUB; 
+        return (hint == MATTE_TOKEN_GENERAL_OPERATOR1 ? MATTE_OPERATOR_NEGATE : MATTE_OPERATOR_SUB); 
         break;
 
         case '/': return MATTE_OPERATOR_DIV; break;
@@ -2204,8 +2307,8 @@ struct matteExpressionNode_t {
 // Though.... i have a vague feeling that evil lurks here...
 // an old, inherent evil...
     
-#define POST_OP_SYMBOLIC__ASSIGN_REFERRABLE 9001
-#define POST_OP_SYMBOLIC__ASSIGN_MEMBER     9002
+#define POST_OP_SYMBOLIC__ASSIGN_REFERRABLE 10000
+#define POST_OP_SYMBOLIC__ASSIGN_MEMBER     20000
 static int op_to_precedence(int op) {
     switch(op) {
       case MATTE_OPERATOR_POUND: // # 1 operand
@@ -2217,6 +2320,7 @@ static int op_to_precedence(int op) {
 
       case MATTE_OPERATOR_NOT:
       case MATTE_OPERATOR_BITWISE_NOT:
+      case MATTE_OPERATOR_NEGATE:
         return 2;
 
       case MATTE_OPERATOR_DIV:
@@ -2265,9 +2369,6 @@ static int op_to_precedence(int op) {
         return 13;
 
 
-      case POST_OP_SYMBOLIC__ASSIGN_MEMBER:
-      case POST_OP_SYMBOLIC__ASSIGN_REFERRABLE:
-        return 99;
     }
     return 999;
 }
@@ -2977,6 +3078,43 @@ static matteArray_t * compile_match(
     return NULL;
 }
 
+static int token_is_assignment_derived(matteTokenType_t t) {
+    switch(t) {
+      case MATTE_TOKEN_ASSIGNMENT:
+      case MATTE_TOKEN_ASSIGNMENT_ADD:
+      case MATTE_TOKEN_ASSIGNMENT_SUB:
+      case MATTE_TOKEN_ASSIGNMENT_MULT:
+      case MATTE_TOKEN_ASSIGNMENT_DIV:
+      case MATTE_TOKEN_ASSIGNMENT_MOD:
+      case MATTE_TOKEN_ASSIGNMENT_POW:
+      case MATTE_TOKEN_ASSIGNMENT_AND:
+      case MATTE_TOKEN_ASSIGNMENT_OR:
+      case MATTE_TOKEN_ASSIGNMENT_XOR:
+      case MATTE_TOKEN_ASSIGNMENT_BLEFT:
+      case MATTE_TOKEN_ASSIGNMENT_BRIGHT:
+        return TRUE + (t - (int)MATTE_TOKEN_ASSIGNMENT);
+    }
+    return FALSE;
+}   
+
+static int assignment_token_to_op(matteTokenType_t t) {
+    switch(t) {
+      case MATTE_TOKEN_ASSIGNMENT_ADD: return MATTE_OPERATOR_ASSIGNMENT_ADD;
+      case MATTE_TOKEN_ASSIGNMENT_SUB: return MATTE_OPERATOR_ASSIGNMENT_SUB;
+      case MATTE_TOKEN_ASSIGNMENT_MULT: return MATTE_OPERATOR_ASSIGNMENT_MULT;
+      case MATTE_TOKEN_ASSIGNMENT_DIV: return MATTE_OPERATOR_ASSIGNMENT_DIV;
+      case MATTE_TOKEN_ASSIGNMENT_MOD: return MATTE_OPERATOR_ASSIGNMENT_MOD;
+      case MATTE_TOKEN_ASSIGNMENT_POW: return MATTE_OPERATOR_ASSIGNMENT_POW;
+      case MATTE_TOKEN_ASSIGNMENT_AND: return MATTE_OPERATOR_ASSIGNMENT_AND;
+      case MATTE_TOKEN_ASSIGNMENT_OR:  return MATTE_OPERATOR_ASSIGNMENT_OR;
+      case MATTE_TOKEN_ASSIGNMENT_XOR: return MATTE_OPERATOR_ASSIGNMENT_XOR;
+      case MATTE_TOKEN_ASSIGNMENT_BLEFT: return MATTE_OPERATOR_ASSIGNMENT_BLEFT;
+      case MATTE_TOKEN_ASSIGNMENT_BRIGHT: return MATTE_OPERATOR_ASSIGNMENT_BRIGHT;
+      default:;
+    }
+    return -1;
+}   
+
 // Returns an array of instructions that, when computed in order,
 // produce exactly ONE value on the stack (the evaluation of the expression).
 // returns NULL on failure. Expected to report errors 
@@ -3194,7 +3332,7 @@ static matteArray_t * compile_expression(
         int line = -1;
         if (iter->ttype == MATTE_TOKEN_GENERAL_OPERATOR1) {
             // operator first
-            preOp = string_to_operator(iter->text);
+            preOp = string_to_operator(iter->text, iter->ttype);
             iter = iter->next;
         }
         line = iter->line;
@@ -3207,12 +3345,11 @@ static matteArray_t * compile_expression(
         if (!valueInst) {
             goto L_FAIL;
         }
-
         if (iter->ttype == MATTE_TOKEN_GENERAL_OPERATOR2) {
             // operator first
-            postOp = string_to_operator(iter->text);
+            postOp = string_to_operator(iter->text, iter->ttype);
             iter = iter->next;
-        } else if (iter->ttype == MATTE_TOKEN_ASSIGNMENT) {
+        } else if (token_is_assignment_derived(iter->ttype)) {
             if (!lvalue) {
                 matte_syntax_graph_print_compile_error(g, iter, "Assignment operator in expression requires writable value on left-hand side of the assignment.");
                 goto L_FAIL;
@@ -3233,7 +3370,7 @@ static matteArray_t * compile_expression(
             // Heres the fun part: lvalues are either
             // values that got reduced to a referrable OR an expression dot access OR a table lookup result.
             if (isSimpleReferrable) {
-                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE;        
+                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE + assignment_token_to_op(iter->ttype);        
                 if (undo.opcode != MATTE_OPCODE_PRF) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing referrable token. (internal error)");
                     goto L_FAIL;
@@ -3242,7 +3379,7 @@ static matteArray_t * compile_expression(
                 // for handling assignment for the dot access and the [] lookup, 
                 // the OLK instruction will be removed. This leaves both the 
                 // object AND the key on the stack (since OLK would normally consume both)
-                postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER;
+                postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER + assignment_token_to_op(iter->ttype);
                 matte_array_set_size(valueInst, size-1);
                 if (undo.opcode != MATTE_OPCODE_OLK) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing lookup token. (internal error)");
@@ -3285,8 +3422,10 @@ static matteArray_t * compile_expression(
         // for 2-operand instructions, the first node is merged with the second node by 
         // putting instructions to compute it in order. 
         if (n->postOp > -1) {
-            switch(n->postOp) {
-              case POST_OP_SYMBOLIC__ASSIGN_REFERRABLE: {
+            if (n->postOp >= POST_OP_SYMBOLIC__ASSIGN_MEMBER) {
+                merge_instructions(n->next->value, n->value);
+                write_instruction__osn(n->next->value, n->next->line, n->postOp - POST_OP_SYMBOLIC__ASSIGN_MEMBER);                
+            } else if(n->postOp >= POST_OP_SYMBOLIC__ASSIGN_REFERRABLE) {
                 uint32_t instSize = matte_array_get_size(n->value);
                 matteBytecodeStubInstruction_t lastPRF = matte_array_at(n->value, matteBytecodeStubInstruction_t, instSize-1);
                 matte_array_set_size(n->value, instSize-1);
@@ -3298,19 +3437,14 @@ static matteArray_t * compile_expression(
                     goto L_FAIL;
                 }
                 merge_instructions(n->next->value, n->value);
-                write_instruction__arf(n->next->value, n->next->line, referrable);
-                break;
-              }
-              case POST_OP_SYMBOLIC__ASSIGN_MEMBER:
-                merge_instructions(n->next->value, n->value);
-                write_instruction__osn(n->next->value, n->next->line);
-                break;
-              default:
+                write_instruction__arf(n->next->value, n->next->line, referrable, n->postOp - POST_OP_SYMBOLIC__ASSIGN_REFERRABLE);
+            } else {
                 // [1] op [2] -> [1 2 op]
                 merge_instructions(n->next->value, n->value);
                 write_instruction__opr(n->next->value, n->next->line, n->postOp);
 
             }
+
 
             // Remove all trances of n. Sorry!
             for(si = i+1; si < len; ++si) {

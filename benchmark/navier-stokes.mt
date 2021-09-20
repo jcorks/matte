@@ -34,7 +34,7 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
 
 @runNavierStokes = ::{
     solver.update();
-}
+};
 
 @setupNavierStokes = ::{
     solver = FluidField();
@@ -43,23 +43,23 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
     solver.setDisplayFunction(::{});
     solver.setUICallback(prepareFrame);
     solver.reset();
-}
+};
 
 @tearDownNavierStokes = ::{
-    solver = null;
-}
+    solver = empty;
+};
 
 @addPoints = ::(field) {
     @n = 64;
     for ([1, n+1],::(i) {
         field.setVelocity(i, i, n, n);
         field.setDensity(i, i, 5);
-        field.setVelocity(i, n - i, -n, -n);
+        field.setVelocity(i, n - i, -1*n, -1*n);
         field.setDensity(i, n - i, 20);
-        field.setVelocity(128 - i, n + i, -n, -n);
+        field.setVelocity(128 - i, n + i, -1*n, -1*n);
         field.setDensity(128 - i, n + i, 30);
     });
-}
+};
 
 @framesTillAddingPoints = 0;
 @framesBetweenAddingPoints = 5;
@@ -72,14 +72,15 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
     }() else ::{
         framesTillAddingPoints = framesTillAddingPoints-1;
     }();
-}
+};
 
 // Code from Oliver Hunt (http://nerget.com/fluidSim/pressure.js) starts here.
 @FluidField = ::(canvas){
+    @this = {};
     @addFields=::(x, s, dt)
     {
-        for([i, size], ::(i){x[i] += dt*s[i];});
-    }
+        for([0, size], ::(i){x[i] = x[i] + dt*s[i];});
+    };
 
     @set_bnd = ::(b, x){
         (match(b) {
@@ -90,15 +91,15 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
                 });
 
                 for ([1, height+1], ::(j){
-                    x[j * rowSize] = -x[1 + j * rowSize];
-                    x[(width + 1) + j * rowSize] = -x[width + j * rowSize];
+                    x[j * rowSize] = -1*x[1 + j * rowSize];
+                    x[(width + 1) + j * rowSize] = -1*x[width + j * rowSize];
                 });
             },
 
             (2): ::{
                 for ([1, width+1], ::(i){
-                    x[i] = -x[i + rowSize];
-                    x[i + (height + 1) * rowSize] = -x[i + height * rowSize];
+                    x[i] = -1*x[i + rowSize];
+                    x[i + (height + 1) * rowSize] = -1*x[i + height * rowSize];
                 });
 
                 for ([1, height+1], ::(j){
@@ -146,7 +147,7 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
                     @currentRow = j * rowSize;
                     @nextRow = (j + 1) * rowSize;
                     @lastX = x[currentRow];
-                    ++currentRow;
+                    currentRow = currentRow+1;
                     for ([1, width+1], ::(i) {
                         currentRow = currentRow+1;
                         lastRow = lastRow+1;
@@ -157,17 +158,17 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
                 set_bnd(b, x);
             });
         }();
-    }
+    };
 
     @diffuse = ::(b, x, x0, dt)
     {
         @a = 0;
         lin_solve(b, x, x0, a, 1 + 4*a);
-    }
+    };
 
     @lin_solve2 = ::(x, x0, y, y0, a, c)
     {
-        if (a == 0 && c == 1) {
+        if (a == 0 && c == 1) ::{
             for([1,height+1], ::(j) {
                 @currentRow = j * rowSize;
                 currentRow = currentRow+1;
@@ -179,7 +180,7 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
             });
             set_bnd(1, x);
             set_bnd(2, y);
-        }() else {
+        }() else ::{
             @invC = 1/c;
             for ([0,iterations], ::(k) {
                 for ([1, height+1], ::(j) {
@@ -188,23 +189,26 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
                     @nextRow = (j + 1) * rowSize;
                     @lastX = x[currentRow];
                     @lastY = y[currentRow];
-                    ++currentRow;
+                    currentRow = currentRow+1;
                     for ([1,width+1], ::(i) {
                         lastX = x[currentRow] = (x0[currentRow] + a * (lastX + x[currentRow] + x[lastRow] + x[nextRow])) * invC;
-                        lastY = y[currentRow] = (y0[currentRow] + a * (lastY + y[++currentRow] + y[++lastRow] + y[++nextRow])) * invC;
+                        currentRow = currentRow+1;
+                        lastRow = lastRow+1;
+                        nextRow = nextRow+1;                        
+                        lastY = y[currentRow] = (y0[currentRow] + a * (lastY + y[currentRow] + y[lastRow] + y[nextRow])) * invC;
                     });
                 });
                 set_bnd(1, x);
                 set_bnd(2, y);
             });
         }();
-    }
+    };
 
     @diffuse2 = ::(x, x0, y, y0, dt)
     {
         @a = 0;
         lin_solve2(x, x0, y, y0, a, 1 + 4 * a);
-    }
+    };
 
     @advect = ::(b, d, d0, u, v, dt)
     {
@@ -215,7 +219,8 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
         for([1,height+1], ::(j) {
             @pos = j * rowSize;
             for ([1,width+1], ::(i) {
-                @x = i - Wdt0 * u[++pos];
+                pos = pos+1;
+                @x = i - Wdt0 * u[pos];
                 @y = j - Hdt0 * v[pos];
 
                 
@@ -247,30 +252,35 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
             });
         });
         set_bnd(b, d);
-    }
+    };
 
     @project = ::(u, v, p, div) 
     {
-        @h = -0.5 / Math.sqrt(width * height);
-        for (@j = 1 ; j <= height; j++ ) {
+        @h = -0.5 / introspect(width * height).sqrt();
+        for ([1,height+1], ::(j) {
             @row = j * rowSize;
             @previousRow = (j - 1) * rowSize;
             @prevValue = row - 1;
             @currentRow = row;
             @nextValue = row + 1;
             @nextRow = (j + 1) * rowSize;
-            for (@i = 1; i <= width; i++ ) {
-                div[++currentRow] = h * (u[++nextValue] - u[++prevValue] + v[++nextRow] - v[++previousRow]);
+            for ([1,width+1], ::(i) {
+                currentRow = currentRow+1;
+                nextValue = nextValue+1;
+                prevValue = prevValue+1;
+                nextRow = nextRow+1;
+                previousRow = previousRow+1;
+                div[currentRow] = h * (u[nextValue] - u[prevValue] + v[nextRow] - v[previousRow]);
                 p[currentRow] = 0;
-            }
-        }
+            });
+        });
         set_bnd(0, div);
         set_bnd(0, p);
 
         lin_solve(0, p, div, 1, 4 );
         @wScale = 0.5 * width;
         @hScale = 0.5 * height;
-        for (@j = 1; j<= height; j++ ) {
+        for ([1,height+1], ::(j) {
             @prevPos = j * rowSize - 1;
             @currentPos = j * rowSize;
             @nextPos = j * rowSize + 1;
@@ -278,21 +288,26 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
             @currentRow = j * rowSize;
             @nextRow = (j + 1) * rowSize;
 
-            for (@i = 1; i<= width; i++) {
-                u[++currentPos] -= wScale * (p[++nextPos] - p[++prevPos]);
-                v[currentPos]   -= hScale * (p[++nextRow] - p[++prevRow]);
-            }
-        }
+            for ([1,width+1], ::(i) {
+                currentPos = currentPos+1;
+                nextRow = nextRow+1;
+                prevRow = prevRow+1;
+                u[currentPos] = u[currentPos] - wScale * (p[nextPos] - p[prevPos]);
+                nextRow = nextRow+1;
+                prevRow = prevRow+1;
+                v[currentPos] = v[currentPos]-  hScale * (p[nextRow] - p[prevRow]);
+            });
+        });
         set_bnd(1, u);
         set_bnd(2, v);
-    }
+    };
 
     @dens_step = ::(x, x0, u, v, dt)
     {
         addFields(x, x0, dt);
         diffuse(0, x0, x, dt );
         advect(0, x, x0, u, v, dt );
-    }
+    };
 
     @vel_step = ::(u, v, u0, v0, dt)
     {
@@ -308,8 +323,8 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
         advect(1, u, u0, u0, v0, dt);
         advect(2, v, v0, u0, v0, dt);
         project(u, v, u0, v0 );
-    }
-    @uiCallback = function(d,u,v) {};
+    };
+    @uiCallback = ::(d,u,v) {};
 
     @Field = ::(dens, u, v) {
         @this = {};
@@ -317,50 +332,51 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
         // but makes the code ugly.
         this.setDensity = ::(x, y, d) {
              dens[(x + 1) + (y + 1) * rowSize] = d;
-        }
+        };
         this.getDensity = ::(x, y) {
              return dens[(x + 1) + (y + 1) * rowSize];
-        }
+        };
         this.setVelocity = ::(x, y, xv, yv) {
              u[(x + 1) + (y + 1) * rowSize] = xv;
              v[(x + 1) + (y + 1) * rowSize] = yv;
-        }
+        };
         this.getXVelocity = ::(x, y) {
              return u[(x + 1) + (y + 1) * rowSize];
-        }
+        };
         this.getYVelocity = ::(x, y) {
              return v[(x + 1) + (y + 1) * rowSize];
-        }
-        this.width = :: { return width; }
-        this.height = :: { return height; }
+        };
+        this.width = :: { return width; };
+        this.height = :: { return height; };
         return this;
-    }
+    };
     @queryUI = ::(d, u, v)
     {
         for ([0, size], ::(i) {
             u[i] = v[i] = d[i] = 0.0;
         });
         uiCallback(Field(d, u, v));
-    }
+    };
 
-    this.update = function () {
+    this.update = ::{
         queryUI(dens_prev, u_prev, v_prev);
         vel_step(u, v, u_prev, v_prev, dt);
         dens_step(dens, dens_prev, u, v, dt);
-        displayFunc(new Field(dens, u, v));
-    }
-    this.setDisplayFunction = function(func) {
+        displayFunc(Field(dens, u, v));
+    };
+    this.setDisplayFunction = ::(func) {
         displayFunc = func;
-    }
+    };
 
-    this.iterations = function() { return iterations; }
-    this.setIterations = function(iters) {
-        if (iters > 0 && iters <= 100)
+    this.iterations = ::() { return iterations; };
+    this.setIterations = ::(iters) {
+        if (iters > 0 && iters <= 100) ::{
            iterations = iters;
-    }
-    this.setUICallback = function(callback) {
+        }();
+    };
+    this.setUICallback = ::(callback) {
         uiCallback = callback;
-    }
+    };
     @iterations = 10;
     @visc = 0.5;
     @dt = 0.1;
@@ -370,35 +386,50 @@ var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
     @u_prev;
     @v;
     @v_prev;
-    @width;
-    @height;
+    @width = 0;
+    @height = 0;
     @rowSize;
     @size;
     @displayFunc;
-    function reset()
-    {
+
+    @reset = ::{
         rowSize = width + 2;
         size = (width+2)*(height+2);
-        dens = new Array(size);
-        dens_prev = new Array(size);
-        u = new Array(size);
-        u_prev = new Array(size);
-        v = new Array(size);
-        v_prev = new Array(size);
-        for (@i = 0; i < size; i++)
-            dens_prev[i] = u_prev[i] = v_prev[i] = dens[i] = u[i] = v[i] = 0;
-    }
+        dens = [];
+        dens_prev = [];
+        u = [];
+        u_prev = [];
+        v = [];
+        v_prev = [];
+        for ([0, size+1], ::(i) {
+            dens_prev[i] = 0;
+            u_prev[i] = 0;
+            v_prev[i] = 0;
+            dens[i] = 0;
+            u[i] = 0;
+            v[i] = 0;
+        });
+    };
     this.reset = reset;
-    this.setResolution = function (hRes, wRes)
+    this.setResolution = ::(hRes, wRes)
     {
         @res = wRes * hRes;
-        if (res > 0 && res < 1000000 && (wRes != width || hRes != height)) {
+        if (res > 0 && res < 1000000 && (wRes != width || hRes != height)) ::{
             width = wRes;
             height = hRes;
             reset();
             return true;
-        }
+        }();
         return false;
-    }
+    };
     this.setResolution(64, 64);
-}
+    return this;
+};
+
+
+setupNavierStokes();
+for([0, 100], ::(i){
+    print('Iteration ' + i + '\n');
+    runNavierStokes();
+});
+tearDownNavierStokes();

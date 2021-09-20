@@ -231,6 +231,9 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
 static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue_t a) {
     switch(op) {
       case MATTE_OPERATOR_NOT:         return vm_operator__not(vm, a);
+      case MATTE_OPERATOR_NEGATE:      return vm_operator__negate(vm, a);
+      case MATTE_OPERATOR_PREDEC:      return vm_operator__predec(vm, a);
+      case MATTE_OPERATOR_PREINC:      return vm_operator__preinc(vm, a);
       case MATTE_OPERATOR_BITWISE_NOT: return vm_operator__bitwise_not(vm, a);
       case MATTE_OPERATOR_POUND:       return vm_operator__pound(vm, a);
       case MATTE_OPERATOR_TOKEN:       return vm_operator__token(vm, a);
@@ -701,6 +704,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     
                 
                 case MATTE_OPERATOR_NOT:
+                case MATTE_OPERATOR_NEGATE:
+                case MATTE_OPERATOR_PREDEC:
+                case MATTE_OPERATOR_PREINC:
                 case MATTE_OPERATOR_BITWISE_NOT:
                 case MATTE_OPERATOR_POUND:
                 case MATTE_OPERATOR_TOKEN:{
@@ -877,6 +883,7 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_COS, 0, vm_ext_call__introspect_cos);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TAN, 0, vm_ext_call__introspect_tan);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS, 0, vm_ext_call__introspect_abs);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT, 0, vm_ext_call__introspect_sqrt);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN, 0, vm_ext_call__introspect_isnan);    
 
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
