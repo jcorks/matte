@@ -560,12 +560,29 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to prepare arguments for referrable assignment, but insufficient arguments on the stack."));    
                 break;            
             }
-                
             matteValue_t * ref = matte_vm_stackframe_get_referrable(vm, 0, *(uint32_t*)inst->data); 
             if (ref) {
                 matteValue_t v = STACK_POP();
-                matte_value_into_copy(ref, v);
-                STACK_PUSH(v); // new value is pushed
+                switch(*(uint32_t*)(inst->data+4) + (int)MATTE_OPERATOR_ASSIGNMENT_NONE) {
+                  case MATTE_OPERATOR_ASSIGNMENT_NONE:
+                    matte_value_into_copy(ref, v);
+                    STACK_PUSH(v); // new value is pushed
+                    break;
+                    
+                  case MATTE_OPERATOR_ASSIGNMENT_ADD: vm_operator__assign_add(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_SUB: vm_operator__assign_sub(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_MULT: vm_operator__assign_mult(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_DIV: vm_operator__assign_div(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_MOD: vm_operator__assign_mod(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_POW: vm_operator__assign_pow(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_AND: vm_operator__assign_and(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_OR: vm_operator__assign_or(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_XOR: vm_operator__assign_xor(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_BLEFT: vm_operator__assign_bleft(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_BRIGHT: vm_operator__assign_bright(vm, *ref, v); break;
+                  default:
+                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent referrable operation (corrupt bytecode?)."));                        
+                }                
             } else {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent referrable."));    
             }
@@ -597,15 +614,37 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: OSN opcode requires 3 on the stack."));                
                 break;        
             }
-            matteValue_t key = STACK_POP();
-            matteValue_t object = STACK_POP();
-            matteValue_t val = STACK_POP();
+            int opr = *(uint32_t*)(inst->data+4) + (int)MATTE_OPERATOR_ASSIGNMENT_NONE;
+            if (opr == MATTE_OPERATOR_ASSIGNMENT_NONE) {
+                matteValue_t key = STACK_POP();
+                matteValue_t object = STACK_POP();
+                matteValue_t val = STACK_POP();
+                
+                matteValue_t lk = matte_value_object_set(object, key, val);
+                STACK_PUSH(lk);
+
+                matte_heap_recycle(key);
+                matte_heap_recycle(object);            
+                matte_heap_recycle(val);
             
-            matte_value_object_set(object, key, val);
+            } else {
             
-            matte_heap_recycle(key);
-            matte_heap_recycle(object);            
-            STACK_PUSH(val); // dont recycle since back in stack
+                switch(opr) {                    
+                  case MATTE_OPERATOR_ASSIGNMENT_ADD: vm_operator__assign_add(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_SUB: vm_operator__assign_sub(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_MULT: vm_operator__assign_mult(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_DIV: vm_operator__assign_div(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_MOD: vm_operator__assign_mod(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_POW: vm_operator__assign_pow(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_AND: vm_operator__assign_and(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_OR: vm_operator__assign_or(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_XOR: vm_operator__assign_xor(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_BLEFT: vm_operator__assign_bleft(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_BRIGHT: vm_operator__assign_bright(vm, *ref, v); break;
+                  default:
+                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent referrable operation (corrupt bytecode?)."));                        
+                }                
+            }
             break;
           }    
 

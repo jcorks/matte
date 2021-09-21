@@ -1485,7 +1485,7 @@ matteValue_t matte_value_subset(matteValue_t v, uint32_t from, uint32_t to) {
 
 
 
-void matte_value_object_set(matteValue_t v, matteValue_t key, matteValue_t value) {
+matteValue matte_value_object_set(matteValue_t v, matteValue_t key, matteValue_t value) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot set property on something that isnt an object."));
         return;
@@ -1506,9 +1506,9 @@ void matte_value_object_set(matteValue_t v, matteValue_t key, matteValue_t value
         matteValue_t r = matte_vm_call(v.heap->vm, *assigner, MATTE_ARRAY_CAST(args, matteValue_t, 2));
         if (r.binID == MATTE_VALUE_TYPE_BOOLEAN && !matte_value_as_boolean(r)) {
         } else {
-            object_put_prop(m, key, value); 
+            return object_put_prop(m, key, value); 
         }
-        matte_heap_recycle(r);
+        return r;
     } else {
         object_put_prop(m, key, value);
     }
