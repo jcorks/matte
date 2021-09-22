@@ -176,26 +176,27 @@ static matteValue_t object_lookup(matteObject_t * m, matteValue_t key) {
 }
 
 
-static void object_put_prop(matteObject_t * m, matteValue_t key, matteValue_t val) {
+static matteValue_t * object_put_prop(matteObject_t * m, matteValue_t key, matteValue_t val) {
     #ifdef MATTE_VERIFY__HEAP_RECYCLE
         assert(m->refs != 0xffffffff);
     #endif
     matteValue_t out = matte_heap_new_value(val.heap);
     matte_value_into_copy(&out, val);
     switch(key.binID) {
-      case MATTE_VALUE_TYPE_EMPTY: return; // SHOULD NEVER ENTER. if it would, memory leak.
+      case MATTE_VALUE_TYPE_EMPTY: return NULL; // SHOULD NEVER ENTER. if it would, memory leak.
       case MATTE_VALUE_TYPE_STRING: {
         matteString_t * str = matte_bin_fetch(key.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], key.objectID);
         matteValue_t * value = matte_table_find(m->keyvalues_string, str);
         if (value) {
             matte_heap_recycle(*value);
             *value = out;
+            return value;
         } else {
             value = malloc(sizeof(matteValue_t));
             *value = out;
             matte_table_insert(m->keyvalues_string, str, value);
+            return value;
         }
-        return;
       }
       
       // array lookup
@@ -213,7 +214,7 @@ static void object_put_prop(matteObject_t * m, matteValue_t key, matteValue_t va
         }
         matte_heap_recycle(matte_array_at(m->keyvalues_number, matteValue_t, index));
         matte_array_at(m->keyvalues_number, matteValue_t, index) = out;
-        return;
+        return &matte_array_at(m->keyvalues_number, matteValue_t, index);
       }
       
       case MATTE_VALUE_TYPE_BOOLEAN: {
@@ -222,11 +223,12 @@ static void object_put_prop(matteObject_t * m, matteValue_t key, matteValue_t va
         if (*d) {
             matte_heap_recycle(m->keyvalue_true);
             m->keyvalue_true = out;            
+            return &m->keyvalue_true;
         } else {
             matte_heap_recycle(m->keyvalue_false);
             m->keyvalue_false = out;            
+            return &m->keyvalue_false;
         }
-        return;
       }
       
       case MATTE_VALUE_TYPE_OBJECT: {           
@@ -234,12 +236,13 @@ static void object_put_prop(matteObject_t * m, matteValue_t key, matteValue_t va
         if (value) {
             matte_heap_recycle(*value);
             *value = out;
+            return value;
         } else {
             value = malloc(sizeof(matteValue_t));
             *value = out;
             matte_table_insert(m->keyvalues_object, &key, value);
+            return value;
         }
-        return;
       }
       
       case MATTE_VALUE_TYPE_TYPE: {
@@ -247,15 +250,16 @@ static void object_put_prop(matteObject_t * m, matteValue_t key, matteValue_t va
         if (value) {
             matte_heap_recycle(*value);
             *value = out;
+            return value;
         } else {
             value = malloc(sizeof(matteValue_t));
             *value = out;
             matte_table_insert_by_uint(m->keyvalues_types, key.objectID, value);
+            return value;
         }
-        return;
       }
     }
-
+    return NULL;
 }
 
 // returns a type conversion operator if it exists
@@ -1483,16 +1487,40 @@ matteValue_t matte_value_subset(matteValue_t v, uint32_t from, uint32_t to) {
     return out;
 }
 
+matteValue_t matte_value_object_array_to_string_unsafe(matteValue_t v) {
+    matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+    #ifdef MATTE_VERIFY__HEAP_RECYCLE
+        assert(m->refs != 0xffffffff);
+    #endif
+    matteHeap_t * heap = v.heap;
+
+    matteValue_t out = matte_heap_new_value(v.heap);
+    matte_value_into_string(&out, MATTE_STR_CAST(""));
+    matteString_t * str = matte_bin_fetch(heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], out.objectID);
+    uint32_t len = matte_array_get_size(m->keyvalues_number);
+    uint32_t i;
+    for(i = 0; i < len; ++i) {
+        matteValue_t * vn = &matte_array_at(m->keyvalues_number, matteValue_t, i);        
+        if (vn->binID == MATTE_VALUE_TYPE_NUMBER) {
+            matte_string_append_char(
+                str,
+                (int)(*(double*)matte_bin_fetch(heap->sortedHeaps[MATTE_VALUE_TYPE_NUMBER], vn->objectID))
+            );
+        }
+    }
+    
+    return out;
+}
 
 
-matteValue matte_value_object_set(matteValue_t v, matteValue_t key, matteValue_t value) {
+const matteValue_t * matte_value_object_set(matteValue_t v, matteValue_t key, matteValue_t value) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot set property on something that isnt an object."));
-        return;
+        return NULL;
     }
     if (key.binID == 0) {
         matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot set property with an empty key"));
-        return;
+        return NULL;
     }
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
     #ifdef MATTE_VERIFY__HEAP_RECYCLE
@@ -1505,12 +1533,12 @@ matteValue matte_value_object_set(matteValue_t v, matteValue_t key, matteValue_t
         };
         matteValue_t r = matte_vm_call(v.heap->vm, *assigner, MATTE_ARRAY_CAST(args, matteValue_t, 2));
         if (r.binID == MATTE_VALUE_TYPE_BOOLEAN && !matte_value_as_boolean(r)) {
+            return NULL;
         } else {
             return object_put_prop(m, key, value); 
         }
-        return r;
     } else {
-        object_put_prop(m, key, value);
+        return object_put_prop(m, key, value);
     }
 }
 

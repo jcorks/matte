@@ -175,6 +175,8 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                     case MATTE_OPERATOR_NOTEQ: fprintf(fout, "!=\n"); break;
                     case MATTE_OPERATOR_MODULO: fprintf(fout, "%%\n"); break;
                     case MATTE_OPERATOR_CARET: fprintf(fout, "^\n"); break;
+                    case MATTE_OPERATOR_NEGATE: fprintf(fout, "-()\n"); break;
+
                 }
                 break;
             case MATTE_OPCODE_EXT:

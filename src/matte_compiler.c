@@ -896,55 +896,55 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       }
 
       case MATTE_TOKEN_ASSIGNMENT_ADD: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "+=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "+=");
         break;
       }
       case MATTE_TOKEN_ASSIGNMENT_SUB: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "-=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "-=");
         break;
       }
       case MATTE_TOKEN_ASSIGNMENT_MULT:  {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "*=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "*=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_DIV: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "/=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "/=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_MOD: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "%=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "%=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_POW: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "**=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "**=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_AND:  {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "&=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "&=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_OR: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "|=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "|=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_XOR: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "^=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "^=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_BLEFT: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "<<=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<<=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_BRIGHT: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, ">>=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, ">>=");
         break;
       }
 
@@ -3092,27 +3092,27 @@ static int token_is_assignment_derived(matteTokenType_t t) {
       case MATTE_TOKEN_ASSIGNMENT_XOR:
       case MATTE_TOKEN_ASSIGNMENT_BLEFT:
       case MATTE_TOKEN_ASSIGNMENT_BRIGHT:
-        return TRUE + (t - (int)MATTE_TOKEN_ASSIGNMENT);
+        return 1;
     }
-    return FALSE;
+    return 0;
 }   
 
-static int assignment_token_to_op(matteTokenType_t t) {
+static int assignment_token_to_op_index(matteTokenType_t t) {
     switch(t) {
-      case MATTE_TOKEN_ASSIGNMENT_ADD: return MATTE_OPERATOR_ASSIGNMENT_ADD;
-      case MATTE_TOKEN_ASSIGNMENT_SUB: return MATTE_OPERATOR_ASSIGNMENT_SUB;
-      case MATTE_TOKEN_ASSIGNMENT_MULT: return MATTE_OPERATOR_ASSIGNMENT_MULT;
-      case MATTE_TOKEN_ASSIGNMENT_DIV: return MATTE_OPERATOR_ASSIGNMENT_DIV;
-      case MATTE_TOKEN_ASSIGNMENT_MOD: return MATTE_OPERATOR_ASSIGNMENT_MOD;
-      case MATTE_TOKEN_ASSIGNMENT_POW: return MATTE_OPERATOR_ASSIGNMENT_POW;
-      case MATTE_TOKEN_ASSIGNMENT_AND: return MATTE_OPERATOR_ASSIGNMENT_AND;
-      case MATTE_TOKEN_ASSIGNMENT_OR:  return MATTE_OPERATOR_ASSIGNMENT_OR;
-      case MATTE_TOKEN_ASSIGNMENT_XOR: return MATTE_OPERATOR_ASSIGNMENT_XOR;
-      case MATTE_TOKEN_ASSIGNMENT_BLEFT: return MATTE_OPERATOR_ASSIGNMENT_BLEFT;
-      case MATTE_TOKEN_ASSIGNMENT_BRIGHT: return MATTE_OPERATOR_ASSIGNMENT_BRIGHT;
+      case MATTE_TOKEN_ASSIGNMENT_ADD: return 1;
+      case MATTE_TOKEN_ASSIGNMENT_SUB: return 2;
+      case MATTE_TOKEN_ASSIGNMENT_MULT: return 3;
+      case MATTE_TOKEN_ASSIGNMENT_DIV: return 4;
+      case MATTE_TOKEN_ASSIGNMENT_MOD: return 5;
+      case MATTE_TOKEN_ASSIGNMENT_POW: return 6;
+      case MATTE_TOKEN_ASSIGNMENT_AND: return 7;
+      case MATTE_TOKEN_ASSIGNMENT_OR:  return 8;
+      case MATTE_TOKEN_ASSIGNMENT_XOR: return 9;
+      case MATTE_TOKEN_ASSIGNMENT_BLEFT: return 10;
+      case MATTE_TOKEN_ASSIGNMENT_BRIGHT: return 11;
       default:;
     }
-    return -1;
+    return 0;
 }   
 
 // Returns an array of instructions that, when computed in order,
@@ -3345,6 +3345,10 @@ static matteArray_t * compile_expression(
         if (!valueInst) {
             goto L_FAIL;
         }
+        if (preOp != -1) {
+            write_instruction__opr(valueInst, line, preOp);
+        }
+        
         if (iter->ttype == MATTE_TOKEN_GENERAL_OPERATOR2) {
             // operator first
             postOp = string_to_operator(iter->text, iter->ttype);
@@ -3370,7 +3374,7 @@ static matteArray_t * compile_expression(
             // Heres the fun part: lvalues are either
             // values that got reduced to a referrable OR an expression dot access OR a table lookup result.
             if (isSimpleReferrable) {
-                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE + assignment_token_to_op(iter->ttype);        
+                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE + assignment_token_to_op_index(iter->ttype);        
                 if (undo.opcode != MATTE_OPCODE_PRF) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing referrable token. (internal error)");
                     goto L_FAIL;
@@ -3379,7 +3383,7 @@ static matteArray_t * compile_expression(
                 // for handling assignment for the dot access and the [] lookup, 
                 // the OLK instruction will be removed. This leaves both the 
                 // object AND the key on the stack (since OLK would normally consume both)
-                postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER + assignment_token_to_op(iter->ttype);
+                postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER + assignment_token_to_op_index(iter->ttype);
                 matte_array_set_size(valueInst, size-1);
                 if (undo.opcode != MATTE_OPCODE_OLK) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing lookup token. (internal error)");
@@ -3416,7 +3420,6 @@ static matteArray_t * compile_expression(
 
         // one operand always is applied before the 2op (post op)
         if (n->preOp > -1) {
-            write_instruction__opr(n->value, n->line, n->preOp);
         }
 
         // for 2-operand instructions, the first node is merged with the second node by 
@@ -3579,7 +3582,7 @@ static int compile_statement(
             return -1;
         }
         merge_instructions(block->instructions, inst);
-        write_instruction__arf(block->instructions, oln, gl);
+        write_instruction__arf(block->instructions, oln, gl, 0); // no special operator
 
 
         break;

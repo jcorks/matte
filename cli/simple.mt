@@ -1,220 +1,321 @@
-@String = import("Matte.String");
-@Class = import("Matte.Class");
-@Array = import("Matte.Array");
-@JSON = import("Matte.JSON");
+<@>class = import('Matte.Class');
+<@>Array = import('Matte.Array');
+@String_ = class({
+    name : 'Matte.String',
+    define ::(this, args, classinst) {
+        <@>MatteString = introspect(this).type();
+        
+        // ensure we can work with a basic string
+        <@>TOSTRINGLITERAL ::(v) {
+            return match(introspect(v).type()) {
+                (String):      v,
+                (MatteString): v.data,
+                default:
+                    String(v)
+            };
+        };
 
-// Contains CLI-only (non-standard) extensions to work 
-// with Matte as a shell language.
-@System = Class({
-    define::(this, args, classinst) {
-        @_print = getExternalFunction("system_print");
-
-        @_getcwd = getExternalFunction("system_getcwd");
-        @_setcwd = getExternalFunction("system_setcwd");
-
-        @_directoryEnumerate = getExternalFunction("system_directoryenumerate");
-        @_directoryObjectCount  = getExternalFunction("system_directoryobjectcount");
-        @_directoryObjectName   = getExternalFunction("system_directoryobjectname");
-        @_directoryObjectPath   = getExternalFunction("system_directoryobjectpath");
-        @_directoryObjectIsFile = getExternalFunction("system_directoryobjectisfile");
+        
+        <@>STRINGTOARR ::(s) {
+            <@>intr = introspect(s);
+            <@>out = [];
+            <@>len = intr.length();
+            for([0, len], ::(i){
+                out[i] = intr.charCodeAt(i);
+            });  
+            return out;
+        };
 
 
-        @_readString = getExternalFunction("system_readString");
-        @_sleepms = getExternalFunction("system_sleepms");
+        
+        
+        @arrsrc = STRINGTOARR(TOSTRINGLITERAL(args));
+        @arrintr = introspect(arrsrc);
+        @arrlen = arrintr.keycount();
+        @strsrc;
+        @hasStr = false;
+        
+        
+        // creates space in arrsrc at the 
+        // given index for howMany new entries.
+        <@>moveUp ::(at, howMany) {
+            @temp;
+            for([arrlen-1, at-1, -1], ::(i){
+                temp = arrsrc[i+howMany];
+                arrsrc[i+howMany] = arrsrc[i]; 
+            });
+            arrlen = arrintr.keycount();
 
-
-        @files = Array.new();
-        @tasks = Array.new();
-        @_getTicks = getExternalFunction("system_getticks");
-        @initTime = _getTicks();
+        };
+        
         
         this.interface({
-            ////// IO
-            
-            println ::(a) {
-                _print(a + '\n');
+            length : {
+                get :: { 
+                    return arrlen;
+                }
             },
-
-            printf ::(fmt, arr) {
-                when (introspect(arr).type() != 'object')::{
-                    _print(''+fmt);
-                }();
-
-
-                <@>o = String.new(fmt);
-                foreach(arr, ::(k, v){
-                    <@>key = '$('+k+')';
-                    o.replace(key, ''+v);
-                });
-                _print(o);
-            },
-
-            getln : getExternalFunction("system_getline"),
-
-            clear : getExternalFunction("system_clear"),
-
             
 
+            
+            // returns the index at which the 
+            // substring is at. If the substring is 
+            // not contained within the string, -1 is returned.
+            search::(sub){
+                sub = STRINGTOARR(TOSTRINGLITERAL(sub));
+                @intrsub = introspect(sub);
+                                
+                @index = -1;
+                @sublen = intrsub.keycount();
 
-
-            // Directory / Files 
-            cwd : {
-                get :: {
-                    return _getcwd();
-                },
+                when(sublen == 0) -1;
                 
-                set ::(v){
-                    _setcwd(v);                
-                }
-            },
-            
-            // changes directory to the directory above.
-            // Throws an error on failure.
-            cwdUp : getExternalFunction("system_cwdup"),
-            
-            // returns a Matte.Array describing the contents of the current directory.
-            // Each member of the array is an object with the following 
-            directoryContents : {
-                get :: {
-                    _directoryEnumerate();
-                    <@>ct = _directoryObjectCount();
-                    <@>files = Array.new();
-                    files.setSize(ct);
-                    for([0, ct], ::(i){
-                        files[i] = {
-                            name : _directoryObjectName(i),
-                            path : _directoryObjectPath(i), // full path
-                            isFile : _directoryObjectIsFile(i)
-                        };
-                    });
-                    return files;
-                }
-            },
-            
-            
-
-            ///// file IO
-
-            // reads the contents of a file and returns a string of its contents
-            // Expects one argument: a path to the file
-            // On failure, throws an error.
-            readString : getExternalFunction("system_readstring"),
-
-            // reads the contents of a file and returns an array of byte values of its contents.
-            // Expects one argument: a path to the file
-            // On failure, throws an error.
-            readBytes : getExternalFunction("system_readbytes"),
-
-
-            // Given a path and a string, writes the given file.
-            // on failure, throws an error.
-            writeString : getExternalFunction("system_writestring"),
-
-            // Given a path and a string, writes the given file.
-            // on failure, throws an error.
-            writeBytes : getExternalFunction("system_writebytes"),
-
-
-
-            /// time 
-
-            // sleeps approximately the given number of milliseconds
-            sleep ::(s){return _sleepms(s*1000);},
-
-            // Gets the current time, as from the C standard time() function with the 
-            // NULL argument.
-            time : getExternalFunction("system_time"),
-
-            // Gets the number of milliseconds since the instance of 
-            getTicks ::{
-                return _getTicks() - initTime;
-            },
-
-
-            /// tasks
-
-            // adds a new task. The return value of fn determines whether to keep 
-            // the task active or not. msTimeout is optional, denoting a minimum 
-            // wait time before initiating the same task again.
-            addTask ::(fn, msTimeout) {
-                tasks.push({
-                    fn: fn, 
-                    timeout: if(introspect(msTimeout).type() == 'empty') 0 else msTimeout,
-                    last: this.getTicks()
-                });
-            },
-
-
-            // runs all pending tasks. Only returns once all tasks are done.
-            doTasks ::{
-                loop(::{
-                    when(tasks.length == 0) false;
-                    for([0, tasks.length], ::(i){
-                        <@>task = tasks.data[i];
-                        when(task == empty) tasks.length;
-
-
-                        when(this.getTicks() > task.last + task.timeout) ::{
-                            task.last = this.getTicks();
-                            when(!task.fn()) ::{
-                                tasks.remove(i);
-                                return i-1;
-                            }();
+                @checksub::(i){
+                    @found = true;
+                    for([0, sublen], ::(j){
+                        when(arrsrc[i+j] !=
+                                sub[j]) ::{
+                            found = false;
+                            return sublen;
                         }();
                     });
-
-
-                    // sleep for a "safe" period based on the least 
-                    // amount needed to wait for next task
-                    @leastWait = -1;
-                    @timenow = this.getTicks();
-                    for([0, tasks.length], ::(i){
-                        <@>task = tasks.data[i];
-                        @timeNeeded = (task.last + task.timeout) - this.getTicks();
-                        if (((leastWait < 0) || (timeNeeded < leastWait)) && timeNeeded > 0) ::{
-                            leastWait = timeNeeded;
-                        }();
-                    });
-
-
-                    if (leastWait > 0 && leastWait > 100) ::{
-                        _sleepms(leastWait * 0.8);
+                    return found;
+                };
+                for([0, arrlen], ::(i){
+                    when(checksub(i, sub)) ::{
+                        index = i;
+                        return arrlen;
                     }();
+                });
+                
+                return index;
+            },
+            
+            contains::(sub) {
+                return this.search(sub) != -1;
+            },
+
+            containsAny::(arr => Object) {
+                <@>vals = introspect(arr).values();
+                <@>len = introspect(vals).keycount();
+                @contains = false;
+                for([0, len], ::(i) {
+                    when (this.contains(vals[i])) ::{
+                        contains = true;
+                        return len;
+                    }();
+                });
+                return contains;
+            },
+
+
+            replace::(sub, with) {
+                with = STRINGTOARR(TOSTRINGLITERAL(with));
+                sub  = STRINGTOARR(TOSTRINGLITERAL(sub));
+
+                @intrsub = introspect(sub);                                
+                @sublen = intrsub.keycount();
+
+                @intrwith = introspect(with);                                
+                @withlen = intrwith.keycount();
+
+                
+                @checksub::(i){
+                    @found = true;
+                    for([0, sublen], ::(j){
+                        when(arrsrc[i+j] !=
+                                sub[j]) ::{
+                            found = false;
+                            return sublen;
+                        }();
+                    });
+                    return found;
+                };
+
+
+                @index = -1;
+                loop(::{
+                    for([0, arrlen], ::(i){
+                        when(checksub(i, sub)) ::{
+                            index = i;
+                            return arrlen;
+                        }();
+                    });     
+                               
+                    when(index == -1) false;
+
+                    // found a match. Replace.
+                    (match(true) {
+                        // new string is smaller
+                        // cells need to be removed.
+                        (withlen < sublen): ::{
+                            for([0, withlen], ::(i) {
+                                arrsrc[i+index] = with[i];
+                            });
+                            for([withlen, sublen], ::(i) {
+                                removeKey(arrsrc, withlen);
+                            });
+                        },
+
+
+                        // newstring is larger. This requires 
+                        // insertion, which is not as efficient currently.                        
+                        (withlen > sublen): :: {
+                            moveUp(index, withlen-sublen);
+                            for([0, withlen], ::(i) {
+                                arrsrc[i+index] = with[i];
+                            });                                                    
+                        },
+                        
+                        default: ::{ // most efficient case
+                            for([0, sublen], ::(i) {
+                                arrsrc[i+index] = with[i];
+                            });
+                        }
+                    })();
+                    index = -1;
+
+                    // update internal stuff since array changed
+                    hasStr = false;
+                    strsrc = empty;
+                    arrlen = arrintr.keycount();
+
+
                     return true;
                 });
+
+            },
+            
+            count::(sub) {
+                sub = STRINGTOARR(TOSTRINGLITERAL(sub));
+                @intrsub = introspect(sub);
+                                
+                @index = -1;
+                @sublen = intrsub.keycount();
+
+                when(sublen == 0) -1;
+                
+                @checksub::(i){
+                    @found = true;
+                    for([0, sublen], ::(j){
+                        when(arrsrc[i+j] !=
+                                sub[j]) ::{
+                            found = false;
+                            return sublen;
+                        }();
+                    });
+                    return found;
+                };
+                @count = 0;
+                for([0, arrlen], ::(i){
+                    when(checksub(i, sub)) ::{
+                        count += 1;
+                    }();
+                });
+                
+                return count;
+            },
+            
+            charCodeAt::(i) {
+                return arrsrc[i];  
             },
 
-            system :: getExternalFunction("system_system"),
+            charAt::(i) {
+                return introspect([arrsrc[i]]).arrayToString();  
+            },
+            
+            append::(a) {
+                (match(introspect(a).type()) {
+                    (Number): ::{
+                        arrsrc[arrlen] = a;
+                    },
+                    
+                    default: ::{
+                        @other = STRINGTOARR(TOSTRINGLITERAL(a));
+                        for([0, introspect(other).keycount()], ::(i){
+                            arrsrc[i+arrlen] = other[i];
+                        });
+                    }
+                })();
 
-            exit : getExternalFunction("system_exit")
+                hasStr = false;
+                strsrc = empty;
+                arrlen = arrintr.keycount();                
+            },
+
+            removeChar::(i) {
+                when(i < 0 || i > arrlen) empty;
+
+                removeKey(arrsrc, i);
+                hasStr = false;
+                strsrc = empty;
+                arrlen = arrintr.keycount();
+            },
+            
+            valueize::{
+                return Array.new(arrsrc);
+            },
+
+            characterize::{
+                @out = Array.new();
+                for([0, arrlen], ::(i){
+                    out.push(this.charAt(i));
+                });
+                return out;
+            },
+            
+            substr::(from, to) {
+                return classinst.new(arrintr.substr(from, to));
+            },
+
+            split::(dl) {                
+                dl = TOSTRINGLITERAL(dl);
+                <@>dlint = introspect(dl);
+                when(dlint.length() != 1) error("Split expects a single-character string.");
+                dl = dlint.dcharCodeAt(0);
+
+                 
+                @out = Array.new();
+                @curstr = classinst.new();
+                for([0, arrlen], ::(i){
+                    if (arrsrc[i] == dl) ::{
+                        out.push(classinst.new(curstr));
+                        curstr = classinst.new();
+                    }() else ::{
+                        curstr.append(arrsrc[i]);
+                    }();
+                });
+                out.push(curstr);
+                return out;
+            },
+            
+            operator : {
+                (String) :: {
+                    when(hasStr) strsrc;
+                    strsrc = arrintr.arrayToString();
+                    hasStr = true;
+                    return strsrc;
+                },
+                
+                '[]' ::(index) {
+                    return this.charAt(index);
+                },
+                
+                '+=' ::(other) {
+                    this.append(other);
+                }
+            }
 
         });
-    }    
-}).new();
-
-/*
-System.println('Hello!');
-System.printf('Now presenting variables $(0) and $(1)\n', [20, true]);
-System.println("Now tell me, what is your favorite color?");
-System.printf("> ");
-<@>color = System.getln();
-System.printf("Thats an interesting color... hmmm.. $(0)\n", [color]);
+    }
+});
 
 
-
-//@System = import('Matte.System');
-context.onError = ::{
-    System.println('Error occurred.');
-};
-
-@val = 0;
-System.addTask(::{
-    System.printf('Hi! $(0)\n', [val]);
-    val = val+1;
-    return true;
-}, 40);
-
-System.doTasks();
+@a = String_.new('Test');
+for([0, 10], ::(i){
+    a += String(i);
+});
+a.replace('t01', 'YYY');
+return a;
 
 
-*/

@@ -9,8 +9,8 @@ enum {
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_PAIRS,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT,
-    MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISARRAY,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE,
+    MATTE_EXT_CALL_INTERNAL__INTROSPECT_ARRAYTOSTRING,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARAT,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARCODEAT,
@@ -47,8 +47,8 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
         "values",
         "pairs",
         "keycount",
-        "isArray",
         "isCallable",
+        "arrayToString",
 
         "length",
         "charAt",
@@ -77,8 +77,8 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_PAIRS),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT),
-        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISARRAY),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE),
+        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ARRAYTOSTRING),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARAT),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARCODEAT),
@@ -196,10 +196,7 @@ static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_
     return out;
 }
 
-static matteValue_t vm_ext_call__introspect_isarray(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);
-}
+
 
 static matteValue_t vm_ext_call__introspect_iscallable(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
@@ -224,6 +221,16 @@ static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t 
     matte_heap_recycle(a);
     return matte_heap_new_value(vm->heap);
 }
+
+static matteValue_t vm_ext_call__introspect_arraytostring(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
+    matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
+    if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("arrayToString() expects an object value."));
+    }
+    return matte_value_object_array_to_string_unsafe(a);
+}
+
 
 static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);

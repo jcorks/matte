@@ -1139,22 +1139,7 @@ static matteValue_t vm_operator__assign_add(matteVM_t * vm, matteValue_t a, matt
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matteString_t * astr = matte_value_as_string(a);
-        matteString_t * bstr = matte_value_as_string(b);
-        if (!astr || !bstr) {
-            if (astr) matte_string_destroy(astr);
-            if (bstr) matte_string_destroy(bstr);
-            return result; 
-        }
-        
-        matte_string_concat(astr, bstr);
-        
-        matte_value_into_string(
-            &a, 
-            astr
-        );
-        matte_string_destroy(astr);
-        matte_string_destroy(bstr);
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("+= operator on string values is undefined.(NOTE: Matte strings are immutable. Consider using the Matte.String class for more general string usage.)"));
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 

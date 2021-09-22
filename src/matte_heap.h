@@ -173,12 +173,18 @@ void matte_value_object_foreach(matteValue_t object, matteValue_t function);
 
 // Attempts to set a key-value pair within the object.
 // invokes assigner if present
-void matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value);
+const matteValue_t * matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value);
 
 // Removes a key from an object if it exists. If the value is 
 // not an object or the key does not exist, no action is taken.
 void matte_value_object_remove_key(matteValue_t, matteValue_t key);
 
+// Given a value to an Object, creates a new string from the number 
+// keys of the object. All number keys are searched in order.
+// The function only succeeds correctly if ALL valid number keys are 
+// number values. A string object is always created and returned.
+// NOTE: the value is assumed to be an object. Hence the "unsafe".
+matteValue_t matte_value_object_array_to_string_unsafe(matteValue_t);
 
 // if number/string/boolean: copy
 // else: point to same source object

@@ -407,6 +407,12 @@ static void function_to_stub(FILE * f, uint32_t id) {
                       case '>': inst->data[0] = MATTE_OPERATOR_POINT; break;
                       default:;
                     }
+                    switch(opopcode1) {
+                      case '(': inst->data[0] = MATTE_OPERATOR_NEGATE; break;
+                      default:;
+                    }
+
+
                     break;
 
                   case '/': inst->data[0] = MATTE_OPERATOR_DIV; break;
