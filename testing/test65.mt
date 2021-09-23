@@ -11,8 +11,10 @@
                 str = str + 'OHWOW';
             },
 
-            toString :: {
-                return str;
+            operator :{
+                (String) :: {
+                    return str;
+                }
             }
         });
     }

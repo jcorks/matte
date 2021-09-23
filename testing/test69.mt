@@ -1,7 +1,7 @@
 ////Test 54
 //
 // Core: String (2)
-<@>String = import('Matte.String');
+<@>MatteString = import('Matte.String');
 
-@str = String.new("testing");
-return str.data+str.length;
+@str = MatteString.new("testing");
+return ''+str+str.length;

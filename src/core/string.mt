@@ -9,7 +9,7 @@
         <@>TOSTRINGLITERAL ::(v) {
             return match(introspect(v).type()) {
                 (String):      v,
-                (MatteString): v.data,
+                (Empty):       '',
                 default:
                     String(v)
             };
@@ -53,6 +53,26 @@
             length : {
                 get :: { 
                     return arrlen;
+                },
+                
+                set ::(newlen => Number) {
+                    // already good
+                    when(arrlen == newlen) empty;
+                    
+                    // needs to grow
+                    for([arrlen, newlen], ::(i) {
+                        arrsrc[i] = 32;
+                        arrlen+=1;
+                    }); 
+                    
+                    // need to shrink!
+                    for([arrlen, newlen, -1], ::(i) {
+                        removeKey(arrsrc, arrlen-1);
+                        arrlen-=1;
+                    });
+                    
+                    hasStr = false;
+                    strsrc = empty;
                 }
             },
             
@@ -217,11 +237,13 @@
             },
             
             charCodeAt::(i) {
+                when(i < 0 || i >= arrlen) error('Given index is not within the length of the string');
                 return arrsrc[i];  
             },
 
             charAt::(i) {
-                return introspect([arrsrc[i]]).arrayToString();  
+                @intr = introspect(strsrc);
+                return intr.substr(i, i);  
             },
             
             append::(a) {
@@ -242,8 +264,26 @@
                 strsrc = empty;
                 arrlen = arrintr.keycount();                
             },
+            
+            setCharAt::(index => Number, a) {
+                when(index < 0 || index >= arrlen) error('Can only replace a character in the current string. Index is out of bounds.');
+                (match(introspect(a).type()) {
+                    (Number): ::{
+                        arrsrc[index] = a;
+                    },
+                    
+                    default: ::{
+                        @other = STRINGTOARR(TOSTRINGLITERAL(a));
+                        when(introspect(other).keycount() != 1) error('Can only replace a single character: the string form of the given value is more than one character');
+                        arrsrc[index] = a[0];
+                    }
+                })();
+                
+                hasStr = false;
+                strsrc = empty;
+            },
 
-            removeChar::(i) {
+            removeChar::(i => Number) {
                 when(i < 0 || i > arrlen) empty;
 
                 removeKey(arrsrc, i);
@@ -258,13 +298,15 @@
 
             characterize::{
                 @out = Array.new();
+                @str = String(this);
+                @strintr = introspect(str);
                 for([0, arrlen], ::(i){
-                    out.push(this.charAt(i));
+                    out.push(strintr.charAt(i));
                 });
                 return out;
             },
             
-            substr::(from, to) {
+            substr::(from => Number, to => Number) {
                 return classinst.new(arrintr.substr(from, to));
             },
 
@@ -289,6 +331,7 @@
                 return out;
             },
             
+            
             operator : {
                 (String) :: {
                     when(hasStr) strsrc;
@@ -297,7 +340,12 @@
                     return strsrc;
                 },
                 
-
+                '+' :: (other){
+                    @out = classinst.new(strsrc);
+                    out.append(other);
+                    return out;
+                },
+                
                 '+=' ::(other) {
                     this.append(other);
                 }

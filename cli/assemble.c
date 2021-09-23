@@ -369,8 +369,8 @@ static void function_to_stub(FILE * f, uint32_t id) {
                 oc2 == 'f'
             ) {
                 inst->opcode = MATTE_OPCODE_ARF;
-                if (sscanf(line, "%"SCNu32" arf %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
-                    printf("ERROR on line %d: unrecognized arf format. Syntax: [line] arf [ref index]\n", lineN);
+                if (sscanf(line, "%"SCNu32" arf %"SCNu32" %"SCNu32"", &inst->line, (uint32_t*)inst->data, (uint32_t*)(inst->data+4)) != 3) {
+                    printf("ERROR on line %d: unrecognized arf format. Syntax: [line] arf [ref index] [asssignment op]\n", lineN);
                     exit(1);                               
                 } 
 
@@ -380,6 +380,11 @@ static void function_to_stub(FILE * f, uint32_t id) {
                 oc2 == 'n'
             ) {
                 inst->opcode = MATTE_OPCODE_OSN;
+                if (sscanf(line, "%"SCNu32" osn %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized osn format. Syntax: [line] osn [assignment op]\n", lineN);
+                    exit(1);                                
+                }                
+
             } else if (
                 oc0 == 'o' &&
                 oc1 == 'l' &&
@@ -550,7 +555,7 @@ static void function_to_stub(FILE * f, uint32_t id) {
                 oc2 == 'y'
             ) { 
                 inst->opcode = MATTE_OPCODE_CPY; 
-                if (sscanf(line, "%"SCNu32" cpy", &inst->line) != 2) {
+                if (sscanf(line, "%"SCNu32" cpy", &inst->line) != 1) {
                     printf("ERROR on line %d: unrecognized cpy format. Syntax: [line] cpy\n", lineN);
                     exit(1);                
                 }

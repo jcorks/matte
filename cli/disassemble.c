@@ -134,11 +134,13 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
             
             case MATTE_OPCODE_ARF:
                 a = *(uint32_t*)data.bytes;
-                fprintf(fout, "arf %d\n", a);
+                b = *(uint32_t*)(data.bytes+4);
+                fprintf(fout, "arf %d %d\n", a, b);
                 break;            
 
             case MATTE_OPCODE_OSN:
-                fprintf(fout, "osn\n");
+                a = *(uint32_t*)data.bytes;
+                fprintf(fout, "osn %d\n", 4);
                 break;            
 
             case MATTE_OPCODE_OLK:

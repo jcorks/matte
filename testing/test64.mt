@@ -5,8 +5,10 @@
 @TestClass = Class({
     define ::(this, args, classinst) {
         this.interface({
-            toString :: {
-                return args;
+            operator : {
+                (String) :: {
+                    return args;
+                }
             }
         });
     }

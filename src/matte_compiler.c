@@ -3034,8 +3034,8 @@ static matteArray_t * compile_match(
         merge_instructions(instOut, c.condition);
         write_instruction__opr(instOut, c.line, MATTE_OPERATOR_EQ);
         write_instruction__skp_insert(instOut, c.line, 1);
-        write_instruction__asp(instOut, c.line, pivotDistance+r.offset-4);
         pivotDistance -= 4+len;
+        write_instruction__asp(instOut, c.line, pivotDistance+r.offset);
     }
     assert(pivotDistance == 0);
     matte_array_destroy(conditionExpressions);
