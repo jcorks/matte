@@ -1,4 +1,4 @@
-@String = import('Matte.String');
+@MString = import('Matte.String');
 @Array = import('Matte.Array');
 @JSON = {
     name : 'Matte.JSON',
@@ -28,7 +28,7 @@
     
     
     decode ::(str) {
-        str = String.new(str);
+        str = MString.new(str);
         
         <@>trimSpace::(substr) {
             loop(::{
@@ -256,7 +256,7 @@
 
 
 
-
+/*
 print(JSON.encode({
     testing : 'ohhh',
     othertesting : {
@@ -267,7 +267,7 @@ print(JSON.encode({
 }));
 
 
-/*
+
 @pObject ::(o) {
     @already = {};
     @pspace ::(level) {
@@ -339,6 +339,7 @@ print(JSON.encode({
     "Reign": "955-959"
   }
 ]';
-pObject(JSON.decode(obj));
 */
+//JSON.decode(obj));
+
 return JSON;

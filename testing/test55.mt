@@ -16,32 +16,34 @@
         valInteger = introspect(val).floor();
     }();
 
-    return {
+    @ref = {
         decimal  : valDecimal,
-        integer  : valInteger,
-
-        operator : {
-            '+' ::(a) {
-                return createNumber(val + (a.decimal + a.integer));
-            },
-
-            '-' ::(a) {
-                return createNumber(val - (a.decimal + a.integer));
-            },
-
-            '/' ::(a) {
-                return createNumber(val / (a.decimal + a.integer));
-            },
-
-            '*' ::(a) {
-                return createNumber(val * (a.decimal + a.integer));
-            },
-
-            (String) :: {
-                return 'Integer:' + valInteger + ',Decimal:' + valDecimal; 
-            }
-        }
+        integer  : valInteger
     };
+    
+    setOperator(ref, {
+        '+' ::(a) {
+            return createNumber(val + (a.decimal + a.integer));
+        },
+
+        '-' ::(a) {
+            return createNumber(val - (a.decimal + a.integer));
+        },
+
+        '/' ::(a) {
+            return createNumber(val / (a.decimal + a.integer));
+        },
+
+        '*' ::(a) {
+            return createNumber(val * (a.decimal + a.integer));
+        },
+
+        (String) :: {
+            return 'Integer:' + valInteger + ',Decimal:' + valDecimal; 
+        }
+    });
+    
+    return ref;
 };
 
 

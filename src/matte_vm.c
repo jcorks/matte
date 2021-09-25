@@ -542,7 +542,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t function = STACK_POP();
 
 
-            matteValue_t result = matte_vm_call(vm, function, args);
+            matteValue_t result = matte_vm_call(vm, function, args, NULL);
 
             for(i = 0; i < argcount; ++i) {
                 matteValue_t v = matte_array_at(args, matteValue_t, i);
@@ -617,14 +617,20 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: OSN opcode requires 3 on the stack."));                
                 break;        
             }
-            int opr = *(uint32_t*)(inst->data) + (int)MATTE_OPERATOR_ASSIGNMENT_NONE;
+            int opr = *(uint32_t*)(inst->data);
+            int isBracket = 0;
+            if (opr >= (int)MATTE_OPERATOR_STATE_BRACKET) {
+                opr -= MATTE_OPERATOR_STATE_BRACKET;
+                isBracket = 1;
+            }
+            opr =  + (int)MATTE_OPERATOR_ASSIGNMENT_NONE;
             matteValue_t key = STACK_POP();
             matteValue_t object = STACK_POP();
             matteValue_t val = STACK_POP();
 
             if (opr == MATTE_OPERATOR_ASSIGNMENT_NONE) {
                 
-                const matteValue_t * lk = matte_value_object_set(object, key, val);
+                const matteValue_t * lk = matte_value_object_set(object, key, val, isBracket);
                 matteValue_t lknp = matte_heap_new_value(vm->heap);
                 if (lk) {
                     matte_value_into_copy(&lknp, *lk);
@@ -633,7 +639,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             
             } else {
-                matteValue_t ref = matte_value_object_access(object, key);
+                matteValue_t ref = matte_value_object_access(object, key, isBracket);
                 matteValue_t out = matte_heap_new_value(vm->heap);
                 switch(opr) {                    
                   case MATTE_OPERATOR_ASSIGNMENT_ADD: out = vm_operator__assign_add(vm, ref, val); break;
@@ -665,9 +671,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: OLK opcode requires 2 on the stack."));                
                 break;        
             }
+            
+            uint32_t isBracket = *(uint32_t*)inst->data;
             matteValue_t key = STACK_POP();
             matteValue_t object = STACK_POP();            
-            matteValue_t output = matte_value_object_access(object, key);
+            matteValue_t output = matte_value_object_access(object, key, isBracket);
             
             matte_heap_recycle(key);
             matte_heap_recycle(object);            
@@ -800,7 +808,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 vm->error.binID = 0;
 
 
-                matte_heap_recycle(matte_vm_call(vm, v, MATTE_ARRAY_CAST(cached, matteValue_t, 2)));
+                matte_heap_recycle(matte_vm_call(vm, v, MATTE_ARRAY_CAST(cached, matteValue_t, 2), MATTE_STR_CAST("error catch")));
                 matte_heap_recycle(cached[0]);
                 matte_heap_recycle(cached[1]);
 
@@ -901,6 +909,7 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_MATCH,   2, vm_ext_call__match);
     vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  2, vm_ext_call__import);
     vm_add_built_in(vm, MATTE_EXT_CALL_REMOVE_KEY,  2, vm_ext_call__remove_key);
+    vm_add_built_in(vm, MATTE_EXT_CALL_SET_OPERATOR,  2, vm_ext_call__set_operator);
 
     vm_add_built_in(vm, MATTE_EXT_CALL_INTROSPECT, 1, vm_ext_call__introspect);
     vm_add_built_in(vm, MATTE_EXT_CALL_TYPE,       1, vm_ext_call__newtype);
@@ -1056,11 +1065,16 @@ matteHeap_t * matte_vm_get_heap(matteVM_t * vm) {return vm->heap;}
 matteValue_t matte_vm_call(
     matteVM_t * vm, 
     matteValue_t func, 
-    const matteArray_t * args
+    const matteArray_t * args,
+    const matteString_t * prettyName
 ) {
     int callable = matte_value_is_callable(func); 
     if (!callable) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Error: cannot call non-function value."));
+        matteString_t * err = matte_string_create_from_c_str("Error: cannot call non-function value ");
+        if (prettyName)
+            matte_string_concat(err, prettyName);
+        matte_vm_raise_error_string(vm, err);
+        matte_string_destroy(err);
         return matte_heap_new_value(vm->heap);
     }
 
@@ -1126,6 +1140,9 @@ matteValue_t matte_vm_call(
     } else {
         // no calling context yet
         matteVMStackFrame_t * frame = vm_push_frame(vm);
+        if (prettyName) {
+            matte_string_set(frame->prettyName, prettyName);
+        }
         frame->context = d;
         frame->stub = matte_value_get_bytecode_stub(d);
 
@@ -1225,7 +1242,7 @@ matteValue_t matte_vm_run_script(
         return func;
     }
     matte_value_into_new_function_ref(&func, stub);
-    matteValue_t result = matte_vm_call(vm, func, args);
+    matteValue_t result = matte_vm_call(vm, func, args, matte_vm_get_script_name_by_id(vm, fileid));
 
     matte_heap_recycle(func);
     return result;
@@ -1336,7 +1353,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm) {
     uint32_t len = matte_vm_get_stackframe_size(vm);
     matte_value_into_string(&key, MATTE_STR_CAST("length"));
     matte_value_into_number(&val, len);
-    matte_value_object_set(callstack, key, val);
+    matte_value_object_set(callstack, key, val, 0);
     
     
     matteValue_t * arr = malloc(sizeof(matteValue_t) * len);
@@ -1352,7 +1369,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm) {
         
         matte_value_into_string(&key, MATTE_STR_CAST("file"));
         matte_value_into_string(&val, filename ? filename : MATTE_STR_CAST("<unknown>"));        
-        matte_value_object_set(frame, key, val);
+        matte_value_object_set(frame, key, val, 0);
         
 
         
@@ -1366,7 +1383,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm) {
             lineNumber = inst[framesrc.pc-1].lineNumber;                
         } 
         matte_value_into_number(&val, lineNumber);
-        matte_value_object_set(frame, key, val);
+        matte_value_object_set(frame, key, val, 0);
         arr[i] = frame;        
         
         matte_string_concat_printf(str, " (%d) -> %s, line %d\n", i, filename ? matte_string_get_c_str(filename) : "<unknown>", lineNumber); 
@@ -1376,19 +1393,19 @@ matteValue_t vm_info_new_object(matteVM_t * vm) {
     matte_value_into_new_object_array_ref(&val, MATTE_ARRAY_CAST(arr, matteValue_t, len));
     free(arr);
     matte_value_into_string(&key, MATTE_STR_CAST("frames"));
-    matte_value_object_set(callstack, key, val);
+    matte_value_object_set(callstack, key, val, 0);
     
 
     
     
     matte_value_into_string(&key, MATTE_STR_CAST("callstack"));    
-    matte_value_object_set(out, key, callstack);
+    matte_value_object_set(out, key, callstack, 0);
 
 
     matte_value_into_string(&key, MATTE_STR_CAST("summary"));
     matte_value_into_string(&val, str);
     matte_string_destroy(str);
-    matte_value_object_set(out, key, val);
+    matte_value_object_set(out, key, val, 0);
     
 
     matte_heap_recycle(val);

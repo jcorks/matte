@@ -118,6 +118,11 @@ typedef enum {
     MATTE_OPERATOR_ASSIGNMENT_XOR,
     MATTE_OPERATOR_ASSIGNMENT_BLEFT,
     MATTE_OPERATOR_ASSIGNMENT_BRIGHT,
+    
+    
+    // special operator state flag for OSN instructions.
+    // TODO: better method maybe? 
+    MATTE_OPERATOR_STATE_BRACKET = 2048,
 } matteOperator_t;
 
 
@@ -130,6 +135,7 @@ typedef enum {
     MATTE_EXT_CALL_MATCH,
     MATTE_EXT_CALL_IMPORT,
     MATTE_EXT_CALL_REMOVE_KEY,
+    MATTE_EXT_CALL_SET_OPERATOR,
     MATTE_EXT_CALL_TYPE, // type() 1 arg (options)
     MATTE_EXT_CALL_INSTANTIATE, // instantiate() 1 arg (type);
     MATTE_EXT_CALL_INTROSPECT, // introspect() 1 arg

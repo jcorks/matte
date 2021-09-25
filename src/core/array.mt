@@ -24,12 +24,6 @@
             },
 
 
-            data : {
-                get :: {
-                    return data;
-                }
-            },
-
             // Function, 1 argument. 
             // No return value.
             // Adds an additional element to the array.
@@ -163,32 +157,40 @@
                 error("not done yet");
             },
 
+            at::(i => Number) {
+                return data[i];
+            }
 
 
-
-            operator : {
-                '[]' :: (key){
+            
+        });
+        
+        this.operator({
+            '[]' : {
+                get :: (key => Number){
                     return data[key];
                 },
-
-                (String) ::{
-                    @str = '[';
-                    for([0, len], ::(i){
-                        <@> strRep = ::{
-                            context.catch = ::{};
-                            return (String(data[i]));
-                        }();
-
-                        str = str + if (strRep) strRep else ('<' + introspect(data[i]).type() + '>');
-
-                        when(i != len-1)::{
-                            str = str + ', ';
-                        }();
-                    });
-                    return str + ']';
+                
+                set :: (key => Number, val) {
+                    data[key] = val;
                 }
+            },
+            (String) ::{
+                @str = '[';
+                for([0, len], ::(i){
+                    <@> strRep = ::{
+                        context.catch = ::{};
+                        return (String(data[i]));
+                    }();
+
+                    str = str + if (strRep) strRep else ('<' + introspect(data[i]).type() + '>');
+
+                    when(i != len-1)::{
+                        str = str + ', ';
+                    }();
+                });
+                return str + ']';
             }
-            
         });
     }
 });

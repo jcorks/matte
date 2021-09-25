@@ -142,15 +142,16 @@ void matte_value_object_function_post_typecheck_unsafe(matteValue_t, matteValue_
 
 
 // If the value points to an object, returns the value associated with the 
-// key. This will invoke the accessor if present.
-matteValue_t matte_value_object_access(matteValue_t, matteValue_t key);
+// key. This will invoke the accessor if present. The accessor invoked depends 
+// on which emulation method is used. isBracket denotes this.
+matteValue_t matte_value_object_access(matteValue_t, matteValue_t key, int isBracket);
 
 // convenience function. Same as matte_value_object_access except creates a temporaty 
-// string object as a key.
+// string object as a key. Dot (.) access is emulated.
 matteValue_t matte_value_object_access_string(matteValue_t, const matteString_t *);
 
 // Convenience function. Same as matte_value_object_access, except creates a 
-// temporary number object
+// temporary number object Bracket ([]) access is emulated. 
 matteValue_t matte_value_object_access_index(matteValue_t, uint32_t);
 
 
@@ -173,7 +174,18 @@ void matte_value_object_foreach(matteValue_t object, matteValue_t function);
 
 // Attempts to set a key-value pair within the object.
 // invokes assigner if present
-const matteValue_t * matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value);
+const matteValue_t * matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value, int isBracket);
+
+// Sets the operator set for this object, which describes how 
+// the object should respond to different operators and interactions.
+// Only operators referenced in the give operator set are 
+// updated in the object. If the object already has operators 
+// referenced by opObject, these operators are overwritten.
+void matte_value_object_set_operator(matteValue_t v, matteValue_t opObject);
+
+// Gets the operator for an object, assuming that the value is an object.
+// If the object has no operator set, NULL is returned.
+const matteValue_t * matte_value_object_get_operator_unsafe(matteValue_t);
 
 // Removes a key from an object if it exists. If the value is 
 // not an object or the key does not exist, no action is taken.

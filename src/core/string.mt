@@ -242,8 +242,8 @@
             },
 
             charAt::(i) {
-                @intr = introspect(strsrc);
-                return intr.substr(i, i);  
+                @intr = introspect(String(this));
+                return intr.subset(i, i);  
             },
             
             append::(a) {
@@ -307,14 +307,13 @@
             },
             
             substr::(from => Number, to => Number) {
-                return classinst.new(arrintr.substr(from, to));
+                return classinst.new(arrintr.subset(from, to));
             },
 
             split::(dl) {                
                 dl = TOSTRINGLITERAL(dl);
                 <@>dlint = introspect(dl);
-                when(dlint.length() != 1) error("Split expects a single-character string.");
-                dl = dlint.dcharCodeAt(0);
+                dl = dlint.charCodeAt(0);
 
                  
                 @out = Array.new();
@@ -332,25 +331,48 @@
             },
             
             
-            operator : {
-                (String) :: {
-                    when(hasStr) strsrc;
-                    strsrc = arrintr.arrayToString();
-                    hasStr = true;
-                    return strsrc;
-                },
-                
-                '+' :: (other){
-                    @out = classinst.new(strsrc);
-                    out.append(other);
-                    return out;
-                },
-                
-                '+=' ::(other) {
-                    this.append(other);
-                }
+            /*
+            
+            @a = Matte.String.new('Here is my value: 40. Just that.');
+
+            // returns a new array. Each element in the array for each {{i}} 
+            // speified in the string. If a match could not be found, empty is returned.
+            @result = a.scan('value: {{0}}.');
+
+            // should be "40"
+            print(result[0]);
+            
+            
+            */
+            scan::(str) {
+            
+            },
+            
+            
+            // removes
+            trim::(chars) {
+            
             }
 
+        });
+        
+        this.operator({
+            (String) :: {
+                when(hasStr) strsrc;
+                strsrc = arrintr.arrayToString();
+                hasStr = true;
+                return strsrc;
+            },
+            
+            '+' :: (other){
+                @out = classinst.new(String(this));
+                out.append(other);
+                return out;
+            },
+            
+            '+=' ::(other) {
+                this.append(other);
+            }
         });
     }
 });

@@ -833,6 +833,11 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
 
+      case MATTE_TOKEN_EXTERNAL_SET_OPERATOR: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "setOperator");
+        break;
+      }
+
       case MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Boolean");
         break;
@@ -2511,6 +2516,12 @@ static matteArray_t * compile_base_value(
         return inst;
       }
 
+      case MATTE_TOKEN_EXTERNAL_SET_OPERATOR: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_SET_OPERATOR);
+        *src = iter->next;
+        return inst;
+      }
+
       
       case MATTE_TOKEN_EXTERNAL_TYPEEMPTY: {
         write_instruction__pto(inst, iter->line, 0);
@@ -2762,7 +2773,7 @@ static matteArray_t * compile_value(
             // if so, the next will be a variable name
             if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
                 write_instruction__nst(inst, iter->line, function_intern_string(block, iter->text));
-                write_instruction__olk(inst, iter->line);
+                write_instruction__olk(inst, iter->line, 0);
                 *lvalue = 1;
                 iter = iter->next;
             } else {
@@ -2778,7 +2789,7 @@ static matteArray_t * compile_value(
                 return NULL;               
             }
             merge_instructions(inst, exp); // push argument
-            write_instruction__olk(inst, iter->line);
+            write_instruction__olk(inst, iter->line, 1);
             iter = iter->next; // skip ]        
         // function calls are kind of like special operators
         // here, they use the compiled value above as the function object 
@@ -3383,7 +3394,7 @@ static matteArray_t * compile_expression(
                 // for handling assignment for the dot access and the [] lookup, 
                 // the OLK instruction will be removed. This leaves both the 
                 // object AND the key on the stack (since OLK would normally consume both)
-                postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER + assignment_token_to_op_index(iter->ttype);
+                postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER + assignment_token_to_op_index(iter->ttype) + (*((uint32_t*)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0);
                 matte_array_set_size(valueInst, size-1);
                 if (undo.opcode != MATTE_OPCODE_OLK) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing lookup token. (internal error)");

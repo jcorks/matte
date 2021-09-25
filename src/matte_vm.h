@@ -100,7 +100,8 @@ matteValue_t matte_vm_run_script(
 matteValue_t matte_vm_call(
     matteVM_t *,
     matteValue_t function,
-    const matteArray_t * args
+    const matteArray_t * args,
+    const matteString_t * prettyName
 );
 
 // Attempts to just-in-time compile and run source

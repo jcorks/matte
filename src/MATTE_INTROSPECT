@@ -107,9 +107,9 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
 
         matte_value_into_string(&key, MATTE_STR_CAST(names[i]));
         matte_value_into_new_function_ref(&value, functions[i]);
-        matte_value_object_set(value, index0, obj);
+        matte_value_object_set(value, index0, obj, 1);
 
-        matte_value_object_set(obj, key, value);
+        matte_value_object_set(obj, key, value, 0);
     }
     matte_heap_recycle(index0);
 
@@ -135,7 +135,7 @@ static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, mat
     matteValue_t value = matte_heap_new_value(vm->heap);
     matte_value_into_string(&key, MATTE_STR_CAST("value"));
     matte_value_into_copy(&value, matte_array_at(args, matteValue_t, 0));
-    matte_value_object_set(out, key, value);
+    matte_value_object_set(out, key, value, 0);
     return out;
 }
 

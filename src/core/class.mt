@@ -85,12 +85,13 @@
         @getters;
         @funcs;
         @varnames;
-        @mthnames;
+        @mthnames; 
         @ops;
         if(out.publicVars)::{
             setters = out.setters;
             getters = out.getters;
             funcs = out.funcs;
+            ops = out.ops;
             mthnames = {
                 inherited : out.publicMethods
             };
@@ -106,6 +107,8 @@
             funcs = {};
             varnames = {};
             mthnames = {};
+            ops = {};
+            out.ops = ops;
             out.publicVars = varnames;
             out.publicMethods = mthnames;
             out.setters = setters;
@@ -116,10 +119,6 @@
 
         out.interface = ::(obj){
             <@> keys = introspect(obj).keys();
-            if (obj.operator) ::{
-                ops = obj.operator;
-                removeKey(obj, 'operator');
-            }();
             foreach(obj, ::(key, v) {
                 when(introspect(v).type() != Object)::{
                     error("Class interfaces can only have getters/setters and methods. (has type: " + introspect(v).type() + ")");
@@ -141,6 +140,12 @@
             });
 
         };
+        
+        out.operator = ::(obj) {
+            foreach(obj, ::(k, v){
+                ops[k] = v;            
+            });
+        };
 
 
         define(out, args, classinst);
@@ -149,35 +154,40 @@
 
 
         if(noseal == empty) ::{
-            out.getter = ::(key) {
-                when(key == 'introspect') {
+            getters['introspect'] = ::{
+                return {
                     public : {
                         variables : varnames,
                         methods : mthnames
                     }
                 };
-                when(key == 'isa') isa;
-
-                when(key == 'operator') ops;
-
-                @out = getters[key];
-                when(out) out();
-
-                out = funcs[key];
-                when(out) out;
-
-                @str = '';
-                for([0, introspect(funcs).keycount()], ::(i) {
-                    str = str + funcs[i] + ', ';
-                });
-                error('' +key+ " does not exist within this instances class." + str);
             };
-
-            out.setter = ::(key, value){
-                @out = setters[key];
-                when(out) out(value);
-                error('' +key+ " does not exist within this instances class.");
+            
+            
+            getters['isa'] = ::{
+                return isa;            
             };
+            ops['.'] = {
+            
+                get ::(key) {
+
+                    @out = getters[key];
+                    when(out) out();
+
+                    out = funcs[key];
+                    when(out) out;
+
+                    error('' +key+ " does not exist within this instances class.");
+                },
+
+                set ::(key, value){
+                    @out = setters[key];
+                    when(out) out(value);
+                    error('' +key+ " does not exist within this instances class.");
+                }
+            };
+            
+            setOperator(out, ops);
         }();
         return out;
     };

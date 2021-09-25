@@ -122,10 +122,11 @@ static void write_instruction__osn(matteArray_t * insts, uint32_t lineNumber, ui
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__olk(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__olk(matteArray_t * insts, uint32_t lineNumber, uint32_t bracket) {
     matteBytecodeStubInstruction_t inst;
     inst.lineNumber = lineNumber;
     inst.opcode = MATTE_OPCODE_OLK;
+    memcpy(inst.data, &bracket, sizeof(uint32_t));    
     matte_array_push(insts, inst);
 }
 

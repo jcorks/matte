@@ -1,10 +1,10 @@
-//// Test81
+//// Test82
 //
 // 
 @Matte = import('Matte.Core');
 
 @a = Matte.String.new('abcdefgh');
-@arr = a.valueize();
+@arr = a.characterize();
 
 
 @strout = '';

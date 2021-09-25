@@ -6,17 +6,18 @@
     define ::(this, args, classinst) {
         @str = args;
 
+        this.operator({
+            (String) :: {
+                return str;
+            }
+        });
+
         this.interface({
             mutate :: {
                 str = str + 'OHWOW';
-            },
-
-            operator :{
-                (String) :: {
-                    return str;
-                }
             }
         });
+        
     }
 });
 

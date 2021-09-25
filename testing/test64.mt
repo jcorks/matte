@@ -4,11 +4,9 @@
 @Class = import('Matte.Class');
 @TestClass = Class({
     define ::(this, args, classinst) {
-        this.interface({
-            operator : {
-                (String) :: {
-                    return args;
-                }
+        this.operator({
+            (String) :: {
+                return args;
             }
         });
     }

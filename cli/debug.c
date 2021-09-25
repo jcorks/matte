@@ -213,9 +213,9 @@ static int execCommand() {
                 const matteString_t * fileName = matte_vm_get_script_name_by_id(vm, fileid);
 
                 if (i == stackframe) {
-                    printf(" -> @%d: <%s>, line %d\n", i, fileName ? matte_string_get_c_str(fileName) : "???", inst[frame.pc].lineNumber);
+                    printf(" -> @%d:%s <%s>, line %d\n", i, matte_string_get_c_str(frame.prettyName), fileName ? matte_string_get_c_str(fileName) : "???", inst[frame.pc].lineNumber);
                 } else {
-                    printf("    @%d: <%s>, line %d\n", i, fileName ? matte_string_get_c_str(fileName) : "???", inst[frame.pc].lineNumber);
+                    printf("    @%d:%s <%s>, line %d\n", i, matte_string_get_c_str(frame.prettyName), fileName ? matte_string_get_c_str(fileName) : "???", inst[frame.pc].lineNumber);
                 }
             }
 

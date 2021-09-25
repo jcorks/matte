@@ -391,6 +391,11 @@ static void function_to_stub(FILE * f, uint32_t id) {
                 oc2 == 'k'
             ) {
                 inst->opcode = MATTE_OPCODE_OLK;
+                if (sscanf(line, "%"SCNu32" olk %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized osn format. Syntax: [line] olk [is bracket access]\n", lineN);
+                    exit(1);                                
+                }                
+
             } else if (
                 oc0 == 'o' &&
                 oc1 == 'p' &&

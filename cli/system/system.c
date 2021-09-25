@@ -123,7 +123,7 @@ MATTE_EXT_FN(matte_cli__system_readbytes) {
         matte_value_into_number(&key, i);
         matte_value_into_number(&val, bytes[i]);
 
-        matte_value_object_set(out, key, val);
+        matte_value_object_set(out, key, val, 1);
 
         matte_heap_recycle(key);
         matte_heap_recycle(val);

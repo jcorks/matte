@@ -2,9 +2,9 @@
 //
 // empty object
 @r = {};
-r.operator = {
+setOperator(r, {
     (String) ::{
         return 'Testing';
     }
-};
+});
 return String(r);

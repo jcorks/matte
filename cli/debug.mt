@@ -18,6 +18,7 @@
                 (Empty)  : '<empty>',
                 (Object) : ::{
                     when(already[obj] == true) '(type => Object): [already printed]';
+                    already[obj] = true;
 
                     @output = if (introspect(obj).isCallable()) 
                                 '(type => Function): {'
@@ -31,7 +32,6 @@
                         multi = true;
                     });
                     output = output + pspace(level) + (if (multi) '\n' + pspace(level)+'}' else '}');
-                    already[obj] = true;
                     return output;                
                 }(),
                 (Type): '(type => Type): ' + obj,
