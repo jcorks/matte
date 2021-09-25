@@ -1373,10 +1373,26 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT || !matte_value_is_callable(func)) {
         return;
     }
+
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
     #ifdef MATTE_VERIFY__HEAP_RECYCLE
         assert(m->refs != 0xffffffff);
     #endif
+
+    // foreach operator
+    if (m->opSet.binID) {
+        matteValue_t set = matte_value_object_access_string(m->opSet, MATTE_STR_CAST("foreach"));
+
+        if (set.binID) {
+            v = matte_vm_call(v.heap->vm, set, matte_array_empty(), MATTE_STR_CAST("'foreach' operator"));
+            if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+                // raise error
+            } else {
+                m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+            }
+        }
+    }
+
 
     matteValue_t args[] = {
         matte_heap_new_value(v.heap),

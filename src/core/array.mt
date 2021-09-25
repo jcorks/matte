@@ -175,6 +175,11 @@
                     data[key] = val;
                 }
             },
+
+            'foreach' :: {
+                return data;
+            },
+
             (String) ::{
                 @str = '[';
                 for([0, len], ::(i){

@@ -13,7 +13,7 @@
     
     // should error out, not allowed.
     output = String(a.substr('a', []));    
-}
+}();
 
 
 return '' + output + 

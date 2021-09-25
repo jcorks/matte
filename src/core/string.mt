@@ -307,27 +307,46 @@
             },
             
             substr::(from => Number, to => Number) {
-                return classinst.new(arrintr.subset(from, to));
+                return classinst.new(introspect(String(this)).subset(from, to));
             },
 
-            split::(dl) {                
-                dl = TOSTRINGLITERAL(dl);
-                <@>dlint = introspect(dl);
-                dl = dlint.charCodeAt(0);
+            split::(sub) {  
+                sub = STRINGTOARR(TOSTRINGLITERAL(sub));
+                @intrsub = introspect(sub);
+                                
+                @index = -1;
+                @sublen = intrsub.keycount();
+                @outarr = Array.new();
 
-                 
-                @out = Array.new();
-                @curstr = classinst.new();
+                when(sublen == 0 || arrlen == 0) ::{
+                    outarr.push(classinst(this));
+                    return outarr;
+                }();
+
+                @checksub::(i){
+                    @found = true;
+                    for([0, sublen], ::(j){
+                        when(arrsrc[i+j] !=
+                                sub[j]) ::{
+                            found = false;
+                            return sublen;
+                        }();
+                    });
+                    return found;
+                };
+
+                @cursub = classinst.new();
                 for([0, arrlen], ::(i){
-                    if (arrsrc[i] == dl) ::{
-                        out.push(classinst.new(curstr));
-                        curstr = classinst.new();
-                    }() else ::{
-                        curstr.append(arrsrc[i]);
+                    when(checksub(i, sub)) ::{
+                        outarr.push(cursub);
+                        cursub = classinst.new();
+                        return i+sublen; // skip sub
                     }();
+                    cursub.append(arrsrc[i]);
                 });
-                out.push(curstr);
-                return out;
+                outarr.push(cursub);
+                
+                return outarr;
             },
             
             
@@ -362,6 +381,10 @@
                 strsrc = arrintr.arrayToString();
                 hasStr = true;
                 return strsrc;
+            },
+
+            'foreach' :: {
+                return error('Cannot do foreach on a Matte.String.');
             },
             
             '+' :: (other){

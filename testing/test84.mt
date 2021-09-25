@@ -4,22 +4,23 @@
 
 
 @Matte = import('Matte.Core');
-@a = Matte.String.new('This is a string');
+@a = Matte.String.new('This_is_a_string');
 
-@output = 'errorDidntHappen';
-::{
-    context.catch = ::{
-        output = 'a';
-    };
-    
-    // should error out, not allowed.
-    output = a.split('aa');    
-}
+@output = Matte.String.new();
+foreach(a.split('_'), ::(k, v) {
+    output += v;
+});
 
+foreach(a.split(' '), ::(k, v) {
+    output += v;
+});
 
-return '' + output + 
-        a.substr(0, 3) + 
-        a.substr(5, 6) +
-        a.substr(8, 8) +
-        a.substr(10, a.length-1) +
-        (Matte.String.new('test').substr(0, 3));
+foreach(a.split('is'), ::(k, v) {
+    output += v;
+});
+
+foreach(a.split('This_is_a_string'), ::(k, v) {
+    output += v;
+});
+
+return output;
