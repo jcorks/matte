@@ -354,17 +354,86 @@
             
             @a = Matte.String.new('Here is my value: 40. Just that.');
 
-            // returns a new array. Each element in the array for each {{i}} 
+            // returns a new array. Each element in the array for each [%]
             // speified in the string. If a match could not be found, empty is returned.
-            @result = a.scan('value: {{0}}.');
+            @result = a.scan('value: [%].');
 
             // should be "40"
             print(result[0]);
             
             
             */
-            scan::(str) {
-            
+            scan::(fmt) {
+                // % == 37 
+                // [ == 91
+                // ] == 93
+                @beginsMatch = -1;
+                @endsMatch = -1;
+
+                fmt = classinst.new(TOSTRINGLITERAL(fmt));
+                @intrfmt = introspect(fmt);
+                <@>fmtlen = intrfmt.keycount();
+
+                // needs to hold at least one key for results to be valid
+                when(fmtlen <= 3) empty;                
+
+                beginsMatch = fmt[0] == 91 &&
+                              fmt[1] == 37 &&
+                              fmt[2] == 93;
+
+                <@>tokens = fmt.split('[@]');
+                @tokenArrays = Array.new();
+                foreach(tokens, ::(k, v) {
+                    tokenArrays.push(String(STRINGTOARR(v)));
+                }
+
+                @arrayOut = Array.new();
+
+                @curString = classinst.new();
+                @preString = classinst.new();
+                for([0, arrlen], ::(i) {
+                    @iter = i;
+                    @curtoken;
+                    @pass = true;
+                    @curTokenIter = 0;
+                    
+                    for([i, arrlen], ::(k) {
+                        @iter = k;
+                        curtoken = tokenArrays[curTokenIter];
+                        for([0, curtoken.length], ::(n) {
+                            when(curtoken[n] != arrsrc[iter]) ::{
+                                curString.append(arrsrc[k]);
+                                pass = false;
+                                return curtoken.length;
+                            }();
+                            iter += 1;
+                        });
+                        
+                        // try next token
+                        when(!pass) empty
+                        // token matches. 
+
+
+                        if (curTokenIter == 0) :: {
+                            arrayOut = Array.new();
+
+                            // if the fmt starts with a [%] matcher
+                            // record now!
+                            if (beginsMatch) ::{
+                                arrayOut.push(preString);
+                            }();    
+                        }() else ::{
+                            arrarOut.push(curString);    
+                        }();
+                        curString = classinst.new();
+                    });
+
+                    preString.append(arrsrc[i]);
+                });                
+                
+                when array
+                return arrayOut;
+
             },
             
             
