@@ -37,9 +37,9 @@ typedef struct  {
     uint32_t objectID;    
 } matteValue_t;
 
+#ifdef MATTE_THIS_IS_JUST_FOR_VISUAL_REFERENCE
 // Creates a new empty value
 matteValue_t matte_heap_new_value(matteHeap_t *);
-
 
 // Sets the type to empty
 void matte_value_into_empty(matteValue_t *);
@@ -72,6 +72,27 @@ void matte_value_into_new_object_literal_ref(matteValue_t *, const matteArray_t 
 // creates a new object with indexed keys/
 void matte_value_into_new_object_array_ref(matteValue_t * v, const matteArray_t *);
 
+void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);
+
+void matte_value_into_new_typed_function_ref(matteValue_t *, matteBytecodeStub_t * stub, const matteArray_t * args);
+
+
+// if number/string/boolean: copy
+// else: point to same source object
+void matte_value_into_copy(matteValue_t *, matteValue_t from);
+
+// returns a value to the heap.
+// if the value was pointing to an object / function,
+// that object's ref count is decremented.
+void matte_heap_recycle(matteValue_t);
+
+#endif 
+#include "matte_heap_alloc"
+
+
+
+
+
 
 matteValue_t * matte_value_object_array_at_unsafe(matteValue_t v, uint32_t index);
 
@@ -87,9 +108,7 @@ const matteString_t * matte_value_string_get_string_unsafe(matteValue_t v);
 matteValue_t matte_value_frame_get_named_referrable(matteVMStackFrame_t *, const matteString_t *);
 
 // 
-void matte_value_into_new_function_ref(matteValue_t *, matteBytecodeStub_t *);
 
-void matte_value_into_new_typed_function_ref(matteValue_t *, matteBytecodeStub_t * stub, const matteArray_t * args);
 
 
 matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t);
@@ -154,6 +173,13 @@ matteValue_t matte_value_object_access_string(matteValue_t, const matteString_t 
 // temporary number object Bracket ([]) access is emulated. 
 matteValue_t matte_value_object_access_index(matteValue_t, uint32_t);
 
+// Marks a value as a root value, which means it, and any 
+// value that traces back to this value, will not be garbage 
+// collected.
+//
+// By default, only the internal referrable array is 
+// set as root.
+void matte_value_object_set_is_root(matteValue_t, int);
 
 // If the value is an object, returns a new object with numbered 
 // keys pointing to the keys of the original objects. If not an object,
@@ -198,17 +224,11 @@ void matte_value_object_remove_key(matteValue_t, matteValue_t key);
 // NOTE: the value is assumed to be an object. Hence the "unsafe".
 matteValue_t matte_value_object_array_to_string_unsafe(matteValue_t);
 
-// if number/string/boolean: copy
-// else: point to same source object
-void matte_value_into_copy(matteValue_t *, matteValue_t from);
 
 // uniquely identifies the type (nonzero). Returns 0 if bad.
 uint32_t matte_value_type_get_typecode(matteValue_t);
 
-// returns a value to the heap.
-// if the value was pointing to an object / function,
-// that object's ref count is decremented.
-void matte_heap_recycle(matteValue_t);
+
 
 // Returns whether the value is of the type given by the typeobject typeobj.
 int matte_value_isa(matteValue_t, matteValue_t typeobj);

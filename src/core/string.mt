@@ -367,8 +367,8 @@
                 // % == 37 
                 // [ == 91
                 // ] == 93
-                @beginsMatch = -1;
-                @endsMatch = -1;
+                @beginsMatch = false;
+                @endsMatch = false;
 
                 fmt = classinst.new(TOSTRINGLITERAL(fmt));
                 @intrfmt = introspect(fmt);
@@ -381,10 +381,19 @@
                               fmt[1] == 37 &&
                               fmt[2] == 93;
 
-                <@>tokens = fmt.split('[@]');
+                endsMatch = fmt[fmtlen-1] == 93 &&
+                            fmt[fmtlen-2] == 37 &&
+                            fmt[fmtlen-3] == 91;
+
+
+                <@>tokens = fmt.split('[%]');
                 @tokenArrays = Array.new();
+                @tokenCountReal = (tokens.length-1)
+                    + (if(beginsMatch) 1 else 0)
+                    + (if(endsMatch)   1 else 0);
+
                 foreach(tokens, ::(k, v) {
-                    tokenArrays.push(String(STRINGTOARR(v)));
+                    tokenArrays.push(STRINGTOARR(String(v)));
                 }
 
                 @arrayOut = Array.new();
@@ -397,12 +406,18 @@
                     @pass = true;
                     @curTokenIter = 0;
                     
-                    for([i, arrlen], ::(k) {
-                        @iter = k;
+                    loop(::{
+                        when(curTokenIter >= tokens.length) false;
+
                         curtoken = tokenArrays[curTokenIter];
+                        curtokenIter += 1;
+
                         for([0, curtoken.length], ::(n) {
+                            when(iter >= arrlen) ::{
+                                return curtoken.length;
+                            }();
                             when(curtoken[n] != arrsrc[iter]) ::{
-                                curString.append(arrsrc[k]);
+                                curString.append(arrsrc[iter]);
                                 pass = false;
                                 return curtoken.length;
                             }();
@@ -410,7 +425,8 @@
                         });
                         
                         // try next token
-                        when(!pass) empty
+                        when(!pass) true;
+
                         // token matches. 
 
 
@@ -423,17 +439,17 @@
                                 arrayOut.push(preString);
                             }();    
                         }() else ::{
-                            arrarOut.push(curString);    
+                            arrayOut.push(curString);    
                         }();
                         curString = classinst.new();
-                    });
 
-                    preString.append(arrsrc[i]);
-                });                
-                
-                when array
+                        preString.append(arrsrc[i]);
+                    });        
+                });
+
+                when(arrayOut.length != tokenCountReal) empty;
                 return arrayOut;
-
+ 
             },
             
             

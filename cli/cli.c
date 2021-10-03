@@ -4,7 +4,6 @@
 #include <string.h>
 #include "shared.h"
 
-
 static void show_help() {
     printf("Command-Line tool for the Matte scripting language.\n");
     printf("Johnathan Corkery, 2021\n");
@@ -176,7 +175,15 @@ int main(int argc, char ** args) {
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_vm_run_script(vm, matte_array_at(fileID, uint32_t, i), arr);
             printf("> %s\n", matte_string_get_c_str(matte_value_as_string(v)));
+            matte_heap_recycle(v);
         }
+
+        matte_destroy(m);
+
+        #ifdef MATTE_DEBUG__HEAP
+        matte_heap_report();
+        #endif
+
         return 0;
         
     } else if (!strcmp(tool, "compile")) {
@@ -258,9 +265,14 @@ int main(int argc, char ** args) {
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_vm_run_script(vm, FILEIDS[i], arr);
             printf("> %s\n", matte_string_get_c_str(matte_value_as_string(v)));
+            matte_heap_recycle(v);
         }
         
+        matte_destroy(m);
 
+        #ifdef MATTE_DEBUG__HEAP
+        matte_heap_report();
+        #endif
     }
     return 0;
 }

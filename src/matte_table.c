@@ -295,6 +295,7 @@ static void matte_table_remove_entry(matteTable_t * t, matteTableEntry_t * entry
 
     t->keyRemove(entry->key);
     free(entry);
+    t->size--;
 }
 
 
@@ -492,7 +493,6 @@ void matte_table_remove(matteTable_t * t, const void * key) {
                     t->buckets[bucketID] = src->next;                    
                 }
                 matte_table_remove_entry(t, src);
-                t->size--;
 
                 return;
             }

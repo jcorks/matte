@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 static int TESTID = 1;
 
@@ -179,7 +180,12 @@ int main() {
         free(outstr);
         TESTID++;
         matte_string_destroy(outputText);
+        matte_heap_recycle(v);
         matte_destroy(m);
+
+        #ifdef MATTE_DEBUG__HEAP
+        assert(matte_heap_report() == 0);
+        #endif
     }
     matte_array_destroy(args);
     matte_string_destroy(infile);
