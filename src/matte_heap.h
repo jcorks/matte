@@ -179,7 +179,8 @@ matteValue_t matte_value_object_access_index(matteValue_t, uint32_t);
 //
 // By default, only the internal referrable array is 
 // set as root.
-void matte_value_object_set_is_root(matteValue_t, int);
+void matte_value_object_push_lock(matteValue_t);
+void matte_value_object_pop_lock(matteValue_t);
 
 // If the value is an object, returns a new object with numbered 
 // keys pointing to the keys of the original objects. If not an object,

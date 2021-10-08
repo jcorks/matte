@@ -279,8 +279,8 @@ static const char * opcode_to_str(int oc) {
 }
 
 #define STACK_SIZE() matte_array_get_size(frame->valueStack)
-#define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
-#define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__);
+#define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_value_object_pop_lock(matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__); matte_value_object_push_lock(__v__);
 
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
     matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
@@ -827,6 +827,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         uint32_t i;
         uint32_t len = matte_array_get_size(frame->valueStack);
         for(i = 0; i < len-1; ++i) { 
+            matte_value_object_pop_lock(matte_array_at(frame->valueStack, matteValue_t, i));
             matte_heap_recycle(matte_array_at(frame->valueStack, matteValue_t, i));
         }
         matte_array_set_size(frame->valueStack, 0);
@@ -1120,13 +1121,13 @@ matteValue_t matte_vm_call(
 
                 // sicne this function doesn't use a referrable, we need to set roots manually.
                 if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
-                    matte_value_object_set_is_root(v, 1);
+                    matte_value_object_push_lock(v);
                 }
             }
 
             matte_array_push(argsReal, v);
         }
-        matte_value_object_set_is_root(d, 1);
+        matte_value_object_push_lock(d);
         matteValue_t result;
         if (callable == 2) {
             int ok = matte_value_object_function_pre_typecheck_unsafe(d, argsReal);
@@ -1136,13 +1137,13 @@ matteValue_t matte_vm_call(
         } else {
             result = set->userFunction(vm, d, argsReal, set->userData);        
         }
-        matte_value_object_set_is_root(d, 0);
+        matte_value_object_pop_lock(d);
 
 
         len = matte_array_get_size(argsReal);
         for(i = 0; i < len; ++i) {
             if (matte_array_at(argsReal, matteValue_t, 0).binID == MATTE_VALUE_TYPE_OBJECT) {
-                matte_value_object_set_is_root(matte_array_at(argsReal, matteValue_t, 0), 0);
+                matte_value_object_pop_lock(matte_array_at(argsReal, matteValue_t, 0));
             }
             matte_heap_recycle(matte_array_at(argsReal, matteValue_t, i));
         }
@@ -1201,8 +1202,8 @@ matteValue_t matte_vm_call(
         matte_array_destroy(referrables);
 
         // establishes the reference path of objects not allowed to be cleaned up
-        matte_value_object_set_is_root(frame->referrable, 1);
-        matte_value_object_set_is_root(frame->context, 1);        
+        matte_value_object_push_lock(frame->referrable);
+        matte_value_object_push_lock(frame->context);        
         matteValue_t result = matte_heap_new_value(vm->heap);
         if (callable == 2) {
             if (ok) 
@@ -1211,8 +1212,8 @@ matteValue_t matte_vm_call(
         } else {
             result = vm_execution_loop(vm);        
         }
-        matte_value_object_set_is_root(frame->referrable, 0);
-        matte_value_object_set_is_root(frame->context, 0);
+        matte_value_object_pop_lock(frame->referrable);
+        matte_value_object_pop_lock(frame->context);
 
         // cleanup;
         matte_heap_recycle(frame->referrable);
