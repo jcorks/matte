@@ -1,0 +1,63 @@
+// heaps facilitate tracking of references
+// In heap debug mode, each reference is has its calling location tracked
+
+matteValue_t matte_heap_new_value_(matteHeap_t *);
+void matte_value_into_empty_(matteValue_t *);
+void matte_value_into_number_(matteValue_t *, double);
+void matte_value_into_boolean_(matteValue_t *, int);
+void matte_value_into_string_(matteValue_t *, const matteString_t *);
+void matte_value_into_new_object_ref_(matteValue_t *);
+void matte_value_into_new_object_ref_typed_(matteValue_t *, matteValue_t type);
+void matte_value_into_new_type_(matteValue_t *, matteValue_t opts);
+void matte_value_into_new_object_literal_ref_(matteValue_t *, const matteArray_t *);
+void matte_value_into_new_object_array_ref_(matteValue_t * v, const matteArray_t *);
+void matte_value_into_new_function_ref_(matteValue_t *, matteBytecodeStub_t *);
+void matte_value_into_new_typed_function_ref_(matteValue_t *, matteBytecodeStub_t * stub, const matteArray_t * args);
+void matte_value_into_copy_(matteValue_t *, matteValue_t from);
+
+
+
+#ifdef MATTE_DEBUG__HEAP 
+
+matteValue_t matte_heap_track_in(matteValue_t, const char *, int);
+void matte_heap_track_out(matteValue_t, const char *, int);
+
+// prints a report of the heap if any references have not 
+// 
+int matte_heap_report();
+void matte_heap_recycle_(matteValue_t, const char *, int line);
+
+
+
+#define matte_heap_new_value(__HEAP__) matte_heap_track_in(matte_heap_new_value_(__HEAP__), __FILE__, __LINE__)
+#define matte_value_into_empty(__VAL__)  matte_heap_track_out(*(__VAL__), __FILE__, __LINE__); (matte_value_into_empty_(__VAL__)); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_number(__VAL__, __NUM__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__);matte_value_into_number_(__VAL__, __NUM__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_boolean(__VAL__, __MBOOL__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__);matte_value_into_boolean_(__VAL__, __MBOOL__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_string(__VAL__, __MSTRING__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__);matte_value_into_string_(__VAL__, __MSTRING__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_new_object_ref(__VAL__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__);matte_value_into_new_object_ref_(__VAL__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_new_object_ref_typed(__VAL__, __MTYPE__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__); matte_value_into_new_object_ref_typed_(__VAL__, __MTYPE__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_new_type(__VAL__, __MOPTS__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__); matte_value_into_new_type_(__VAL__, __MOPTS__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_new_object_literal_ref(__VAL__, __MARR__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__); matte_value_into_new_object_literal_ref_(__VAL__, __MARR__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_new_object_array_ref(__VAL__, __MARR__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__); matte_value_into_new_object_array_ref_(__VAL__, __MARR__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_new_function_ref(__VAL__, __MSTUB__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__); matte_value_into_new_function_ref_(__VAL__, __MSTUB__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_new_typed_function_ref(__VAL__, __MSTUB__, __MARR0__) matte_heap_track_out(*(__VAL__), __FILE__, __LINE__); matte_value_into_new_typed_function_ref_(__VAL__, __MSTUB__, __MARR0__); matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_copy(__VAL__, __OTHER__) if((__VAL__)->binID == MATTE_VALUE_TYPE_OBJECT)matte_heap_track_out(*(__VAL__), __FILE__, __LINE__);matte_value_into_copy_(__VAL__, __OTHER__); if((__VAL__)->binID == MATTE_VALUE_TYPE_OBJECT)matte_heap_track_in(*(__VAL__), __FILE__, __LINE__);
+#define matte_heap_recycle(__VAL__) matte_heap_recycle_(__VAL__, __FILE__, __LINE__); 
+#else 
+void matte_heap_recycle_(matteValue_t);
+
+#define matte_heap_new_value(__HEAP__) matte_heap_new_value_(__HEAP__)
+#define matte_value_into_empty(__VAL__) matte_value_into_empty_(__VAL__)
+#define matte_value_into_number(__VAL__, __NUM__) matte_value_into_number_(__VAL__, __NUM__)
+#define matte_value_into_boolean(__VAL__, __MBOOL__) matte_value_into_boolean_(__VAL__, __MBOOL__)
+#define matte_value_into_string(__VAL__, __MSTRING__) matte_value_into_string_(__VAL__, __MSTRING__)
+#define matte_value_into_new_object_ref(__VAL__) matte_value_into_new_object_ref_(__VAL__)
+#define matte_value_into_new_object_ref_typed(__VAL__, __MTYPE__) matte_value_into_new_object_ref_typed_(__VAL__, __MTYPE__)
+#define matte_value_into_new_type(__VAL__, __MOPTS__) matte_value_into_new_type_(__VAL__, __MOPTS__)
+#define matte_value_into_new_object_literal_ref(__VAL__, __MARR__) matte_value_into_new_object_literal_ref_(__VAL__, __MARR__)
+#define matte_value_into_new_object_array_ref(__VAL__, __MARR__) matte_value_into_new_object_array_ref_(__VAL__, __MARR__)
+#define matte_value_into_new_function_ref(__VAL__, __MSTUB__) matte_value_into_new_function_ref_(__VAL__, __MSTUB__); 
+#define matte_value_into_new_typed_function_ref(__VAL__, __MSTUB__, __MARR0__) matte_value_into_new_typed_function_ref_(__VAL__, __MSTUB__, __MARR0__);
+#define matte_value_into_copy(__VAL__, __OTHER__) matte_value_into_copy_(__VAL__, __OTHER__); 
+#define matte_heap_recycle(__VAL__); matte_heap_recycle_(__VAL__)
+#endif

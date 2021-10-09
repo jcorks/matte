@@ -539,7 +539,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             matteValue_t function = STACK_POP();
 
-
+            matte_value_object_push_lock(function);
             matteValue_t result = matte_vm_call(vm, function, args, NULL);
 
             for(i = 0; i < argcount; ++i) {
@@ -547,6 +547,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_heap_recycle(v);
             }
             matte_array_destroy(args);
+            matte_value_object_pop_lock(function);
             matte_heap_recycle(function);
 
             STACK_PUSH(result);
@@ -1216,6 +1217,7 @@ matteValue_t matte_vm_call(
         matte_value_object_pop_lock(frame->context);
 
         // cleanup;
+        matte_heap_recycle(frame->context);
         matte_heap_recycle(frame->referrable);
         matte_heap_garbage_collect(vm->heap);
         vm_pop_frame(vm);
@@ -1243,7 +1245,6 @@ matteValue_t matte_vm_call(
 
             vm->error.binID = 0;
         }
-        matte_heap_recycle(d);
         return result; // ok, vm_execution_loop returns new
     } 
 }
@@ -1260,8 +1261,10 @@ matteValue_t matte_vm_run_script(
         return func;
     }
     matte_value_into_new_function_ref(&func, stub);
+    matte_value_object_push_lock(func);
     matteValue_t result = matte_vm_call(vm, func, args, matte_vm_get_script_name_by_id(vm, fileid));
 
+    matte_value_object_pop_lock(func);
     matte_heap_recycle(func);
     return result;
 }

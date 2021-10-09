@@ -871,8 +871,14 @@ void matte_value_print(matteValue_t v) {
         printf("  Value:     %s\n", matte_string_get_c_str(matte_value_as_string(v)));
         break;
 
-      case MATTE_VALUE_TYPE_OBJECT: 
+      case MATTE_VALUE_TYPE_OBJECT: {
         printf("  Heap Type: OBJECT\n");
+        matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);            
+        printf("  Refs:      %d\n", m->refs);
+        printf("  Function?  %s\n", m->functionstub == NULL ? "false" : "true");
+        printf("  Parents?   %s\n", matte_table_is_empty(m->refParents) ? "true" : "false");
+        printf("  Children?  %s\n", matte_table_is_empty(m->refChildren) ? "true" : "false");
+                            
         /*{
             printf("  String Values:\n");
             matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);            
@@ -890,7 +896,7 @@ void matte_value_print(matteValue_t v) {
             }
         }*/
         break;
-
+      }
     }
     
     printf("\n");
@@ -1887,7 +1893,13 @@ matteValue_t matte_value_get_type(matteValue_t v) {
 // returns a value to the heap.
 // if the value was pointing to an object / function,
 // that object's ref count is decremented.
-void matte_heap_recycle_(matteValue_t v) {
+void matte_heap_recycle_(
+    matteValue_t v
+#ifdef MATTE_DEBUG__HEAP
+    ,const char * file_,
+    int line_
+#endif    
+) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
         // already handled as part of a rootless sweep.
@@ -1899,7 +1911,9 @@ void matte_heap_recycle_(matteValue_t v) {
         #endif 
         if (m->refs) {
             m->refs--;
-
+            #ifdef MATTE_DEBUG__HEAP
+                matte_heap_track_out(v, file_, line_);            
+            #endif
 
             // should guarantee no repeats
             //if (m->refs == 0)
@@ -1908,8 +1922,16 @@ void matte_heap_recycle_(matteValue_t v) {
             matte_table_insert(v.heap->toSweep, m, (void*)0x1);                
         }
     } else if (v.binID && v.binID != MATTE_VALUE_TYPE_TYPE) {
+        #ifdef MATTE_DEBUG__HEAP
+            matte_heap_track_out(v, file_, line_);            
+        #endif
         matte_bin_recycle(v.heap->sortedHeaps[v.binID], v.objectID);
     }
+    #ifdef MATTE_DEBUG__HEAP
+    else if (v.binID) {
+        matte_heap_track_out(v, file_, line_);            
+    }    
+    #endif
 }
 
 // checks to see if the object has a reference back to its parents
@@ -2044,6 +2066,7 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
                     matteValue_t v;
                     v.objectID = m->heapID;
                     v.binID = MATTE_VALUE_TYPE_OBJECT;
+                    v.heap = h;
                     matte_heap_track_out(v, "<nothing>", -1);
                     m->refs--;
                 }
