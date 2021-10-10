@@ -631,6 +631,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t object = STACK_POP();
             matteValue_t val = STACK_POP();
 
+            matte_value_object_push_lock(key);
+            matte_value_object_push_lock(object);
+            matte_value_object_push_lock(val);
+
             if (opr == MATTE_OPERATOR_ASSIGNMENT_NONE) {
                 
                 const matteValue_t * lk = matte_value_object_set(object, key, val, isBracket);
@@ -662,6 +666,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_heap_recycle(ref); 
                 STACK_PUSH(out);
             }
+
+            matte_value_object_pop_lock(key);
+            matte_value_object_pop_lock(object);
+            matte_value_object_pop_lock(val);
+
 
             matte_heap_recycle(key);
             matte_heap_recycle(object);  

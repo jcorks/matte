@@ -394,7 +394,7 @@
 
                 foreach(tokens, ::(k, v) {
                     tokenArrays.push(STRINGTOARR(String(v)));
-                }
+                });
 
                 @arrayOut = Array.new();
 
@@ -410,7 +410,7 @@
                         when(curTokenIter >= tokens.length) false;
 
                         curtoken = tokenArrays[curTokenIter];
-                        curtokenIter += 1;
+                        curTokenIter += 1;
 
                         for([0, curtoken.length], ::(n) {
                             when(iter >= arrlen) ::{
