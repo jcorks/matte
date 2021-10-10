@@ -183,9 +183,7 @@ int main() {
         matte_heap_recycle(v);
         matte_destroy(m);
 
-        #ifdef MATTE_DEBUG__HEAP
-        assert(matte_heap_report() == 0);
-        #endif
+
     }
     matte_array_destroy(args);
     matte_string_destroy(infile);

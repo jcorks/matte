@@ -489,6 +489,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             matte_value_into_new_object_literal_ref(&v, args);
 
+            len = matte_array_get_size(args);
             for(i = 0; i < len; ++i) {
                 matte_heap_recycle(matte_array_at(args, matteValue_t, i));
             }
@@ -564,8 +565,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteValue_t vOut;
                 switch(*(uint32_t*)(inst->data+4) + (int)MATTE_OPERATOR_ASSIGNMENT_NONE) {
                   case MATTE_OPERATOR_ASSIGNMENT_NONE: {
-                    matte_value_into_copy(ref, v);
+                    matte_vm_stackframe_set_referrable(vm, 0, *(uint32_t*)inst->data, v);
                     vOut = v;
+                    v.binID = 0;
                     break;
                   }
                     
@@ -585,6 +587,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent referrable operation (corrupt bytecode?)."));                        
 
                 }                
+                matte_heap_recycle(v);
                 STACK_PUSH(vOut); // new value is pushed
             } else {
                 matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent referrable."));    
@@ -831,6 +834,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matte_value_object_pop_lock(matte_array_at(frame->valueStack, matteValue_t, i));
             matte_heap_recycle(matte_array_at(frame->valueStack, matteValue_t, i));
         }
+        matte_value_object_pop_lock(matte_array_at(frame->valueStack, matteValue_t, len-1));
         matte_array_set_size(frame->valueStack, 0);
         return output; // ok since not removed from normal value stack stuff
     } else {
@@ -1143,8 +1147,8 @@ matteValue_t matte_vm_call(
 
         len = matte_array_get_size(argsReal);
         for(i = 0; i < len; ++i) {
-            if (matte_array_at(argsReal, matteValue_t, 0).binID == MATTE_VALUE_TYPE_OBJECT) {
-                matte_value_object_pop_lock(matte_array_at(argsReal, matteValue_t, 0));
+            if (matte_array_at(argsReal, matteValue_t, i).binID == MATTE_VALUE_TYPE_OBJECT) {
+                matte_value_object_pop_lock(matte_array_at(argsReal, matteValue_t, i));
             }
             matte_heap_recycle(matte_array_at(argsReal, matteValue_t, i));
         }
@@ -1219,7 +1223,9 @@ matteValue_t matte_vm_call(
         // cleanup;
         matte_heap_recycle(frame->context);
         matte_heap_recycle(frame->referrable);
+        matte_value_object_push_lock(result);
         matte_heap_garbage_collect(vm->heap);
+        matte_value_object_pop_lock(result);
         vm_pop_frame(vm);
 
 
@@ -1515,6 +1521,30 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
     }
 }
 
+void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID, matteValue_t val) {
+    matteVMStackFrame_t ** frames = matte_array_get_data(vm->callstack);
+    i = vm->stacksize - 1 - i;
+    if (i >= vm->stacksize) { // invalid or overflowed
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Invalid stackframe requested in referrable assignment."));
+        return;
+    }
+
+
+    // get context
+    if (referrableID < frames[i]->referrableSize) {
+        matteValue_t vkey = matte_heap_new_value(vm->heap);
+        matte_value_into_number(&vkey, referrableID);
+        matte_value_object_set(frames[i]->referrable, vkey, val, 1);
+        matte_heap_recycle(vkey);
+        //matte_value_into_copy(matte_value_object_array_at_unsafe(frames[i]->referrable, referrableID), val);
+    } else {
+        matte_value_set_captured_value(
+            frames[i]->context, 
+            referrableID - frames[i]->referrableSize,
+            val
+        );
+    }
+}
 
 
 void matte_vm_set_external_function(

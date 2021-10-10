@@ -110,6 +110,8 @@ static matteValue_t introspection_object_create(matteVM_t * vm) {
         matte_value_object_set(value, index0, obj, 1);
 
         matte_value_object_set(obj, key, value, 0);
+        // OK, strings are copied when set.
+        matte_heap_recycle(key);
     }
     matte_heap_recycle(index0);
 
@@ -136,6 +138,8 @@ static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, mat
     matte_value_into_string(&key, MATTE_STR_CAST("value"));
     matte_value_into_copy(&value, matte_array_at(args, matteValue_t, 0));
     matte_value_object_set(out, key, value, 0);
+    matte_heap_recycle(key);
+    matte_heap_recycle(value);
     return out;
 }
 
@@ -143,8 +147,9 @@ static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, mat
 static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
-
-    return matte_value_get_type(a);
+    matteValue_t out = matte_value_get_type(a);
+    matte_heap_recycle(a);
+    return out;
 }
 
 
@@ -157,6 +162,7 @@ static matteValue_t vm_ext_call__introspect_object_id(matteVM_t * vm, matteValue
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
         matte_value_into_number(&result, a.objectID);
     }
+    matte_heap_recycle(a);
     return result;
 }
 
@@ -165,9 +171,12 @@ static matteValue_t vm_ext_call__introspect_keys(matteVM_t * vm, matteValue_t fn
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
-        return matte_value_object_keys(a);
+        matteValue_t out = matte_value_object_keys(a);
+        matte_heap_recycle(a);
+        return out;
     }
-    return matte_heap_new_value(vm->heap);;
+    matte_heap_recycle(a);
+    return matte_heap_new_value(vm->heap);
 }
 
 
@@ -176,8 +185,11 @@ static matteValue_t vm_ext_call__introspect_values(matteVM_t * vm, matteValue_t 
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
 
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
-        return matte_value_object_values(a);
+        matteValue_t out = matte_value_object_values(a);
+        matte_heap_recycle(a);
+        return out;
     }
+    matte_heap_recycle(a);
     return matte_heap_new_value(vm->heap);;
 }
 
@@ -193,6 +205,7 @@ static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
         matte_value_into_number(&out, matte_value_object_get_key_count(a));
     }
+    matte_heap_recycle(a);
     return out;
 }
 
@@ -228,7 +241,10 @@ static matteValue_t vm_ext_call__introspect_arraytostring(matteVM_t * vm, matteV
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("arrayToString() expects an object value."));
     }
-    return matte_value_object_array_to_string_unsafe(a);
+
+    matteValue_t out = matte_value_object_array_to_string_unsafe(a);
+    matte_heap_recycle(a);
+    return out;
 }
 
 
@@ -258,6 +274,7 @@ static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t 
         matte_string_destroy(strVal);
         matte_value_into_string(&strV, str);
         matte_string_destroy(str);
+        matte_heap_recycle(a);
         return strV;
     }
     matte_heap_recycle(a);
@@ -285,6 +302,7 @@ static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValu
     if (a.binID == MATTE_VALUE_TYPE_STRING) {
         matteValue_t strV = matte_heap_new_value(vm->heap);
         matte_value_into_number(&strV, matte_string_get_char(matte_value_string_get_string_unsafe(a), key));
+        matte_heap_recycle(a);
         return strV;
     }
     matte_heap_recycle(a);
@@ -327,12 +345,17 @@ static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t 
 }
 
 
+
 static matteValue_t vm_ext_call__introspect_floor(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t src = *matte_value_object_array_at_unsafe(fn, 0);
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, floor(matte_value_as_number(a)));
+    matte_heap_recycle(a);
     return out;
 }
 
@@ -341,8 +364,12 @@ static matteValue_t vm_ext_call__introspect_ceil(matteVM_t * vm, matteValue_t fn
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, ceil(matte_value_as_number(a)));
+    matte_heap_recycle(a);
     return out;
 }
 
@@ -351,8 +378,12 @@ static matteValue_t vm_ext_call__introspect_round(matteVM_t * vm, matteValue_t f
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, round(matte_value_as_number(a)));
+    matte_heap_recycle(a);
     return out;
 }
 static matteValue_t vm_ext_call__introspect_toradians(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
@@ -360,8 +391,12 @@ static matteValue_t vm_ext_call__introspect_toradians(matteVM_t * vm, matteValue
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, matte_value_as_number(a) * (M_PI / 180.0));
+    matte_heap_recycle(a);
     return out;
 }
 static matteValue_t vm_ext_call__introspect_todegrees(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
@@ -369,8 +404,12 @@ static matteValue_t vm_ext_call__introspect_todegrees(matteVM_t * vm, matteValue
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, matte_value_as_number(a) * (180.0 / M_PI));
+    matte_heap_recycle(a);
     return out;
 }
 
@@ -379,8 +418,12 @@ static matteValue_t vm_ext_call__introspect_sin(matteVM_t * vm, matteValue_t fn,
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, sin(matte_value_as_number(a)));
+    matte_heap_recycle(a);
     return out;
 }
 
@@ -389,8 +432,12 @@ static matteValue_t vm_ext_call__introspect_cos(matteVM_t * vm, matteValue_t fn,
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, cos(matte_value_as_number(a)));
+    matte_heap_recycle(a);
     return out;
 }
 
@@ -399,8 +446,12 @@ static matteValue_t vm_ext_call__introspect_tan(matteVM_t * vm, matteValue_t fn,
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, tan(matte_value_as_number(a)));
+    matte_heap_recycle(a);
     return out;
 }
 
@@ -409,8 +460,12 @@ static matteValue_t vm_ext_call__introspect_abs(matteVM_t * vm, matteValue_t fn,
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, fabs(matte_value_as_number(a)));
+    matte_heap_recycle(a);
     return out;
 }
 
@@ -420,8 +475,12 @@ static matteValue_t vm_ext_call__introspect_sqrt(matteVM_t * vm, matteValue_t fn
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_number(&out, sqrt(matte_value_as_number(a)));
+    matte_heap_recycle(a);
     return out;
 }
 
@@ -430,8 +489,12 @@ static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t f
     matteValue_t a = matte_value_object_access_string(src, MATTE_STR_CAST("value"));
     
     matteValue_t out = matte_heap_new_value(vm->heap);
-    if (a.binID != MATTE_VALUE_TYPE_NUMBER) return out;
+    if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
+        matte_heap_recycle(a);
+        return out;
+    }
     matte_value_into_boolean(&out, isnan(matte_value_as_number(a)));
+    matte_heap_recycle(a);
     return out;
 }
 

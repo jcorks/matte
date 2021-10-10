@@ -205,6 +205,8 @@ uint32_t matte_vm_get_stackframe_size(const matteVM_t *);
 // Caller is responsible for recycling value.
 matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID);
 
+void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID, matteValue_t v);
+
 
 // Adds an external function.
 // In the script context: calling getExternalFunction() with the string identifier 

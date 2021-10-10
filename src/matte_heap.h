@@ -86,6 +86,15 @@ void matte_value_into_copy(matteValue_t *, matteValue_t from);
 // that object's ref count is decremented.
 void matte_heap_recycle(matteValue_t);
 
+// Marks a value as a root value, which means it, and any 
+// value that traces back to this value, will not be garbage 
+// collected.
+//
+// By default, only the internal referrable array is 
+// set as root.
+void matte_value_object_push_lock(matteValue_t);
+void matte_value_object_pop_lock(matteValue_t);
+
 #endif 
 #include "matte_heap_alloc"
 
@@ -108,7 +117,7 @@ const matteString_t * matte_value_string_get_string_unsafe(matteValue_t v);
 matteValue_t matte_value_frame_get_named_referrable(matteVMStackFrame_t *, const matteString_t *);
 
 // 
-
+void matte_value_set_captured_value(matteValue_t v, uint32_t index, matteValue_t val);
 
 
 matteBytecodeStub_t * matte_value_get_bytecode_stub(matteValue_t);
@@ -173,14 +182,7 @@ matteValue_t matte_value_object_access_string(matteValue_t, const matteString_t 
 // temporary number object Bracket ([]) access is emulated. 
 matteValue_t matte_value_object_access_index(matteValue_t, uint32_t);
 
-// Marks a value as a root value, which means it, and any 
-// value that traces back to this value, will not be garbage 
-// collected.
-//
-// By default, only the internal referrable array is 
-// set as root.
-void matte_value_object_push_lock(matteValue_t);
-void matte_value_object_pop_lock(matteValue_t);
+
 
 // If the value is an object, returns a new object with numbered 
 // keys pointing to the keys of the original objects. If not an object,
