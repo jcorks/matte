@@ -365,9 +365,229 @@ return 0;
             
             */
             scan::(fmt) {
+            
+                // converts a format string into a format array.
+                // Format arrays consist of integer anchor IDs and 
+                // charcode arrays.
+                //
+                // Throws error if:
+                // - format includes to anchors [%] unseparated by a string.
+                // - format is empty.
+                // - format contains only an anchor 
+                // - format contains only no anchors
+                <@>markify ::(fmtsrc) {
+                    @fmtstrl = TOSTRINGLITERAL(fmtsrc);
+                    @fmtarr = STRINGTOARR(fmtstrl);
+                    @fmtlen = introspect(fmtarr).keycount();
+                    <@>output = [];
+                    <@>beginsMatch = fmt[0]== 91 &&
+                                     fmt[1] == 37 &&
+                                     fmt[2] == 93;
+
+                    <@>endsMatch = fmt[fmtlen-1] == 93 &&
+                                fmt[fmtlen-2] == 37 &&
+                                fmt[fmtlen-3] == 91;
+                    @anchorIndex = 0;                       
+                    @contentIndex = 0;
+                    if (beginsMatch) ::{
+                        output[contentIndex] = 0;
+                        contentIndex =1;
+                        anchorIndex = 1;   
+                    }();              
+                       
+                    @tokens = classinst.new(fmtstrl).split('[%]');
+                    for([0, tokens.length], ::(i) {
+                        output[contentIndex] = STRINGTOARR(String(tokens[i]));
+                        contentIndex+=1;
+
+                        if (i < tokens.length-1 || (i == tokens.length-1 && endsMatch)) ::{
+                            output[contentIndex] = anchorIndex;
+                            anchorIndex += 1;
+                            contentIndex += 1;                        
+                        }();
+                    });
+                    
+                    @output_intr = introspect(output);
+
+                    // Check empty
+                    when(output_intr.keycount() == 0) 
+                        error('MatteString.scan format string does not contain any anchors or is empty.');
+
+    
+                    // Check toggle
+                    @isNum = beginsMatch;
+                    for([0, contentIndex+1], ::(i){
+                        when(introspect(output[i]).type() != (if(isNum) Number else Object)) error('MatteString.scan format string is in an invalid format.');
+                        isNum = !isNum;
+                    });
+                   
+                    return output;    
+                };
+            
+            
+                // sees if a can be found within b.
+                // -1 if not found, else the offset of b
+                // where a was first found.
+                <@>findsubstr :: (offset, a, alen, b, blen) {
+                    @found = -1;
+                    for([offset, blen], ::(i) {
+                        @matches = true;
+                        
+                        for([0, anchorArrLen], ::(n){
+                            when(strArr[i] != anchorArr[n]) ::{
+                                matches = false;
+                                return anchorArrLen;
+                            }();
+                        });                                 
+                        
+                        
+                        when(matches) ::{
+                            found = i;
+                            return strArrLen;
+                        }();
+                    });
+                    return found;
+                }
+            
+                // Finds an anchored string ([%]), in the configuration of:
+                //
+                //   [%]anchor          -> find_A
+                //   anchor[%]anchor    -> findA_B
+                //   anchor[%]          -> findA_
+                //
+                // Whats returned is an object with the 
+                // following attributes:
+                // {
+                //      // Of type Number, returns the offset 
+                //      // Within strArr where the anchored string ends in strArr
+                //      offset,
+                //      // A String of the anchored content string
+                //      content
+                // }
+                //
+                // Arguments:
+                //
+                // strArr -> this string, but as a charcode array 
+                // offset -> where to start "find"ing from within strArr
+                // anchorArr(A|B) -> anchor charcode arrays
+                <@>find_A ::(
+                    strArr,             
+                    anchorArr
+                ) {
+                    @strArrLen = introspect(strArr).keycount();
+                    @anchorArrLen = introspect(anchorArr).keycount();                    
+
+                    @content = classinst.new();
+                    @where = findsubstr(0, anchorArr, anchorArrLen, strArr, strArrLen);                    
+
+                    // couldnt find
+                    when(where==-1) empty;
+                    
+                    
+                    
+                    @content = introspect(strArr).subset(0, where-1);                                       
+
+                    return {
+                        content: content,
+                        offset: where
+                    };
+                };
+                <@>findA_B ::(
+                    strArr,             //<- full string array 
+                    offset,   //<- 
+                    
+                    anchorArrA,
+                    anchorArrB
+                ) {
+                    @strArrLen = introspect(strArr).keycount();
+                    @anchorArrALen = introspect(anchorArrA).keycount();                    
+                    @anchorArrBLen = introspect(anchorArrB).keycount();                    
+
+                    @content = classinst.new();
+                    @where0 = findsubstr(offset, anchorArrA, anchorArrALen, strArr, strArrLen);                                        
+                    @where1 = findsubstr(offset, anchorArrB, anchorArrALen, strArr, strArrLen);                                        
+                    return {
+                        content: content,
+                        offset: where
+                    };
+                };
+                <@>findA_ ::(
+                    strArr,             //<- full string array 
+                    offset => Number,   //<- 
+                    
+                    anchorArrA,
+                    anchorArrB
+                ) {
+                
+                };
+
+
+                @outputArray = Array.new();
+                @offset = 0;
+                @success = true;
+                @fmtArr = markify(fmt);
+                <@>len = introspect(fmtArr).keycount();
+                
+                loop(::{
+                    @foundFirst = false;
+                    for([0, len], ::(i){
+                        return (match(true) {
+                
+                            // [%]string. Always first!
+                            (introspect(fmtArr[i]).type() == Number): ::{
+                                <@>result = find_A(arrsrc, fmtArr[i+1]);
+                                // end the loop, couldnt find required token
+                                when(result == empty): ::{
+                                    success = false;
+                                    return len;
+                                }();
+                                foundFirst = true;
+                                outputArray.push(result.content);
+                                offset = result.offset; // where the next token begins.
+                                return i+1;
+                            },
+                            
+
+                            // string[%]string
+                            (i+2 < len): ::{
+                                <@>result = findA_B(arrsrc, offset, fmtArr[i], fmtArr[i+2]);
+                                // end the loop, couldnt find required token
+                                when(result == empty): ::{
+                                    success = false;
+                                    return len;
+                                }();
+                                foundFirst = true;                                
+                                outputArray.push(result.content);
+                                offset = result.offset; // where the next token begins.                        
+                                return i+2;
+                            },
+
+                            // string[%]
+                            default: ::{
+                                <@>result = findA_(arrsrc, offset, fmtArr[i]);
+                                // end the loop, couldnt find required token
+                                when(result == empty): ::{
+                                    success = false;
+                                    return len;
+                                }();                                
+                                foundFirst = true;
+                                outputArray.push(result.content);
+                                offset = result.offset; // where the next token begins.                                                
+                                return len;
+                            },
+                        })();
+                    });
+                    when(success) false;
+                    when(!foundFirst) false;
+                    
+                    return true;
+                });
+
+                return outputArray;            
                 // % == 37 
                 // [ == 91
                 // ] == 93
+                /*
                 @beginsMatch = false;
                 @endsMatch = false;
 
@@ -468,6 +688,7 @@ return 0;
 
                 when(arrayOut.length != tokenCountReal) empty;
                 return arrayOut;
+                */
  
             },
             
