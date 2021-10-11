@@ -1,3 +1,4 @@
+return 0;
 <@>class = import('Matte.Class');
 <@>Array = import('Matte.Array');
 @String_ = class({

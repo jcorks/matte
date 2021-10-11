@@ -178,6 +178,8 @@ static void function_block_destroy(matteFunctionBlock_t * t) {
         matte_string_destroy(matte_array_at(t->captureNames, matteString_t *, i));        
     }
     matte_array_destroy(t->captureNames);
+    if (t->typestrict_types) 
+        matte_array_destroy(t->typestrict_types);
     free(t);
 
 }
@@ -2006,6 +2008,8 @@ void destroy_function_block(matteFunctionBlock_t * b) {
     matte_array_destroy(b->instructions);
     matte_array_destroy(b->captures);
     matte_array_destroy(b->captureNames);
+    if (b->typestrict_types) 
+        matte_array_destroy(b->typestrict_types);
     free(b);
 }
 

@@ -173,7 +173,9 @@ int main() {
 
         matteString_t * resultText = matte_value_as_string(v);
         if (!matte_string_test_eq(outputText, resultText)) {
-            printf("Test failed!!\nExpected output   : %s\nReal output       : %s\n", outstr, matte_string_get_c_str(matte_value_as_string(v)));
+            matteString_t * str = matte_value_as_string(v);
+            printf("Test failed!!\nExpected output   : %s\nReal output       : %s\n", outstr, matte_string_get_c_str(str));
+            matte_string_destroy(str);
             exit(1);
         }
         matte_string_destroy(resultText);

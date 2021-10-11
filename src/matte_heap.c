@@ -228,6 +228,25 @@ static void object_unlink_parent(matteObject_t * parent, matteObject_t * child) 
     }
 }
 
+static void object_unlink_parent_child_only(matteObject_t * parent, matteObject_t * child) {
+    void * p = matte_table_find_by_uint(parent->refChildren, child->heapID);
+    if (p == (void*)0x1) {
+        matte_table_remove_by_uint(child->refParents, parent->heapID);
+    } else {
+        matte_table_insert_by_uint(child->refParents,   parent->heapID, p-1);
+    }
+}
+
+static void object_unlink_parent_parent_only(matteObject_t * parent, matteObject_t * child) {
+    void * p = matte_table_find_by_uint(parent->refChildren, child->heapID);
+    if (p == (void*)0x1) {
+        matte_table_remove_by_uint(parent->refChildren, child->heapID);
+    } else {
+        matte_table_insert_by_uint(parent->refChildren, child->heapID,  p-1);
+    }
+}
+
+
 static void object_link_parent_value(matteObject_t * parent, const matteValue_t * child) {
     object_link_parent(parent,  matte_bin_fetch(child->heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], child->objectID));
 }
@@ -441,6 +460,8 @@ static void destroy_object(void * d) {
     matte_array_destroy(out->keyvalues_number);
     matte_array_destroy(out->functionCaptures);
 
+    matte_table_destroy(out->refParents);
+    matte_table_destroy(out->refChildren);
     free(out);
 }
 
@@ -510,6 +531,21 @@ void matte_heap_destroy(matteHeap_t * h) {
     matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_BOOLEAN]);
     matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_STRING]);
     matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT]);
+    uint32_t i;
+    uint32_t len = matte_array_get_size(h->typecode2data);
+    for(i = 0; i < len; ++i) {
+        MatteTypeData d = matte_array_at(h->typecode2data, MatteTypeData, i);
+        if (d.name) matte_string_destroy(d.name);
+        if (d.isa) {
+            matte_array_destroy(d.isa);
+        }
+    }
+    matte_array_destroy(h->typecode2data);
+    matte_table_destroy(h->routeChecker);
+    matte_array_destroy(h->routePather);
+    matte_table_iter_destroy(h->routeIter);
+    matte_table_destroy(h->verifiedRoot);
+    matte_table_destroy(h->verifiedNoRoot);
     free(h);
 }
 
@@ -561,7 +597,7 @@ void matte_value_into_new_type_(matteValue_t * v, matteValue_t opts) {
         }
         
         /// TODO: ISA. array for multiple inheritance please!
-        
+        data.isa = NULL;
         
     } else {
         data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);
@@ -1211,6 +1247,7 @@ void matte_value_object_function_post_typecheck_unsafe(matteValue_t v, matteValu
 
         );
         matte_vm_raise_error_string(v.heap->vm, err);
+        matte_string_destroy(err);
     }  
 }
 
@@ -2190,27 +2227,19 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
         m->isRootless = 0;
         m->dormant = 1;
         if (!matte_table_is_empty(m->refChildren)) {
-
-
-            matteArray_t * children = matte_array_create(sizeof(uint32_t));
-            for(matte_table_iter_start(iter, m->refChildren);
-                !matte_table_iter_is_end(iter);
-                matte_table_iter_proceed(iter)
-            ) {
-                uint32_t nc = matte_table_iter_get_key_uint(iter);
-                matte_array_push(children, nc);
-            }
             matteValue_t v;
             v.binID = MATTE_VALUE_TYPE_OBJECT;
             v.heap = h;
-            uint32_t ii;
-            uint32_t ilen = matte_array_get_size(children);
-            for(ii = 0; ii < ilen; ++ii) {
-                v.objectID = matte_array_at(children, uint32_t, ii);
-                object_unlink_parent(m, matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID));
+
+            for(matte_table_iter_start(iter, m->refChildren);
+                !matte_table_iter_is_end(iter);
+                matte_table_iter_proceed(iter)
+            ) {                
+                v.objectID = matte_table_iter_get_key_uint(iter);
+                object_unlink_parent_child_only(m, matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID));
                 matte_heap_recycle(v);
+
             }
-            matte_array_destroy(children);
             matte_table_clear(m->refChildren);
         }
 
@@ -2218,24 +2247,15 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
             matteValue_t v;
             v.binID = MATTE_VALUE_TYPE_OBJECT;
             v.heap = h;
-            matteArray_t * parents = matte_array_create(sizeof(uint32_t));
 
             for(matte_table_iter_start(iter, m->refParents);
                 !matte_table_iter_is_end(iter);
                 matte_table_iter_proceed(iter)
             ) {
-                uint32_t nc = matte_table_iter_get_key_uint(iter);
-                matte_array_push(parents, nc);
-            }
-            uint32_t ii;
-            uint32_t ilen = matte_array_get_size(parents);
-            for(ii = 0; ii < ilen; ++ii) {
-                v.objectID = matte_array_at(parents, uint32_t, ii);
-                object_unlink_parent(matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID), m);
+                v.objectID = matte_table_iter_get_key_uint(iter);
+                object_unlink_parent_parent_only(matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID), m);
                 matte_heap_recycle(v);
             }
-            matte_array_destroy(parents);
-
             matte_table_clear(m->refParents);
         }
         m->isRootRef = 0;
@@ -2299,8 +2319,6 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
         }
         
         if (!matte_table_is_empty(m->keyvalues_types)) {
-            matteTableIter_t * iter = matte_table_iter_create();
-
 
             for(matte_table_iter_start(iter, m->keyvalues_types);
                 matte_table_iter_is_end(iter) == 0;

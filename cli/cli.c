@@ -258,17 +258,27 @@ int main(int argc, char ** args) {
             
 
             matteArray_t * arr = matte_bytecode_stubs_from_bytecode(FILEIDS[i], outBytes, outByteLen);
+            free(outBytes);
             matte_vm_add_stubs(vm, arr);
+            matte_array_destroy(arr);
         }    
 
         matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_vm_run_script(vm, FILEIDS[i], arr);
-            printf("> %s\n", matte_string_get_c_str(matte_value_as_string(v)));
+            matteString_t * str = matte_value_as_string(v);
+            if (str && v.binID != 0) {
+                printf("> %s\n", matte_string_get_c_str(str));
+                
+            } else {
+                // output object was not string coercible.
+            }
+            if (str)matte_string_destroy(str);
             matte_heap_recycle(v);
         }
-        
+        matte_array_destroy(arr);
         matte_destroy(m);
+        free(FILEIDS);
 
         #ifdef MATTE_DEBUG__HEAP
         matte_heap_report();
