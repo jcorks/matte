@@ -408,6 +408,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
             matte_array_empty()
         );
         matte_value_into_copy(ref, cached);
+        matte_value_object_push_lock(*ref);
         matte_string_destroy(str);
         return cached;
     }

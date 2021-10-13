@@ -1,4 +1,3 @@
-return 0;
 <@>class = import('Matte.Class');
 <@>Array = import('Matte.Array');
 @String_ = class({
@@ -339,8 +338,10 @@ return 0;
                 @cursub = classinst.new();
                 for([0, arrlen], ::(i){
                     when(checksub(i, sub)) ::{
-                        outarr.push(cursub);
-                        cursub = classinst.new();
+                        if (cursub.length) ::{
+                            outarr.push(cursub);
+                            cursub = classinst.new();
+                        }();
                         return i+sublen; // skip sub
                     }();
                     cursub.append(arrsrc[i]);
@@ -380,13 +381,13 @@ return 0;
                     @fmtarr = STRINGTOARR(fmtstrl);
                     @fmtlen = introspect(fmtarr).keycount();
                     <@>output = [];
-                    <@>beginsMatch = fmt[0]== 91 &&
-                                     fmt[1] == 37 &&
-                                     fmt[2] == 93;
+                    <@>beginsMatch = fmtarr[0]== 91 &&
+                                     fmtarr[1] == 37 &&
+                                     fmtarr[2] == 93;
 
-                    <@>endsMatch = fmt[fmtlen-1] == 93 &&
-                                fmt[fmtlen-2] == 37 &&
-                                fmt[fmtlen-3] == 91;
+                    <@>endsMatch = fmtarr[fmtlen-1] == 93 &&
+                                   fmtarr[fmtlen-2] == 37 &&
+                                   fmtarr[fmtlen-3] == 91;
                     @anchorIndex = 0;                       
                     @contentIndex = 0;
                     if (beginsMatch) ::{
@@ -416,7 +417,7 @@ return 0;
     
                     // Check toggle
                     @isNum = beginsMatch;
-                    for([0, contentIndex+1], ::(i){
+                    for([0, contentIndex], ::(i){
                         when(introspect(output[i]).type() != (if(isNum) Number else Object)) error('MatteString.scan format string is in an invalid format.');
                         isNum = !isNum;
                     });
@@ -433,21 +434,21 @@ return 0;
                     for([offset, blen], ::(i) {
                         @matches = true;
                         
-                        for([0, anchorArrLen], ::(n){
-                            when(strArr[i] != anchorArr[n]) ::{
+                        for([0, alen], ::(n){
+                            when(b[i+n] != a[n]) ::{
                                 matches = false;
-                                return anchorArrLen;
+                                return alen;
                             }();
                         });                                 
                         
                         
                         when(matches) ::{
                             found = i;
-                            return strArrLen;
+                            return blen;
                         }();
                     });
                     return found;
-                }
+                };
             
                 // Finds an anchored string ([%]), in the configuration of:
                 //
@@ -485,7 +486,10 @@ return 0;
                     
                     
                     
-                    @content = introspect(strArr).subset(0, where-1);                                       
+                    @contentVals = introspect(strArr).subset(0, where-1);                                       
+                    for([0, where], ::(i){
+                        content.append(contentVals[i]);
+                    });
 
                     return {
                         content: content,
@@ -504,21 +508,49 @@ return 0;
                     @anchorArrBLen = introspect(anchorArrB).keycount();                    
 
                     @content = classinst.new();
-                    @where0 = findsubstr(offset, anchorArrA, anchorArrALen, strArr, strArrLen);                                        
-                    @where1 = findsubstr(offset, anchorArrB, anchorArrALen, strArr, strArrLen);                                        
+                    @where0 = findsubstr(offset, anchorArrA, anchorArrALen, strArr, strArrLen); 
+                    // first anchor not found
+                    when(where0 == -1) empty;
+                    where0 += anchorArrALen;
+                    @where1 = findsubstr(where0, anchorArrB, anchorArrBLen, strArr, strArrLen);                                        
+                    when(where1 == -1) empty;
+
+                    @contentVals = introspect(strArr).subset(where0, where1-1);                                       
+                    for([0, where1 - where0], ::(i){
+                        content.append(contentVals[i]);
+                    });
+
                     return {
                         content: content,
-                        offset: where
+                        offset: where1
                     };
                 };
                 <@>findA_ ::(
                     strArr,             //<- full string array 
-                    offset => Number,   //<- 
+                    offset,   //<- 
                     
-                    anchorArrA,
-                    anchorArrB
+                    anchorArr
                 ) {
-                
+                    @strArrLen = introspect(strArr).keycount();
+                    @anchorArrLen = introspect(anchorArr).keycount();                    
+
+                    @content = classinst.new();
+                    @where = findsubstr(offset, anchorArr, anchorArrLen, strArr, strArrLen);                    
+
+                    // couldnt find
+                    when(where==-1) empty;
+                    
+                    
+                    
+                    @contentVals = introspect(strArr).subset(where, strArrLen-1);                                       
+                    for([0, strArrLen-where], ::(i){
+                        content.append(contentVals[i]);
+                    });
+
+                    return {
+                        content: content,
+                        offset: where
+                    };
                 };
 
 
@@ -537,7 +569,7 @@ return 0;
                             (introspect(fmtArr[i]).type() == Number): ::{
                                 <@>result = find_A(arrsrc, fmtArr[i+1]);
                                 // end the loop, couldnt find required token
-                                when(result == empty): ::{
+                                when(result == empty) ::{
                                     success = false;
                                     return len;
                                 }();
@@ -552,7 +584,7 @@ return 0;
                             (i+2 < len): ::{
                                 <@>result = findA_B(arrsrc, offset, fmtArr[i], fmtArr[i+2]);
                                 // end the loop, couldnt find required token
-                                when(result == empty): ::{
+                                when(result == empty) ::{
                                     success = false;
                                     return len;
                                 }();
@@ -562,11 +594,16 @@ return 0;
                                 return i+2;
                             },
 
+                            // only 1 item, end.
+                            (len - i == 1): ::{
+                                return len;
+                            },
+
                             // string[%]
                             default: ::{
                                 <@>result = findA_(arrsrc, offset, fmtArr[i]);
                                 // end the loop, couldnt find required token
-                                when(result == empty): ::{
+                                when(result == empty) ::{
                                     success = false;
                                     return len;
                                 }();                                
@@ -574,7 +611,7 @@ return 0;
                                 outputArray.push(result.content);
                                 offset = result.offset; // where the next token begins.                                                
                                 return len;
-                            },
+                            }
                         })();
                     });
                     when(success) false;
@@ -584,112 +621,6 @@ return 0;
                 });
 
                 return outputArray;            
-                // % == 37 
-                // [ == 91
-                // ] == 93
-                /*
-                @beginsMatch = false;
-                @endsMatch = false;
-
-                fmt = classinst.new(TOSTRINGLITERAL(fmt));
-                @fmtlen = fmt.length;
-                // needs to hold at least one key for results to be valid
-                when(fmtlen <= 3) empty;                
-
-                beginsMatch = fmt.charCodeAt(0) == 91 &&
-                              fmt.charCodeAt(1) == 37 &&
-                              fmt.charCodeAt(2) == 93;
-
-                endsMatch = fmt.charCodeAt(fmtlen-1) == 93 &&
-                            fmt.charCodeAt(fmtlen-2) == 37 &&
-                            fmt.charCodeAt(fmtlen-3) == 91;
-
-
-                <@>tokens = fmt.split('[%]');
-                @tokenArrays = Array.new();
-                @tokenCountReal = (tokens.length-1)
-                    + (if(beginsMatch) 1 else 0)
-                    + (if(endsMatch)   1 else 0);
-
-                foreach(tokens, ::(k, v) {
-                    tokenArrays.push(STRINGTOARR(String(v)));
-                });
-
-                @arrayOut = Array.new();
-
-                @curString = classinst.new();
-                @preString = classinst.new();
-                for([0, arrlen], ::(i) {
-                    @iter = i;
-                    @curtoken;
-                    @pass = true;
-                    @curTokenIter = 0;
-                    @curTokenLength = 0;
-                    loop(::{
-                        pass = true;
-                        when(curTokenIter >= tokens.length) false;
-                        when(iter >= arrlen) false;
-
-                        curtoken = tokenArrays[curTokenIter];
-                        curTokenLength = introspect(curtoken).keycount();
-                        for([0, curTokenLength], ::(n) { 
-                            when(iter >= arrlen) ::{
-                                return curTokenLength;
-                            }();
-                            when(curtoken[n] != arrsrc[iter]) ::{
-                                curString.append(arrsrc[iter]);
-                                pass = false;
-                                iter += 1;
-                                return curTokenLength;
-                            }();
-                            iter += 1;
-                        });
-                        
-                        // try next token
-                        when(!pass) ::{
-                            curTokenIter += 1;
-                            return true;
-                        }();
-
-
-                        (match(true) {
-                            (curTokenIter == 0): ::{
-                                arrayOut = Array.new();
-
-                                // if the fmt starts with a [%] matcher
-                                // record now!
-                                if (beginsMatch) ::{
-                                    arrayOut.push(preString);
-                                }();    
-                                curString = classinst.new();
-                            },
-
-                            (endsMatch && curTokenIter == tokens.length-1): ::{
-                                arrayOut.push(classinst.new(String(curString) + String(this.substr(iter, arrlen-1))));
-                            },
-
-
-                            default: ::{
-                                arrayOut.push(curString);    
-                            }
-                        })();
-
-                        curString = classinst.new();
-                        // token matches. 
-                        curTokenIter += 1;
-
-  
-                        return true;
-                    });      
-                    preString.append(arrsrc[i]);
-                    when (arrayOut.length == tokenCountReal) arrlen;  
-                });
-
-
-                when(arrayOut.length != tokenCountReal) empty;
-                return arrayOut;
-                */
- 
             },
             
             
@@ -726,6 +657,6 @@ return 0;
 });
 
 @a = String_.new('This is a string');
-@b = a.scan('This [%] a');
+@b = a.scan('is[%]');
 
 return b[0];

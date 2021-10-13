@@ -19,8 +19,14 @@ foreach(a.split('is'), ::(k, v) {
     output += v;
 });
 
+
 foreach(a.split('This_is_a_string'), ::(k, v) {
     output += v;
 });
+
+foreach(a.split('This'), ::(k, v) {
+    output += v;
+});
+
 
 return output;
