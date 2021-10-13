@@ -1514,6 +1514,12 @@ uint32_t matte_value_object_get_key_count(matteValue_t v) {
     return total;    
 }
 
+void matte_value_object_remove_key_string(matteValue_t v, const matteString_t * kstr) {
+    matteValue_t k = matte_heap_new_value(v.heap);
+    matte_value_into_string(&k, kstr);
+    matte_value_object_remove_key(v, k);
+    matte_heap_recycle(k);
+}
 
 void matte_value_object_remove_key(matteValue_t v, matteValue_t key) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
@@ -2056,9 +2062,6 @@ static int matte_object_mark_unreachable_ref_path_root(matteHeap_t * h, matteObj
             if (!matte_table_find_by_uint(h->verifiedNoRoot, nc)) {
                 matte_table_insert_by_uint(h->verifiedNoRoot, nc, (void*)0x1);
                 matte_array_push(h->routePather, nc);
-                if (nc == 54) {
-                    printf("here\n");
-                }
                 size++;
             }                        
         }
@@ -2086,6 +2089,7 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
     if (m->isRootRef) return 1;
     if (matte_table_find_by_uint(h->verifiedRoot, m->heapID)) return 1;
     if (matte_table_find_by_uint(h->verifiedNoRoot, m->heapID)) return 0;
+    
     matte_array_push(h->routePather, m->heapID);
     matte_table_insert_by_uint(h->routeChecker, m->heapID, (void*)0x1);
     matteTableIter_t * iter = h->routeIter;
@@ -2097,12 +2101,45 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
         uint32_t currentID = matte_array_at(h->routePather, uint32_t, --size);
         matte_array_set_size(h->routePather, size);
         matteObject_t * current = matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], currentID);
-        if (current->isRootRef) {
+        if (current->isRootRef || matte_table_find_by_uint(h->verifiedRoot, current->heapID)) {
             foundRoot = 1;
             matte_object_mark_reachable_ref_path_root(h, current);
             matte_array_set_size(h->routePather, 0);
             matte_table_clear(h->routeChecker);
             return 1;
+        }
+
+
+        // The preserver operator is similar to a finalizer, except that 
+        // it prevents cleanup of the object (it does so by pretending its a found root through here)
+        //
+        // Once the preserver is called, then the preserver operator is removed.
+        //
+        // Once the preserver is removed, the object will be removed as normal next cycle.
+        // if no references refer to the preserver.
+        // Until then the preserver is called any time the garbage collector would 
+        // cleanup the object. This count can change between versions and implementations,
+        // as its not defined by the language when this will happen.
+        if (current->opSet.binID) {
+            matteValue_t preserver = matte_value_object_access_string(current->opSet, MATTE_STR_CAST("preserver"));        
+
+            if (preserver.binID) {
+                matteValue_t v = matte_vm_call(h->vm, preserver, matte_array_empty(), MATTE_STR_CAST("preserver"));
+                matte_heap_recycle(preserver);
+                matte_value_object_remove_key_string(current->opSet, MATTE_STR_CAST("preserver"));
+                matte_heap_recycle(v);
+
+                // mark for recycle check next cycle
+                current->toSweep = 1;
+                matte_array_push(h->toSweep, current);
+
+                foundRoot = 1;
+                matte_object_mark_reachable_ref_path_root(h, current);
+                matte_array_set_size(h->routePather, 0);
+                matte_table_clear(h->routeChecker);
+                return 1;
+                
+            }
         }
 
 
@@ -2195,15 +2232,6 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
     if (m->dormant) return;
     
     m->toSweep = 0;
-    matteValue_t * scriptFinalizer = matte_table_find(m->keyvalues_string, MATTE_STR_CAST("finalizer"));
-    if (scriptFinalizer) {
-        matteValue_t object = matte_heap_new_value(h);
-        object.binID = MATTE_VALUE_TYPE_OBJECT;
-        object.objectID = m->heapID;
-
-        // should be fine despite ref count being 0
-        matte_vm_call(h->vm, *scriptFinalizer, MATTE_ARRAY_CAST(&object, matteValue_t, 1), MATTE_STR_CAST("Finalizer"));
-    }
     matteTableIter_t * iter = matte_table_iter_create();
 
 

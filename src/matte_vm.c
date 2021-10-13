@@ -387,6 +387,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_NOB: {
             matteValue_t v = matte_heap_new_value(vm->heap);
             matte_value_into_new_object_ref(&v);
+            #ifdef MATTE_DEBUG__HEAP
+                matte_heap_track_neutral(v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+            #endif
             STACK_PUSH(v);
             break;
           }
@@ -428,6 +431,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
                 // xfer ownership of type values
                 matte_value_into_new_typed_function_ref(&v, stub, MATTE_ARRAY_CAST(vals, matteValue_t, sfscount));
+                #ifdef MATTE_DEBUG__HEAP
+                    matte_heap_track_neutral(v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+                #endif
+
                 free(vals);
                 sfscount = 0;
                 STACK_PUSH(v);
@@ -435,6 +442,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             } else {
                 matteValue_t v = matte_heap_new_value(vm->heap);
                 matte_value_into_new_function_ref(&v, stub);
+                #ifdef MATTE_DEBUG__HEAP
+                    matte_heap_track_neutral(v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+                #endif
+
                 STACK_PUSH(v);
             }
             break;
@@ -458,6 +469,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
 
             matte_value_into_new_object_array_ref(&v, args);
+            #ifdef MATTE_DEBUG__HEAP
+                matte_heap_track_neutral(v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+            #endif
 
             for(i = 0; i < len; ++i) {
                 matte_heap_recycle(matte_array_at(args, matteValue_t, i));
@@ -488,6 +502,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
 
             matte_value_into_new_object_literal_ref(&v, args);
+            #ifdef MATTE_DEBUG__HEAP
+                matte_heap_track_neutral(v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+            #endif
+
 
             len = matte_array_get_size(args);
             for(i = 0; i < len; ++i) {
@@ -541,6 +559,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t function = STACK_POP();
 
             matte_value_object_push_lock(function);
+            #ifdef MATTE_DEBUG__HEAP
+                matteString_t * info = matte_string_create_from_c_str("FUNCTION CALLED @");
+                matte_string_concat(info, matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)));
+                matte_heap_track_neutral(function, matte_string_get_c_str(info), inst->lineNumber);
+                matte_string_destroy(info);
+            #endif
+
             matteValue_t result = matte_vm_call(vm, function, args, NULL);
 
             for(i = 0; i < argcount; ++i) {
@@ -711,6 +736,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             matteValue_t v = matte_heap_new_value(vm->heap);
             matte_value_into_new_function_ref(&v, stub);
+            #ifdef MATTE_DEBUG__HEAP
+                matte_heap_track_neutral(v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+            #endif
             STACK_PUSH(v);
             break;
           }
@@ -967,6 +995,8 @@ matteVM_t * matte_vm_create() {
 }
 
 void matte_vm_destroy(matteVM_t * vm) {
+    matte_heap_destroy(vm->heap);
+
     matteTableIter_t * iter = matte_table_iter_create();
     matteTableIter_t * subiter = matte_table_iter_create();
 
@@ -1050,7 +1080,6 @@ void matte_vm_destroy(matteVM_t * vm) {
     matte_array_destroy(vm->interruptOps);
     matte_array_destroy(vm->callstack);
     matte_array_destroy(vm->externalFunctionIndex); // copy, safe
-    matte_heap_destroy(vm->heap);
     matte_table_iter_destroy(iter);
     matte_table_iter_destroy(subiter);
     free(vm);
@@ -1212,6 +1241,18 @@ matteValue_t matte_vm_call(
         frame->referrable = matte_heap_new_value(vm->heap);
         // ref copies of values happen here.
         matte_value_into_new_object_array_ref(&frame->referrable, referrables);
+        #ifdef MATTE_DEBUG__HEAP
+        {
+            uint32_t instcount;
+            const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame->stub, &instcount);                    
+            matteString_t * info = matte_string_create_from_c_str("REFERRABLE MADE @");
+            matte_string_concat(info, matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)));
+            matte_heap_track_neutral(frame->referrable, matte_string_get_c_str(info), inst->lineNumber);
+            matte_string_destroy(info);
+        }
+        #endif
+        
+        
         frame->referrableSize = matte_array_get_size(referrables);
         matte_array_destroy(referrables);
 

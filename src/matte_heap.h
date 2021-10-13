@@ -220,6 +220,11 @@ const matteValue_t * matte_value_object_get_operator_unsafe(matteValue_t);
 // not an object or the key does not exist, no action is taken.
 void matte_value_object_remove_key(matteValue_t, matteValue_t key);
 
+// Convenience function that calls matte_value_object_remove_key 
+// using a key value produced from a string
+void matte_value_object_remove_key_string(matteValue_t, const matteString_t *);
+
+
 // Given a value to an Object, creates a new string from the number 
 // keys of the object. All number keys are searched in order.
 // The function only succeeds correctly if ALL valid number keys are 
