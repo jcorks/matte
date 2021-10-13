@@ -248,6 +248,8 @@ matteValue_t matte_value_get_type(matteValue_t);
 // Every type has a name.
 const matteString_t * matte_value_type_name(matteValue_t);
 
+void matte_heap_push_lock_gc(matteHeap_t *);
+void matte_heap_pop_lock_gc(matteHeap_t *);
 
 // get built-in type object
 const matteValue_t * matte_heap_get_empty_type(matteHeap_t *);

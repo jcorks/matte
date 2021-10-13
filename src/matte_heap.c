@@ -2374,6 +2374,13 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
     matte_table_iter_destroy(iter);
 }
 
+void matte_heap_push_lock_gc(matteHeap_t * h) {
+    h->gcLocked++;
+}
+void matte_heap_pop_lock_gc(matteHeap_t * h) {
+    h->gcLocked--;
+}
+
 void matte_heap_garbage_collect(matteHeap_t * h) {
     if (h->gcLocked) return;
     h->gcLocked = 1;

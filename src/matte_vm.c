@@ -1030,7 +1030,10 @@ void matte_vm_destroy(matteVM_t * vm) {
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         
-        free(matte_table_iter_get_value(iter));
+        matteValue_t * v = matte_table_iter_get_value(iter);
+        matte_value_object_pop_lock(*v);
+        matte_heap_recycle(*v);
+        free(v);
     }
     matte_table_destroy(vm->imported);
 
@@ -1353,6 +1356,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
     void(*onError)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *),
     void * onErrorData
 ) {
+    matte_heap_push_lock_gc(vm->heap);
     vm->namedRefIndex = callstackIndex;
     void(*realDebug)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *) = vm->debug;
     void * realDebugData = vm->debugData;
@@ -1395,7 +1399,8 @@ matteValue_t matte_vm_run_scoped_debug_source(
 
     vm->error = error;
     vm->error = error_info;
-    
+    matte_heap_pop_lock_gc(vm->heap);
+
     return result;
 }
 
