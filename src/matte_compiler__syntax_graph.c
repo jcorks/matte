@@ -124,6 +124,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_IMPORT, MATTE_STR_CAST("Import built-in"),
         MATTE_TOKEN_EXTERNAL_REMOVE_KEY, MATTE_STR_CAST("Remove Key built-in"),
         MATTE_TOKEN_EXTERNAL_SET_OPERATOR, MATTE_STR_CAST("Set Operator built-in"),
+        MATTE_TOKEN_EXTERNAL_SET_OPERATOR, MATTE_STR_CAST("Get Operator built-in"),
 
         MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN, MATTE_STR_CAST("Boolean Type object"),
         MATTE_TOKEN_EXTERNAL_TYPEEMPTY, MATTE_STR_CAST("Empty Type object"),
@@ -513,6 +514,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_IMPORT,
             MATTE_TOKEN_EXTERNAL_REMOVE_KEY,
             MATTE_TOKEN_EXTERNAL_SET_OPERATOR,
+            MATTE_TOKEN_EXTERNAL_GET_OPERATOR,
             MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN,
             MATTE_TOKEN_EXTERNAL_TYPENUMBER,
             MATTE_TOKEN_EXTERNAL_TYPEEMPTY,

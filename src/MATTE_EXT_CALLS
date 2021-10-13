@@ -149,9 +149,10 @@ static matteValue_t vm_ext_call__remove_key(matteVM_t * vm, matteValue_t fn, mat
 }
 
 static matteValue_t vm_ext_call__set_operator(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    #ifdef MATTE_DEBUG
-        assert(matte_array_get_size(args) == 2);
-    #endif
+    if (matte_array_get_size(args) != 2) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("setOperator() expects 2 arguments."));
+        return matte_heap_new_value(vm->heap);
+    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("setOperator requires first argument to be an object."));
@@ -170,6 +171,28 @@ static matteValue_t vm_ext_call__set_operator(matteVM_t * vm, matteValue_t fn, m
     );
     return matte_heap_new_value(vm->heap);
 }
+
+static matteValue_t vm_ext_call__get_operator(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    if (matte_array_get_size(args) != 1) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("getOperator() expects 1 argument."));
+        return matte_heap_new_value(vm->heap);
+    }
+    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+    if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("setOperator requires first argument to be an object."));
+        return matte_heap_new_value(vm->heap);
+    }
+
+
+    matteValue_t out = matte_heap_new_value(vm->heap);
+
+    const matteValue_t * op = matte_value_object_get_operator_unsafe(a);
+    if (op)
+        matte_value_into_copy(&out, *op);
+
+    return out;
+}
+
 
 
 

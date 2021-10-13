@@ -136,6 +136,7 @@ typedef enum {
     MATTE_EXT_CALL_IMPORT,
     MATTE_EXT_CALL_REMOVE_KEY,
     MATTE_EXT_CALL_SET_OPERATOR,
+    MATTE_EXT_CALL_GET_OPERATOR,
     MATTE_EXT_CALL_TYPE, // type() 1 arg (options)
     MATTE_EXT_CALL_INSTANTIATE, // instantiate() 1 arg (type);
     MATTE_EXT_CALL_INTROSPECT, // introspect() 1 arg
