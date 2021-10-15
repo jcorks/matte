@@ -8,7 +8,6 @@
         errMessage = t;
     };
 
-
     error('Testing');
 }();
 

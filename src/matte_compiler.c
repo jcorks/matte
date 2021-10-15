@@ -132,6 +132,8 @@ struct matteFunctionBlock_t {
     matteArray_t * typestrict_types;
     // array of matteString_t *
     matteArray_t * locals;
+    // array of int, of size locals.
+    matteArray_t * local_isConst;
     // array of matteString_t *
     matteArray_t * args;
     // array of static strings.
@@ -145,6 +147,8 @@ struct matteFunctionBlock_t {
     matteArray_t * captures;
     // array of matteString_t *, names of the captures.
     matteArray_t * captureNames;
+    // array of int, of size captureNames
+    matteArray_t * capture_isConst;
     
 };
 
@@ -159,6 +163,7 @@ static void function_block_destroy(matteFunctionBlock_t * t) {
         matte_string_destroy(matte_array_at(t->locals, matteString_t *, i));        
     }
     matte_array_destroy(t->locals);
+    matte_array_destroy(t->local_isConst);
 
     len = matte_array_get_size(t->args);
     for(i = 0; i < len; ++i) {
@@ -178,6 +183,7 @@ static void function_block_destroy(matteFunctionBlock_t * t) {
         matte_string_destroy(matte_array_at(t->captureNames, matteString_t *, i));        
     }
     matte_array_destroy(t->captureNames);
+    matte_array_destroy(t->capture_isConst);
     if (t->typestrict_types) 
         matte_array_destroy(t->typestrict_types);
     free(t);
@@ -2010,9 +2016,11 @@ void destroy_function_block(matteFunctionBlock_t * b) {
 
     matte_array_destroy(b->args);
     matte_array_destroy(b->locals);
+    matte_array_destroy(b->local_isConst);
     matte_array_destroy(b->instructions);
     matte_array_destroy(b->captures);
     matte_array_destroy(b->captureNames);
+    matte_array_destroy(b->capture_isConst);
     if (b->typestrict_types) 
         matte_array_destroy(b->typestrict_types);
     free(b);
@@ -2055,6 +2063,36 @@ static uint32_t get_local_referrable(
     //}
 
     return 0xffffffff;
+}
+
+// returns whether the referrable for this block is constant.
+// This will go through existing captures as well.
+static int is_referrable_const(matteFunctionBlock_t * block, uint32_t referrable) {
+    // The "context" referrable is implicitly constant.
+    // be reasonable you sneaky ppl....
+    if (referrable == 0) return 1;
+
+    referrable--;    
+    // overwriting local-face arguments is okay though!
+    if (referrable < matte_array_get_size(block->args)) return 0;
+    
+    
+    // function locals have their constance tracked.
+    referrable -= matte_array_get_size(block->args);
+    if (referrable < matte_array_get_size(block->locals)) {
+        return matte_array_at(block->local_isConst, int, referrable);
+    }
+    
+    // captures inherit their host function's constant state.
+    referrable -= matte_array_get_size(block->locals);
+    if (referrable < matte_array_get_size(block->capture_isConst))
+        return matte_array_at(block->capture_isConst, int, referrable);
+
+    #ifdef MATTE_DEBUG__COMPILER
+        assert(!"Referrable was non-existent when its constness was checked...");
+    #endif
+    return 0;    
+    
 }
 
 
@@ -2117,6 +2155,7 @@ static matteArray_t * push_variable_name(
         //      if found, append to existing captures
         matteFunctionBlock_t * blockSrc = block;
         block = block->parent;
+        int isconst = 0;
         while(block) {
 
             len = matte_array_get_size(block->args);
@@ -2134,6 +2173,8 @@ static matteArray_t * push_variable_name(
                     matte_array_push(blockSrc->captures, capture);
                     matteString_t * str = matte_string_clone(iter->text);
                     matte_array_push(blockSrc->captureNames, str);
+                    isconst = 0;
+                    matte_array_push(blockSrc->capture_isConst, isconst);
                     *src = iter->next;
                     return inst;                    
                 }
@@ -2155,6 +2196,9 @@ static matteArray_t * push_variable_name(
                     matte_array_push(blockSrc->captures, capture);
                     matteString_t * str = matte_string_clone(iter->text);
                     matte_array_push(blockSrc->captureNames, str);
+                    isconst = is_referrable_const(block, i + 1 + matte_array_get_size(block->args));
+                    matte_array_push(blockSrc->capture_isConst, isconst);
+
                     *src = iter->next;
                     return inst;                    
 
@@ -3405,6 +3449,11 @@ static matteArray_t * compile_expression(
                     matte_syntax_graph_print_compile_error(g, iter, "Missing referrable token. (internal error)");
                     goto L_FAIL;
                 }
+                
+                if (is_referrable_const(block, *(uint32_t*)(undo.data))) {
+                    matte_syntax_graph_print_compile_error(g, iter, "Cannot assign new value to constant.");
+                    goto L_FAIL;                    
+                }
             } else {
                 // for handling assignment for the dot access and the [] lookup, 
                 // the OLK instruction will be removed. This leaves both the 
@@ -3655,9 +3704,11 @@ static matteFunctionBlock_t * compile_function_block(
     b->args = matte_array_create(sizeof(matteString_t *));
     b->strings = matte_array_create(sizeof(matteString_t *));
     b->locals = matte_array_create(sizeof(matteString_t *));
+    b->local_isConst = matte_array_create(sizeof(int));
     b->instructions = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
     b->captures = matte_array_create(sizeof(matteBytecodeStubCapture_t));
     b->captureNames = matte_array_create(sizeof(matteString_t *));
+    b->capture_isConst = matte_array_create(sizeof(int));
     b->stubID = g->functionStubID++;
     b->parent = parent;
 
@@ -3785,7 +3836,7 @@ static matteFunctionBlock_t * compile_function_block(
             ff_skip_inner_function(&iter);
         } else if (iter->ttype == MATTE_TOKEN_DECLARE ||
             iter->ttype == MATTE_TOKEN_DECLARE_CONST) {
-            // TODO: const :(
+            int isconst = iter->ttype == MATTE_TOKEN_DECLARE_CONST;
 
             iter = iter->next;
             if (iter->ttype != MATTE_TOKEN_VARIABLE_NAME) {
@@ -3795,8 +3846,10 @@ static matteFunctionBlock_t * compile_function_block(
             
             matteString_t * local = matte_string_clone(iter->text);
             matte_array_push(b->locals, local);
+            matte_array_push(b->local_isConst, isconst);
+            
             #ifdef MATTE_DEBUG__COMPILER
-                printf("  - Local %d: %s\n", matte_array_get_size(b->locals), matte_string_get_c_str(local));
+                printf("  - Local%s %d: %s\n", isconst? "(const)" : "", matte_array_get_size(b->locals), matte_string_get_c_str(local));
             #endif
         } 
         iter = iter->next;
