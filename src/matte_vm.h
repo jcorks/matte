@@ -225,7 +225,7 @@ void matte_vm_set_external_function(
 // C function.
 matteValue_t matte_vm_get_external_function_as_value(
     matteVM_t * vm,
-    matteString_t * identifier
+    const matteString_t * identifier
 );
 
 

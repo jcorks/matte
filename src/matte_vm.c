@@ -73,7 +73,10 @@ struct matteVM_t {
     uint32_t nextID;
 
 
-
+    // array of ready introspection objects.
+    // when introspection objects are destroyed,
+    // they are placed in the table before
+    matteValue_t introspectTable;
 
 };
 
@@ -1074,6 +1077,8 @@ void matte_vm_destroy(matteVM_t * vm) {
         
         free(matte_table_iter_get_value(iter));
     }
+    introspection_destroy_table(vm);
+    
     matte_table_destroy(vm->externalFunctions);
     matte_heap_destroy(vm->heap);
 
@@ -1189,7 +1194,7 @@ matteValue_t matte_vm_call(
             matte_array_push(argsReal, v);
         }
         matte_value_object_push_lock(d);
-        matteValue_t result;
+        matteValue_t result = {};
         if (callable == 2) {
             int ok = matte_value_object_function_pre_typecheck_unsafe(d, argsReal);
             if (ok) 
@@ -1653,34 +1658,18 @@ void matte_vm_set_external_function(
 // C function.
 matteValue_t matte_vm_get_external_function_as_value(
     matteVM_t * vm,
-    matteString_t * identifier
+    const matteString_t * identifier
 ) {
     uint32_t * id = matte_table_find(vm->externalFunctions, identifier);
     if (!id) {
         return matte_heap_new_value(vm->heap);
     }
-    // to do this, we have a special stub ROM that 
-    // will always run an external function
-    typedef struct {
-        uint32_t filestub;
-        uint32_t stubid;
-    } fakestub;
 
-    fakestub f;
-    f.filestub = 0;
-    f.stubid = *id;
+    matteBytecodeStub_t * stub = matte_array_at(vm->extStubs, matteBytecodeStub_t *, *id);
 
-    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(0, (uint8_t*)&f, sizeof(uint32_t));
-    if (matte_array_get_size(arr) == 0) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("External function conversion failed (truncated stub was denied?)"));
-    }
-    matteBytecodeStub_t * stub = matte_array_at(arr, matteBytecodeStub_t *, 0);
-
-    matteValue_t func;
+    matteValue_t func = {};
+    func.heap = vm->heap;
     matte_value_into_new_function_ref(&func, stub);
-    matte_bytecode_stub_destroy(stub);
-    matte_array_destroy(arr);
-
     return func;
 }
 

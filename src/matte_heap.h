@@ -132,11 +132,11 @@ matteValue_t * matte_value_get_captured_value(matteValue_t, uint32_t index);
 matteValue_t matte_value_subset(matteValue_t v, uint32_t from, uint32_t to);
 
 // if the value points to an object, sets custom data for the object.
-void matte_value_set_object_userdata(matteValue_t, void *);
+void matte_value_object_set_userdata(matteValue_t, void *);
 
 // if the value points to an object, returns the custom data for it.
 // Else, returns NULL.
-void * matte_value_get_object_userdata(matteValue_t);
+void * matte_value_object_get_userdata(matteValue_t);
 
 // returns whether the matte value is empty
 int matte_value_is_empty(matteValue_t);
