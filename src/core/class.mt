@@ -70,13 +70,18 @@
     classinst.new = ::(args, noseal, outsrc) {
         @out = outsrc;
         if(inherits) ::{
-            out = if(out)out else {};
-            if(inherits[1] == empty)::{
-                for([1, arraylen(inherits)], ::(i){
-                    inherits[i].new(args, out);
+            @types = [];
+            for([0, arraylen(inherits)], ::(i){
+                types[i] = inherits[i].typeobj;
+            });
+        
+            out = if(out)out else instantiate({inherits:types});
+            if(inherits[0] == empty)::{
+                for([0, arraylen(inherits)], ::(i){
+                    inherits[i].new(args, true, out);
                 });
             }() else ::{
-                inherits.new(args, out);
+                inherits.new(args, true, out);
             }();
         }();
         out = if(out) out else instantiate(classinst.typeobj);

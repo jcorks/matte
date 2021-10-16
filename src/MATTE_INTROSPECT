@@ -7,7 +7,6 @@ enum {
 
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES,
-    MATTE_EXT_CALL_INTERNAL__INTROSPECT_PAIRS,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ARRAYTOSTRING,
@@ -132,7 +131,6 @@ static matteValue_t introspection_object_new(matteVM_t * vm) {
         "objectID",
         "keys",
         "values",
-        "pairs",
         "keycount",
         "isCallable",
         "arrayToString",
@@ -162,7 +160,6 @@ static matteValue_t introspection_object_new(matteVM_t * vm) {
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_OBJECT_ID),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES),
-        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_PAIRS),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ARRAYTOSTRING),
@@ -323,9 +320,6 @@ static matteValue_t vm_ext_call__introspect_values(matteVM_t * vm, matteValue_t 
     return matte_heap_new_value(vm->heap);;
 }
 
-static matteValue_t vm_ext_call__introspect_pairs(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    assert(!"TODO");
-}
 
 static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     IntrospectDataSet * idata = matte_value_object_get_userdata(fn);

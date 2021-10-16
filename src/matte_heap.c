@@ -577,6 +577,27 @@ void matte_value_into_number_(matteValue_t * v, double val) {
 }
 
 
+static void isa_add(matteArray_t * arr, matteValue_t * v) {
+    matte_array_push(arr, v->objectID);
+    uint32_t count = matte_
+}
+
+static matteArray_t * type_array_to_isa(matteValue_t val) {
+    uint32_t count = matte_value_object_get_key_count(val);
+    uint32_t i;
+    matteArray_t * array = matte_array_create(sizeof(uint32_t));
+
+    for(i = 0; i < count; ++i) {
+        matteValue_t * v = matte_value_object_array_at_unsafe(val, i);
+        if (v->binID != MATTE_VALUE_TYPE_TYPE) {
+            matte_vm_raise_error_string(val.heap->vm, MATTE_STR_CAST("'inherits' attribute must have Type values only."));
+            return array;
+        }
+        matte_array_push(array, v->objectID);
+    }
+    return array;
+}
+
 void matte_value_into_new_type_(matteValue_t * v, matteValue_t opts) {
     matte_heap_recycle(*v);
     v->binID = MATTE_VALUE_TYPE_TYPE;
@@ -586,8 +607,14 @@ void matte_value_into_new_type_(matteValue_t * v, matteValue_t opts) {
     } else {
         v->objectID = ++(v->heap->typepool);
     }
-    MatteTypeData data;
-    if (opts.binID == MATTE_VALUE_TYPE_OBJECT) {
+    MatteTypeData data = {};
+    if (opts.binID) {
+        if (opts.binID != MATTE_VALUE_TYPE_OBJECT) {
+            v->binID = 0;
+            matte_vm_raise_error_string(v->heap->vm, MATTE_STR_CAST("Type creation argument must be an object."));        
+            v->binID = 0;
+            return;
+        }
         matteValue_t val = matte_value_object_access_string(opts, MATTE_STR_CAST("name"));
         if (val.binID) {
             data.name = matte_value_as_string(val);
@@ -595,13 +622,26 @@ void matte_value_into_new_type_(matteValue_t * v, matteValue_t opts) {
         } else {
             data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);        
         }
-        
-        /// TODO: ISA. array for multiple inheritance please!
-        data.isa = NULL;
-        
+
+
+        val = matte_value_object_access_string(opts, MATTE_STR_CAST("inherits"));
+        if (val.binID) {
+            if (val.binID != MATTE_VALUE_TYPE_OBJECT) {
+                matte_vm_raise_error_string(v->heap->vm, MATTE_STR_CAST("'inherits' attribute must be an object."));
+                matte_heap_recycle(val);
+                v->binID = 0;
+                return;
+            }            
+            
+            data.isa = type_array_to_isa(val);
+            matte_heap_recycle(val);
+        } else {
+            data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);        
+        }
+
+                
     } else {
         data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);
-        data.isa = NULL;
     }
     matte_array_push(v->heap->typecode2data, data);
 }
@@ -1894,6 +1934,7 @@ int matte_value_isa(matteValue_t v, matteValue_t typeobj) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return matte_value_get_type(v).objectID == typeobj.objectID;
     } else {
+        
         // TODO: more complex stuff for custom type
         return matte_value_get_type(v).objectID == typeobj.objectID;
     }
