@@ -207,7 +207,7 @@ uint32_t matte_string_get_length(
 /// Gets the character within the string that the given 
 /// 0-indexed position. If the position is invalid, 0 is returned.
 ///
-int matte_string_get_char(
+uint32_t matte_string_get_char(
     /// The string to query.
     const matteString_t *, 
 
@@ -226,7 +226,7 @@ void matte_string_set_char(
     uint32_t position, 
 
     /// The new value within the string.
-    int value
+    uint32_t value
 );
 
 /// Adds a character to the end of the string
@@ -236,7 +236,7 @@ void matte_string_append_char(
     matteString_t *, 
 
     /// The value of the character to add to the string.
-    int value
+    uint32_t value
 );
 
 
