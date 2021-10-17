@@ -128,7 +128,6 @@ typedef enum {
 
 typedef enum {
     MATTE_EXT_CALL_NOOP,
-    MATTE_EXT_CALL_GATE,
     MATTE_EXT_CALL_LOOP,
     MATTE_EXT_CALL_FOR,
     MATTE_EXT_CALL_FOREACH,

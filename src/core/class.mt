@@ -22,13 +22,12 @@
 
 
     <@> classinst = {};
-    classinst.typeobj = newtype({'name' : d.name});
-    if(d.declare) d.declare();
     <@> define = d.define;
 
     classinst.interfaces = [];
     <@> allclass = classinst.interfaces;
     <@> inherits = if(d.inherits)::{
+        <@> types = [];
         <@> addbase ::(other){
             for([0, arraylen(other)], ::(n){
                 <@>g = other[n];
@@ -45,15 +44,23 @@
             });
         };
 
-        when(arraylen(inherits)) ::{
-            for([0, arraylen(inherits)], ::(i){
-                addbase(inherits[i].interfaces);
+        when(arraylen(d.inherits)) ::{
+            for([0, arraylen(d.inherits)], ::(i){
+                arraypush(types, d.inherits[i].type);
+                addbase(d.inherits[i].interfaces);
             });
+            classinst.type = newtype({'name' : d.name, inherits:types});
             return d.inherits;
         }();
-        addbase(inherits.interfaces);
+        classinst.type = newtype({'name' : d.name});
+        addbase(d.inherits.interfaces);
+        return d.inherits;
+    }() else ::{
+        classinst.type = newtype({'name' : d.name});
     }();
     arraypush(allclass, classinst);
+
+    if(d.declare) d.declare();
 
     // returns whether the isntance inherits from the given class.
     <@> isa ::(d) {
@@ -70,13 +77,8 @@
     classinst.new = ::(args, noseal, outsrc) {
         @out = outsrc;
         if(inherits) ::{
-            @types = [];
-            for([0, arraylen(inherits)], ::(i){
-                types[i] = inherits[i].typeobj;
-            });
-        
-            out = if(out)out else instantiate({inherits:types});
-            if(inherits[0] == empty)::{
+            out = if(out)out else instantiate(classinst.type);
+            if(inherits[0] != empty)::{
                 for([0, arraylen(inherits)], ::(i){
                     inherits[i].new(args, true, out);
                 });
@@ -84,7 +86,7 @@
                 inherits.new(args, true, out);
             }();
         }();
-        out = if(out) out else instantiate(classinst.typeobj);
+        out = if(out) out else instantiate(classinst.type);
 
         @setters;
         @getters;
@@ -173,7 +175,6 @@
                 return isa;            
             };
             ops['.'] = {
-            
                 get ::(key) {
 
                     @out = getters[key];
@@ -191,13 +192,13 @@
                     error('' +key+ " does not exist within this instances class.");
                 }
             };
-            
             setOperator(out, ops);
         }();
         return out;
     };
     return classinst;
 };
+
 return class;
 
 

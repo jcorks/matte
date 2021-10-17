@@ -963,7 +963,6 @@ matteVM_t * matte_vm_create() {
 
     // add built in functions
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,    0, vm_ext_call__noop);
-    vm_add_built_in(vm, MATTE_EXT_CALL_GATE,    3, vm_ext_call__gate);
     vm_add_built_in(vm, MATTE_EXT_CALL_LOOP,    1, vm_ext_call__loop);
     vm_add_built_in(vm, MATTE_EXT_CALL_FOR,     2, vm_ext_call__for);
     vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, 2, vm_ext_call__foreach);
@@ -983,7 +982,6 @@ matteVM_t * matte_vm_create() {
 
 
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TYPE, 0, vm_ext_call__introspect_type);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_OBJECT_ID, 0, vm_ext_call__introspect_object_id);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS, 0, vm_ext_call__introspect_keys);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES, 0, vm_ext_call__introspect_values);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT, 0, vm_ext_call__introspect_keycount);    
@@ -1005,7 +1003,7 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT, 0, vm_ext_call__introspect_sqrt);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN, 0, vm_ext_call__introspect_isnan);    
 
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
+    //vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
 
 
     return vm;

@@ -152,43 +152,6 @@ struct matteFunctionBlock_t {
     
 };
 
-static void function_block_destroy(matteFunctionBlock_t * t) {
-    uint32_t i;
-    uint32_t len;
-    matte_array_destroy(t->instructions); // safe
-    matte_array_destroy(t->captures); // safe
-
-    len = matte_array_get_size(t->locals);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(t->locals, matteString_t *, i));        
-    }
-    matte_array_destroy(t->locals);
-    matte_array_destroy(t->local_isConst);
-
-    len = matte_array_get_size(t->args);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(t->args, matteString_t *, i));        
-    }
-    matte_array_destroy(t->args);
-
-    len = matte_array_get_size(t->strings);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(t->strings, matteString_t *, i));        
-    }
-    matte_array_destroy(t->strings);
-
-
-    len = matte_array_get_size(t->captureNames);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(t->captureNames, matteString_t *, i));        
-    }
-    matte_array_destroy(t->captureNames);
-    matte_array_destroy(t->capture_isConst);
-    if (t->typestrict_types) 
-        matte_array_destroy(t->typestrict_types);
-    free(t);
-
-}
 
 
 // converts all graph nodes into an array of matteFunctionBlock_t
@@ -989,53 +952,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         int c = utf8_next_char(&t->iter);
         switch(c) {
           case '-':
-            t->character++;
-            t->backup = t->iter;
-            c = utf8_next_char(&t->iter);
-            switch(c) {
-              case '-':
-                t->character+=2;
-                t->backup = t->iter;
-                return new_token(
-                    matte_string_create_from_c_str("-%c", c),
-                    currentLine,
-                    currentCh,
-                    ty
-                );            
-                break;
-
-              default:
-                t->iter = t->backup;
-                return new_token(
-                    matte_string_create_from_c_str("-", c),
-                    currentLine,
-                    currentCh,
-                    ty
-                );            
-            }
-            break;
-
-          case '+':
-            t->character++;
-            t->backup = t->iter;
-            c = utf8_next_char(&t->iter);
-            switch(c) {
-              case '+':
-                t->character+=2;
-                t->backup = t->iter;
-                return new_token(
-                    matte_string_create_from_c_str("+%c", c),
-                    currentLine,
-                    currentCh,
-                    ty
-                );            
-                break;
-
-              default:
-                t->iter = t->backup;
-                return NULL;          
-            }
-            break;
           case '~':
           case '!':
           case '#':
@@ -1996,34 +1912,43 @@ static void ff_skip_inner_function(matteToken_t ** t) {
 
 }
 
-void destroy_function_block(matteFunctionBlock_t * b) {
+
+static void function_block_destroy(matteFunctionBlock_t * t) {
     uint32_t i;
     uint32_t len;
+    matte_array_destroy(t->instructions); // safe
+    matte_array_destroy(t->captures); // safe
 
-    len = matte_array_get_size(b->args);
+    len = matte_array_get_size(t->locals);
     for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(b->args, matteString_t *, i));
+        matte_string_destroy(matte_array_at(t->locals, matteString_t *, i));        
     }
+    matte_array_destroy(t->locals);
+    matte_array_destroy(t->local_isConst);
 
-    len = matte_array_get_size(b->locals);
+    len = matte_array_get_size(t->args);
     for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(b->locals, matteString_t *, i));
+        matte_string_destroy(matte_array_at(t->args, matteString_t *, i));        
     }
-    len = matte_array_get_size(b->captureNames);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(b->captureNames, matteString_t *, i));
-    }
+    matte_array_destroy(t->args);
 
-    matte_array_destroy(b->args);
-    matte_array_destroy(b->locals);
-    matte_array_destroy(b->local_isConst);
-    matte_array_destroy(b->instructions);
-    matte_array_destroy(b->captures);
-    matte_array_destroy(b->captureNames);
-    matte_array_destroy(b->capture_isConst);
-    if (b->typestrict_types) 
-        matte_array_destroy(b->typestrict_types);
-    free(b);
+    len = matte_array_get_size(t->strings);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(t->strings, matteString_t *, i));        
+    }
+    matte_array_destroy(t->strings);
+
+
+    len = matte_array_get_size(t->captureNames);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(t->captureNames, matteString_t *, i));        
+    }
+    matte_array_destroy(t->captureNames);
+    matte_array_destroy(t->capture_isConst);
+    if (t->typestrict_types) 
+        matte_array_destroy(t->typestrict_types);
+    free(t);
+
 }
 
 #include "MATTE_INSTRUCTIONS"
@@ -2732,8 +2657,10 @@ static matteArray_t * compile_base_value(
                 iter = iter->next;                
             nPairs++;
         }
-        
-        write_instruction__nso(inst, iter->line, nPairs);
+        if (nPairs == 0)
+            write_instruction__nob(inst, iter->line);
+        else
+            write_instruction__nso(inst, iter->line, nPairs);
         *src = iter->next; // skip } 
         return inst;
       }
@@ -3889,7 +3816,7 @@ static matteFunctionBlock_t * compile_function_block(
 
     return b;
   L_FAIL:
-    destroy_function_block(b);
+    function_block_destroy(b);
     return NULL;
 }
 

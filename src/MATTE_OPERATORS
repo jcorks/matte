@@ -252,7 +252,7 @@ static matteValue_t vm_operator__negate(matteVM_t * vm, matteValue_t a) {
     return result;
 }
 
-
+/*
 static matteValue_t vm_operator__preinc(matteVM_t * vm, matteValue_t a) {
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
@@ -316,7 +316,7 @@ static matteValue_t vm_operator__predec(matteVM_t * vm, matteValue_t a) {
     }
     return result;
 }
-
+*/
 static matteValue_t vm_operator__bitwise_not(matteVM_t * vm, matteValue_t a) {
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {

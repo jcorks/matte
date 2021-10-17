@@ -3,7 +3,6 @@ enum {
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_TYPE = MATTE_EXT_CALL_GETEXTERNALFUNCTION+1,
 
     // Gets the ID of an object
-    MATTE_EXT_CALL_INTERNAL__INTROSPECT_OBJECT_ID,
 
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES,
@@ -26,7 +25,7 @@ enum {
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN,
 
-    MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE,
+    //MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE,
     // the last one
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_NONE,
 };
@@ -128,7 +127,6 @@ static matteValue_t introspection_object_new(matteVM_t * vm) {
     char * names[] = {
         "type",
 
-        "objectID",
         "keys",
         "values",
         "keycount",
@@ -157,7 +155,6 @@ static matteValue_t introspection_object_new(matteVM_t * vm) {
 
     matteBytecodeStub_t * functions[] = {
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TYPE),
-        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_OBJECT_ID),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT),
@@ -282,17 +279,6 @@ static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn
 
 
 
-static matteValue_t vm_ext_call__introspect_object_id(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    IntrospectDataSet * idata = matte_value_object_get_userdata(fn);
-    matteValue_t a = idata->value;
-
-    matteValue_t result = matte_heap_new_value(vm->heap);
-    if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matte_value_into_number(&result, a.objectID);
-    }
-    
-    return result;
-}
 
 static matteValue_t vm_ext_call__introspect_keys(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     IntrospectDataSet * idata = matte_value_object_get_userdata(fn);
@@ -619,14 +605,14 @@ static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t f
     matte_value_into_boolean(&out, isnan(matte_value_as_number(a)));
     return out;
 }
-
+/*
 static matteValue_t vm_ext_call__introspect_nowrite(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t out = matte_heap_new_value(vm->heap);
     matte_vm_raise_error_string(vm, MATTE_STR_CAST("Introspection object is not editable."));
     matte_value_into_boolean(&out, 0);
     return out;
 }
-
+*/
 
 
 

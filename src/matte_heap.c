@@ -579,7 +579,15 @@ void matte_value_into_number_(matteValue_t * v, double val) {
 
 static void isa_add(matteArray_t * arr, matteValue_t * v) {
     matte_array_push(arr, v->objectID);
-    uint32_t count = matte_
+    // roll out all types
+    MatteTypeData d = matte_array_at(v->heap->typecode2data, MatteTypeData, v->objectID);
+    if (d.isa) {
+        uint32_t i;
+        uint32_t count = matte_array_get_size(d.isa);
+        for(i = 0; i < count; ++i) {
+            matte_array_push(arr, matte_array_at(d.isa, uint32_t, i));
+        }
+    }
 }
 
 static matteArray_t * type_array_to_isa(matteValue_t val) {
@@ -593,7 +601,7 @@ static matteArray_t * type_array_to_isa(matteValue_t val) {
             matte_vm_raise_error_string(val.heap->vm, MATTE_STR_CAST("'inherits' attribute must have Type values only."));
             return array;
         }
-        matte_array_push(array, v->objectID);
+        isa_add(array, v);
     }
     return array;
 }
@@ -635,10 +643,7 @@ void matte_value_into_new_type_(matteValue_t * v, matteValue_t opts) {
             
             data.isa = type_array_to_isa(val);
             matte_heap_recycle(val);
-        } else {
-            data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);        
-        }
-
+        } 
                 
     } else {
         data.name = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);
@@ -1934,9 +1939,18 @@ int matte_value_isa(matteValue_t v, matteValue_t typeobj) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return matte_value_get_type(v).objectID == typeobj.objectID;
     } else {
-        
-        // TODO: more complex stuff for custom type
-        return matte_value_get_type(v).objectID == typeobj.objectID;
+        matteValue_t typep = matte_value_get_type(v);
+        if (typep.objectID == typeobj.objectID) return 1;
+
+        MatteTypeData * d = &matte_array_at(v.heap->typecode2data, MatteTypeData, typep.objectID);
+        if (!d->isa) return 0;
+
+        uint32_t i;
+        uint32_t count = matte_array_get_size(d->isa);
+        for(i = 0; i < count; ++i) {
+            if (matte_array_at(d->isa, uint32_t, i) == typeobj.objectID) return 1;
+        }
+        return 0;
     }
 }
 
