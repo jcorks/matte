@@ -67,7 +67,8 @@ struct matteHeap_t {
     matteTableIter_t * routeIter;
     // all objects contained in here are "verified as root-reachable"
     // for the reamainder of the root sweep.
-    matteTable_t * verifiedRoot;
+    //matteTable_t * verifiedRoot;
+    uint16_t verifiedCycle;
 
     // all objects contained in here are "verified as not root-reachable"
     // for the reamainder of the root sweep.
@@ -149,6 +150,7 @@ typedef struct {
     // root refs keep children ref chains alive.
     int isRootRef;
 
+    uint16_t verifiedRoot;
 
     // id within sorted heap.
     uint32_t heapID;
@@ -480,7 +482,7 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->routeChecker = matte_table_create_hash_pointer();
     out->routePather = matte_array_create(sizeof(uint32_t));
     out->routeIter = matte_table_iter_create();
-    out->verifiedRoot = matte_table_create_hash_pointer();
+    //out->verifiedRoot = matte_table_create_hash_pointer();
     out->verifiedNoRoot = matte_table_create_hash_pointer();
 
     MatteTypeData dummyD = {};
@@ -544,7 +546,7 @@ void matte_heap_destroy(matteHeap_t * h) {
     matte_table_destroy(h->routeChecker);
     matte_array_destroy(h->routePather);
     matte_table_iter_destroy(h->routeIter);
-    matte_table_destroy(h->verifiedRoot);
+    //matte_table_destroy(h->verifiedRoot);
     matte_table_destroy(h->verifiedNoRoot);
     free(h);
 }
@@ -2055,7 +2057,8 @@ void matte_heap_recycle_(
 
 static int matte_object_mark_reachable_ref_path_root(matteHeap_t * h, matteObject_t * m) {
     matte_array_set_size(h->routePather, 0);
-    matte_table_insert_by_uint(h->verifiedRoot, m->heapID, (void*)0x1);
+    //matte_table_insert_by_uint(h->verifiedRoot, m->heapID, (void*)0x1);
+    m->verifiedRoot = h->verifiedCycle;
 
     matte_array_push(h->routePather, m->heapID);
     matteTableIter_t * iter = h->routeIter;
@@ -2071,12 +2074,15 @@ static int matte_object_mark_reachable_ref_path_root(matteHeap_t * h, matteObjec
         for(matte_table_iter_start(iter, current->refParents);
             !matte_table_iter_is_end(iter);
             matte_table_iter_proceed(iter)) {
-            uint32_t nc = matte_table_iter_get_key_uint(iter);
-            if (!matte_table_find_by_uint(h->verifiedRoot, nc)) {
-                matte_table_insert_by_uint(h->verifiedRoot, nc, (void*)0x1);
-                matte_array_push(h->routePather, nc);
+            
+            matteObject_t * c = matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], matte_table_iter_get_key_uint(iter));
+
+            if (c->verifiedRoot != h->verifiedCycle) {
+                c->verifiedRoot = h->verifiedCycle;
+                matte_array_push(h->routePather, c->heapID);
                 size++;
-            }                        
+            
+            }
         }
         /*
         for(matte_table_iter_start(iter, current->refChildren);
@@ -2177,7 +2183,7 @@ static int matte_object_mark_unreachable_ref_path_root(matteHeap_t * h, matteObj
 // checks to see if the object has a reference back to its parents
 static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) {
     if (m->isRootRef) return 1;
-    if (matte_table_find_by_uint(h->verifiedRoot, m->heapID)) return 1;
+    if (m->verifiedRoot == h->verifiedCycle) return 1;
     if (matte_table_find_by_uint(h->verifiedNoRoot, m->heapID)) return 0;
     
     matte_array_push(h->routePather, m->heapID);
@@ -2191,7 +2197,7 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
         uint32_t currentID = matte_array_at(h->routePather, uint32_t, --size);
         matte_array_set_size(h->routePather, size);
         matteObject_t * current = matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], currentID);
-        if (current->isRootRef || matte_table_find_by_uint(h->verifiedRoot, current->heapID)) {
+        if (current->isRootRef || (current->verifiedRoot == h->verifiedCycle)) {
             foundRoot = 1;
             matte_object_mark_reachable_ref_path_root(h, current);
             matte_array_set_size(h->routePather, 0);
@@ -2441,7 +2447,10 @@ void matte_heap_pop_lock_gc(matteHeap_t * h) {
 void matte_heap_garbage_collect(matteHeap_t * h) {
     if (h->gcLocked) return;
     h->gcLocked = 1;
-    matte_table_clear(h->verifiedRoot);
+    ++(h->verifiedCycle);
+    if (h->verifiedCycle == 0) h->verifiedCycle = 1;
+    
+    //matte_table_clear(h->verifiedRoot);
     matte_table_clear(h->verifiedNoRoot);
     // transfer to an array juuuust in case the 
     // finalizers mark additional objects for GCing
@@ -2456,6 +2465,11 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
             printf("BEGINNING SWEEP\n");
         }
     #endif
+
+    for(i = 0; i < len; ++i) {
+        matteObject_t * m = matte_array_at(sweep, matteObject_t *, i);
+        m->verifiedRoot = 0;
+    }
 
     for(i = 0; i < len; ++i) {
         matteObject_t * m = matte_array_at(sweep, matteObject_t *, i);
