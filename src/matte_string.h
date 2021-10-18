@@ -292,46 +292,5 @@ int matte_string_compare(
 
 
 
-
-
-/// Chain functions can be used to 
-/// work on strings in a token-like fashion.
-/// Each token is referred to as a "link" in the chain.
-/// Resets the chain state of the string. Using matte_string_chain_current()
-/// will return the first token according to the delimiters given.
-/// The first link is returned. If no such link exists, an empty 
-/// link is returned.
-///
-const matteString_t * matte_string_chain_start(
-    /// the string to start the chaining.
-    matteString_t * t, 
-    
-    /// The delimiters 
-    const matteString_t * delimiters
-);
-
-/// Returns the current link in the chain.
-/// If the end has been reached, this is an empty string.
-///
-const matteString_t * matte_string_chain_current(
-    /// The string to query.
-    matteString_t * t
-);
-
-/// Returns whether the last link in the chain has been reached.
-///
-int matte_string_chain_is_end(
-    /// The string to query.
-    const matteString_t * t
-);
-
-/// Goes to the next token in the chain and returns that token.
-/// The new token is returned.
-/// 
-const matteString_t * matte_string_chain_proceed(
-    /// The string to proceed in its chain.
-    matteString_t * t
-);
-
 #endif
 

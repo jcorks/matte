@@ -273,23 +273,26 @@ uint8_t * matte_compiler_run(
 // walker;
 
 static int utf8_next_char(uint8_t ** source) {
+    uint8_t * iter = *source;
     int val = (*source)[0];
-    if (val < 128) {
-        if (val)(*source)++;
-    } else if (val < 224) {
-        val += (*source)[1] * 0xff;
-        if (val)(*source)+=2;
-    } else if (val < 240) {
-        val += (*source)[1] * 0xff;
-        val += (*source)[2] * 0xffff;
-        if (val)(*source)+=3;
-    } else {
-        val += (*source)[1] * 0xff;
-        val += (*source)[2] * 0xffff;
-        val += (*source)[3] * 0xffffff;
-        if (val)(*source)+=4;
+    if (val < 128 && *iter) {
+        val = (iter[0]) & 0x7F;
+        (*source)++;
+        return val;
+    } else if (val < 224 && *iter && iter[1]) {
+        val = ((iter[0] & 0x1F)<<6) + (iter[1] & 0x3F);
+        (*source)+=2;
+        return val;
+    } else if (val < 240 && *iter && iter[1] && iter[2]) {
+        val = ((iter[0] & 0x0F)<<12) + ((iter[1] & 0x3F)<<6) + (iter[2] & 0x3F);
+        (*source)+=3;
+        return val;
+    } else if (*iter && iter[1] && iter[2] && iter[3]) {
+        val = ((iter[0] & 0x7)<<18) + ((iter[1] & 0x3F)<<12) + ((iter[2] & 0x3F)<<6) + (iter[3] & 0x3F);
+        (*source)+=4;
+        return val;
     }
-    return val;
+    return 0;
 }
 
 

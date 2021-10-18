@@ -11,6 +11,96 @@
 
 static int TESTID = 1;
 
+
+static void test_string_utf8() {
+    matteString_t * str = matte_string_create();
+    assert(matte_string_get_length(str) == 0);
+    assert(matte_string_get_byte_length(str) == 0);
+    assert(!strcmp(matte_string_get_c_str(str), ""));
+    
+    matte_string_concat_printf(str, "hello%d안녕world𐍈ㄅㄞˇ!!!", 4);
+    assert(matte_string_get_length(str) == 20);
+    assert(!strcmp(matte_string_get_c_str(str), "hello4안녕world𐍈ㄅㄞˇ!!!"));
+    assert(matte_string_get_char(str, 4) == 'o');
+    
+    assert(matte_string_test_eq(str, MATTE_STR_CAST("hello4안녕world𐍈ㄅㄞˇ!!!")));
+    matte_string_set_char(str, 4, 'O');
+    matte_string_append_char(str, 'i');
+    assert(!matte_string_compare(str, MATTE_STR_CAST("hellO4안녕world𐍈ㄅㄞˇ!!!i")));
+    assert(matte_string_test_contains(str, MATTE_STR_CAST("4안녕world𐍈")));
+    assert(!matte_string_test_contains(str, MATTE_STR_CAST("o4안녕woild𐍈ㄅㄞˇ")));
+
+    matteString_t * str1 = matte_string_create_from_c_str("%s", matte_string_get_c_str(str));
+    matteString_t * str2 = matte_string_clone(str1);
+    matteString_t * str3 = matte_string_create();
+    matte_string_set(str3, str); 
+    
+    assert(!matte_string_compare(str1, MATTE_STR_CAST("hellO4안녕world𐍈ㄅㄞˇ!!!i")));
+    assert(!strcmp(matte_string_get_c_str(str3), "hellO4안녕world𐍈ㄅㄞˇ!!!i"));
+    assert(matte_string_test_eq(str3, str2));    
+    
+    matte_string_concat(str1, str2);
+    assert(matte_string_compare(str1, str2) > 0);
+    const matteString_t * subst = matte_string_get_substr(
+        str,
+        5,
+        matte_string_get_length(str)-1
+    );
+    matte_string_concat_printf(str2, "hellO%s", matte_string_get_c_str(subst));
+    assert(matte_string_test_eq(str1, str2)); 
+    assert(!matte_string_test_eq(str, str1));
+
+    matte_string_destroy(str);
+    matte_string_destroy(str1);
+    matte_string_destroy(str2);
+    matte_string_destroy(str3);
+}
+
+
+static void test_string() {
+    matteString_t * str = matte_string_create();
+    assert(matte_string_get_length(str) == 0);
+    assert(matte_string_get_byte_length(str) == 0);
+    assert(!strcmp(matte_string_get_c_str(str), ""));
+    
+    matte_string_concat_printf(str, "hello%dworld!!!", 4);
+    assert(!strcmp(matte_string_get_c_str(str), "hello4world!!!"));
+    assert(matte_string_get_char(str, 4) == 'o');
+    
+    assert(matte_string_test_eq(str, MATTE_STR_CAST("hello4world!!!")));
+    matte_string_set_char(str, 4, 'O');
+    matte_string_append_char(str, 'i');
+    assert(!matte_string_compare(str, MATTE_STR_CAST("hellO4world!!!i")));
+    assert(matte_string_test_contains(str, MATTE_STR_CAST("4world")));
+    assert(!matte_string_test_contains(str, MATTE_STR_CAST("o4woild")));
+
+    matteString_t * str1 = matte_string_create_from_c_str("%s", matte_string_get_c_str(str));
+    matteString_t * str2 = matte_string_clone(str1);
+    matteString_t * str3 = matte_string_create();
+    matte_string_set(str3, str);
+    
+    assert(!matte_string_compare(str1, MATTE_STR_CAST("hellO4world!!!i")));
+    assert(!strcmp(matte_string_get_c_str(str3), "hellO4world!!!i"));
+    assert(matte_string_test_eq(str3, str2));    
+    
+    matte_string_concat(str1, str2);
+    assert(matte_string_compare(str1, str2) > 0);
+    const matteString_t * subst = matte_string_get_substr(
+        str,
+        5,
+        matte_string_get_length(str)-1
+    );
+    matte_string_concat_printf(str2, "hellO%s", matte_string_get_c_str(subst));
+    assert(matte_string_test_eq(str1, str2)); 
+    assert(!matte_string_test_eq(str, str1));
+
+    matte_string_destroy(str);
+    matte_string_destroy(str1);
+    matte_string_destroy(str2);
+    matte_string_destroy(str3);
+}
+
+
 static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata) {
     printf("TEST COMPILE FAILURE ON TEST: %d\n:", TESTID);
     printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
@@ -109,8 +199,8 @@ char * dump_string(const char * filename) {
 
 int main() {
     uint32_t i = 0;
-    
-
+    test_string();
+    test_string_utf8();
 
     matteString_t * infile = matte_string_create();
     matteString_t * outfile = matte_string_create();
