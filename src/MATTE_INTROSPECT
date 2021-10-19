@@ -48,12 +48,17 @@ matteValue_t introspection_preserver(matteVM_t * vm, matteValue_t fn, matteArray
     matte_value_object_remove_key(intr, key);
     matte_heap_recycle(key);
     
-    
-    uint32_t count = matte_value_object_get_key_count(vm->introspectTable); 
-    key = matte_heap_new_value(vm->heap);
-    matte_value_into_number(&key, count);
-    matte_value_object_set(vm->introspectTable, key, intr, 1);
-    matte_heap_recycle(key);
+
+
+    // for when the heap was destroyed, but a preserver for the table was called.
+    if (vm->introspectTable.binID) {
+        
+        uint32_t count = matte_value_object_get_key_count(vm->introspectTable); 
+        key = matte_heap_new_value(vm->heap);
+        matte_value_into_number(&key, count);
+        matte_value_object_set(vm->introspectTable, key, intr, 1);
+        matte_heap_recycle(key);
+    }
     
     /////// artificially destroy.
     matte_heap_recycle(idata->value);
@@ -97,6 +102,7 @@ static void introspection_destroy_table(matteVM_t * vm) {
     
     matte_value_object_pop_lock(vm->introspectTable);
     matte_heap_recycle(vm->introspectTable);
+    vm->introspectTable.binID = 0;
 }
 
 static void introspection_initialize_table(matteVM_t * vm) {

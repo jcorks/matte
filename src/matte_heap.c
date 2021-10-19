@@ -302,7 +302,7 @@ static void object_unlink_parent(matteObject_t * parent, matteObject_t * child) 
     */
 }
 
-static void object_unlink_parent_child_only(matteObject_t * parent, matteObject_t * child) {
+static void object_unlink_parent_child_only_all(matteObject_t * parent, matteObject_t * child) {
     uint32_t n;
     uint32_t lenC = matte_array_get_size(child->refParents);
 
@@ -310,11 +310,7 @@ static void object_unlink_parent_child_only(matteObject_t * parent, matteObject_
     for(n = 0; n < lenC; ++n, ++iterO) {
         if (iterO->id == parent->heapID) {
                                    
-            if (iterO->linkcount == 1) {
-                matte_array_remove(child->refParents, n);
-            } else {
-                iterO->linkcount--;
-            }
+            matte_array_remove(child->refParents, n);
             return;                
         }
     }
@@ -331,18 +327,14 @@ static void object_unlink_parent_child_only(matteObject_t * parent, matteObject_
     */
 }
 
-static void object_unlink_parent_parent_only(matteObject_t * parent, matteObject_t * child) {
+static void object_unlink_parent_parent_only_all(matteObject_t * parent, matteObject_t * child) {
     uint32_t i;
     uint32_t lenP = matte_array_get_size(parent->refChildren);
 
     MatteHeapParentChildLink * iter = matte_array_get_data(parent->refChildren);
     for(i = 0; i < lenP; ++i, ++iter) {
         if (iter->id == child->heapID) {                                           
-            if (iter->linkcount == 1) {
-                matte_array_remove(parent->refChildren, i);
-            } else {
-                iter->linkcount--;
-            }
+            matte_array_remove(parent->refChildren, i);
             return;                
         }
     }
@@ -848,6 +840,9 @@ void matte_value_into_new_object_array_ref_(matteValue_t * v, const matteArray_t
         matteValue_t val = matte_heap_new_value(v->heap);
         matte_value_into_copy(&val, matte_array_at(args, matteValue_t, i));
         matte_array_at(d->keyvalues_number, matteValue_t, i) = val;
+        if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
+            object_link_parent_value(d, &val);
+        }
     }
     d->dormant = 0;
 
@@ -2164,6 +2159,7 @@ void matte_heap_recycle_(
 ) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+        if (!m) return; // normal for cycles
         // already handled as part of a rootless sweep.
 
         if (m->isRootless) return;
@@ -2292,8 +2288,11 @@ static int matte_object_mark_unreachable_ref_path_root(matteHeap_t * h, matteObj
             matteValue_t preserver = matte_value_object_access_string(current->opSet, MATTE_STR_CAST("preserver"));        
 
             if (preserver.binID) {
-                matteValue_t v = matte_vm_call(h->vm, preserver, matte_array_empty(), MATTE_STR_CAST("preserver"));
+                // you'll want to mark here, as the preserver can add/remove 
+                // children / mess with child refs when the children may have already been 
+                // marked for deletion
                 matte_object_mark_reachable_ref_path_root(h, m);
+                matteValue_t v = matte_vm_call(h->vm, preserver, matte_array_empty(), MATTE_STR_CAST("preserver"));
 
 
                 matte_heap_recycle(preserver);
@@ -2371,6 +2370,10 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
 
             if (!matte_table_find_by_uint(h->routeChecker, nc)) {
                 matte_table_insert_by_uint(h->routeChecker, nc, (void*)0x1);
+                #ifdef MATTE_DEBUG__HEAP
+                    assert(matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], nc));
+                #endif
+
                 matte_array_push(h->routePather, nc);
                 size++;
             }                        
@@ -2452,12 +2455,23 @@ static void matte_object_group_add_to_rootless_bin(matteHeap_t * h, matteObject_
 static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
     if (m->dormant) return;
     
-    m->toSweep = 0;
     matteTableIter_t * iter = matte_table_iter_create();
 
 
     // might have been saved by finalizer
     if (!matte_object_check_ref_path_root(h, m)) {
+        if (m->toSweep) {
+            // need to remove from sweep list :(
+            uint32_t i;
+            uint32_t len = matte_array_get_size(h->toSweep);
+            for(i = 0; i < len; ++i) {
+                if (matte_array_at(h->toSweep, matteObject_t *, i) == m) {
+                    matte_array_remove(h->toSweep, i);
+                    break;
+                }
+            }
+            m->toSweep = 0;
+        }
         #ifdef MATTE_DEBUG__HEAP
 
             assert(!m->isRootRef);
@@ -2485,8 +2499,11 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
             MatteHeapParentChildLink * iter = matte_array_get_data(m->refChildren);
             for(i = 0; i < len; ++i , ++iter) {
                 v.objectID = iter->id;
-                object_unlink_parent_child_only(m, matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID));
-                matte_heap_recycle(v);
+                matteObject_t * ch = matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+                if (ch) {
+                    object_unlink_parent_child_only_all(m, ch);
+                    matte_heap_recycle(v);
+                }
             }
             matte_array_set_size(m->refChildren, 0);
         }
@@ -2501,8 +2518,11 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
             MatteHeapParentChildLink * iter = matte_array_get_data(m->refParents);
             for(i = 0; i < len; ++i , ++iter) {
                 v.objectID = iter->id;
-                object_unlink_parent_parent_only(matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID), m);
-                matte_heap_recycle(v);
+                matteObject_t * ch = matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+                if (ch) {
+                    object_unlink_parent_parent_only_all(ch, m);
+                    matte_heap_recycle(v);
+                }
             }
             matte_array_set_size(m->refParents, 0);
         }
@@ -2589,8 +2609,8 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
             }
             matte_table_clear(m->keyvalues_object);
         }
-        
-        //matte_bin_recycle(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], m->heapID);
+        m->userdata = NULL;
+        matte_bin_recycle(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], m->heapID);
 
     }
     matte_table_iter_destroy(iter);
@@ -2634,12 +2654,12 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
 
     for(i = 0; i < len; ++i) {
         matteObject_t * m = matte_array_at(sweep, matteObject_t *, i);
+        m->toSweep = 0;
         m->verifiedRoot = 0;
     }
 
     for(i = 0; i < len; ++i) {
         matteObject_t * m = matte_array_at(sweep, matteObject_t *, i);
-        m->toSweep = 0;
         if (m->isRootless) continue;
 
 

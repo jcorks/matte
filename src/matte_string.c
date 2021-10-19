@@ -160,14 +160,14 @@ void matte_string_set(matteString_t * s, const matteString_t * src) {
         free(s->cstrtemp);
         s->cstrtemp = NULL;
     }
-    if (s->alloc >= src->alloc) {
+    if (s->alloc > src->len) {
         memcpy(s->utf8, src->utf8, src->len*sizeof(uint32_t));
         s->len = src->len;
     } else {
         free(s->utf8);
         s->len = src->len;
-        s->alloc = src->alloc;
-        s->utf8 = malloc(s->alloc*sizeof(uint32_t));
+        s->alloc = src->len;
+        s->utf8 = malloc(s->len*sizeof(uint32_t));
         memcpy(s->utf8, src->utf8, src->len*sizeof(uint32_t));
     }
 
