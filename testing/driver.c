@@ -228,7 +228,7 @@ int main() {
             printf("Couldn't open source %s\n", matte_string_get_c_str(infile));
             exit(1);
         }
-        printf("Running test %s...\n", matte_string_get_c_str(infile));
+        printf("Running test %s...", matte_string_get_c_str(infile));
         fflush(stdout);
         uint32_t outByteLen;
         uint8_t * outBytes = matte_compiler_run(
@@ -268,13 +268,18 @@ int main() {
             matte_string_destroy(str);
             exit(1);
         }
+        printf("Pass. Cleaning up...");
+        fflush(stdout);
+
+
         matte_string_destroy(resultText);
         free(outstr);
         TESTID++;
         matte_string_destroy(outputText);
         matte_heap_recycle(v);
         matte_destroy(m);
-
+        printf("Done.\n");
+        fflush(stdout);
 
     }
     matte_array_destroy(args);

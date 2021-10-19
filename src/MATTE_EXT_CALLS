@@ -309,8 +309,8 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
             src = matte_string_base64_to_bytes(MATTE_STR_CAST(iter[1]), &srcLen);
             fileid = matte_vm_get_new_file_id(vm, str);
             #ifdef MATTE_DEBUG
-                printf("import() found ROM source for %s\n", matte_string_get_c_str(str));
-                fflush(stdout);
+                //printf("import() found ROM source for %s\n", matte_string_get_c_str(str));
+                //fflush(stdout);
             #endif
             break;
         }
