@@ -5,6 +5,7 @@
 #include "matte_string.h"
 #include "matte_bytecode_stub.h"
 #include "matte_vm.h"
+#include "matte_heap_string.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -76,6 +77,8 @@ struct matteHeap_t {
     matteTable_t * verifiedNoRoot;
 
     matteVM_t * vm;
+
+    matteStringHeap_t * stringHeap;
 };
 
 
@@ -166,8 +169,7 @@ static matteValue_t object_lookup(matteObject_t * m, matteValue_t key) {
     switch(key.binID) {
       case MATTE_VALUE_TYPE_EMPTY: return out;
       case MATTE_VALUE_TYPE_STRING: {
-        matteString_t * str = matte_bin_fetch(key.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], key.objectID);
-        matteValue_t * value = matte_table_find(m->keyvalues_string, str);
+        matteValue_t * value = matte_table_find_by_uint(m->keyvalues_string, key.objectID);
         if (value) {
             matte_value_into_copy(&out, *value);
         }
@@ -369,8 +371,7 @@ static matteValue_t * object_put_prop(matteObject_t * m, matteValue_t key, matte
     switch(key.binID) {
       case MATTE_VALUE_TYPE_EMPTY: return NULL; // SHOULD NEVER ENTER. if it would, memory leak.
       case MATTE_VALUE_TYPE_STRING: {
-        matteString_t * str = matte_bin_fetch(key.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], key.objectID);
-        matteValue_t * value = matte_table_find(m->keyvalues_string, str);
+        matteValue_t * value = matte_table_find_by_uint(m->keyvalues_string, key.objectID);
         if (value) {
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(m, value);
@@ -381,7 +382,7 @@ static matteValue_t * object_put_prop(matteObject_t * m, matteValue_t key, matte
         } else {
             value = malloc(sizeof(matteValue_t));
             *value = out;
-            matte_table_insert(m->keyvalues_string, str, value);
+            matte_table_insert_by_uint(m->keyvalues_string, key.objectID, value);
             return value;
         }
       }
@@ -525,7 +526,7 @@ static void destroy_string(void * d) {matte_string_destroy(d);}
 
 static void * create_object() {
     matteObject_t * out = calloc(1, sizeof(matteObject_t));
-    out->keyvalues_string = matte_table_create_hash_matte_string();
+    out->keyvalues_string = matte_table_create_hash_pointer();
     out->keyvalues_types  = matte_table_create_hash_pointer();
     out->keyvalues_number = matte_array_create(sizeof(matteValue_t));
     out->keyvalues_object = matte_table_create_hash_buffer(sizeof(matteValue_t));
@@ -580,7 +581,6 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->vm = vm;
     out->sortedHeaps[MATTE_VALUE_TYPE_NUMBER] = matte_bin_create(create_double, destroy_double);
     out->sortedHeaps[MATTE_VALUE_TYPE_BOOLEAN] = matte_bin_create(create_boolean, destroy_boolean);
-    out->sortedHeaps[MATTE_VALUE_TYPE_STRING] = matte_bin_create(create_string, destroy_string);
     out->sortedHeaps[MATTE_VALUE_TYPE_OBJECT] = matte_bin_create(create_object, destroy_object);
     out->typecode2data = matte_array_create(sizeof(MatteTypeData));
     out->routeChecker = matte_table_create_hash_pointer();
@@ -588,6 +588,7 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->routeIter = matte_table_iter_create();
     //out->verifiedRoot = matte_table_create_hash_pointer();
     out->verifiedNoRoot = matte_table_create_hash_pointer();
+    out->stringHeap = matte_string_heap_create();
 
     MatteTypeData dummyD = {};
     matte_array_push(out->typecode2data, dummyD);
@@ -637,7 +638,6 @@ void matte_heap_destroy(matteHeap_t * h) {
     matte_array_destroy(h->toSweep_rootless);
     matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_NUMBER]);
     matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_BOOLEAN]);
-    matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_STRING]);
     matte_bin_destroy(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT]);
     uint32_t i;
     uint32_t len = matte_array_get_size(h->typecode2data);
@@ -654,6 +654,7 @@ void matte_heap_destroy(matteHeap_t * h) {
     matte_table_iter_destroy(h->routeIter);
     //matte_table_destroy(h->verifiedRoot);
     matte_table_destroy(h->verifiedNoRoot);
+    matte_string_heap_destroy(h->stringHeap);
     free(h);
 }
 
@@ -771,8 +772,7 @@ void matte_value_into_boolean_(matteValue_t * v, int val) {
 void matte_value_into_string_(matteValue_t * v, const matteString_t * str) {
     matte_heap_recycle(*v);
     v->binID = MATTE_VALUE_TYPE_STRING;
-    matteString_t * d = matte_bin_add(v->heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], &v->objectID);
-    matte_string_set(d, str);
+    v->objectID = matte_string_heap_internalize(v->heap->stringHeap, str);
 }
 
 void matte_value_into_new_object_ref_(matteValue_t * v) {
@@ -1016,7 +1016,7 @@ const matteString_t * matte_value_string_get_string_unsafe(matteValue_t v) {
     #ifdef MATTE_DEBUG 
     assert(v.binID == MATTE_VALUE_TYPE_STRING);
     #endif
-    return matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], v.objectID);    
+    return matte_string_heap_find(v.heap->stringHeap, v.objectID);
 }
 
 
@@ -1216,7 +1216,7 @@ double matte_value_as_number(matteValue_t v) {
         return *m;
       }
       case MATTE_VALUE_TYPE_STRING: {
-        matteString_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], v.objectID);
+        const matteString_t * m = matte_string_heap_find(v.heap->stringHeap, v.objectID);
         return strtod(matte_string_get_c_str(m), NULL);
       }
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -1253,7 +1253,7 @@ matteString_t * matte_value_as_string(matteValue_t v) {
         return *m ? matte_string_create_from_c_str("%s", "true") : matte_string_create_from_c_str("%s", "false");
       }
       case MATTE_VALUE_TYPE_STRING: {
-        matteString_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], v.objectID);
+        const matteString_t * m = matte_string_heap_find(v.heap->stringHeap, v.objectID);
         return matte_string_clone(m);
       }
 
@@ -1503,7 +1503,8 @@ matteValue_t matte_value_object_keys(matteValue_t v) {
         matte_table_iter_start(iter, m->keyvalues_string);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             matteValue_t key = matte_heap_new_value(v.heap);
-            matte_value_into_string(&key, matte_table_iter_get_key(iter));
+            key.binID = MATTE_VALUE_TYPE_STRING;
+            key.objectID = matte_table_iter_get_key_uint(iter);
             matte_array_push(keys, key);                
         }
         matte_table_iter_destroy(iter);
@@ -1694,10 +1695,9 @@ void matte_value_object_remove_key(matteValue_t v, matteValue_t key) {
     switch(key.binID) {
       case MATTE_VALUE_TYPE_EMPTY: return;
       case MATTE_VALUE_TYPE_STRING: {
-        matteString_t * str = matte_bin_fetch(key.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], key.objectID);
-        matteValue_t * value = matte_table_find(m->keyvalues_string, str);
+        matteValue_t * value = matte_table_find_by_uint(m->keyvalues_string, key.objectID);
         if (value) {
-            matte_table_remove(m->keyvalues_string, str);
+            matte_table_remove_by_uint(m->keyvalues_string, key.objectID);
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(m, value);                
             }
@@ -1820,17 +1820,14 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
     // then string
     if (!matte_table_is_empty(m->keyvalues_string)) {
         matte_value_into_string(&args[0], MATTE_STR_CAST(""));
-        matteString_t * quickI = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], args[0].objectID);
         matteTableIter_t * iter = matte_table_iter_create();
         matte_table_iter_start(iter, m->keyvalues_string);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
-            matte_string_set(quickI, (matteString_t*)matte_table_iter_get_key(iter));
+            args[0].objectID = matte_table_iter_get_key_uint(iter);
             matteValue_t r = matte_vm_call(v.heap->vm, func, MATTE_ARRAY_CAST(args, matteValue_t, 2), MATTE_STR_CAST("'foreach' inner function"));
             matte_heap_recycle(r);
         }
-        matte_heap_recycle(args[0]);
-        args[0].binID = 0;
         matte_table_iter_destroy(iter);
     }
 
@@ -1913,7 +1910,7 @@ matteValue_t matte_value_subset(matteValue_t v, uint32_t from, uint32_t to) {
 
 
       case MATTE_VALUE_TYPE_STRING: {
-        matteString_t * str = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], v.objectID);
+        const matteString_t * str = matte_string_heap_find(v.heap->stringHeap, v.objectID);
         uint32_t curlen = matte_string_get_length(str);
         if (from >= curlen || to >= curlen) return out;
 
@@ -1929,9 +1926,7 @@ matteValue_t matte_value_object_array_to_string_unsafe(matteValue_t v) {
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
     matteHeap_t * heap = v.heap;
 
-    matteValue_t out = matte_heap_new_value(v.heap);
-    matte_value_into_string(&out, MATTE_STR_CAST(""));
-    matteString_t * str = matte_bin_fetch(heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], out.objectID);
+    matteString_t * str = matte_string_create();
     uint32_t len = matte_array_get_size(m->keyvalues_number);
     uint32_t i;
     for(i = 0; i < len; ++i) {
@@ -1943,7 +1938,9 @@ matteValue_t matte_value_object_array_to_string_unsafe(matteValue_t v) {
             );
         }
     }
-    
+    matteValue_t out = matte_heap_new_value(v.heap);
+    matte_value_into_string(&out, str);
+    matte_string_destroy(str);
     return out;
 }
 
@@ -2035,7 +2032,7 @@ void matte_value_into_copy_(matteValue_t * to, matteValue_t from) {
         matte_value_into_boolean(to, *(int*)matte_bin_fetch(from.heap->sortedHeaps[MATTE_VALUE_TYPE_BOOLEAN], from.objectID));
         return;
       case MATTE_VALUE_TYPE_STRING: 
-        matte_value_into_string(to, matte_bin_fetch(from.heap->sortedHeaps[MATTE_VALUE_TYPE_STRING], from.objectID));
+        *to = from;
         return;
       case MATTE_VALUE_TYPE_OBJECT: {
         matte_heap_recycle(*to);
@@ -2167,7 +2164,7 @@ void matte_heap_recycle_(
 
         m->toSweep = 1;
         matte_array_push(v.heap->toSweep, m);
-    } else if (v.binID && v.binID != MATTE_VALUE_TYPE_TYPE) {
+    } else if (v.binID && v.binID != MATTE_VALUE_TYPE_TYPE && v.binID != MATTE_VALUE_TYPE_STRING) {
         #ifdef MATTE_DEBUG__HEAP
             matte_heap_track_out(v, file_, line_);            
         #endif
