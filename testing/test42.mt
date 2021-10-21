@@ -1,6 +1,6 @@
 //// Function expression call.
 //
 //
-return ::{
+return ::<={
     return 20+2;
-}();
+};

@@ -128,6 +128,9 @@ struct matteFunctionBlock_t {
     // count of typestrict types. args + 1
     uint32_t typestrict;
 
+    // whether the function is run immediately before parsing of 
+    // additional tokens.
+    int isDashed;
 
     matteArray_t * typestrict_types;
     // array of matteString_t *
@@ -1301,6 +1304,11 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "::");
         break;  
       }
+      case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<=");
+        break;  
+      }
+
       case MATTE_TOKEN_FUNCTION_TYPESPEC: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "=>");
         break;  
@@ -2716,6 +2724,13 @@ static matteArray_t * compile_base_value(
                 fn->stubID
             );
         }
+        if (fn->isDashed) {
+            write_instruction__cal(
+                inst, 
+                iter->line,
+                0
+            );        
+        }
         *src = iter->next;
         return inst;
       }
@@ -3641,6 +3656,7 @@ static matteFunctionBlock_t * compile_function_block(
     b->capture_isConst = matte_array_create(sizeof(int));
     b->stubID = g->functionStubID++;
     b->parent = parent;
+    
 
     #ifdef MATTE_DEBUG__COMPILER
         printf("COMPILING FUNCTION %d (line %d:%d)\n", b->stubID, iter->line, iter->character);
@@ -3651,6 +3667,17 @@ static matteFunctionBlock_t * compile_function_block(
     // a proper call to compile_function_block should start AT the '('
     // if present (err, after the function constructor more accurately)
     if (b->stubID != 0) {
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH) {
+            // dash functions implicitly call the pushed fucntion immediately with 0 args given.
+            b->isDashed = 1;
+            iter = iter->next;
+            if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH) {
+                matte_syntax_graph_print_compile_error(g, iter, "Multiple dash '<=' tokens given when only 1 is expected.");
+                goto L_FAIL;
+
+            }
+        }    
+    
         if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_BEGIN) {
             // args must ALWAYS be variable names 
             iter = iter->next;
@@ -3810,6 +3837,7 @@ static matteFunctionBlock_t * compile_function_block(
         write_instruction__nem(b->instructions, iter->line);
         write_instruction__ret(b->instructions, iter->line);
     }
+    
     // for every except stubID == 0, there should be an end brace here. Consume it.
     if (iter && iter->ttype == MATTE_TOKEN_FUNCTION_END) {
         *src = iter->next;

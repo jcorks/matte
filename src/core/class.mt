@@ -74,18 +74,33 @@
         return found;
     };
 
+    @dormant = [];
+    @dormantCount = 0;
     classinst.new = ::(args, noseal, outsrc) {
+        
+        when(dormantCount > 0)::<={
+            @out = dormant[dormantCount-1];
+
+            for([0, arraylen(out.onRevive)], ::(i){
+                out.onRevive[i]();
+            });                  
+                                                      
+            dormantCount-=1;
+            return out;
+        };
+        
+        
         @out = outsrc;
-        if(inherits) ::{
+        if(inherits) ::<={
             out = if(out)out else instantiate(classinst.type);
-            if(inherits[0] != empty)::{
+            if(inherits[0] != empty)::<={
                 for([0, arraylen(inherits)], ::(i){
                     inherits[i].new(args, true, out);
                 });
-            }() else ::{
+            } else ::<={
                 inherits.new(args, true, out);
-            }();
-        }();
+            };
+        };
         out = if(out) out else instantiate(classinst.type);
 
         @setters;
@@ -94,11 +109,13 @@
         @varnames;
         @mthnames; 
         @ops;
+        @onRevive;
         if(out.publicVars)::{
             setters = out.setters;
             getters = out.getters;
             funcs = out.funcs;
             ops = out.ops;
+            onRevive = out.onRevive;
             mthnames = {
                 inherited : out.publicMethods
             };
@@ -115,12 +132,14 @@
             varnames = {};
             mthnames = {};
             ops = {};
+            onRevive = [];
             out.ops = ops;
             out.publicVars = varnames;
             out.publicMethods = mthnames;
             out.setters = setters;
             out.getters = getters;
             out.funcs = funcs;
+            out.onRevive = onRevive;
         }();
 
 
@@ -130,6 +149,11 @@
                 when(introspect(v).type() != Object)::{
                     error("Class interfaces can only have getters/setters and methods. (has type: " + introspect(v).type() + ")");
                 }();
+                
+                when(key == 'onRevive') {
+                    arraypush(onRevive, v);
+                }
+                
                 if(introspect(v).isCallable())::{
                     funcs[key] = v;
                     mthnames[key] = 'function';
@@ -144,8 +168,7 @@
                         (3) : 'Read/Write'
                     };
                 }();
-            });
-
+            });    
         };
         
         out.operator = ::(obj) {

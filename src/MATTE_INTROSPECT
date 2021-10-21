@@ -341,9 +341,8 @@ static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t 
     matteValue_t a = idata->value;
     if (a.binID == MATTE_VALUE_TYPE_STRING) {
         matteValue_t len = matte_heap_new_value(vm->heap);
-        matteString_t * strVal = matte_value_as_string(a);
+        const matteString_t * strVal = matte_value_string_get_string_unsafe(matte_value_as_string(a));
         matte_value_into_number(&len, matte_string_get_length(strVal));
-        matte_string_destroy(strVal);
         
         return len;
     }
@@ -384,13 +383,8 @@ static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t 
 
     if (a.binID == MATTE_VALUE_TYPE_STRING) {
         matteValue_t strV = matte_heap_new_value(vm->heap);
-        matteString_t * str = matte_string_create();
-        matteString_t * strVal = matte_value_as_string(a);
-        matte_string_append_char(str, matte_string_get_char(strVal, key));
-        matte_string_destroy(strVal);
-        matte_value_into_string(&strV, str);
-        matte_string_destroy(str);
-        
+        const matteString_t * strVal = matte_value_string_get_string_unsafe(matte_value_as_string(a));
+        matte_value_into_string(&strV, matte_string_get_substr(strVal, key, key));        
         return strV;
     }
     

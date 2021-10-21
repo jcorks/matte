@@ -63,13 +63,8 @@ static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matteString_t * astr = matte_value_as_string(a);
-        matteString_t * bstr = matte_value_as_string(b);
-        if (!astr || !bstr) {
-            if (astr) matte_string_destroy(astr);
-            if (bstr) matte_string_destroy(bstr);
-            return result; 
-        }
+        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
         
         matteString_t * str = matte_string_clone(astr);
         matte_string_concat(str, bstr);
@@ -78,8 +73,6 @@ static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_
             &result, 
             str
         );
-        matte_string_destroy(astr);
-        matte_string_destroy(bstr);
         
         matte_string_destroy(str);
         break;
@@ -570,19 +563,10 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(a);
-        //TODO: fastpath for 2 strings?
-        matteString_t * bstr = matte_value_as_string(b);
-        if (!bstr) return result;
-        
         matte_value_into_boolean(
             &result,
-            matte_string_test_eq(
-                astr,
-                bstr
-            )
+            a.objectID == matte_value_as_string(b).objectID
         );
-        matte_string_destroy(bstr);
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
@@ -646,19 +630,10 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(a);
-        //TODO: fastpath for 2 strings?
-        matteString_t * bstr = matte_value_as_string(b);
-        if (!bstr) return result;
-        
         matte_value_into_boolean(
             &result,
-            !matte_string_test_eq(
-                astr,
-                bstr
-            )
+            a.objectID != matte_value_as_string(b).objectID
         );
-        matte_string_destroy(bstr);
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
@@ -727,8 +702,8 @@ static matteValue_t vm_operator__less(matteVM_t * vm, matteValue_t a, matteValue
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matteString_t * astr = matte_value_as_string(a);
-        matteString_t * bstr = matte_value_as_string(b);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
         if (!astr || !bstr) return result;
         
         matte_value_into_boolean(
@@ -768,8 +743,8 @@ static matteValue_t vm_operator__greater(matteVM_t * vm, matteValue_t a, matteVa
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matteString_t * astr = matte_value_as_string(a);
-        matteString_t * bstr = matte_value_as_string(b);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
         if (!astr || !bstr) return result;
         
         matte_value_into_boolean(
@@ -810,19 +785,17 @@ static matteValue_t vm_operator__lesseq(matteVM_t * vm, matteValue_t a, matteVal
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(a);
-        //TODO: fastpath for 2 strings?
-        matteString_t * bstr = matte_value_as_string(b);
-        if (!bstr) return result;
+        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
+        if (!astr || !bstr) return result;
         
         matte_value_into_boolean(
             &result,
-            !matte_string_compare(
+            matte_string_compare(
                 astr,
                 bstr
             ) <= 0
-        );
-        matte_string_destroy(bstr);
+        );       
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
@@ -853,8 +826,8 @@ static matteValue_t vm_operator__greatereq(matteVM_t * vm, matteValue_t a, matte
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matteString_t * astr = matte_value_as_string(a);
-        matteString_t * bstr = matte_value_as_string(b);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
         if (!astr || !bstr) return result;
         
         matte_value_into_boolean(
@@ -1112,17 +1085,17 @@ static matteValue_t vm_operator__caret(matteVM_t * vm, matteValue_t a, matteValu
 
 
 // +=
-static matteValue_t vm_operator__assign_add(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_add(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("+= operator on empty value is undefined."));
         return result;
 
       case MATTE_VALUE_TYPE_NUMBER: 
         matte_value_into_number(
-            &a, 
-            matte_value_as_number(a) +
+            a, 
+            matte_value_as_number(*a) +
             matte_value_as_number(b)
         );
         break;
@@ -1136,26 +1109,26 @@ static matteValue_t vm_operator__assign_add(matteVM_t * vm, matteValue_t a, matt
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "+=", b);
+        result = vm_run_object_operator_2(vm, *a, "+=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 // -=
-static matteValue_t vm_operator__assign_sub(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_sub(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("-= operator on empty value is undefined."));
         return result;
 
       case MATTE_VALUE_TYPE_NUMBER: 
         matte_value_into_number(
-            &a, 
-            matte_value_as_number(a) -
+            a, 
+            matte_value_as_number(*a) -
             matte_value_as_number(b)
         );
         break;
@@ -1170,27 +1143,27 @@ static matteValue_t vm_operator__assign_sub(matteVM_t * vm, matteValue_t a, matt
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "-=", b);
+        result = vm_run_object_operator_2(vm, *a, "-=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 
 // /=
-static matteValue_t vm_operator__assign_div(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_div(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("/= operator on empty value is undefined."));
         return result;
 
       case MATTE_VALUE_TYPE_NUMBER: 
         matte_value_into_number(
-            &a, 
-            matte_value_as_number(a) /
+            a, 
+            matte_value_as_number(*a) /
             matte_value_as_number(b)
         );
         break;
@@ -1205,26 +1178,26 @@ static matteValue_t vm_operator__assign_div(matteVM_t * vm, matteValue_t a, matt
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "/=", b);
+        result = vm_run_object_operator_2(vm, *a, "/=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 // *=
-static matteValue_t vm_operator__assign_mult(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_mult(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("*= operator on empty values is undefined."));
         return result;
 
       case MATTE_VALUE_TYPE_NUMBER: 
         matte_value_into_number(
-            &a, 
-            matte_value_as_number(a) *
+            a, 
+            matte_value_as_number(*a) *
             matte_value_as_number(b)
         );
         break;
@@ -1239,27 +1212,27 @@ static matteValue_t vm_operator__assign_mult(matteVM_t * vm, matteValue_t a, mat
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "*=", b);
+        result = vm_run_object_operator_2(vm, *a, "*=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 
 // %=
-static matteValue_t vm_operator__assign_mod(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_mod(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("%= operator on empty values is undefined."));
         return result;
 
       case MATTE_VALUE_TYPE_NUMBER: 
         matte_value_into_number(
-            &a, 
-            fmod(matte_value_as_number(a),
+            a, 
+            fmod(matte_value_as_number(*a),
                  matte_value_as_number(b))
         );
         break;
@@ -1274,26 +1247,26 @@ static matteValue_t vm_operator__assign_mod(matteVM_t * vm, matteValue_t a, matt
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "%=", b);
+        result = vm_run_object_operator_2(vm, *a, "%=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 // **=
-static matteValue_t vm_operator__assign_pow(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_pow(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("**= operator on empty values is undefined."));
         return result;
 
       case MATTE_VALUE_TYPE_NUMBER: 
         matte_value_into_number(
-            &a, 
-            matte_value_as_number(a) *
+            a, 
+            matte_value_as_number(*a) *
             matte_value_as_number(b)
         );
         break;
@@ -1308,18 +1281,18 @@ static matteValue_t vm_operator__assign_pow(matteVM_t * vm, matteValue_t a, matt
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "**=", b);
+        result = vm_run_object_operator_2(vm, *a, "**=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 // &=
-static matteValue_t vm_operator__assign_and(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_and(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("&= operator on empty values is undefined."));
         break;
@@ -1338,19 +1311,19 @@ static matteValue_t vm_operator__assign_and(matteVM_t * vm, matteValue_t a, matt
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "&=", b);
+        result = vm_run_object_operator_2(vm, *a, "&=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 
 // |=
-static matteValue_t vm_operator__assign_or(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_or(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("|= operator on empty values is undefined."));
         break;
@@ -1369,19 +1342,19 @@ static matteValue_t vm_operator__assign_or(matteVM_t * vm, matteValue_t a, matte
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "|=", b);
+        result = vm_run_object_operator_2(vm, *a, "|=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 
 // ^=
-static matteValue_t vm_operator__assign_xor(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_xor(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("^= operator on empty values is undefined."));
         break;
@@ -1400,19 +1373,19 @@ static matteValue_t vm_operator__assign_xor(matteVM_t * vm, matteValue_t a, matt
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "^=", b);
+        result = vm_run_object_operator_2(vm, *a, "^=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 
 // <<=
-static matteValue_t vm_operator__assign_bleft(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_bleft(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("<<= operator on empty values is undefined."));
         break;
@@ -1431,19 +1404,19 @@ static matteValue_t vm_operator__assign_bleft(matteVM_t * vm, matteValue_t a, ma
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, "<<=", b);
+        result = vm_run_object_operator_2(vm, *a, "<<=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }
 
 
 // >>=
-static matteValue_t vm_operator__assign_bright(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+static matteValue_t vm_operator__assign_bright(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
+    switch(a->binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_string(vm, MATTE_STR_CAST(">>= operator on empty values is undefined."));
         break;
@@ -1462,10 +1435,10 @@ static matteValue_t vm_operator__assign_bright(matteVM_t * vm, matteValue_t a, m
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
-        result = vm_run_object_operator_2(vm, a, ">>=", b);
+        result = vm_run_object_operator_2(vm, *a, ">>=", b);
         break;
       }      
     }
-    matte_value_into_copy(&result, a);
+    matte_value_into_copy(&result, *a);
     return result;
 }

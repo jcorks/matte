@@ -606,17 +606,17 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     break;
                   }
                     
-                  case MATTE_OPERATOR_ASSIGNMENT_ADD: vOut = vm_operator__assign_add(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_SUB: vOut = vm_operator__assign_sub(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_MULT: vOut = vm_operator__assign_mult(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_DIV: vOut = vm_operator__assign_div(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_MOD: vOut = vm_operator__assign_mod(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_POW: vOut = vm_operator__assign_pow(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_AND: vOut = vm_operator__assign_and(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_OR: vOut = vm_operator__assign_or(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_XOR: vOut = vm_operator__assign_xor(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_BLEFT: vOut = vm_operator__assign_bleft(vm, *ref, v); break;
-                  case MATTE_OPERATOR_ASSIGNMENT_BRIGHT: vOut = vm_operator__assign_bright(vm, *ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_ADD: vOut = vm_operator__assign_add(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_SUB: vOut = vm_operator__assign_sub(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_MULT: vOut = vm_operator__assign_mult(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_DIV: vOut = vm_operator__assign_div(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_MOD: vOut = vm_operator__assign_mod(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_POW: vOut = vm_operator__assign_pow(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_AND: vOut = vm_operator__assign_and(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_OR: vOut = vm_operator__assign_or(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_XOR: vOut = vm_operator__assign_xor(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_BLEFT: vOut = vm_operator__assign_bleft(vm, ref, v); break;
+                  case MATTE_OPERATOR_ASSIGNMENT_BRIGHT: vOut = vm_operator__assign_bright(vm, ref, v); break;
                   default:
                     vOut = matte_heap_new_value(vm->heap);
                     matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent referrable operation (corrupt bytecode?)."));                        
@@ -661,7 +661,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 opr -= MATTE_OPERATOR_STATE_BRACKET;
                 isBracket = 1;
             }
-            opr =  + (int)MATTE_OPERATOR_ASSIGNMENT_NONE;
+            opr += (int)MATTE_OPERATOR_ASSIGNMENT_NONE;
             matteValue_t key    = STACK_PEEK(0);
             matteValue_t object = STACK_PEEK(1);
             matteValue_t val    = STACK_PEEK(2);
@@ -680,7 +680,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             
             } else {
-                matteValue_t ref = matte_value_object_access(object, key, isBracket);
+                matteValue_t * ref = matte_value_object_access_direct(object, key, isBracket);
+                matteValue_t refH = {};
+                if (!ref) {
+                    refH = matte_value_object_access(object, key, isBracket);
+                    ref = &refH;
+                }
+                matte_value_object_push_lock(*ref);
                 matteValue_t out = matte_heap_new_value(vm->heap);
                 switch(opr) {                    
                   case MATTE_OPERATOR_ASSIGNMENT_ADD: out = vm_operator__assign_add(vm, ref, val); break;
@@ -697,7 +703,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                   default:
                     matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent assignment operation (corrupt bytecode?)."));                        
                 }               
-                matte_heap_recycle(ref); 
+                
+                matte_value_object_pop_lock(*ref);
+                if (refH.binID)     
+                    matte_heap_recycle(refH); 
+                    
                 STACK_POP();
                 STACK_POP();
                 STACK_POP();
@@ -1010,9 +1020,23 @@ matteVM_t * matte_vm_create() {
 }
 
 void matte_vm_destroy(matteVM_t * vm) {
-
     matteTableIter_t * iter = matte_table_iter_create();
     matteTableIter_t * subiter = matte_table_iter_create();
+
+    for(matte_table_iter_start(iter, vm->imported);
+        !matte_table_iter_is_end(iter);
+        matte_table_iter_proceed(iter)) {
+        
+        matteValue_t * v = matte_table_iter_get_value(iter);
+        matte_value_object_pop_lock(*v);
+        matte_heap_recycle(*v);
+        free(v);
+    }
+    matte_table_destroy(vm->imported);
+    introspection_destroy_table(vm);
+    matte_heap_destroy(vm->heap);
+    
+    
 
     for(matte_table_iter_start(iter, vm->stubIndex);
         !matte_table_iter_is_end(iter);
@@ -1040,16 +1064,6 @@ void matte_vm_destroy(matteVM_t * vm) {
 
 
 
-    for(matte_table_iter_start(iter, vm->imported);
-        !matte_table_iter_is_end(iter);
-        matte_table_iter_proceed(iter)) {
-        
-        matteValue_t * v = matte_table_iter_get_value(iter);
-        matte_value_object_pop_lock(*v);
-        matte_heap_recycle(*v);
-        free(v);
-    }
-    matte_table_destroy(vm->imported);
 
     for(matte_table_iter_start(iter, vm->id2importPath);
         !matte_table_iter_is_end(iter);
@@ -1074,10 +1088,9 @@ void matte_vm_destroy(matteVM_t * vm) {
         
         free(matte_table_iter_get_value(iter));
     }
-    introspection_destroy_table(vm);
     
     matte_table_destroy(vm->externalFunctions);
-    matte_heap_destroy(vm->heap);
+
 
 
 
@@ -1306,7 +1319,7 @@ matteValue_t matte_vm_call(
         // uh oh... unhandled errors...
         if (!vm->stacksize && vm->error.binID) {
             #ifdef MATTE_DEBUG
-                printf("UNHANDLED ERROR: %s\n", matte_string_get_c_str(matte_value_as_string(vm->error)));
+                printf("UNHANDLED ERROR: %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_value_as_string(vm->error))));
             #endif
             if (vm->debug) {
                 vm->debug(

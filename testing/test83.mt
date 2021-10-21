@@ -6,14 +6,14 @@
 @a = Matte.String.new('This is a string');
 
 @output = 'errorDidntHappen';
-::{
+::<={
     context.catch = ::{
         output = 'a';
     };
     
     // should error out, not allowed.
     output = String(a.substr('a', []));    
-}();
+};
 
 
 return '' + output + 

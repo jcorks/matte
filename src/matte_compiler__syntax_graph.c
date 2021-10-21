@@ -177,6 +177,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_FUNCTION_ARG_SEPARATOR, MATTE_STR_CAST("Function Argument Separator ','"),
         MATTE_TOKEN_FUNCTION_ARG_END, MATTE_STR_CAST("Function Argument List ')'"),
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR, MATTE_STR_CAST("Function Constructor '::'"),
+        MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH, MATTE_STR_CAST("Function Constructor Dash'<='"),
         MATTE_TOKEN_FUNCTION_TYPESPEC, MATTE_STR_CAST("Function Type Specifier '=>'"),
 
         MATTE_TOKEN_WHEN, MATTE_STR_CAST("'when' Statement"),
@@ -279,9 +280,6 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         matte_syntax_graph_node_token(MATTE_TOKEN_OBJECT_ACCESSOR_DOT),
         matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
         matte_syntax_graph_node_split(
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_POSTFIX),
-            matte_syntax_graph_node_to_parent(2),    
-            NULL,
 
             matte_syntax_graph_node_token_group(
                 MATTE_TOKEN_ASSIGNMENT_POW,
@@ -300,6 +298,10 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             ),
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
             matte_syntax_graph_node_end(),    
+            NULL,
+
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_POSTFIX),
+            matte_syntax_graph_node_to_parent(2),    
             NULL,
 
             matte_syntax_graph_node_end(),    
@@ -770,6 +772,10 @@ static void generate_graph(matteSyntaxGraph_t * g) {
     matte_syntax_graph_add_construct_path(g, MATTE_STR_CAST(""), MATTE_SYNTAX_CONSTRUCT_NEW_FUNCTION,
         matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_CONSTRUCTOR),
         matte_syntax_graph_node_split(
+            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH),
+            matte_syntax_graph_node_to_parent(2),
+            NULL,
+        
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_VALUE_FUNCTION_CREATION_ARGS),
             matte_syntax_graph_node_split(
                 matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_TYPESPEC),

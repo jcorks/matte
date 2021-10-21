@@ -8,13 +8,13 @@
     @valInteger;
     // overly complex implementations are great for testing
     // ... or so i tell myself
-    if (val < 0) ::{
+    if (val < 0) ::<={
         valDecimal = introspect(val - introspect(val).floor() - 1).abs();
         valInteger = introspect(val).floor() + 1;
-    }() else ::{
+    } else ::<= {
         valDecimal = val - introspect(val).floor();
         valInteger = introspect(val).floor();
-    }();
+    };
 
     @ref = {
         decimal  : valDecimal,
@@ -53,11 +53,11 @@
 
 
 @result = 'Unchanged';
-::{
+::<={
     context.catch = ::{};
     result = a % b;
     result = '' + (a - b * c);
-}();
+};
 
 
 return result;

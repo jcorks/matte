@@ -144,7 +144,7 @@ int matte_value_is_empty(matteValue_t);
 double matte_value_as_number(matteValue_t);
 
 // user must free string
-matteString_t * matte_value_as_string(matteValue_t);
+matteValue_t matte_value_as_string(matteValue_t);
 
 int matte_value_as_boolean(matteValue_t);
 
@@ -173,6 +173,11 @@ void matte_value_object_function_post_typecheck_unsafe(matteValue_t, matteValue_
 // key. This will invoke the accessor if present. The accessor invoked depends 
 // on which emulation method is used. isBracket denotes this.
 matteValue_t matte_value_object_access(matteValue_t, matteValue_t key, int isBracket);
+
+
+// When available, returns a
+matteValue_t * matte_value_object_access_direct(matteValue_t, matteValue_t key, int isBracket);
+
 
 // convenience function. Same as matte_value_object_access except creates a temporaty 
 // string object as a key. Dot (.) access is emulated.
@@ -246,7 +251,7 @@ matteValue_t matte_value_get_type(matteValue_t);
 
 // Given a value type, returns the public name of it.
 // Every type has a name.
-const matteString_t * matte_value_type_name(matteValue_t);
+matteValue_t matte_value_type_name(matteValue_t);
 
 void matte_heap_push_lock_gc(matteHeap_t *);
 void matte_heap_pop_lock_gc(matteHeap_t *);

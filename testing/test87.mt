@@ -10,11 +10,11 @@
     
     setOperator(out, {
         preserver :: {
-            if (!deletedOnce) ::{
+            if (!deletedOnce) ::<={
                 deletedOnce = true;
-            }() else ::{
+            } else ::<={
                 saveMe = out;
-            }();
+            };
         },
         
         (String) :: {

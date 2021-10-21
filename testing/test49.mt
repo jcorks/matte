@@ -8,7 +8,7 @@
         errMessage = 'outerMessage';
     };
     
-    ::{
+    ::<={
         context.catch = :: (t){
             errMessage = 'InnerMessage';
             error('whoops');
@@ -16,7 +16,7 @@
 
 
         error('Testing');
-    }();
+    };
     
     return 100;
 }();

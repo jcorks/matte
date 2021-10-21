@@ -4,8 +4,8 @@
 
 
 @errMessage;
-@n100 = ::{    
-    ::{
+@n100 = ::<={    
+    ::<={
         context.catch = :: (t, info){
             errMessage = 
                 'callstack:' + 
@@ -16,10 +16,10 @@
 
 
         error('Testing');
-    }();
+    };
     
     return 100;
-}();
+};
 return ''+n100 + errMessage;
 
 

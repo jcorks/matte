@@ -117,7 +117,7 @@ static void onErrorCatch(
     void * data
 ) {
     if (event == MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED) {
-        matteString_t * str = matte_value_as_string(value);
+        const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(value));
         printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
         printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
         uint32_t stacksize = matte_vm_get_stackframe_size(vm);
@@ -138,9 +138,6 @@ static void onErrorCatch(
             );
         }
 
-        if (str) {
-            matte_string_destroy(str);
-        }
         exit(1);
     }
 
@@ -261,18 +258,16 @@ int main() {
         matteString_t * outputText = matte_string_create();
         matte_string_concat_printf(outputText, outstr);
 
-        matteString_t * resultText = matte_value_as_string(v);
+        const matteString_t * resultText = matte_value_string_get_string_unsafe(matte_value_as_string(v));
         if (!matte_string_test_eq(outputText, resultText)) {
-            matteString_t * str = matte_value_as_string(v);
+            const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(v));
             printf("Test failed!!\nExpected output   : %s\nReal output       : %s\n", outstr, matte_string_get_c_str(str));
-            matte_string_destroy(str);
             exit(1);
         }
         printf("Pass. Cleaning up...");
         fflush(stdout);
 
 
-        matte_string_destroy(resultText);
         free(outstr);
         TESTID++;
         matte_string_destroy(outputText);

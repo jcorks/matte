@@ -187,7 +187,7 @@ static matteValue_t vm_ext_call__match(matteVM_t * vm, matteValue_t fn, matteArr
 
 static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    matteString_t * str = matte_value_as_string(a);
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(a));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("getExternalFunction() requires value to be string coercible"));
         return matte_heap_new_value(vm->heap);
@@ -203,7 +203,7 @@ static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_
 }
 static matteValue_t vm_ext_call__print(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     if (matte_array_get_size(args)) {
-        matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+        const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
         if (str) {
             printf("%s\n", matte_string_get_c_str(str));
         } else {
@@ -276,7 +276,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         return matte_heap_new_value(vm->heap);    
     }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    matteString_t * str = matte_value_as_string(a);
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(a));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("import() requires value to be string coercible"));
         return matte_heap_new_value(vm->heap);
@@ -293,7 +293,6 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         #endif
         matteValue_t cpy = matte_heap_new_value(vm->heap);
         matte_value_into_copy(&cpy, *v);
-        matte_string_destroy(str);
         return cpy;
     }
     
@@ -336,7 +335,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
             vm->userImportData
         );
         if (fileid == 0) {
-            matte_string_clear(str);
+            matteString_t * str = matte_string_create();
             matte_string_concat_printf(str, "A file ID must be assigned by import.");
             matte_vm_raise_error_string(vm, str);    
             matte_string_destroy(str);
@@ -352,7 +351,6 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
             if (v) {
                 matteValue_t cpy = matte_heap_new_value(vm->heap);
                 matte_value_into_copy(&a, *v);
-                matte_string_destroy(str);
                 return cpy;
             }      
 
@@ -364,7 +362,6 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
             matte_string_concat_printf(err, "Could not find script '%s'.", matte_string_get_c_str(str));
             matte_vm_raise_error_string(vm, err);    
             matte_string_destroy(err);
-            matte_string_destroy(str);
             return matte_heap_new_value(vm->heap);    
         }
 
@@ -373,7 +370,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         romLen = 0;
         VMImportCompilerData data;
         data.vm = vm;
-        data.filename = str;
+        data.filename = (matteString_t *)str;
         rom = matte_compiler_run(
             src, 
             srcLen, 
@@ -410,13 +407,11 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
         );
         matte_value_into_copy(ref, cached);
         matte_value_object_push_lock(*ref);
-        matte_string_destroy(str);
         return cached;
     }
 
 
     // already would have raised an error, no need for another.
-    matte_string_destroy(str);
     return matte_heap_new_value(vm->heap);    
 
 }
