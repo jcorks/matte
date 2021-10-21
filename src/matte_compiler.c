@@ -2553,6 +2553,7 @@ static matteArray_t * compile_base_value(
            
       case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_INTROSPECT);
+        write_instruction__cal(inst, iter->line, 0);
         *src = iter->next;
         return inst;
       }

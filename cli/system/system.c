@@ -11,7 +11,7 @@ MATTE_EXT_FN(matte_cli__system_print) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     if (matte_array_get_size(args) < 1) return matte_heap_new_value(heap);
 
-    matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
     if (str) {
         printf("%s", matte_string_get_c_str(str));
         fflush(stdout);
@@ -62,7 +62,7 @@ MATTE_EXT_FN(matte_cli__system_readstring) {
         return matte_heap_new_value(heap);
     }
 
-    matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("readString() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);
@@ -71,7 +71,6 @@ MATTE_EXT_FN(matte_cli__system_readstring) {
     uint32_t len;
     uint8_t * bytes = dump_bytes(matte_string_get_c_str(str), &len);
     if (!len || !bytes) {
-        matte_string_destroy(str);
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("readString() could not read file."));
         return matte_heap_new_value(heap);
     }
@@ -87,7 +86,6 @@ MATTE_EXT_FN(matte_cli__system_readstring) {
     matte_value_into_string(&out, compiled);
     free(bytes);
     matte_string_destroy(compiled);
-    matte_string_destroy(str);
     return out;
 }
 
@@ -98,7 +96,7 @@ MATTE_EXT_FN(matte_cli__system_readbytes) {
         return matte_heap_new_value(heap);
     }
 
-    matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("readBytes() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);
@@ -107,7 +105,6 @@ MATTE_EXT_FN(matte_cli__system_readbytes) {
     uint32_t len;
     uint8_t * bytes = dump_bytes(matte_string_get_c_str(str), &len);
     if (!len || !bytes) {
-        matte_string_destroy(str);
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("readBytes() could not read file."));
         return matte_heap_new_value(heap);
     }
@@ -129,7 +126,6 @@ MATTE_EXT_FN(matte_cli__system_readbytes) {
         matte_heap_recycle(val);
     }
     free(bytes);
-    matte_string_destroy(str);
     return out;
 }
 
@@ -141,16 +137,15 @@ MATTE_EXT_FN(matte_cli__system_writestring) {
         return matte_heap_new_value(heap);
     }
 
-    matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("writeString() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);
     }
 
 
-    matteString_t * data = matte_value_as_string(matte_array_at(args, matteValue_t, 1));
+    const matteString_t * data = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 1)));
     if (!data) {
-        matte_string_destroy(str);
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("writeString() requires the second argument to be string coercible."));
         return matte_heap_new_value(heap);
     }
@@ -158,22 +153,16 @@ MATTE_EXT_FN(matte_cli__system_writestring) {
 
     FILE * f = fopen(matte_string_get_c_str(str), "wb");
     if (!f) {
-        matte_string_destroy(str);
-        matte_string_destroy(data);
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("writeString() could not open output file"));
         return matte_heap_new_value(heap);
     }
     // todo: unicode
     if (!fwrite(matte_string_get_c_str(data), 1, matte_string_get_length(data), f)) {
         fclose(f);
-        matte_string_destroy(str);
-        matte_string_destroy(data);
         return matte_heap_new_value(heap);
     }
     fclose(f);
 
-    matte_string_destroy(str);
-    matte_string_destroy(data);
     return matte_heap_new_value(heap);
 }
 
@@ -186,7 +175,7 @@ MATTE_EXT_FN(matte_cli__system_writebytes) {
         return matte_heap_new_value(heap);
     }
 
-    matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("writeBytes() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);
@@ -198,7 +187,6 @@ MATTE_EXT_FN(matte_cli__system_writebytes) {
 
     FILE * f = fopen(matte_string_get_c_str(str), "wb");
     if (!f) {
-        matte_string_destroy(str);
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("writeBytes() could not open output file"));
         return matte_heap_new_value(heap);
     }
@@ -218,13 +206,11 @@ MATTE_EXT_FN(matte_cli__system_writebytes) {
         if (!fwrite(chunk, 1, n, f)) {
             fclose(f);
             free(chunk);
-            matte_string_destroy(str);
             return matte_heap_new_value(heap);
         }
     }
     fclose(f);
     free(chunk);
-    matte_string_destroy(str);
     return matte_heap_new_value(heap);
 }
 
@@ -236,7 +222,7 @@ MATTE_EXT_FN(matte_cli__system_system) {
         return matte_heap_new_value(heap);
     }
 
-    matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("system() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);
@@ -297,14 +283,13 @@ MATTE_EXT_FN(matte_cli__system_setcwd) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("setting the current path requires a path string to an existing directory."));
         return matte_heap_new_value(heap);
     }
-    matteString_t * str = matte_value_as_string(matte_array_at(args, matteValue_t, 0));
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("Could not update the path (value is not string coercible)"));
         return matte_heap_new_value(heap);
     }
     if (chdir(matte_string_get_c_str(str)) == -1) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("Could not update the path (change directory failed)"));        
-        matte_string_destroy(str);
         return matte_heap_new_value(heap);
     }
     return matte_heap_new_value(heap);

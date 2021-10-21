@@ -70,7 +70,7 @@ static void printCommandError(
     void * data
 ) {
     if(event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED)
-        printf("Error while evaluating print command: %s\n", matte_string_get_c_str(matte_value_as_string(val)));
+        printf("Error while evaluating print command: %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_value_as_string(val))));
 }
 
 #define PRINT_AREA_LINES 20
@@ -253,7 +253,7 @@ static int execCommand() {
             NULL
         );
 
-        const matteString_t * str = matte_value_as_string(output);
+        const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(output));
         if (str) {
             printf("%s\n", matte_string_get_c_str(str));            
         }
@@ -283,7 +283,7 @@ static void onDebugEvent(
             stackframe++;
 
         printArea();
-        matteString_t * str = matte_value_as_string(val);
+        const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(val));
         printf("ERROR RAISED FROM VIRTUAL MACHINE: %s\n", str ? matte_string_get_c_str(str) : "<no string info given>");
         while(execCommand());
         return;    

@@ -3,11 +3,11 @@
 @String_ = class({
     name : 'Matte.String',
     define ::(this, args, classinst) {
-        <@>MatteString = introspect(this).type();
+        <@>MatteString = introspect.type(this);
         
         // ensure we can work with a basic string
         <@>TOSTRINGLITERAL ::(v) {
-            return match(introspect(v).type()) {
+            return match(introspect.type(v)) {
                 (String):      v,
                 (Empty):       '',
                 default:
@@ -17,11 +17,11 @@
 
         
         <@>STRINGTOARR ::(s) {
-            <@>intr = introspect(s);
+            <@>intr = introspect;
             <@>out = [];
-            <@>len = intr.length();
+            <@>len = intr.length(s);
             for([0, len], ::(i){
-                out[i] = intr.charCodeAt(i);
+                out[i] = intr.charCodeAt(s, i);
             });  
             return out;
         };
@@ -30,8 +30,8 @@
         
         
         @arrsrc = STRINGTOARR(TOSTRINGLITERAL(args));
-        @arrintr = introspect(arrsrc);
-        @arrlen = arrintr.keycount();
+        @arrintr = introspect;
+        @arrlen = arrintr.keycount(arrsrc);
         @strsrc;
         @hasStr = false;
         
@@ -44,7 +44,7 @@
                 temp = arrsrc[i+howMany];
                 arrsrc[i+howMany] = arrsrc[i]; 
             });
-            arrlen = arrintr.keycount();
+            arrlen = arrintr.keycount(arrsrc);
 
         };
         
@@ -83,10 +83,10 @@
             // not contained within the string, -1 is returned.
             search::(sub){
                 sub = STRINGTOARR(TOSTRINGLITERAL(sub));
-                @intrsub = introspect(sub);
+                @intrsub = introspect;
                                 
                 @index = -1;
-                @sublen = intrsub.keycount();
+                @sublen = intrsub.keycount(sub);
 
                 when(sublen == 0) -1;
                 
@@ -116,8 +116,8 @@
             },
 
             containsAny::(arr => Object) {
-                <@>vals = introspect(arr).values();
-                <@>len = introspect(vals).keycount();
+                <@>vals = introspect.values(arr);
+                <@>len = introspect.keycount(vals);
                 @contains = false;
                 for([0, len], ::(i) {
                     when (this.contains(vals[i])) ::{
@@ -133,11 +133,11 @@
                 with = STRINGTOARR(TOSTRINGLITERAL(with));
                 sub  = STRINGTOARR(TOSTRINGLITERAL(sub));
 
-                @intrsub = introspect(sub);                                
-                @sublen = intrsub.keycount();
+                @intrsub = introspect;                                
+                @sublen = intrsub.keycount(sub);
 
-                @intrwith = introspect(with);                                
-                @withlen = intrwith.keycount();
+                @intrwith = introspect;                                
+                @withlen = intrwith.keycount(with);
 
                 
                 @checksub::(i){
@@ -198,7 +198,7 @@
                     // update internal stuff since array changed
                     hasStr = false;
                     strsrc = empty;
-                    arrlen = arrintr.keycount();
+                    arrlen = arrintr.keycount(arrsrc);
 
 
                     return true;
@@ -208,10 +208,10 @@
             
             count::(sub) {
                 sub = STRINGTOARR(TOSTRINGLITERAL(sub));
-                @intrsub = introspect(sub);
+                @intrsub = introspect;
                                 
                 @index = -1;
-                @sublen = intrsub.keycount();
+                @sublen = intrsub.keycount(sub);
 
                 when(sublen == 0) -1;
                 
@@ -242,19 +242,19 @@
             },
 
             charAt::(i) {
-                @intr = introspect(String(this));
-                return intr.subset(i, i);  
+                @intr = introspect;
+                return intr.subset(String(this), i, i);  
             },
             
             append::(a) {
-                (match(introspect(a).type()) {
+                (match(introspect.type(a)) {
                     (Number): ::{
                         arrsrc[arrlen] = a;
                     },
                     
                     default: ::{
                         @other = STRINGTOARR(TOSTRINGLITERAL(a));
-                        for([0, introspect(other).keycount()], ::(i){
+                        for([0, introspect.keycount(other)], ::(i){
                             arrsrc[i+arrlen] = other[i];
                         });
                     }
@@ -262,19 +262,19 @@
 
                 hasStr = false;
                 strsrc = empty;
-                arrlen = arrintr.keycount();                
+                arrlen = arrintr.keycount(arrsrc);                
             },
             
             setCharAt::(index => Number, a) {
                 when(index < 0 || index >= arrlen) error('Can only replace a character in the current string. Index is out of bounds.');
-                (match(introspect(a).type()) {
+                (match(introspect.type(a)) {
                     (Number): ::{
                         arrsrc[index] = a;
                     },
                     
                     default: ::{
                         @other = STRINGTOARR(TOSTRINGLITERAL(a));
-                        when(introspect(other).keycount() != 1) error('Can only replace a single character: the string form of the given value is more than one character');
+                        when(introspect.keycount(other) != 1) error('Can only replace a single character: the string form of the given value is more than one character');
                         arrsrc[index] = a[0];
                     }
                 })();
@@ -289,7 +289,7 @@
                 removeKey(arrsrc, i);
                 hasStr = false;
                 strsrc = empty;
-                arrlen = arrintr.keycount();
+                arrlen = arrintr.keycount(arrsrc);
             },
             
             valueize::{
@@ -299,23 +299,23 @@
             characterize::{
                 @out = Array.new();
                 @str = String(this);
-                @strintr = introspect(str);
+                @strintr = introspect;
                 for([0, arrlen], ::(i){
-                    out.push(strintr.charAt(i));
+                    out.push(strintr.charAt(str, i));
                 });
                 return out;
             },
             
             substr::(from => Number, to => Number) {
-                return classinst.new(introspect(String(this)).subset(from, to));
+                return classinst.new(introspect.subset(String(this), from, to));
             },
 
             split::(sub) {  
                 sub = STRINGTOARR(TOSTRINGLITERAL(sub));
-                @intrsub = introspect(sub);
+                @intrsub = introspect;
                                 
                 @index = -1;
-                @sublen = intrsub.keycount();
+                @sublen = intrsub.keycount(sub);
                 @outarr = Array.new();
 
                 when(sublen == 0 || arrlen == 0) ::{
@@ -379,7 +379,7 @@
                 <@>markify ::(fmtsrc) {
                     @fmtstrl = TOSTRINGLITERAL(fmtsrc);
                     @fmtarr = STRINGTOARR(fmtstrl);
-                    @fmtlen = introspect(fmtarr).keycount();
+                    @fmtlen = introspect.keycount(fmtarr);
                     <@>output = [];
                     <@>beginsMatch = fmtarr[0]== 91 &&
                                      fmtarr[1] == 37 &&
@@ -408,17 +408,17 @@
                         }();
                     });
                     
-                    @output_intr = introspect(output);
+                    @output_intr = introspect;
 
                     // Check empty
-                    when(output_intr.keycount() == 0) 
+                    when(output_intr.keycount(output) == 0) 
                         error('MatteString.scan format string does not contain any anchors or is empty.');
 
     
                     // Check toggle
                     @isNum = beginsMatch;
                     for([0, contentIndex], ::(i){
-                        when(introspect(output[i]).type() != (if(isNum) Number else Object)) error('MatteString.scan format string is in an invalid format.');
+                        when(introspect.type(output[i]) != (if(isNum) Number else Object)) error('MatteString.scan format string is in an invalid format.');
                         isNum = !isNum;
                     });
                    
@@ -475,8 +475,8 @@
                     strArr,             
                     anchorArr
                 ) {
-                    @strArrLen = introspect(strArr).keycount();
-                    @anchorArrLen = introspect(anchorArr).keycount();                    
+                    @strArrLen = introspect.keycount(strArr);
+                    @anchorArrLen = introspect.keycount(anchorArr);                    
 
                     @content = classinst.new();
                     @where = findsubstr(0, anchorArr, anchorArrLen, strArr, strArrLen);                    
@@ -486,7 +486,7 @@
                     
                     
                     
-                    @contentVals = introspect(strArr).subset(0, where-1);                                       
+                    @contentVals = introspect.subset(strArr, 0, where-1);                                       
                     for([0, where], ::(i){
                         content.append(contentVals[i]);
                     });
@@ -503,9 +503,9 @@
                     anchorArrA,
                     anchorArrB
                 ) {
-                    @strArrLen = introspect(strArr).keycount();
-                    @anchorArrALen = introspect(anchorArrA).keycount();                    
-                    @anchorArrBLen = introspect(anchorArrB).keycount();                    
+                    @strArrLen = introspect.keycount(strArr);
+                    @anchorArrALen = introspect.keycount(anchorArrA);                    
+                    @anchorArrBLen = introspect.keycount(anchorArrB);                    
 
                     @content = classinst.new();
                     @where0 = findsubstr(offset, anchorArrA, anchorArrALen, strArr, strArrLen); 
@@ -515,7 +515,7 @@
                     @where1 = findsubstr(where0, anchorArrB, anchorArrBLen, strArr, strArrLen);                                        
                     when(where1 == -1) empty;
 
-                    @contentVals = introspect(strArr).subset(where0, where1-1);                                       
+                    @contentVals = introspect.subset(strArr, where0, where1-1);                                       
                     for([0, where1 - where0], ::(i){
                         content.append(contentVals[i]);
                     });
@@ -531,8 +531,8 @@
                     
                     anchorArr
                 ) {
-                    @strArrLen = introspect(strArr).keycount();
-                    @anchorArrLen = introspect(anchorArr).keycount();                    
+                    @strArrLen = introspect.keycount(strArr);
+                    @anchorArrLen = introspect.keycount(anchorArr);                    
 
                     @content = classinst.new();
                     @where = findsubstr(offset, anchorArr, anchorArrLen, strArr, strArrLen);                    
@@ -542,7 +542,7 @@
                     
                     
                     
-                    @contentVals = introspect(strArr).subset(where, strArrLen-1);                                       
+                    @contentVals = introspect.subset(strArr, where, strArrLen-1);                                       
                     for([0, strArrLen-where], ::(i){
                         content.append(contentVals[i]);
                     });
@@ -558,7 +558,7 @@
                 @offset = 0;
                 @success = true;
                 @fmtArr = markify(fmt);
-                <@>len = introspect(fmtArr).keycount();
+                <@>len = introspect.keycount(fmtArr);
                 
                 loop(::{
                     @foundFirst = false;
@@ -566,7 +566,7 @@
                         return (match(true) {
                 
                             // [%]string. Always first!
-                            (introspect(fmtArr[i]).type() == Number): ::{
+                            (introspect.type(fmtArr[i]) == Number): ::{
                                 <@>result = find_A(arrsrc, fmtArr[i+1]);
                                 // end the loop, couldnt find required token
                                 when(result == empty) ::{
@@ -634,7 +634,7 @@
         this.operator({
             (String) :: {
                 when(hasStr) strsrc;
-                strsrc = arrintr.arrayToString();
+                strsrc = arrintr.arrayToString(arrsrc);
                 hasStr = true;
                 return strsrc;
             },

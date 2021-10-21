@@ -3,11 +3,11 @@
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.
     <@> arraylen ::(a){
-        return introspect(a).keycount();
+        return introspect.keycount(a);
     };
 
     <@> arraypush ::(a, b){
-        a[introspect(a).keycount()] = b;
+        a[introspect.keycount(a)] = b;
     };
 
     <@> arrayclone ::(a) {
@@ -144,17 +144,14 @@
 
 
         out.interface = ::(obj){
-            <@> keys = introspect(obj).keys();
+            <@> keys = introspect.keys(obj);
             foreach(obj, ::(key, v) {
-                when(introspect(v).type() != Object)::{
-                    error("Class interfaces can only have getters/setters and methods. (has type: " + introspect(v).type() + ")");
-                }();
+                when(introspect.type(v) != Object)::<={
+                    error("Class interfaces can only have getters/setters and methods. (has type: " + introspect.type(v) + ")");
+                };
                 
-                when(key == 'onRevive') {
-                    arraypush(onRevive, v);
-                }
                 
-                if(introspect(v).isCallable())::{
+                if(introspect.isCallable(v))::{
                     funcs[key] = v;
                     mthnames[key] = 'function';
                     //print('ADDING CLASS function: ' + key);

@@ -3,8 +3,8 @@
 // names that contain reserved names 
 // as substrings 
 @returny = 10;
-@AsNumber0 = ::{
+@Number0 = ::{
     return '' + returny + "when";
 };
 @introspection = 'return';
-return introspection+AsNumber0();
+return introspection+Number0();

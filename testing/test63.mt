@@ -7,4 +7,4 @@
         
     }
 });
-return ''+introspect(TestClass).type();
+return ''+introspect.type(TestClass);

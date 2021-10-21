@@ -293,7 +293,6 @@ static void generate_graph(matteSyntaxGraph_t * g) {
                 MATTE_TOKEN_ASSIGNMENT_XOR,
                 MATTE_TOKEN_ASSIGNMENT_BLEFT,
                 MATTE_TOKEN_ASSIGNMENT_BRIGHT,
-                MATTE_TOKEN_ASSIGNMENT,
                 0
             ),
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
@@ -302,6 +301,11 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_POSTFIX),
             matte_syntax_graph_node_to_parent(2),    
+            NULL,
+
+            matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_end(),    
             NULL,
 
             matte_syntax_graph_node_end(),    

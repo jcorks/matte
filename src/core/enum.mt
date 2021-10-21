@@ -42,7 +42,7 @@
     
     @autoNum = 0;
     @valToKey :: (val) {
-        return match(introspect(val).type()) {
+        return match(introspect.type(val)) {
             (Number) : createEnumVal(val),
             (Object) : 
                 if(val == enum.auto) ::{

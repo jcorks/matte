@@ -2,4 +2,4 @@
 //
 // Core: Class
 @c = import('Matte.Class');
-return introspect(c).type();
+return introspect.type(c);

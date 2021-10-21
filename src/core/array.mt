@@ -5,8 +5,8 @@
 @Array = class({
     name : 'Matte.Array',
     define ::(this, args, classinst) {
-        <@>data = if(Boolean(args) && introspect(args).type() == Object) args else [];
-         @ len = introspect(data).keycount();
+        <@>data = if(Boolean(args) && introspect.type(args) == Object) args else [];
+         @ len = introspect.keycount(data);
 
         this.interface({
             // Read/write variable.
@@ -72,7 +72,7 @@
 
                 // casts to an integer
                 @INT :: (n){
-                    return introspect(n).floor();
+                    return introspect.floor(n);
                 };
 
                 // swaps 2 members of the data array
@@ -188,7 +188,7 @@
                         return (String(data[i]));
                     }();
 
-                    str = str + if (strRep) strRep else ('<' + introspect(data[i]).type() + '>');
+                    str = str + if (strRep) strRep else ('<' + introspect.type(data[i]) + '>');
 
                     when(i != len-1)::{
                         str = str + ', ';

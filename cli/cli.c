@@ -174,7 +174,7 @@ int main(int argc, char ** args) {
         uint32_t len = matte_array_get_size(fileID);
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_vm_run_script(vm, matte_array_at(fileID, uint32_t, i), arr);
-            printf("> %s\n", matte_string_get_c_str(matte_value_as_string(v)));
+            printf("> %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_value_as_string(v))));
             matte_heap_recycle(v);
         }
 
@@ -266,14 +266,13 @@ int main(int argc, char ** args) {
         matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_vm_run_script(vm, FILEIDS[i], arr);
-            matteString_t * str = matte_value_as_string(v);
+            const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(v));
             if (str && v.binID != 0) {
                 printf("> %s\n", matte_string_get_c_str(str));
                 
             } else {
                 // output object was not string coercible.
             }
-            if (str)matte_string_destroy(str);
             matte_heap_recycle(v);
         }
         matte_array_destroy(arr);

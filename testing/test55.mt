@@ -9,11 +9,11 @@
     // overly complex implementations are great for testing
     // ... or so i tell myself
     if (val < 0) ::<={
-        valDecimal = introspect(val - introspect(val).floor() - 1).abs();
-        valInteger = introspect(val).floor() + 1;
-    } else ::<= {
-        valDecimal = val - introspect(val).floor();
-        valInteger = introspect(val).floor();
+        valDecimal = introspect.abs(val - introspect.floor(val) - 1);
+        valInteger = introspect.floor(val) + 1;
+    } else ::<={
+        valDecimal = val - introspect.floor(val);
+        valInteger = introspect.floor(val);
     };
 
     @ref = {
