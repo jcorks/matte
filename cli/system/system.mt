@@ -1,4 +1,4 @@
-@String = import("Matte.String");
+@MatteString = import("Matte.String");
 @Class = import("Matte.Class");
 @Array = import("Matte.Array");
 //@JSON = import("Matte.JSON");
@@ -21,6 +21,8 @@
 
         @_readString = getExternalFunction("system_readString");
         @_sleepms = getExternalFunction("system_sleepms");
+        getExternalFunction("system_initRand")();
+        @_nextRand = getExternalFunction("system_nextRand");
 
         @files = Array.new();
         @tasks = Array.new();
@@ -30,17 +32,17 @@
         this.interface({
             ////// IO
             
-            println ::(a) {
+            println ::(a => String) {
                 _print(a + '\n');
             },
 
-            printf ::(fmt, arr) {
-                when (introspect(arr).type() != 'object')::{
+            printf ::(fmt => String, arr) {
+                when (introspect.type(arr) != Object)::<={
                     _print(''+fmt);
-                }();
+                };
 
 
-                <@>o = String.new(fmt);
+                <@>o = MatteString.new(fmt);
                 foreach(arr, ::(k, v){
                     <@>key = '$('+k+')';
                     o.replace(key, ''+v);
@@ -62,7 +64,7 @@
                     return _getcwd();
                 },
                 
-                set ::(v){
+                set ::(v => String){
                     _setcwd(v);                
                 }
             },
@@ -114,11 +116,20 @@
             writeBytes : getExternalFunction("system_writebytes"),
 
 
+            /// random
+            
+            // returns a random value between 0 and 1.
+            random : {
+                get ::{
+                    return _nextRand();
+                }
+            },
+
 
             /// time 
 
             // sleeps approximately the given number of milliseconds
-            sleep ::(s){return _sleepms(s*1000);},
+            sleep ::(s => Number){return _sleepms(s*1000);},
 
             // Gets the current time, as from the C standard time() function with the 
             // NULL argument.
@@ -138,7 +149,7 @@
             addTask ::(fn, msTimeout) {
                 tasks.push({
                     fn: fn, 
-                    timeout: if(introspect(msTimeout).type() == 'empty') 0 else msTimeout,
+                    timeout: if(introspect.type(msTimeout) == Empty) 0 else msTimeout,
                     last: this.getTicks()
                 });
             },
@@ -149,17 +160,17 @@
                 loop(::{
                     when(tasks.length == 0) false;
                     for([0, tasks.length], ::(i){
-                        <@>task = tasks.data[i];
+                        <@>task = tasks[i];
                         when(task == empty) tasks.length;
 
 
-                        when(this.getTicks() > task.last + task.timeout) ::{
+                        when(this.getTicks() > task.last + task.timeout) ::<={
                             task.last = this.getTicks();
-                            when(!task.fn()) ::{
+                            when(!task.fn()) ::<={
                                 tasks.remove(i);
                                 return i-1;
-                            }();
-                        }();
+                            };
+                        };
                     });
 
 
@@ -168,17 +179,17 @@
                     @leastWait = -1;
                     @timenow = this.getTicks();
                     for([0, tasks.length], ::(i){
-                        <@>task = tasks.data[i];
+                        <@>task = tasks[i];
                         @timeNeeded = (task.last + task.timeout) - this.getTicks();
-                        if (((leastWait < 0) || (timeNeeded < leastWait)) && timeNeeded > 0) ::{
+                        if (((leastWait < 0) || (timeNeeded < leastWait)) && timeNeeded > 0) ::<={
                             leastWait = timeNeeded;
-                        }();
+                        };
                     });
 
 
-                    if (leastWait > 0 && leastWait > 100) ::{
+                    if (leastWait > 0 && leastWait > 100) ::<={
                         _sleepms(leastWait * 0.8);
-                    }();
+                    };
                     return true;
                 });
             },

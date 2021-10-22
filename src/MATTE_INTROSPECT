@@ -34,7 +34,11 @@ enum {
 static void introspection_destroy_table(matteVM_t * vm) {
     matte_value_object_pop_lock(vm->introspectObject);
     matte_heap_recycle(vm->introspectObject);
+    // still keep around and let the reference be destroyed 
+    // naturally. After destruction, last minute preservers 
+    // may still try and access it.
     vm->introspectObject.binID = 0;
+    vm->introspectObject.objectID = 0;
 }
 
 
@@ -44,7 +48,7 @@ static void introspection_destroy_table(matteVM_t * vm) {
 
 
 static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (vm->introspectObject.binID) {
+    if (vm->introspectObject.heap) {
         return vm->introspectObject;
     }
     matteValue_t obj = matte_heap_new_value(vm->heap);

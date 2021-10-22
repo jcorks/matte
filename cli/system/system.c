@@ -45,6 +45,19 @@ MATTE_EXT_FN(matte_cli__system_clear) {
 }
 
 
+MATTE_EXT_FN(matte_cli__system_init_rand) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    srand(time(NULL));
+    return matte_heap_new_value(heap);
+}
+
+MATTE_EXT_FN(matte_cli__system_next_rand) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteValue_t out = matte_heap_new_value(heap);
+    matte_value_into_number(&out, (rand() / (double)(RAND_MAX)));    
+    return out;
+}
+
 
 MATTE_EXT_FN(matte_cli__system_time) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
@@ -337,6 +350,8 @@ void matte_vm_add_system_symbols(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_exit"),   1, matte_cli__system_exit, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_time"),   0, matte_cli__system_time, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_system"),   1, matte_cli__system_system, NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_initRand"), 0, matte_cli__system_init_rand, NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_nextRand"), 0, matte_cli__system_next_rand, NULL);
 
 
     // OS specific
@@ -346,6 +361,8 @@ void matte_vm_add_system_symbols(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_setcwd"),   1, matte_cli__system_setcwd, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_cwdup"),    0, matte_cli__system_cwdup, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_getticks"),    0, matte_cli__system_getticks, NULL);
+
+    
 
 
 

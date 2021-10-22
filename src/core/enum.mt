@@ -13,7 +13,7 @@
         
 
         
-        val.operator = {
+        setOperator(val, {
             // throw an error if comparing against other non-enum types
             '==' :: (other => enumtype) {
                 return numHint == other.numHint;
@@ -22,14 +22,23 @@
             
             (Number) :: {
                 return numHint;
-            }
-        };
+            },
+            
+            
+            '[]' :{
+                set ::(key){
+                   error('Enumerator value has no properties.');
+                }
+            },
+            '.' :{
+                set ::(key){
+                   error('Enumerator value has no properties.');
+                }
+            },
 
 
+        });
 
-        val.setter = ::(key){
-            error('Enumerator value has no properties.');
-        };    
         return val;
     };
 

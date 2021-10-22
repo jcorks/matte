@@ -94,6 +94,12 @@ struct matteHeap_t {
     matteValue_t specialString_type_string;
     matteValue_t specialString_type_object;
     matteValue_t specialString_type_type;
+    
+    matteValue_t specialString_get;
+    matteValue_t specialString_set;
+    matteValue_t specialString_bracketAccess;
+    matteValue_t specialString_dotAccess;
+    matteValue_t specialString_preserver;
 
 };
 
@@ -496,12 +502,12 @@ static matteValue_t object_get_access_operator(matteHeap_t * heap, matteObject_t
 
 
     
-    matteValue_t set = matte_value_object_access_string(m->opSet, MATTE_STR_CAST(isBracket ? "[]" : "."));
+    matteValue_t set = matte_value_object_access(m->opSet, isBracket ? heap->specialString_bracketAccess : heap->specialString_dotAccess, 0);
     if (set.binID) {
         if (set.binID != MATTE_VALUE_TYPE_OBJECT) {
             matte_vm_raise_error_string(heap->vm, MATTE_STR_CAST("operator['[]'] and operator['.'] property must be an Object if it is set."));
         } else {
-            out = matte_value_object_access_string(set, MATTE_STR_CAST(read ? "get" : "set"));
+            out = matte_value_object_access(set, read ? heap->specialString_get : heap->specialString_set, 0);
         }            
     }
 
@@ -650,6 +656,24 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->specialString_type_object.heap = out;
     out->specialString_type_type.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_type_type.heap = out;
+
+
+    out->specialString_set.objectID = matte_string_heap_internalize(out->stringHeap, MATTE_STR_CAST("set"));
+    out->specialString_set.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_set.heap = out;
+    out->specialString_get.objectID = matte_string_heap_internalize(out->stringHeap, MATTE_STR_CAST("get"));
+    out->specialString_get.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_get.heap = out;
+    out->specialString_bracketAccess.objectID = matte_string_heap_internalize(out->stringHeap, MATTE_STR_CAST("[]"));
+    out->specialString_bracketAccess.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_bracketAccess.heap = out;
+    out->specialString_dotAccess.objectID = matte_string_heap_internalize(out->stringHeap, MATTE_STR_CAST("."));
+    out->specialString_dotAccess.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_dotAccess.heap = out;
+    out->specialString_preserver.objectID = matte_string_heap_internalize(out->stringHeap, MATTE_STR_CAST("preserver"));
+    out->specialString_preserver.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_preserver.heap = out;
+
 
     return out;
     
@@ -2354,18 +2378,21 @@ static int matte_object_mark_unreachable_ref_path_root(matteHeap_t * h, matteObj
         // cleanup the object. This count can change between versions and implementations,
         // as its not defined by the language when this will happen.
         if (current->opSet.binID) {
-            matteValue_t preserver = matte_value_object_access_string(current->opSet, MATTE_STR_CAST("preserver"));        
+            matteValue_t preserver = matte_value_object_access(current->opSet, h->specialString_preserver, 0);        
 
             if (preserver.binID) {
                 // you'll want to mark here, as the preserver can add/remove 
                 // children / mess with child refs when the children may have already been 
                 // marked for deletion
-                matte_object_mark_reachable_ref_path_root(h, m);
+                matte_object_mark_reachable_ref_path_root(h, current);
+                #ifdef MATTE_DEBUG__HEAP
+                    printf("----Preserver called for %d. Reachable objects have been temporarily halted\n", current->heapID);
+                #endif
                 matteValue_t v = matte_vm_call(h->vm, preserver, matte_array_empty(), MATTE_STR_CAST("preserver"));
 
 
                 matte_heap_recycle(preserver);
-                matte_value_object_remove_key_string(current->opSet, MATTE_STR_CAST("preserver"));
+                matte_value_object_remove_key(current->opSet, h->specialString_preserver);
                 matte_heap_recycle(v);
 
                 // mark for recycle check next cycle
@@ -2736,7 +2763,12 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
 
         if (!matte_object_check_ref_path_root(h, m)) {
             matte_object_group_add_to_rootless_bin(h, m);
-        }
+        } 
+        #ifdef MATTE_DEBUG__HEAP
+            else {
+                printf("--IGNORING OBJECT %d (still reachable)\n", m->heapID);
+            }
+        #endif
     }
     matte_array_destroy(sweep);
 

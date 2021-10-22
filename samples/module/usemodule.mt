@@ -1,4 +1,4 @@
-@TestModule = import('module.mt');
+<@>TestModule = import('module.mt');
 
 
 @a = TestModule.new({value2:300});
