@@ -34,7 +34,7 @@
                 set ::(key){
                    error('Enumerator value has no properties.');
                 }
-            },
+            }
 
 
         });
