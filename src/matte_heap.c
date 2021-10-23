@@ -2058,8 +2058,8 @@ void matte_value_object_set_operator(matteValue_t v, matteValue_t opObject) {
         matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot assign operator set as its own object."));
         return;    
     }
-    
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+    if (m->opSet.objectID == opObject.objectID) return;
     if (m->opSet.binID) {
         object_unlink_parent_value(m, &m->opSet);
         matte_heap_recycle(m->opSet);
@@ -2134,7 +2134,6 @@ void matte_value_into_copy_(matteValue_t * to, matteValue_t from) {
         return;
       case MATTE_VALUE_TYPE_OBJECT: {
         matte_heap_recycle(*to);
-        matteObject_t * m = matte_bin_fetch(from.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], from.objectID);
         *to = from;
         return;
       }
@@ -2506,53 +2505,10 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
 // There they will be handled safely (and separately) from the 
 // normal sweep.
 static void matte_object_group_add_to_rootless_bin(matteHeap_t * h, matteObject_t * m) {
-    matte_array_push(h->routePather, m->heapID);
-    matte_table_insert_by_uint(h->routeChecker, m->heapID, (void*)0x1);
-    //matteTableIter_t * iter = h->routeIter;
-    uint32_t i;
-    uint32_t len;
-    uint32_t size = 1;
-    MatteHeapParentChildLink * iter;
-    while(size) {
-        uint32_t currentID = matte_array_at(h->routePather, uint32_t, --size);
-        matte_array_set_size(h->routePather, size);
-        matteObject_t * current = matte_bin_fetch(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], currentID);
-
-        current->isRootless = 1;
-        matte_array_push(h->toSweep_rootless, current);
-
-        
-        len = matte_array_get_size(current->refChildren);
-        iter = matte_array_get_data(current->refChildren);
-        for(i = 0; i < len; ++i , ++iter) {
-            uint32_t nc = iter->id;
-            if (!matte_table_find_by_uint(h->routeChecker, nc)) {
-                matte_table_insert_by_uint(h->routeChecker, nc, (void*)0x1);
-                matte_array_push(h->routePather, nc);
-                size++;
-            }                        
-        }
-        
-        /*
-        for(matte_table_iter_start(iter, current->refChildren);
-            !matte_table_iter_is_end(iter);
-            matte_table_iter_proceed(iter)) {
-            uint32_t nc = matte_table_iter_get_key_uint(iter);
-            if (!matte_table_find_by_uint(h->routeChecker, nc)) {
-                matte_table_insert_by_uint(h->routeChecker, nc, (void*)0x1);
-                matte_array_push(h->routePather, nc);
-                size++;
-            }                        
-        }
-        */
-
+    if (!m->isRootless) {
+        m->isRootless = 1;
+        matte_array_push(h->toSweep_rootless, m);
     }
-
-    #ifdef MATTE_DEBUG__HEAP
-        printf("CYCLE/GROUP FOUND. Size:%d \n", matte_array_get_size(h->toSweep_rootless));
-    #endif
-    matte_array_set_size(h->routePather, 0);
-    matte_table_clear(h->routeChecker);
 }
 
 
@@ -2560,7 +2516,6 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
     if (m->dormant) return;
     
     matteTableIter_t * iter = matte_table_iter_create();
-
 
     // might have been saved by finalizer
     if (!matte_object_check_ref_path_root(h, m)) {
@@ -2580,6 +2535,7 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
 
             assert(!m->isRootRef);
             printf("--RECYCLING OBJECT %d\n", m->heapID);
+
             {
                 matteValue_t vl;
                 vl.binID = MATTE_VALUE_TYPE_OBJECT;

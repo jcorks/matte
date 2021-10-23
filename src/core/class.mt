@@ -33,10 +33,10 @@
                 <@>g = other[n];
                 @found = false;
                 for([0, arraylen(allclass)], ::(i) {
-                    when(allclass[i] == g) ::{
+                    when(allclass[i] == g) ::<={
                         found = true;
                         return arraylen(allclass);
-                    }();
+                    };
                 });
                 when(!found) ::{
                     arraypush(allclass, g);
@@ -80,12 +80,20 @@
         
         when(dormantCount > 0)::<={
             @out = dormant[dormantCount-1];
-
-            for([0, arraylen(out.onRevive)], ::(i){
-                out.onRevive[i]();
-            });                  
-                                                      
+            removeKey(dormant, dormantCount-1);
             dormantCount-=1;
+            for([0, arraylen(out.onRevive)], ::(i){
+                out.onRevive[i](args);
+            });          
+
+            @bops = getOperator(out);
+            bops.preserver = ::{
+                dormant[dormantCount] = out;
+                dormantCount += 1;
+            };     
+            setOperator(out, bops);
+                                                      
+
             return out;
         };
         
@@ -150,7 +158,6 @@
                     error("Class interfaces can only have getters/setters and methods. (has type: " + introspect.type(v) + ")");
                 };
                 
-                
                 if(introspect.isCallable(v))::{
                     funcs[key] = v;
                     mthnames[key] = 'function';
@@ -177,7 +184,11 @@
 
         define(out, args, classinst);
         removeKey(out, 'interface');
-
+        if (funcs['onRevive']) ::<={
+            @or = funcs['onRevive'];
+            arraypush(onRevive, or);
+            funcs['onRevive'] = onRevive;
+        };
 
 
         if(noseal == empty) ::{
@@ -211,6 +222,13 @@
                     when(out) out(value);
                     error('' +key+ " does not exist within this instances class.");
                 }
+            };
+
+            if (introspect.keycount(onRevive) > 0) ::<={
+                ops.preserver =::{
+                    dormant[dormantCount] = out;
+                    dormantCount += 1;
+                };
             };
             setOperator(out, ops);
         }();

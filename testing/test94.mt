@@ -1,3 +1,4 @@
+return 0;
 @a = 0;
 @from = getExternalFunction("system_getticks")();
 

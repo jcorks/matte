@@ -1,3 +1,4 @@
+return 0;
 @class ::(d) {
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.

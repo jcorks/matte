@@ -50,6 +50,15 @@
         
         
         this.interface({
+
+            onRevive ::(reviveArgs) {
+                arrsrc = STRINGTOARR(TOSTRINGLITERAL(reviveArgs));
+                arrlen = arrintr.keycount(arrsrc);
+                strsrc = '';
+                hasStr = false;
+            },
+
+
             length : {
                 get :: { 
                     return arrlen;
@@ -173,7 +182,7 @@
                                 arrsrc[i+index] = with[i];
                             });
                             for([withlen, sublen], ::(i) {
-                                removeKey(arrsrc, withlen);
+                                removeKey(arrsrc, index+withlen);
                             });
                         },
 
