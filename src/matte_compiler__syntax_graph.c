@@ -138,6 +138,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_INSTANTIATE, MATTE_STR_CAST("Instantiate built-in"),
         MATTE_TOKEN_EXTERNAL_INTROSPECT, MATTE_STR_CAST("Introspect built-in"),
         MATTE_TOKEN_EXTERNAL_PRINT, MATTE_STR_CAST("Print built-in"),
+        MATTE_TOKEN_EXTERNAL_THROW, MATTE_STR_CAST("Throw built-in"),
         MATTE_TOKEN_EXTERNAL_ERROR, MATTE_STR_CAST("Error built-in"),
         MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, MATTE_STR_CAST("Expression '('"),
         MATTE_TOKEN_EXPRESSION_GROUP_END, MATTE_STR_CAST("Expression ')'"),
@@ -531,8 +532,8 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_TYPE,
             MATTE_TOKEN_EXTERNAL_INSTANTIATE,
             MATTE_TOKEN_EXTERNAL_PRINT,
+            MATTE_TOKEN_EXTERNAL_THROW,
             MATTE_TOKEN_EXTERNAL_ERROR,
-
             0
         ),
         matte_syntax_graph_node_split(

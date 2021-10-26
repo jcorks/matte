@@ -7,7 +7,7 @@
 @iterCheck = 0;
 @n100 = ::{    
     context.catch = ::(i){
-        errMessage = i;
+        errMessage = i.data;
     };
 
 

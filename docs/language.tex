@@ -18,7 +18,26 @@
 
 
 \chapter{Introduction}
-\section{Background}    
+\section{Background}  
+
+With the proliferation of software and availability of hardware to run it, a
+plethora of tools have been continually made and refined to meet the 
+continual challenges of software development. 
+
+The popularity and widespread use of languages such as Javascript and 
+Python suggest that every-day software challenges can be approached using 
+software solutions that need not be tied to lower-level hardware while 
+still providing the necessary performance to accomplish tasks.
+
+However, many of these languages attempt to be "jack-of-all-trades", often 
+inflating the languages to the point that every day use for users will involve
+independent sets of language features, often using features only known to a few.
+
+Rather than depending on a language to provide every tool for every situation,
+the language, Matte, was intended to have straightforward, regular, and 
+relatively simple operation, allowing for better colaboration, easier 
+extension, and simple implementation and maintenance.
+  
 \section{Intent}
 
 The development of Matte as a language has a number of priorities which are 
@@ -40,12 +59,66 @@ considered as the deveopment process of the language continues:
   While Matte can, hypothetically, be used for any programming task, its intent is 
   for Matte to be relatively simple to implement. 
 
+- Extensibility. The language itself is kept minimal to allow for extension of its 
+  usefulness.
 
 \section{Document Scope}
+
+This document intends to:
+- give specifics on the use and behavior of the Matte language. 
+- inform those who wish to implement the language.
+- define standards for the language's behavior.
+
+This document does not:
+- define the implementation details of the language, i.e. the 
+  structure of a VM, definition of an instruction set, or bytecode blob layouts.
+- give domain-specific information or behavior 
+
+
+\section{Conventions}
+
+- All terms that refer to variables / concepts / etc that exist within the language verbatim will 
+  be displayed in italics. For example, the keyword \textit{foreach} shall be displayed as such 
+  throughout the document.
+  
+- Each syntactic concept shall have included with it its formal grammars. Within this specification 
+  Wirth Syntax Notation (WSN) will be used for simplicity.
+
+
 \section{Terminology}
+
+- Compiler: The environment in which Matte source is interpreted. This may be a program in which Matte is running, part of a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to interpret Matte source correctly and consistently.
+
+- Empty: special value that represents no value. 
+
+- Runtime: The environment in which Matte is running. This may be a program in which Matte is running, a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to execute Matte source correctly and consistently.
+
+- Variable: Points to a value.
+
+- Value: a datum of a certain type.
+
+
 \section{Concepts}
 \chapter{Variables}
+
+Variables act as conceptual storage points for working data values. Variable must be declared before usage.
+A variable may live past its original scope lifetime (\autoref{sec:Lexical Scoping}) by being used, captured (\autoref{sec:Reference Capture}), and stored within Objects.
+
+A variable may either be mutable or immutable. Variable values have types of their own, but 
+types are determined by the values and expressions that produce them rather than by the 
+variable.
+
 \section{Mutable}
+
+Within any function, mutable variables may be declared with a declaration statement.
+
+    <mutable-declaration> ::= "@" <variable-identifier> <statement-end> | "@" <variable-identifier> "=" <expression> <statement-end> 
+
+    <variable-identifier> ::= <any-letter-or-underscore> <variable-identifier>
+        
+
+Mutable variables can point to different values over its lifetime by reassignment.
+
 \section{Immutable}
 \section{Garbage Collection}
 \section{Types}
@@ -76,10 +149,12 @@ considered as the deveopment process of the language continues:
 \chapter{Functions}
 \section{Statements}
 \section{Lexical Scoping}
+\section{Reference Capture}
 \section{Self-Refrentiability}
 \section{The Source Function}
 \section{As Expressions}
 \section{Dash Syntax}
+\section{Type-Strict Functions}
 \chapter{Flow Control}
 \section{when}
 \section{match}
@@ -87,6 +162,32 @@ considered as the deveopment process of the language continues:
 \section{for}
 \section{foreach}
 \section{if}
+\section{throw/catch}
+
+The "throw and catch" paradigm can serve as an alternative way to exchange information within 
+a Matte program. \textit{throw()} is a built in function that, when called, signals to the runtime
+that a value needs to be caught. Once the runtime is aware of the catchable value, all current 
+functions running on the callstack will terminate from top to bottom (a.k.a "unwind") until a 
+stackframe function is detected to have a \textit{catch} property that is callable.
+
+When such a \textit{catch} property is found, the function is called with the first argument of the \textit{throw}
+call passed as the only argument. The return value of the \textit{.catch} property function will be 
+the new return value of the stackframe function.
+
+
+
+\subsection{error}
+
+Often, language use the "throw and catch" paradigm for error handling. Such can be, and is, done 
+for the Matte language. The \textit{error()} function exists for this purpose. It functions 
+equivalently to \textit{throw()}, except when a \textit{catch} is found, the first argument 
+to the \textit{.catch} is a runtime-specific object containing data about where the error 
+was first created. 
+
+The format of this object is not formalized by the Matte language, except for the 
+\textit{.data} property, which will always be the contents of the first argument 
+of the \textit{error()} call. Runtime implementations are 
+
 \chapter{Introspection}
 \chapter{External Interaction}
 \section{import}

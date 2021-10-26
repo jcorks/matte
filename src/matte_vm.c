@@ -31,10 +31,9 @@ struct matteVM_t {
     // for all values
     matteHeap_t * heap;
 
-    // queued error object. if none, error.binID == 0
-    matteValue_t error;
-    // queued error info object. Gives info about the error that occured.
-    matteValue_t error_info;
+    // queued thrown object. if none, error.binID == 0
+    matteValue_t catchable;
+    
 
     // string -> id into externalFunctionIndex;
     matteTable_t * externalFunctions;
@@ -72,6 +71,7 @@ struct matteVM_t {
     matteTable_t * defaultImport_table;
     uint32_t nextID;
 
+    int pendingCatchable;
 
     // array of ready introspection objects.
     // when introspection objects are destroyed,
@@ -868,29 +868,33 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         }
 
 
-        // errors are checked after every instruction.
+        // catchables are checked after every instruction.
         // once encountered they are handled immediately.
-        // If there is no handler, the error propogates down the callstack.
-        if (vm->error.binID) {
+        // If there is no handler, the catchable propogates down the callstack.
+        if (vm->pendingCatchable) {
             matteValue_t v = matte_value_object_access_string(frame->context, MATTE_STR_CAST("catch"));
 
-            // output wont be sent since there was an error. empty will return instead.
+            // output wont be sent since there was an error. catch will return instead.
             matte_heap_recycle(output);
 
             if (matte_value_is_callable(v)) {
-                matteValue_t cached[] = {
-                    vm->error,
-                    vm->error_info
-                };
-                vm->error.binID = 0;
+                matteValue_t catchable = vm->catchable;
+                vm->catchable.binID = 0;
+                vm->pendingCatchable = 0;
 
+                matteValue_t out = matte_vm_call(vm, v, MATTE_ARRAY_CAST(&catchable, matteValue_t, 1), MATTE_STR_CAST("context catch"));
 
-                matte_heap_recycle(matte_vm_call(vm, v, MATTE_ARRAY_CAST(cached, matteValue_t, 2), MATTE_STR_CAST("error catch")));
-                matte_heap_recycle(cached[0]);
-                matte_heap_recycle(cached[1]);
-
-
+                matte_value_object_pop_lock(catchable);
+                matte_heap_recycle(catchable);
+                STACK_PUSH(out);
+            } else {              
+            
+                // propogate  
+                matte_value_into_empty(&v);
+                STACK_PUSH(v);
             }
+            
+
 
             break;
         }
@@ -994,6 +998,7 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_TYPE,       1, vm_ext_call__newtype);
     vm_add_built_in(vm, MATTE_EXT_CALL_INSTANTIATE,1, vm_ext_call__instantiate);
     vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      1, vm_ext_call__print);
+    vm_add_built_in(vm, MATTE_EXT_CALL_THROW,      1, vm_ext_call__throw);
     vm_add_built_in(vm, MATTE_EXT_CALL_ERROR,      1, vm_ext_call__error);
 
     vm_add_built_in(vm, MATTE_EXT_CALL_GETEXTERNALFUNCTION, 1, vm_ext_call__getexternalfunction);
@@ -1154,6 +1159,7 @@ matteValue_t matte_vm_call(
     const matteArray_t * args,
     const matteString_t * prettyName
 ) {
+    if (vm->pendingCatchable) return matte_heap_new_value(vm->heap);
     int callable = matte_value_is_callable(func); 
     if (!callable) {
         matteString_t * err = matte_string_create_from_c_str("Error: cannot call non-function value ");
@@ -1325,24 +1331,23 @@ matteValue_t matte_vm_call(
         
 
         // uh oh... unhandled errors...
-        if (!vm->stacksize && vm->error.binID) {
-            #ifdef MATTE_DEBUG
-                printf("UNHANDLED ERROR: %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_value_as_string(vm->error))));
-            #endif
+        if (!vm->stacksize && vm->pendingCatchable) {
             if (vm->debug) {
                 vm->debug(
                     vm,
                     MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED,
                     0,
                     0,
-                    vm->error,
+                    vm->catchable,
                     vm->debugData                   
                 );                
             }     
-            matte_heap_recycle(vm->error);
-            matte_heap_recycle(vm->error_info);
-
-            vm->error.binID = 0;
+            #ifdef MATTE_DEBUG
+                printf("VM Error: UNHANDLED CATCHABLE: %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_value_as_string(vm->catchable))));
+            #endif
+            matte_value_object_pop_lock(vm->catchable);
+            vm->catchable.binID = 0;
+            vm->pendingCatchable = 0;
         }
         return result; // ok, vm_execution_loop returns new
     } 
@@ -1404,11 +1409,11 @@ matteValue_t matte_vm_run_scoped_debug_source(
     // override current VM stuff
     vm->debug = onError;
     vm->debugData = onErrorData;
-    matteValue_t error = vm->error;
-    matteValue_t error_info = vm->error_info;
+    matteValue_t catchable = vm->catchable;
+    int pendingCatchable = vm->pendingCatchable;
 
-    vm->error.binID = 0;
-    vm->error_info.binID = 0;
+    vm->catchable.binID = 0;
+    vm->pendingCatchable = 0;
  
     uint32_t jitSize = 0;
     uint8_t * jitBuffer = matte_compiler_run_with_named_references(
@@ -1434,11 +1439,12 @@ matteValue_t matte_vm_run_scoped_debug_source(
     // revert vm state 
     vm->debug = realDebug;
     vm->debugData = realDebugData;
-    matte_heap_recycle(vm->error);        
-    matte_heap_recycle(vm->error_info);        
-
-    vm->error = error;
-    vm->error = error_info;
+    matte_value_object_pop_lock(vm->catchable);        
+    matte_heap_recycle(vm->catchable);      
+    
+      
+    vm->pendingCatchable = pendingCatchable;
+    vm->catchable = catchable;
     matte_heap_pop_lock_gc(vm->heap);
 
     return result;
@@ -1461,7 +1467,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
 
 */
 
-matteValue_t vm_info_new_object(matteVM_t * vm) {
+matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
     matteValue_t out = matte_heap_new_value(vm->heap);
     matte_value_into_new_object_ref(&out);
     
@@ -1528,7 +1534,9 @@ matteValue_t vm_info_new_object(matteVM_t * vm) {
     matte_value_into_string(&val, str);
     matte_string_destroy(str);
     matte_value_object_set(out, key, val, 0);
-    
+
+    matte_value_into_string(&key, MATTE_STR_CAST("data"));
+    matte_value_object_set(out, key, detail, 0);    
 
     matte_heap_recycle(val);
     matte_heap_recycle(key);
@@ -1539,15 +1547,16 @@ matteValue_t vm_info_new_object(matteVM_t * vm) {
 
 
 void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
-    if (vm->error.binID) {
+    if (vm->pendingCatchable) {
         #ifdef MATTE_DEBUG
             assert(!"VM has a new error generated before previous error could be captured. This is not allowed and is /probably/ indicative of internal VM error.");
         #endif
     }
-    matteValue_t b = matte_heap_new_value(vm->heap);
-    matte_value_into_copy(&b, val);
-    vm->error = b;
-    vm->error_info = vm_info_new_object(vm);
+
+    matteValue_t info = vm_info_new_object(vm, val);
+    vm->catchable = info;
+    vm->pendingCatchable = 1;
+    matte_value_object_push_lock(info);
     
     if (vm->debug) {
         matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, 0);

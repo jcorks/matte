@@ -868,6 +868,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "error");
         break;
       }
+      case MATTE_TOKEN_EXTERNAL_THROW: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "throw");
+        break;
+      }
       case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
         break;
@@ -2466,6 +2470,11 @@ static matteArray_t * compile_base_value(
 
       case MATTE_TOKEN_EXTERNAL_PRINT: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_PRINT);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_THROW: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_THROW);
         *src = iter->next;
         return inst;
       }

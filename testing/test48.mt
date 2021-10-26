@@ -5,7 +5,7 @@
 @errMessage;
 ::<={
     context.catch = :: (t){
-        errMessage = t;
+        errMessage = t.data;
     };
 
     error('Testing');

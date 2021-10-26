@@ -6,7 +6,7 @@
 @errMessage;
 @n100 = ::<={    
     ::<={
-        context.catch = :: (t, info){
+        context.catch = :: (info){
             errMessage = 
                 'callstack:' + 
                 info.callstack.length +':' + 
