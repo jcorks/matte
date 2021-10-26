@@ -205,9 +205,7 @@ static matteValue_t vm_ext_call__print(matteVM_t * vm, matteValue_t fn, matteArr
     if (matte_array_get_size(args)) {
         const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
         if (str) {
-            printf("%s\n", matte_string_get_c_str(str));
-        } else {
-            printf("<not string coercible>\n");
+            vm->userPrint(vm, str, vm->userPrintData);
         }
         fflush(stdout);
     }

@@ -2217,7 +2217,7 @@ matteOperator_t string_to_operator(const matteString_t * s, matteTokenType_t hin
 
         case '>':
         switch(opopcode1) {
-            case '<': return MATTE_OPERATOR_SHIFT_RIGHT; break;
+            case '>': return MATTE_OPERATOR_SHIFT_RIGHT; break;
             case '=': return MATTE_OPERATOR_GREATEREQ; break;
             default:;
         }
@@ -2315,6 +2315,7 @@ static int op_to_precedence(int op) {
       case MATTE_OPERATOR_NOT:
       case MATTE_OPERATOR_BITWISE_NOT:
       case MATTE_OPERATOR_NEGATE:
+      case MATTE_OPERATOR_POW: // ** 2 operands
         return 2;
 
       case MATTE_OPERATOR_DIV:
@@ -2329,7 +2330,6 @@ static int op_to_precedence(int op) {
 
       case MATTE_OPERATOR_SHIFT_LEFT: // << 2 operands
       case MATTE_OPERATOR_SHIFT_RIGHT: // >> 2 operands
-      case MATTE_OPERATOR_POW: // ** 2 operands
         return 5;
 
       case MATTE_OPERATOR_GREATER: // > 2 operands

@@ -78,6 +78,14 @@ struct matteVM_t {
     // they are placed in the table before
     matteValue_t introspectObject;
 
+    void * (*userPrint)(
+        matteVM_t * vm,
+        const matteString_t *,
+        void * userData
+    );
+    void * userPrintData;
+
+
 };
 
 

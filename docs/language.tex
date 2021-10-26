@@ -1,0 +1,107 @@
+\documentclass[12pt,letterpaper]{report}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+\author{Johnathan Corkery}
+\title{Matte Language Specification\\
+\small Version 1.0 Draft
+}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+
+\chapter{Introduction}
+\section{Background}    
+\section{Intent}
+
+The development of Matte as a language has a number of priorities which are 
+considered as the deveopment process of the language continues:
+
+- Usefulness. The language prioritizes having as few features as possible 
+  while keeping it still useful. Features are added out of necessity for a reasonable, 
+  object-oriented environment rather than an over-prediction of need.
+
+- Simplicity. Matte focuses on keeping vagueness and esotericism to a minimum. One 
+  of the reasons that Matte was developed was out of frustration of other 
+  languages having a glut of features rather than being a focused tool. The 
+  simplicity of the language is, in hope, extended to the ease-of-use of the language.
+
+- Portability. While this document does not necessarily focus on implementation 
+  of the language, portability is a primary concern of the language. 
+  The intent of the language is to use it in a program-embedded setting, 
+  where Matte is not the only language being used to develop a piece of software. 
+  While Matte can, hypothetically, be used for any programming task, its intent is 
+  for Matte to be relatively simple to implement. 
+
+
+\section{Document Scope}
+\section{Terminology}
+\section{Concepts}
+\chapter{Variables}
+\section{Mutable}
+\section{Immutable}
+\section{Garbage Collection}
+\section{Types}
+\subsection{Empty}
+\subsection{Boolean}
+\subsection{Number}
+\subsection{String}
+\subsection{Object}
+\subsubsection{Storage Semantics}
+\subsubsection{Access Methods}
+\subsubsection{Keys and Values}    
+\subsubsection{Generic Operator Overloading}    
+\subsubsection{Access Overloading}
+\subsubsection{Implicit Type Conversion}
+\subsubsection{Preservation}
+\subsection{Type}            
+\subsubsection{Explicit Conversion}
+\subsubsection{Creating Types}
+\subsubsection{Instantiation}
+\subsection{Implicit Conversion}
+\chapter{Expressions}
+\section{Operators}
+\subsection{Precedence}
+\section{Literals}
+\subsection{Strings}
+\subsection{Object}
+\subsection{List Objects}
+\chapter{Functions}
+\section{Statements}
+\section{Lexical Scoping}
+\section{Self-Refrentiability}
+\section{The Source Function}
+\section{As Expressions}
+\section{Dash Syntax}
+\chapter{Flow Control}
+\section{when}
+\section{match}
+\section{loop}
+\section{for}
+\section{foreach}
+\section{if}
+\chapter{Introspection}
+\chapter{External Interaction}
+\section{import}
+\section{getExternalFunction}
+\chapter{Built-in Modules}
+\section{Class}
+\subsection{Introduction}
+\subsection{Instantiation}
+\subsection{Interface}
+\subsection{Inhertiance}
+\subsection{Automatic Pooling}
+\section{Array}
+\section{String}
+\section{Enum}
+\section{JSON}
+
+
+\end{document}

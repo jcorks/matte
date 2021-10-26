@@ -5,10 +5,17 @@
 @Array = class({
     name : 'Matte.Array',
     define ::(this, args, classinst) {
-        <@>data = if(Boolean(args) && introspect.type(args) == Object) args else [];
-         @ len = introspect.keycount(data);
+        @data;
+        @len;
 
+        <@>initialize = ::(args){
+            data = if(Boolean(args) && introspect.type(args) == Object) args else [];
+            len = introspect.keycount(data);
+        };
+        initialize(args);
         this.interface({
+            onRevive : initialize,
+
             // Read/write variable.
             // Returns/Sets the length of the array.
             length : {

@@ -243,6 +243,14 @@ void matte_vm_set_debug_callback(
     void *
 );
 
+// Sets a handler for the built-in print function.
+// This is most convenient for debugging. This default behavior 
+// is to print the string to stdout.
+void matte_vm_set_print_callback(
+    matteVM_t * vm,
+    void(*)(matteVM_t *, const matteString_t *, void *),
+    void *
+);
 
 
 #endif
