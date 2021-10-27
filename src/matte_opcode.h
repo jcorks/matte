@@ -140,7 +140,8 @@ typedef enum {
     MATTE_EXT_CALL_INSTANTIATE, // instantiate() 1 arg (type);
     MATTE_EXT_CALL_INTROSPECT, // introspect() 1 arg
     MATTE_EXT_CALL_PRINT,
-    MATTE_EXT_CALL_THROW,
+    MATTE_EXT_CALL_SEND,
+    MATTE_EXT_CALL_LISTEN,
     MATTE_EXT_CALL_ERROR,
     MATTE_EXT_CALL_GETEXTERNALFUNCTION // always the LAST ext call ID
 

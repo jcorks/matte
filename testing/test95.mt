@@ -12,17 +12,16 @@
 
 
 @findPos =::(grid, len) {
-    context.catch=::(result){
-        return result;
-    };
-    for([0, len], ::(y){
-        for([0, len], ::(x) {
-            if (grid[y][x] == 1) ::<={
-                throw({
-                    x : x,
-                    y : y
-                });     
-            };
+    return listen(::{
+        for([0, len], ::(y){
+            for([0, len], ::(x) {
+                if (grid[y][x] == 1) ::<={
+                    send({
+                        x : x,
+                        y : y
+                    });     
+                };
+            });
         });
     });
 };    

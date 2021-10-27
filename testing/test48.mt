@@ -3,13 +3,16 @@
 // Errors
 
 @errMessage;
-::<={
-    context.catch = :: (t){
+listen(
+    ::{
+        error('Testing');
+    },
+     
+    ::(t) {
         errMessage = t.data;
-    };
+    }
+);
 
-    error('Testing');
-};
 
 return errMessage;
 

@@ -11,16 +11,14 @@
 
 @result = 'ee' + fn(11); // ok 
 
-::{
-    // empty catch is okay
-    context.catch = ::{};
+listen(::{
 
 
     result = result + fn(100); //
     result = result + fn(0); // NOT OK
     result = result + fn(1000); // ok
     
-}();
+});
 
 
 return result;

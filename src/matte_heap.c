@@ -802,6 +802,8 @@ void matte_value_into_new_type_(matteValue_t * v, matteValue_t opts) {
         } else {
             matteString_t * str = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);
             data.name.objectID = matte_string_heap_internalize(v->heap->stringHeap, str);
+            data.name.binID = MATTE_VALUE_TYPE_STRING;
+            data.name.heap = v->heap;
             matte_string_destroy(str);        
         }
 
@@ -822,6 +824,8 @@ void matte_value_into_new_type_(matteValue_t * v, matteValue_t opts) {
     } else {
         matteString_t * str = matte_string_create_from_c_str("<anonymous type %d>", v->objectID);
         data.name.objectID = matte_string_heap_internalize(v->heap->stringHeap, str);
+        data.name.binID = MATTE_VALUE_TYPE_STRING;
+        data.name.heap = v->heap;
         matte_string_destroy(str);        
     }
     matte_array_push(v->heap->typecode2data, data);

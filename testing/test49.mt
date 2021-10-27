@@ -3,23 +3,22 @@
 // Errors
 
 @errMessage;
-@emptyOnError = ::{
-    context.catch = :: (t) {
-        errMessage = 'outerMessage';
-    };
-    
-    ::<={
-        context.catch = :: (t){
+@emptyOnError = listen(::{    
+    listen(
+        ::{
+            error('Testing');
+        },
+
+        ::(msg) {
             errMessage = 'InnerMessage';
             error('whoops');
-        };
-
-
-        error('Testing');
-    };
+        }
+    );
     
     return 100;
-}();
+}, ::(t){
+    errMessage = 'outerMessage';
+});
 return errMessage + emptyOnError;
 
 

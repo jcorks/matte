@@ -41,7 +41,7 @@ MyType.Triangle = newtype({name:'Triangle', inherits:[MyType.Shape]});
 
 
 combinedArea(tri0, sq0);
-::<={
+listen(::{
     context.catch = ::{};
     <@>combinedAreaRestricted ::(a => MyType.Shape, b => MyType.Square) {
         out = out + a.area() + b.area(); 
@@ -50,7 +50,7 @@ combinedArea(tri0, sq0);
     combinedAreaRestricted(sq1, sq0);
     combinedAreaRestricted(sq0, tri0);
     combinedAreaRestricted(sq1, sq0);
-};
+});
 
 return out;
 

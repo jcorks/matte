@@ -872,30 +872,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         // once encountered they are handled immediately.
         // If there is no handler, the catchable propogates down the callstack.
         if (vm->pendingCatchable) {
-            matteValue_t v = matte_value_object_access_string(frame->context, MATTE_STR_CAST("catch"));
-
-            // output wont be sent since there was an error. catch will return instead.
-            matte_heap_recycle(output);
-
-            if (matte_value_is_callable(v)) {
-                matteValue_t catchable = vm->catchable;
-                vm->catchable.binID = 0;
-                vm->pendingCatchable = 0;
-
-                matteValue_t out = matte_vm_call(vm, v, MATTE_ARRAY_CAST(&catchable, matteValue_t, 1), MATTE_STR_CAST("context catch"));
-
-                matte_value_object_pop_lock(catchable);
-                matte_heap_recycle(catchable);
-                STACK_PUSH(out);
-            } else {              
-            
-                // propogate  
-                matte_value_into_empty(&v);
-                STACK_PUSH(v);
-            }
-            
-
-
             break;
         }
         
@@ -998,7 +974,8 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_TYPE,       1, vm_ext_call__newtype);
     vm_add_built_in(vm, MATTE_EXT_CALL_INSTANTIATE,1, vm_ext_call__instantiate);
     vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      1, vm_ext_call__print);
-    vm_add_built_in(vm, MATTE_EXT_CALL_THROW,      1, vm_ext_call__throw);
+    vm_add_built_in(vm, MATTE_EXT_CALL_SEND,       1, vm_ext_call__send);
+    vm_add_built_in(vm, MATTE_EXT_CALL_LISTEN,     2, vm_ext_call__listen);
     vm_add_built_in(vm, MATTE_EXT_CALL_ERROR,      1, vm_ext_call__error);
 
     vm_add_built_in(vm, MATTE_EXT_CALL_GETEXTERNALFUNCTION, 1, vm_ext_call__getexternalfunction);

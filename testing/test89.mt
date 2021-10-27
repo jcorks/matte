@@ -57,8 +57,7 @@
 
 
 combinedArea(tri0, sq0);
-::<={
-    context.catch = ::{};
+listen(::{
     <@>combinedAreaRestricted ::(a => Shape.type, b => Square.type) {
         out = out + a.area() + b.area(); 
     };
@@ -67,6 +66,6 @@ combinedArea(tri0, sq0);
     // will throw type error
     combinedAreaRestricted(sq0, tri0);
     combinedAreaRestricted(sq1, sq0);
-};
+});
 
 return out;

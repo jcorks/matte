@@ -162,26 +162,29 @@ Mutable variables can point to different values over its lifetime by reassignmen
 \section{for}
 \section{foreach}
 \section{if}
-\section{throw/catch}
+\section{send/listen}
 
-The "throw and catch" paradigm can serve as an alternative way to exchange information within 
+The "send and listen" paradigm can serve as an alternative way to exchange information within 
 a Matte program. \textit{throw()} is a built in function that, when called, signals to the runtime
-that a value needs to be caught. Once the runtime is aware of the catchable value, all current 
-functions running on the callstack will terminate from top to bottom (a.k.a "unwind") until a 
-stackframe function is detected to have a \textit{catch} property that is callable.
+that a value is pending to be sent. Once the runtime is aware of the catchable value, all current 
+functions running on the callstack will terminate from top to bottom (a.k.a "unwind") until the nearest
+\textit{listen()} function is detected to have a been called.
 
-When such a \textit{catch} property is found, the function is called with the first argument of the \textit{throw}
-call passed as the only argument. The return value of the \textit{.catch} property function will be 
-the new return value of the stackframe function.
+When such an active \textit{listen()} call is found, a number of things can happen.
+If the \textit{listen()} call has only one argument, the \textit{listen()} call returns 
+the actual message sent by \textit{send()}. If the call has 2 arguments and the second 
+argument is callable, then, if a message was received, the second argument is called 
+with the message as its only argument. In this case, the return value of \textit{listen} 
+becomes the return value of this second-argument function.
 
 
 
 \subsection{error}
 
 Often, language use the "throw and catch" paradigm for error handling. Such can be, and is, done 
-for the Matte language. The \textit{error()} function exists for this purpose. It functions 
-equivalently to \textit{throw()}, except when a \textit{catch} is found, the first argument 
-to the \textit{.catch} is a runtime-specific object containing data about where the error 
+for the Matte language using message passing. The \textit{error()} function exists for this purpose. It functions 
+equivalently to \textit{send()}, except when the \textit{listen()} call is found, the first argument 
+to the \textit{listen()} callback is a runtime-specific object containing data about where the error 
 was first created. 
 
 The format of this object is not formalized by the Matte language, except for the 

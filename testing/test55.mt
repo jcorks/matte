@@ -53,11 +53,10 @@
 
 
 @result = 'Unchanged';
-::<={
-    context.catch = ::{};
+listen(::{
     result = a % b;
     result = '' + (a - b * c);
-};
+});
 
 
 return result;

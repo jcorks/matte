@@ -211,10 +211,10 @@ static matteValue_t vm_ext_call__print(matteVM_t * vm, matteValue_t fn, matteArr
     }
     return matte_heap_new_value(vm->heap);
 }
-static matteValue_t vm_ext_call__throw(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__send(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
      if (vm->pendingCatchable) {
         #ifdef MATTE_DEBUG
-            assert(!"VM has a new catchable generated before previous catchable could be caught. This is not allowed and is /probably/ indicative of internal VM error.");
+            assert(!"VM has a new message sent before previous message could be caught. This is not allowed and is /probably/ indicative of internal VM error.");
         #endif
     }
     matteValue_t b = matte_heap_new_value(vm->heap);
@@ -236,6 +236,47 @@ static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, matteArr
     }
     return matte_heap_new_value(vm->heap);
 }
+
+static matteValue_t vm_ext_call__listen(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+    if (!matte_array_get_size(args)) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("listen() requires one argument"));
+        return matte_heap_new_value(vm->heap);
+    } 
+    matteValue_t v = matte_array_at(args, matteValue_t, 0);
+    if (!matte_value_is_callable(v)) {
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("listen() requires that the function argument is callable"));
+        return matte_heap_new_value(vm->heap);
+    }
+    
+    matteValue_t out = matte_vm_call(vm, v, matte_array_empty(), MATTE_STR_CAST("listen"));
+    if (vm->pendingCatchable) {
+
+        matte_heap_recycle(out);            
+        matteValue_t catchable = vm->catchable;
+        vm->catchable.binID = 0;
+        vm->pendingCatchable = 0;
+        matte_value_object_pop_lock(catchable);
+
+
+        // if the catchable exists, we either 
+        // 1) return this return value 
+        // 2) run a response function and return its result
+        if (matte_array_get_size(args) > 1 && matte_value_is_callable(matte_array_at(args, matteValue_t, 1))) {
+            matteValue_t response = matte_array_at(args, matteValue_t, 1);
+            out = matte_vm_call(vm, response, MATTE_ARRAY_CAST(&catchable, matteValue_t, 1), MATTE_STR_CAST("listen response"));
+            matte_heap_recycle(catchable);
+            return out;
+        } else {
+            // OK, popped but not recycled.
+            return catchable;
+        }
+    } else {
+        // OK, already new from vm_call
+        return out;        
+    }
+}
+
+
 
 static matteValue_t vm_ext_call__newtype(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t out = matte_heap_new_value(vm->heap);
