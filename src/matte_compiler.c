@@ -1581,13 +1581,13 @@ static void print_graph_node(matteSyntaxGraphWalker_t * g, matteSyntaxGraphNode_
 #endif
 
 
-// attempts to consume the current node and returns 
-// the next node. If the node is not valid, NULL is returned.
-static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
+
+static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
     matteSyntaxGraphWalker_t * graph,
     matteSyntaxGraphNode_t * node,
     int constructID,
-    int silent
+    int silent,
+    int * error
 ) {
     if (matte_table_find(graph->tried, node)) return NULL;
     matte_table_insert(graph->tried, node, (void*)0x1);
@@ -1652,8 +1652,10 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
             }
         }
         // failure
-        if (!silent)
+        if (!silent) {
             matte_syntax_graph_print_error(graph, node);
+            *error = 1;
+        }
         #ifdef MATTE_DEBUG__COMPILER
             level--;
         #endif
@@ -1673,12 +1675,15 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
         uint32_t i;
         uint32_t len = node->split.count;
         for(i = 0; i < len; ++i) {
-            matteSyntaxGraphNode_t * n = matte_syntax_graph_walk(
+            matteSyntaxGraphNode_t * n = matte_syntax_graph_walk_helper(
                 graph,
                 node->split.nodes[i],
                 constructID,
-                1
+                1,
+                error
             );
+            if (*error) return NULL;
+
             // success!
             if (n) {
                 matte_table_clear(graph->tried);
@@ -1689,8 +1694,10 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
             }
         }
         // failure
-        if (!silent)
+        if (!silent) {
             matte_syntax_graph_print_error(graph, node);
+            *error = 1;
+        }
         #ifdef MATTE_DEBUG__COMPILER
             level--;
         #endif
@@ -1713,8 +1720,10 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
             if (n->parent) n = n->parent;
         }
         if (!n) {
-            if (!silent)
+            if (!silent) {
                 matte_syntax_graph_print_error(graph, node);
+                *error = 1;
+            }
             #ifdef MATTE_DEBUG__COMPILER
                 level--;
             #endif
@@ -1756,7 +1765,8 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
         uint32_t len = matte_array_get_size(root->paths);
         for(i = 0; i < len; ++i) {
             matteSyntaxGraphNode_t * tr = matte_array_at(root->paths, matteSyntaxGraphNode_t * , i);
-            matteSyntaxGraphNode_t * out = matte_syntax_graph_walk(graph, tr, node->construct, 1);
+            matteSyntaxGraphNode_t * out = matte_syntax_graph_walk_helper(graph, tr, node->construct, 1, error);
+            if (*error) return NULL;
             if (out) {
                 matte_table_clear(graph->tried);
                 #ifdef MATTE_DEBUG__COMPILER
@@ -1764,7 +1774,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
                     fflush(stdout);
 
                 #endif
-                while(out = matte_syntax_graph_walk(graph, out, node->construct, 0)) {
+                while(out = matte_syntax_graph_walk_helper(graph, out, node->construct, 0, error)) {
                     // The only way to validly finish a path
                     if (out && out->type == MATTE_SYNTAX_GRAPH_NODE__END) {
                         matte_table_clear(graph->tried);
@@ -1774,6 +1784,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
                         return node->next;
                     }
                 }
+                if (*error) return NULL;
             } else {
                 #ifdef MATTE_DEBUG__COMPILER
                     printf("  - FAILED initial construct node for path %s\n", matte_string_get_c_str(matte_array_at(root->pathNames, matteString_t *, i)));
@@ -1782,9 +1793,10 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
                 #endif
             }
         }
-        if (!silent)
+        if (!silent) {
             matte_syntax_graph_print_error(graph, node);
-
+            *error = 1;
+        }
         #ifdef MATTE_DEBUG__COMPILER
             level--;
         #endif
@@ -1798,6 +1810,18 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
     assert(!"should not reach here");
 }
 
+
+// attempts to consume the current node and returns 
+// the next node. If the node is not valid, NULL is returned.
+static matteSyntaxGraphNode_t * matte_syntax_graph_walk(
+    matteSyntaxGraphWalker_t * graph,
+    matteSyntaxGraphNode_t * node,
+    int constructID,
+    int silent
+) {
+    int error = 0;
+    return matte_syntax_graph_walk_helper(graph, node, constructID, silent, &error);
+}
 
 int matte_syntax_graph_continue(
     matteSyntaxGraphWalker_t * graph,

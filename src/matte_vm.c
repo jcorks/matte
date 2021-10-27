@@ -964,7 +964,6 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_LOOP,    1, vm_ext_call__loop);
     vm_add_built_in(vm, MATTE_EXT_CALL_FOR,     2, vm_ext_call__for);
     vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, 2, vm_ext_call__foreach);
-    vm_add_built_in(vm, MATTE_EXT_CALL_MATCH,   2, vm_ext_call__match);
     vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  2, vm_ext_call__import);
     vm_add_built_in(vm, MATTE_EXT_CALL_REMOVE_KEY,  2, vm_ext_call__remove_key);
     vm_add_built_in(vm, MATTE_EXT_CALL_SET_OPERATOR,  2, vm_ext_call__set_operator);
@@ -1526,6 +1525,10 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
 void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     if (vm->pendingCatchable) {
         #ifdef MATTE_DEBUG
+            printf("Previous error: \n%s\n", 
+                matte_string_get_c_str(
+                matte_value_string_get_string_unsafe(
+                matte_value_object_access_string(vm->catchable, MATTE_STR_CAST("summary")))));
             assert(!"VM has a new error generated before previous error could be captured. This is not allowed and is /probably/ indicative of internal VM error.");
         #endif
     }

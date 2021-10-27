@@ -194,6 +194,20 @@ char * dump_string(const char * filename) {
 }
 
 
+static matteValue_t test_external_function(
+    matteVM_t * vm,
+    matteValue_t fn, 
+    matteArray_t * args,
+    void * data
+) {
+    matteValue_t a = matte_heap_new_value(matte_vm_get_heap(vm));
+    matte_value_into_number(&a,
+        matte_value_as_number(matte_array_at(args, matteValue_t, 0)) + 
+        matte_value_as_number(matte_array_at(args, matteValue_t, 1))
+    );
+    return a;
+}
+
 int main() {
     uint32_t i = 0;
     test_string();
@@ -218,6 +232,7 @@ int main() {
 
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
+        matte_vm_set_external_function(vm, MATTE_STR_CAST("external_test!"), 2, test_external_function, NULL);
         matte_vm_set_debug_callback(vm, onErrorCatch, NULL);
 
 

@@ -31,16 +31,17 @@
         <@> addbase ::(other){
             for([0, arraylen(other)], ::(n){
                 <@>g = other[n];
-                @found = false;
-                for([0, arraylen(allclass)], ::(i) {
-                    when(allclass[i] == g) ::<={
-                        found = true;
-                        return arraylen(allclass);
-                    };
-                });
-                when(!found) ::{
-                    arraypush(allclass, g);
-                }();
+
+                if(listen(::{
+                    for([0, arraylen(allclass)], ::(i) {
+                        if (allclass[i] == g) ::<={
+                            send(true);                        
+                        };                
+                    });
+                    return false;                
+                })) ::<={
+                    arraypush(allclass, g);            
+                };
             });
         };
 
@@ -64,14 +65,14 @@
 
     // returns whether the isntance inherits from the given class.
     <@> isa ::(d) {
-        @found = false;
-        for([0, arraylen(allclass)], ::(i){
-            when(allclass[i] == d)::{
-                found = true;
-                return arraylen(allclass);
-            }();
+        return listen(::{
+            for([0, arraylen(allclass)], ::(i){
+                if (allclass[i] == d)::<={
+                    send(true);
+                };    
+            });            
+            return false;        
         });
-        return found;
     };
 
     @dormant = [];

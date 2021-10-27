@@ -91,50 +91,50 @@
             // substring is at. If the substring is 
             // not contained within the string, -1 is returned.
             search::(sub){
-                sub = STRINGTOARR(TOSTRINGLITERAL(sub));
-                @intrsub = introspect;
-                                
-                @index = -1;
-                @sublen = intrsub.keycount(sub);
+                sub = STRINGTOARR(TOSTRINGLITERAL(sub));                               
+                @sublen = introspect.keycount(sub);
 
                 when(sublen == 0) -1;
                 
                 @checksub::(i){
-                    @found = true;
-                    for([0, sublen], ::(j){
-                        when(arrsrc[i+j] !=
-                                sub[j]) ::{
-                            found = false;
-                            return sublen;
-                        }();
+                    return listen(::{                
+                        for([0, sublen], ::(j){
+                            if(arrsrc[i+j] !=
+                                    sub[j]) ::<={
+                                send(false);
+                            };
+                        });
+                        return true;
                     });
-                    return found;
                 };
-                for([0, arrlen], ::(i){
-                    when(checksub(i, sub)) ::{
-                        index = i;
-                        return arrlen;
-                    }();
-                });
                 
-                return index;
+                return listen(::{
+                    for([0, arrlen], ::(i){
+                        if(checksub(i, sub)) ::<={
+                            send(i);
+                        };
+                    });
+                    return -1;
+                });                
             },
             
             contains::(sub) {
                 return this.search(sub) != -1;
             },
 
+
             containsAny::(arr => Object) {
                 <@>vals = introspect.values(arr);
                 <@>len = introspect.keycount(vals);
-                @contains = false;
-                for([0, len], ::(i) {
-                    when (this.contains(vals[i])) ::{
-                        contains = true;
-                        return len;
-                    }();
+                return listen(::{
+                    for([0, len], ::(i) {
+                        if (this.contains(vals[i])) ::<={
+                            send(true);
+                        };
+                    });
+                    return false;                    
                 });
-                return contains;
+
             },
 
 
@@ -150,26 +150,28 @@
 
                 
                 @checksub::(i){
-                    @found = true;
-                    for([0, sublen], ::(j){
-                        when(arrsrc[i+j] !=
-                                sub[j]) ::{
-                            found = false;
-                            return sublen;
-                        }();
+                    return listen(::{                
+                        for([0, sublen], ::(j){
+                            if(arrsrc[i+j] !=
+                                    sub[j]) ::<={
+                                send(false);
+                            };
+                        });
+                        return true;
                     });
-                    return found;
                 };
 
 
                 @index = -1;
                 loop(::{
-                    for([0, arrlen], ::(i){
-                        when(checksub(i, sub)) ::{
-                            index = i;
-                            return arrlen;
-                        }();
-                    });     
+                    index = listen(::{
+                        for([0, arrlen], ::(i){
+                            if(checksub(i, sub)) ::<={
+                                send(i);
+                            };
+                        });    
+                        return -1;                     
+                    });
                                
                     when(index == -1) false;
 
@@ -225,15 +227,15 @@
                 when(sublen == 0) -1;
                 
                 @checksub::(i){
-                    @found = true;
-                    for([0, sublen], ::(j){
-                        when(arrsrc[i+j] !=
-                                sub[j]) ::{
-                            found = false;
-                            return sublen;
-                        }();
+                    return listen(::{                
+                        for([0, sublen], ::(j){
+                            if(arrsrc[i+j] !=
+                                    sub[j]) ::<={
+                                send(false);
+                            };
+                        });
+                        return true;
                     });
-                    return found;
                 };
                 @count = 0;
                 for([0, arrlen], ::(i){
@@ -333,26 +335,26 @@
                 }();
 
                 @checksub::(i){
-                    @found = true;
-                    for([0, sublen], ::(j){
-                        when(arrsrc[i+j] !=
-                                sub[j]) ::{
-                            found = false;
-                            return sublen;
-                        }();
+                    return listen(::{
+                        for([0, sublen], ::(j){
+                            if (arrsrc[i+j] !=
+                                    sub[j]) ::<={
+                                send(false);
+                            };
+                        });                    
+                        return true;
                     });
-                    return found;
                 };
 
                 @cursub = classinst.new();
                 for([0, arrlen], ::(i){
-                    when(checksub(i, sub)) ::{
+                    when(checksub(i, sub)) ::<={
                         if (cursub.length) ::{
                             outarr.push(cursub);
                             cursub = classinst.new();
                         }();
                         return i+sublen; // skip sub
-                    }();
+                    };
                     cursub.append(arrsrc[i]);
                 });
                 outarr.push(cursub);
@@ -439,24 +441,21 @@
                 // -1 if not found, else the offset of b
                 // where a was first found.
                 <@>findsubstr :: (offset, a, alen, b, blen) {
-                    @found = -1;
-                    for([offset, blen], ::(i) {
-                        @matches = true;
-                        
-                        for([0, alen], ::(n){
-                            when(b[i+n] != a[n]) ::{
-                                matches = false;
-                                return alen;
-                            }();
-                        });                                 
-                        
-                        
-                        when(matches) ::{
-                            found = i;
-                            return blen;
-                        }();
+                    return listen(::{
+                        for([offset, blen], ::(i) {                            
+                            if (listen(::{
+                                for([0, alen], ::(n){
+                                    if(b[i+n] != a[n]) ::<={
+                                        send(false);
+                                    };
+                                });
+                                return true;                            
+                            })) ::<= {
+                                send(i);
+                            };
+                        });
+                        return -1;
                     });
-                    return found;
                 };
             
                 // Finds an anchored string ([%]), in the configuration of:

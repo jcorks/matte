@@ -513,8 +513,6 @@ static void function_to_stub(FILE * f, uint32_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR;
                 } else if (!strcmp("foreach", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOREACH;
-                } else if (!strcmp("match", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_MATCH;
                 } else if (!strcmp("newtype", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_TYPE;
                 } else if (!strcmp("instantiate", m)) {

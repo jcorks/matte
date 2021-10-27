@@ -1,0 +1,1 @@
+return {mydata:42};

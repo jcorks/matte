@@ -1810,9 +1810,9 @@ void matte_value_object_remove_key(matteValue_t v, matteValue_t key) {
       }
 
       case MATTE_VALUE_TYPE_TYPE: {
-        matteValue_t * value = matte_table_find_by_uint(m->keyvalues_string, key.objectID);
+        matteValue_t * value = matte_table_find_by_uint(m->keyvalues_types, key.objectID);
         if (value) {
-            matte_table_remove_by_uint(m->keyvalues_string, key.objectID);
+            matte_table_remove_by_uint(m->keyvalues_types, key.objectID);
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(m, value);                
             }

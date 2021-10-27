@@ -200,9 +200,6 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                     case MATTE_EXT_CALL_FOREACH:
                         fprintf(fout, "foreach\n");
                         break;
-                    case MATTE_EXT_CALL_MATCH:
-                        fprintf(fout, "match\n");
-                        break;
                     case MATTE_EXT_CALL_GETEXTERNALFUNCTION:
                         fprintf(fout, "getExternalFunction\n");
                         break;

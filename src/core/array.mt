@@ -150,14 +150,14 @@
             
             // linear search
             find ::(inval) {
-                @index = -1;
-                for([0, len], ::(i){
-                    when(data[i] == inval)::{
-                        index = i;
-                        return len;
-                    }(); 
-                });            
-                return index;
+                return listen(::{
+                    for([0, len], ::(i){
+                        if (data[i] == inval) ::<={
+                            send(i);  
+                        };
+                    });                
+                    return -1;
+                });
             },
             
             binarySearch::(val, cmp) {

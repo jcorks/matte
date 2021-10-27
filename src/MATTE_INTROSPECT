@@ -129,10 +129,6 @@ static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, mat
 
 
 static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     matteValue_t out = matte_value_get_type(a);
     return out;
@@ -142,10 +138,6 @@ static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn
 
 
 static matteValue_t vm_ext_call__introspect_keys(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteValue_t out = matte_value_object_keys(a);
@@ -158,10 +150,6 @@ static matteValue_t vm_ext_call__introspect_keys(matteVM_t * vm, matteValue_t fn
 
 
 static matteValue_t vm_ext_call__introspect_values(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
 
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
@@ -175,10 +163,6 @@ static matteValue_t vm_ext_call__introspect_values(matteVM_t * vm, matteValue_t 
 
 
 static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
 
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -192,10 +176,6 @@ static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_
 
 
 static matteValue_t vm_ext_call__introspect_iscallable(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     matteValue_t out = matte_heap_new_value(vm->heap);
     matte_value_into_boolean(&out, matte_value_is_callable(a) != 0);
@@ -204,10 +184,6 @@ static matteValue_t vm_ext_call__introspect_iscallable(matteVM_t * vm, matteValu
 }
 
 static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     if (a.binID == MATTE_VALUE_TYPE_STRING) {
         matteValue_t len = matte_heap_new_value(vm->heap);
@@ -221,10 +197,6 @@ static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t 
 }
 
 static matteValue_t vm_ext_call__introspect_arraytostring(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("arrayToString() expects an object value."));
@@ -237,10 +209,6 @@ static matteValue_t vm_ext_call__introspect_arraytostring(matteVM_t * vm, matteV
 
 
 static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 2) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
 
     uint32_t key;
@@ -268,10 +236,6 @@ static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t 
 }
 
 static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 2) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
 
     uint32_t key;
@@ -339,10 +303,6 @@ static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t 
 
 
 static matteValue_t vm_ext_call__introspect_floor(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
 
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -356,10 +316,6 @@ static matteValue_t vm_ext_call__introspect_floor(matteVM_t * vm, matteValue_t f
 }
 
 static matteValue_t vm_ext_call__introspect_ceil(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -373,10 +329,6 @@ static matteValue_t vm_ext_call__introspect_ceil(matteVM_t * vm, matteValue_t fn
 }
 
 static matteValue_t vm_ext_call__introspect_round(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -389,10 +341,6 @@ static matteValue_t vm_ext_call__introspect_round(matteVM_t * vm, matteValue_t f
     return out;
 }
 static matteValue_t vm_ext_call__introspect_toradians(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -405,10 +353,6 @@ static matteValue_t vm_ext_call__introspect_toradians(matteVM_t * vm, matteValue
     return out;
 }
 static matteValue_t vm_ext_call__introspect_todegrees(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -422,10 +366,6 @@ static matteValue_t vm_ext_call__introspect_todegrees(matteVM_t * vm, matteValue
 }
 
 static matteValue_t vm_ext_call__introspect_sin(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -456,10 +396,6 @@ static matteValue_t vm_ext_call__introspect_cos(matteVM_t * vm, matteValue_t fn,
 }
 
 static matteValue_t vm_ext_call__introspect_tan(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -473,10 +409,6 @@ static matteValue_t vm_ext_call__introspect_tan(matteVM_t * vm, matteValue_t fn,
 }
 
 static matteValue_t vm_ext_call__introspect_abs(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
@@ -508,10 +440,6 @@ static matteValue_t vm_ext_call__introspect_sqrt(matteVM_t * vm, matteValue_t fn
 }
 
 static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
-        return matte_heap_new_value(vm->heap);
-    }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);

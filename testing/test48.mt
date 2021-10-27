@@ -13,6 +13,24 @@ listen(
     }
 );
 
+listen(
+    ::{
+        error();
+    },
+     
+    ::(t) {
+        errMessage = errMessage + String(t.data == empty);
+    }
+);
+
+
+listen(::{
+    listen();
+}, ::{
+    errMessage = errMessage + 'failed!';
+});
+
+
 
 return errMessage;
 
