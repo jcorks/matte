@@ -210,16 +210,15 @@ void matte_value_object_foreach(matteValue_t object, matteValue_t function);
 // invokes assigner if present
 const matteValue_t * matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value, int isBracket);
 
-// Sets the operator set for this object, which describes how 
-// the object should respond to different operators and interactions.
-// Only operators referenced in the give operator set are 
-// updated in the object. If the object already has operators 
-// referenced by opObject, these operators are overwritten.
-void matte_value_object_set_operator(matteValue_t v, matteValue_t opObject);
+// Sets the attributes set for this object, which describes how 
+// the object should respond to different operators and events.
+// This existing attributes object is replaced with this new object.
+// If this new object is the same as the original object, no change is made.
+void matte_value_object_set_attributes(matteValue_t v, matteValue_t opObject);
 
-// Gets the operator for an object, assuming that the value is an object.
+// Gets the attributes set for an object, assuming that the value is an object.
 // If the object has no operator set, NULL is returned.
-const matteValue_t * matte_value_object_get_operator_unsafe(matteValue_t);
+const matteValue_t * matte_value_object_get_attributes_unsafe(matteValue_t);
 
 // Removes a key from an object if it exists. If the value is 
 // not an object or the key does not exist, no action is taken.

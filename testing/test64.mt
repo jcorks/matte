@@ -4,7 +4,7 @@
 @Class = import('Matte.Class');
 @TestClass = Class({
     define ::(this, args, classinst) {
-        this.operator({
+        this.attributes({
             (String) :: {
                 return args;
             }

@@ -1,6 +1,6 @@
 //// Test 100
 //
-// setOperator
+// setAttributes
 
 @out = '';
 
@@ -14,25 +14,25 @@
     }
 };
 
-setOperator(test, op);
+setAttributes(test, op);
 
 test +=  100;
 test +=  10;
 out = out + test.data;
 
-setOperator(test, op);
+setAttributes(test, op);
 test +=  1;
 out = out + test.data;
 
 listen(::{
-    setOperator(10, op);    
+    setAttributes(10, op);    
 }, ::{
     out = out + 'noobj0';
 });
 
 
 listen(::{
-    setOperator(test, 0);    
+    setAttributes(test, 0);    
 }, ::{
     out = out + 'noobj1';
 });
@@ -52,20 +52,20 @@ out = out + test.data;
     }
 };
 
-setOperator(test, op2);
+setAttributes(test, op2);
 test +=  33;
 out = out + test.data;
 
 
 
-out = out + Boolean(getOperator(test) == op2);
+out = out + Boolean(getAttributes(test) == op2);
 listen(::{
-    getOperator('d');
+    getAttributes('d');
 }, ::{
     out = out + 'noobjEX';
 });
 
-out = out + Boolean(getOperator(test) == op);
+out = out + Boolean(getAttributes(test) == op);
 
 
 

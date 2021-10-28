@@ -172,7 +172,7 @@
             
         });
         
-        this.operator({
+        this.attributes({
             '[]' : {
                 get :: (key => Number){
                     return data[key];

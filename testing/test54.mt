@@ -21,7 +21,7 @@
         integer  : valInteger
     };
     
-    setOperator(ref, {
+    setAttributes(ref, {
         '+' ::(a) {
             return createNumber(val + (a.decimal + a.integer));
         },

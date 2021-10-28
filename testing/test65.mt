@@ -6,7 +6,7 @@
     define ::(this, args, classinst) {
         @str = args;
 
-        this.operator({
+        this.attributes({
             (String) :: {
                 return str;
             }

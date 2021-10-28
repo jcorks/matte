@@ -87,12 +87,12 @@
                 out.onRevive[i](args);
             });          
 
-            @bops = getOperator(out);
+            @bops = getAttributes(out);
             bops.preserver = ::{
                 dormant[dormantCount] = out;
                 dormantCount += 1;
             };     
-            setOperator(out, bops);
+            setAttributes(out, bops);
                                                       
 
             return out;
@@ -176,7 +176,7 @@
             });    
         };
         
-        out.operator = ::(obj) {
+        out.attributes = ::(obj) {
             foreach(obj, ::(k, v){
                 ops[k] = v;            
             });
@@ -231,7 +231,7 @@
                     dormantCount += 1;
                 };
             };
-            setOperator(out, ops);
+            setAttributes(out, ops);
         }();
         return out;
     };

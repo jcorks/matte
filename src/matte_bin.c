@@ -91,7 +91,7 @@ void matte_bin_recycle(matteBin_t * b, uint32_t id) {
     matte_array_push(b->dead, tag);
 }
 
-
+/*
 matteArray_t * matte_bin_get_all(const matteBin_t * b) {
     matteArray_t * out = matte_array_create(sizeof(void*));
     uint32_t i;
@@ -106,5 +106,6 @@ matteArray_t * matte_bin_get_all(const matteBin_t * b) {
 
     return out;
 }
+*/
 
 

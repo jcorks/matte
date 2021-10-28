@@ -810,12 +810,12 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
 
-      case MATTE_TOKEN_EXTERNAL_SET_OPERATOR: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "setOperator");
+      case MATTE_TOKEN_EXTERNAL_SET_ATTRIBUTES: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "setAttributes");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_GET_OPERATOR: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "getOperator");
+      case MATTE_TOKEN_EXTERNAL_GET_ATTRIBUTES: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "getAttributes");
         break;
       }
 
@@ -2547,14 +2547,14 @@ static matteArray_t * compile_base_value(
         return inst;
       }
 
-      case MATTE_TOKEN_EXTERNAL_SET_OPERATOR: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_SET_OPERATOR);
+      case MATTE_TOKEN_EXTERNAL_SET_ATTRIBUTES: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_SET_ATTRIBUTES);
         *src = iter->next;
         return inst;
       }
 
-      case MATTE_TOKEN_EXTERNAL_GET_OPERATOR: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_GET_OPERATOR);
+      case MATTE_TOKEN_EXTERNAL_GET_ATTRIBUTES: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_GET_ATTRIBUTES);
         *src = iter->next;
         return inst;
       }

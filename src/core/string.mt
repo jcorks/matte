@@ -639,7 +639,7 @@
 
         });
         
-        this.operator({
+        this.attributes({
             (String) :: {
                 when(hasStr) strsrc;
                 strsrc = arrintr.arrayToString(arrsrc);

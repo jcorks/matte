@@ -101,23 +101,8 @@ matteArray_t * matte_array_clone(const matteArray_t * src) {
     return a;
 }
 
-uint32_t matte_array_lower_bound(const matteArray_t * t, const void * ptrToEle, int(*comp)(const void * a, const void * b)) {
-    int64_t lo = 0;
-    int64_t hi = t->size;
-    int64_t mid;
-    while(lo < hi) {
-        mid = lo + ((hi-lo) >> 1);
-        void * val = t->data + t->sizeofType*mid;
-        if (comp(ptrToEle, val)) {
-            hi = mid;
-        } else {
-            lo = mid+1;
-        }
-    }
 
-    return lo;
-}
-
+/*
 void matte_array_insert_n(matteArray_t * t, uint32_t index, void * ele, uint32_t count) {
     if (index >= t->size) {
         matte_array_push_n(t, ele, count);
@@ -137,6 +122,7 @@ void matte_array_insert_n(matteArray_t * t, uint32_t index, void * ele, uint32_t
         count*(t->sizeofType)
     );
 }
+*/
 
 
 uint32_t matte_array_get_size(const matteArray_t * t) {
@@ -195,12 +181,6 @@ void * matte_array_get_data(const matteArray_t * t) {
 }
 
 
-void matte_array_clear(matteArray_t * t) {
-    #ifdef MATTE_DEBUG
-        assert(t && "matteArray_t pointer cannot be NULL.");
-    #endif
-    t->size = 0;
-}
 
 void matte_array_set_size(matteArray_t * t, uint32_t size) {
     #ifdef MATTE_DEBUG

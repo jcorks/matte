@@ -25,12 +25,12 @@
         mp.resCount-=1;
         mp.reviveCount += 1;
 
-        @ops = getOperator(o);
+        @ops = getAttributes(o);
         ops.preserver = ::{
             mp.reserved[mp.resCount] = o;
             mp.resCount+=1;        
         };
-        setOperator(o, ops);        
+        setAttributes(o, ops);        
         return o;
     };
     
@@ -44,7 +44,7 @@
     
     mp.resID = mp.resID + 1;
     
-    setOperator(out, {
+    setAttributes(out, {
         preserver :: {
             mp.reserved[mp.resCount] = out;
             mp.resCount+=1;

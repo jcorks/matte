@@ -8,7 +8,7 @@
 @createObject::{
     @out = {};
     
-    setOperator(out, {
+    setAttributes(out, {
         preserver :: {
             if (!deletedOnce) ::<={
                 deletedOnce = true;

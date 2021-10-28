@@ -966,8 +966,8 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, 2, vm_ext_call__foreach);
     vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  2, vm_ext_call__import);
     vm_add_built_in(vm, MATTE_EXT_CALL_REMOVE_KEY,  2, vm_ext_call__remove_key);
-    vm_add_built_in(vm, MATTE_EXT_CALL_SET_OPERATOR,  2, vm_ext_call__set_operator);
-    vm_add_built_in(vm, MATTE_EXT_CALL_GET_OPERATOR,  1, vm_ext_call__get_operator);
+    vm_add_built_in(vm, MATTE_EXT_CALL_SET_ATTRIBUTES,  2, vm_ext_call__set_attributes);
+    vm_add_built_in(vm, MATTE_EXT_CALL_GET_ATTRIBUTES,  1, vm_ext_call__get_attributes);
 
     vm_add_built_in(vm, MATTE_EXT_CALL_INTROSPECT, 0, vm_ext_call__introspect);
     vm_add_built_in(vm, MATTE_EXT_CALL_TYPE,       1, vm_ext_call__newtype);

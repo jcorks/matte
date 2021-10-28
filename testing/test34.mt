@@ -2,7 +2,7 @@
 //
 // empty object
 @r = {};
-setOperator(r, {
+setAttributes(r, {
     (String) ::{
         return 'Testing';
     }

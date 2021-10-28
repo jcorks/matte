@@ -1,5 +1,44 @@
 \documentclass[12pt,letterpaper]{report}
 \usepackage{hyperref}
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{bgcol}{rgb}{0.43, 0.5, 0.5}
+
+
+\definecolor{keyword2}{rgb}{1.0, 0.13, 0.32}
+\definecolor{keyword3}{rgb}{0.3, 0.7, 0.2}
+\definecolor{stringcol}{rgb}{0.6, 0.47, 0.48}
+\definecolor{keyword4}{rgb}{0.2, 0.2, 0.6}
+\definecolor{keyword1}{rgb}{0.0, 0.5, 1.0}
+
+\lstset{framexleftmargin=5mm, frame=shadowbox, rulesepcolor=\color{bgcol}}
+
+\lstdefinelanguage{Matte}
+{
+  otherkeywords = {:,::<=,@,<@>,=>,;},
+  keywords = [3]{::, ::<=, @, =>, ;},
+  keywords = [1]{listen, send, for, foreach, if, when, loop, import, error, return},
+  keywords = [2]{introspect, removeKey, setAttributes, getAttributes, print, getExternalFunction, newtype, instantiate, empty},
+  keywords = [4]{Number, String, Boolean, Empty, Object, Type},
+  sensitive = false,
+  keywordstyle = [1]\color{keyword1},
+  keywordstyle = [2]\color{keyword2},
+  keywordstyle = [3]\color{keyword3},
+  keywordstyle = [4]\color{keyword4},
+  showstringspaces=false,
+  breaklines=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{bgcol}\ttfamily\small,
+  stringstyle=\color{stringcol}\ttfamily\small,
+  basicstyle=\ttfamily\small,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+
+
 \hypersetup{
     colorlinks,
     citecolor=black,
@@ -43,60 +82,72 @@ extension, and simple implementation and maintenance.
 The development of Matte as a language has a number of priorities which are 
 considered as the deveopment process of the language continues:
 
-- Usefulness. The language prioritizes having as few features as possible 
+\begin{itemize}
+\item Usefulness. The language prioritizes having as few features as possible 
   while keeping it still useful. Features are added out of necessity for a reasonable, 
   object-oriented environment rather than an over-prediction of need.
 
-- Simplicity. Matte focuses on keeping vagueness and esotericism to a minimum. One 
+\item Simplicity. Matte focuses on keeping vagueness and esotericism to a minimum. One 
   of the reasons that Matte was developed was out of frustration of other 
   languages having a glut of features rather than being a focused tool. The 
   simplicity of the language is, in hope, extended to the ease-of-use of the language.
 
-- Portability. While this document does not necessarily focus on implementation 
+\item Portability. While this document does not necessarily focus on implementation 
   of the language, portability is a primary concern of the language. 
   The intent of the language is to use it in a program-embedded setting, 
   where Matte is not the only language being used to develop a piece of software. 
   While Matte can, hypothetically, be used for any programming task, its intent is 
   for Matte to be relatively simple to implement. 
 
-- Extensibility. The language itself is kept minimal to allow for extension of its 
+\item Extensibility. The language itself is kept minimal to allow for extension of its 
   usefulness.
+\end{itemize}
 
 \section{Document Scope}
 
 This document intends to:
-- give specifics on the use and behavior of the Matte language. 
-- inform those who wish to implement the language.
-- define standards for the language's behavior.
-
+\begin{itemize}
+\item \textbf{Give specifics} on the use and behavior of the Matte language. 
+\item \textbf{Inform} those who wish to implement the language.
+\item \textbf{Define standards} for the language's behavior.
+\end{itemize}
 This document does not:
-- define the implementation details of the language, i.e. the 
-  structure of a VM, definition of an instruction set, or bytecode blob layouts.
-- give domain-specific information or behavior 
+\begin{itemize}
+\item define the implementation details of the language, i.e. the 
+      structure of a VM, definition of an instruction set, or bytecode blob layouts.
+\item give domain-specific information or behavior requirements.
+\end{itemize}
 
 
 \section{Conventions}
-
-- All terms that refer to variables / concepts / etc that exist within the language verbatim will 
-  be displayed in italics. For example, the keyword \textit{foreach} shall be displayed as such 
-  throughout the document.
+\begin{itemize}
+  \item All terms that refer to variables / concepts / etc that exist within the language verbatim will 
+  be displayed in italics. For example, the keyword \textit{foreach()} shall be displayed as such 
+  throughout the document. Keywords that follow function call syntax will include the parentheses with 
+  no arguments.
   
-- Each syntactic concept shall have included with it its formal grammars. Within this specification 
+  \item Each syntactic concept shall have included with it its formal grammars. Within this specification 
   Wirth Syntax Notation (WSN) will be used for simplicity.
 
+  \item Each introduced language concept should have included with it a small snippet of outline its usage. This 
+  may or may not include a \textit{print} evaluation.
 
+  \lstinputlisting[language=Matte,firstnumber=1]{conventions.mt}
+
+\end{itemize}
 \section{Terminology}
 
-- Compiler: The environment in which Matte source is interpreted. This may be a program in which Matte is running, part of a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to interpret Matte source correctly and consistently.
+\begin{itemize}
+\item \textbf{Compiler}: The environment in which Matte source is interpreted. This may be a program in which Matte is running, part of a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to interpret Matte source correctly and consistently.
 
-- Empty: special value that represents no value. 
+\item \textbf{Empty}: special value that represents no value. 
 
-- Runtime: The environment in which Matte is running. This may be a program in which Matte is running, a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to execute Matte source correctly and consistently.
+\item \textbf{Runtime}: The environment in which Matte is running. This may be a program in which Matte is running, a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to execute Matte source correctly and consistently.
 
-- Variable: Points to a value.
+\item \textbf{Variable}: Points to a value.
 
-- Value: a datum of a certain type.
-
+\item \textbf{Value}: a datum of a certain type.
+\end{itemize}
 
 \section{Concepts}
 \chapter{Variables}
@@ -111,15 +162,35 @@ variable.
 \section{Mutable}
 
 Within any function, mutable variables may be declared with a declaration statement.
+Mutable variables can point to different values over its lifetime by reassignment.
 
     <mutable-declaration> ::= "@" <variable-identifier> <statement-end> | "@" <variable-identifier> "=" <expression> <statement-end> 
 
     <variable-identifier> ::= <any-letter-or-underscore> <variable-identifier>
         
 
-Mutable variables can point to different values over its lifetime by reassignment.
+\lstinputlisting[language=Matte,firstnumber=1]{mutable.mt}
+
 
 \section{Immutable}
+Within any function, immutable variables may be declared with a declaration statement.
+Immutable variables can only point to a single value throughout its lifetime. This does not, however,
+imply that immutable variables are constant in their values. 
+
+For the following types, immutable variables are constant values:
+\begin{itemize}
+  \item Number 
+  \item String 
+  \item Type
+  \item Boolean
+  \item Empty 
+\end{itemize}
+
+For the following types, immutable variables may compute to different values depending on the attributes of the values involved.
+
+\lstinputlisting[language=Matte,firstnumber=1]{immutable.mt}
+
+
 \section{Garbage Collection}
 \section{Types}
 \subsection{Empty}
@@ -130,10 +201,11 @@ Mutable variables can point to different values over its lifetime by reassignmen
 \subsubsection{Storage Semantics}
 \subsubsection{Access Methods}
 \subsubsection{Keys and Values}    
-\subsubsection{Generic Operator Overloading}    
-\subsubsection{Access Overloading}
-\subsubsection{Implicit Type Conversion}
-\subsubsection{Preservation}
+\subsubsection{Attributes}
+\subsubsubsection{Generic Operator Overloading}    
+\subsubsubsection{Access Overloading}
+\subsubsubsection{Implicit Type Conversion}
+\subsubsubsection{Object Preservation}
 \subsection{Type}            
 \subsubsection{Explicit Conversion}
 \subsubsection{Creating Types}

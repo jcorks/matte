@@ -128,7 +128,7 @@ typedef struct {
     matteValue_t keyvalue_false;
     matteTable_t * keyvalues_types;
 
-    matteValue_t opSet;
+    matteValue_t attribSet;
 
     // has only keyvalues_number members
     int isArrayLike;
@@ -482,8 +482,8 @@ static matteValue_t * object_put_prop(matteObject_t * m, matteValue_t key, matte
 // returns a type conversion operator if it exists
 static matteValue_t object_get_conv_operator(matteHeap_t * heap, matteObject_t * m, uint32_t type) {
     matteValue_t out = matte_heap_new_value(heap);
-    if (m->opSet.binID == 0) return out;
-    matteValue_t * operator = &m->opSet;
+    if (m->attribSet.binID == 0) return out;
+    matteValue_t * operator = &m->attribSet;
 
     matteValue_t key;
     key.heap = heap;
@@ -498,11 +498,11 @@ static matteValue_t object_get_conv_operator(matteHeap_t * heap, matteObject_t *
 // read if either 0 (write) or 1(read)
 static matteValue_t object_get_access_operator(matteHeap_t * heap, matteObject_t * m, int isBracket, int read) {
     matteValue_t out = matte_heap_new_value(heap);
-    if (m->opSet.binID == 0) return out;
+    if (m->attribSet.binID == 0) return out;
 
 
     
-    matteValue_t set = matte_value_object_access(m->opSet, isBracket ? heap->specialString_bracketAccess : heap->specialString_dotAccess, 0);
+    matteValue_t set = matte_value_object_access(m->attribSet, isBracket ? heap->specialString_bracketAccess : heap->specialString_dotAccess, 0);
     if (set.binID) {
         if (set.binID != MATTE_VALUE_TYPE_OBJECT) {
             matte_vm_raise_error_string(heap->vm, MATTE_STR_CAST("operator['[]'] and operator['.'] property must be an Object if it is set."));
@@ -1883,8 +1883,8 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
 
     // foreach operator
-    if (m->opSet.binID) {
-        matteValue_t set = matte_value_object_access_string(m->opSet, MATTE_STR_CAST("foreach"));
+    if (m->attribSet.binID) {
+        matteValue_t set = matte_value_object_access_string(m->attribSet, MATTE_STR_CAST("foreach"));
 
         if (set.binID) {
             v = matte_vm_call(v.heap->vm, set, matte_array_empty(), MATTE_STR_CAST("'foreach' operator"));
@@ -2047,34 +2047,34 @@ matteValue_t matte_value_object_array_to_string_unsafe(matteValue_t v) {
 }
 
 
-void matte_value_object_set_operator(matteValue_t v, matteValue_t opObject) {
+void matte_value_object_set_attributes(matteValue_t v, matteValue_t opObject) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot assign operator set to something that isnt an object."));
+        matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot assign attributes set to something that isnt an object."));
         return;
     }
     
     if (opObject.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot assign operator set that isn't an object."));
+        matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot assign attributes set that isn't an object."));
         return;
     }
     
     if (opObject.objectID == v.objectID) {
-        matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot assign operator set as its own object."));
+        matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("Cannot assign attributes set as its own object."));
         return;    
     }
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
-    if (m->opSet.objectID == opObject.objectID) return;
-    if (m->opSet.binID) {
-        object_unlink_parent_value(m, &m->opSet);
-        matte_heap_recycle(m->opSet);
+    if (m->attribSet.objectID == opObject.objectID) return;
+    if (m->attribSet.binID) {
+        object_unlink_parent_value(m, &m->attribSet);
+        matte_heap_recycle(m->attribSet);
     }
-    matte_value_into_copy(&m->opSet, opObject);
-    object_link_parent_value(m, &m->opSet);
+    matte_value_into_copy(&m->attribSet, opObject);
+    object_link_parent_value(m, &m->attribSet);
 }
 
-const matteValue_t * matte_value_object_get_operator_unsafe(matteValue_t v) {
+const matteValue_t * matte_value_object_get_attributes_unsafe(matteValue_t v) {
     matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
-    if (m->opSet.binID) return &m->opSet;
+    if (m->attribSet.binID) return &m->attribSet;
     return NULL;
 }
 
@@ -2366,8 +2366,8 @@ static int matte_object_mark_unreachable_ref_path_root(matteHeap_t * h, matteObj
         // Until then the preserver is called any time the garbage collector would 
         // cleanup the object. This count can change between versions and implementations,
         // as its not defined by the language when this will happen.
-        if (current->opSet.binID) {
-            matteValue_t preserver = matte_value_object_access(current->opSet, h->specialString_preserver, 0);        
+        if (current->attribSet.binID) {
+            matteValue_t preserver = matte_value_object_access(current->attribSet, h->specialString_preserver, 0);        
 
             if (preserver.binID) {
                 // you'll want to mark here, as the preserver can add/remove 
@@ -2381,7 +2381,7 @@ static int matte_object_mark_unreachable_ref_path_root(matteHeap_t * h, matteObj
 
 
                 matte_heap_recycle(preserver);
-                matte_value_object_remove_key(current->opSet, h->specialString_preserver);
+                matte_value_object_remove_key(current->attribSet, h->specialString_preserver);
                 matte_heap_recycle(v);
 
                 // mark for recycle check next cycle
@@ -2595,9 +2595,9 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
 
 
         
-        if (m->opSet.binID) {
-            matte_heap_recycle(m->opSet);
-            m->opSet.binID = 0;
+        if (m->attribSet.binID) {
+            matte_heap_recycle(m->attribSet);
+            m->attribSet.binID = 0;
         }
 
 

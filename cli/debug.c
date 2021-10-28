@@ -162,7 +162,7 @@ static int execCommand() {
             printf("Remove all breakpoints? (Y/n)\n");
             char * res = prompt();
             if (res[0] == 'Y') { 
-                matte_array_clear(breakpoints);
+                matte_array_set_size(breakpoints, 0);
                 printf("Breakpoints cleared.\n");
             }
         } else {

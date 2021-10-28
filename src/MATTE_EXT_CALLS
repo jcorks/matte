@@ -122,37 +122,37 @@ static matteValue_t vm_ext_call__remove_key(matteVM_t * vm, matteValue_t fn, mat
     return matte_heap_new_value(vm->heap);
 }
 
-static matteValue_t vm_ext_call__set_operator(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__set_attributes(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'setOperator' requires first argument to be an Object."));
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'setAttributes' requires first argument to be an Object."));
         return matte_heap_new_value(vm->heap);
     }
 
     matteValue_t b = matte_array_at(args, matteValue_t, 1);
     if (b.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'setOperator' requires second argument to be an Object."));
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'setAttributes' requires second argument to be an Object."));
         return matte_heap_new_value(vm->heap);
     }
 
-    matte_value_object_set_operator(
+    matte_value_object_set_attributes(
         a,
         b
     );
     return matte_heap_new_value(vm->heap);
 }
 
-static matteValue_t vm_ext_call__get_operator(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__get_attributes(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("setOperator requires first argument to be an object."));
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'getAttributes' requires first argument to be an object."));
         return matte_heap_new_value(vm->heap);
     }
 
 
     matteValue_t out = matte_heap_new_value(vm->heap);
 
-    const matteValue_t * op = matte_value_object_get_operator_unsafe(a);
+    const matteValue_t * op = matte_value_object_get_attributes_unsafe(a);
     if (op)
         matte_value_into_copy(&out, *op);
 

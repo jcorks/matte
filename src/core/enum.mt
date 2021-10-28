@@ -13,7 +13,7 @@
         
 
         
-        setOperator(val, {
+        setAttributes(val, {
             // throw an error if comparing against other non-enum types
             '==' :: (other => enumtype) {
                 return numHint == other.numHint;

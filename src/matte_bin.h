@@ -94,14 +94,6 @@ void matte_bin_recycle(
 
 
 
-/// Returns an array of void * containing all 
-/// objects within the bin. Its a new array and must be destroyed by 
-/// the user.
-///
-matteArray_t * matte_bin_get_all(
-    /// The bin to query.
-    const matteBin_t * bin
-);
 
 
 #endif

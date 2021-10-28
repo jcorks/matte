@@ -674,7 +674,7 @@ These features are still considered core parts of the language, but they take in
 Any object has the potential to react with special behavior to a number of operators. By default, 
 using most operators when the object has not specified now to react to them will throw an error.
 
-Using the <i>setOperator</i> built-in function, reaction to these operators can be 
+Using the <i>setAttributes</i> built-in function, reaction to these operators can be 
 specified.
 
 <pre>
@@ -686,10 +686,10 @@ specified.
     special << 'a';
 
 
-    // setOperator takes the object to modify 
-    // and an operator object, keyed with strings of the 
+    // setAttributes takes the object to modify 
+    // and an attronites object, keyed with strings of the 
     // operator to specify overloading with.
-    setOperator(special, {
+    setAttributes(special, {
         '<<' ::(other) {
             special.data = special.data + other;
         }
@@ -704,8 +704,8 @@ specified.
 
 </pre>
 
-<i>setOperator</i> will overwrite the previous operator object if it is different. To retrieve the existing 
-operator object, <i>getOperator</i> can be called.
+<i>setAttributes</i> will overwrite the previous operator object if it is different. To retrieve the existing 
+operator object, <i>getAttributes</i> can be called.
 
 Here are the list of built-in operators that can be overloaded:
 <ul>
@@ -740,9 +740,9 @@ Here are the list of built-in operators that can be overloaded:
 
 
 <br>
-<h3> 9.2 Special Operators </h3>
+<h3> 9.2 Special Attributes </h3>
 
-There exist a few special operators that are able to be overloaded using <i>setOperator</i> that behave differently than the usual operators:
+Along with typical operator overloading, there exist a few special features that are able to be overloaded using <i>setAttributes</i> that behave differently than the usual operators:
 <ul>
     <li><b>Foreach Operator</b> ('foreach')</li>
     When <i>foreach</i> is called with the object, instead of going through all keys and values of the object as a table, the <i>foreach</i> operator implementation can return a new object whose keys / values will be used instead. This is very handy for objects with complicated public interfaces.
@@ -766,7 +766,7 @@ There exist a few special operators that are able to be overloaded using <i>setO
         internalData2 : 100
     };
 
-    setOperator(
+    setAttributes(
         secret, 
         {
             '[]' : {
@@ -822,7 +822,7 @@ There exist a few special operators that are able to be overloaded using <i>setO
 <br>
 <h3> 9.3 Type Conversion</h3>
 
-Within the operator object given as the argument for <i>setOperator</i>, the object can also contain functions key'd with 
+Within the attributes object given as the argument for <i>setAttributes</i>, the object can also contain functions key'd with 
 Type values to specify how the object should convert to another type. Typically, conversion to/from objects throws an error, as 
 it is not defined how objects can be converted to other types by default.
 
@@ -832,7 +832,7 @@ it is not defined how objects can be converted to other types by default.
         asString : 'Forty-two'
     };
 
-    setOperator(
+    setAttributes(
         cool,
         {
             (String) :: {
