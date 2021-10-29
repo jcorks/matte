@@ -5,7 +5,7 @@
 
 \definecolor{bgcol}{rgb}{0.43, 0.5, 0.5}
 
-
+\newcommand{\noteline}{\noindent\textbf{Note}\\\noindent\rule{5cm}{0.4pt}\\}
 \definecolor{keyword2}{rgb}{1.0, 0.13, 0.32}
 \definecolor{keyword3}{rgb}{0.3, 0.7, 0.2}
 \definecolor{stringcol}{rgb}{0.6, 0.47, 0.48}
@@ -16,7 +16,7 @@
 
 \lstdefinelanguage{Matte}
 {
-  otherkeywords = {:,::<=,@,<@>,=>,;},
+  otherkeywords = {:,::<=,@,=>,;},
   keywords = [3]{::, ::<=, @, =>, ;},
   keywords = [1]{listen, send, for, foreach, if, when, loop, import, error, return},
   keywords = [2]{introspect, removeKey, setAttributes, getAttributes, print, getExternalFunction, newtype, instantiate, empty},
@@ -46,6 +46,12 @@
     linkcolor=black,
     urlcolor=black
 }
+
+%
+% Made with love <3
+%
+
+
 \author{Johnathan Corkery}
 \title{Matte Language Specification\\
 \small Version 1.0 Draft
@@ -129,20 +135,32 @@ This document does not:
   \item Each syntactic concept shall have included with it its formal grammars. Within this specification 
   Wirth Syntax Notation (WSN) will be used for simplicity.
 
-  \item Each introduced language concept should have included with it a small snippet of outline its usage. This 
+  \item Each introduced language concept shall have included with it a small snippet of outline its usage. This 
   may or may not include a \textit{print} evaluation.
 
   \lstinputlisting[language=Matte,firstnumber=1]{conventions.mt}
+
+  \item With certain concepts, "notes" may be left to further explain or inform about a particular topic. notes are 
+        not necessary information, but are for further context and knowledge meant to help elucidate the 
+        intent of certain features. When used they will be of the following format:\\\\
+  \noteline
+  \textit{This is how notes will appear when used.}
 
 \end{itemize}
 \section{Terminology}
 
 \begin{itemize}
+
+\item \textbf{Callstack}: The runtime's collection of active stackframes.
+
 \item \textbf{Compiler}: The environment in which Matte source is interpreted. This may be a program in which Matte is running, part of a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to interpret Matte source correctly and consistently.
 
 \item \textbf{Empty}: special value that represents no value. 
 
 \item \textbf{Runtime}: The environment in which Matte is running. This may be a program in which Matte is running, a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to execute Matte source correctly and consistently.
+
+\item \textbf{Stackframe}: When a function is called, it is said to reside within a stackframe. A stackframe is said to "activate" when a function is called, and is said to "resolve" when a function call has completed. As a function runs, an additional stackframe may be activated, causing multiple functions to be active within the callstack. Due to the design of Matte reslying heavily on function calls, this will happen often.
+
 
 \item \textbf{Variable}: Points to a value.
 
@@ -157,27 +175,23 @@ A variable may live past its original scope lifetime (\autoref{sec:Lexical Scopi
 
 A variable may either be mutable or immutable. Variable values have types of their own, but 
 types are determined by the values and expressions that produce them rather than by the 
-variable.
+variable. When referred to, mutable variables are referred to as "mutables", and immutable variables as "immutables".
 
-\section{Mutable}
+\section{Mutables}
 
-Within any function, mutable variables may be declared with a declaration statement.
-Mutable variables can point to different values over its lifetime by reassignment.
-
-    <mutable-declaration> ::= "@" <variable-identifier> <statement-end> | "@" <variable-identifier> "=" <expression> <statement-end> 
-
-    <variable-identifier> ::= <any-letter-or-underscore> <variable-identifier>
-        
+Within any function, mutables may be declared with a declaration statement.
+Mutables can point to different values over its lifetime by reassignment.
+    
 
 \lstinputlisting[language=Matte,firstnumber=1]{mutable.mt}
 
 
-\section{Immutable}
-Within any function, immutable variables may be declared with a declaration statement.
-Immutable variables can only point to a single value throughout its lifetime. This does not, however,
-imply that immutable variables are constant in their values. 
+\section{Immutables}
+Within any function, immutables may be declared with a declaration statement.
+Immutables can only point to a single value throughout its lifetime. This does not, however,
+imply that immutables are constant in their values. 
 
-For the following types, immutable variables are constant values:
+For the following types, immutables are constant values:
 \begin{itemize}
   \item Number 
   \item String 
@@ -187,25 +201,92 @@ For the following types, immutable variables are constant values:
 \end{itemize}
 
 For the following types, immutable variables may compute to different values depending on the attributes of the values involved.
+\begin{itemize}
+  \item Object 
+  \item Function  
+\end{itemize}
 
 \lstinputlisting[language=Matte,firstnumber=1]{immutable.mt}
 
 
-\section{Garbage Collection}
-\section{Types}
-\subsection{Empty}
-\subsection{Boolean}
-\subsection{Number}
-\subsection{String}
-\subsection{Object}
-\subsubsection{Storage Semantics}
-\subsubsection{Access Methods}
-\subsubsection{Keys and Values}    
-\subsubsection{Attributes}
-\subsubsubsection{Generic Operator Overloading}    
-\subsubsubsection{Access Overloading}
-\subsubsubsection{Implicit Type Conversion}
-\subsubsubsection{Object Preservation}
+\noteline
+\textit{
+The reason that these types may compute to different values is due to the fact that operators may invoke user-made callbacks that 
+alter how the object may be casted as a different type. While the immutable variable will always point to 
+the same object, how this object is expressed may change depending on the context
+}
+
+
+
+
+\section{Empty}
+\section{Boolean}
+\section{Number}
+\section{String}
+\section{Object}
+\subsection{Keys and Values}  
+
+All objects have the potential to be used as storage tables, where objects may associate 
+value "keys" with other values. Depending on the type of key, objects may store these values 
+with slightly varied rules. 
+
+It is safe to assume that keys of types not mentioned in this list work "losslessly". That is, 
+each key uniquely references a value that can be accessed consistently as long as the 
+key is equivalent to the first key.
+
+\begin{itemize}
+  \item Numbers as stored as keys with a number of caveats. Storage is 
+  done using ONLY their integer parts. Reading from an object using negative numbers will yield an \textit{empty} 
+  value. Reading using numbers that above the currently highest-stored integer key will yield an 
+  \textit{empty} value. Writing a value
+\end{itemize}
+
+
+\subsection{Access Methods}
+  
+\subsection{Attributes}
+\subsubsection{Generic Operator Overloading}    
+\subsubsection{Access Overloading}
+\subsubsection{Implicit Type Conversion}
+\subsubsection{Object Preservation}
+
+When a value is in use within a function context, is stored within an object that is itself 
+reachable, has special reachable status by the runtime,
+or is within a stackframe that has yet to be resolved, a value is said to be active. 
+When this is no longer the case, the runtime may decide to clean up a value, releasing it back 
+to the runtime's available resources. Because values that aren't objects are constant, this 
+does not affect Matte's operation. However, for object values, this does affect their usage.
+
+The runtime may or may not decide to cleanup the object and remove it during runtime ONLY when 
+this condition is active met. When this occurs, normally this has no bearing on a running Matte program 
+since nothing refers to it any longer. However, if the attributes of an object contain a 
+\textit{preserver} property, the lifetime of an object may be elongated.
+
+The \textit{preserver} property, if it is a function and is set to the object's attributes, 
+upon the object no longer being active, may be invoked. If the function assigns the inactive object 
+to another, reachable object, the object will be considered active once more, and the removal 
+of the object by the runtime will be delayed.
+
+After the calling of the \textit{preserver} property, the property will be removed from the 
+attributes object. This means that a preserver will only run once per setting. (However: after this removal, another 
+\textit{preserver} (or the same one) may be set to the attributes object for the next time 
+the object is considered inactive).
+
+The Matte language does not guarantee any timings or events for when the preserver may be invoked other 
+then: 
+
+\begin{itemize}
+  \item The preserver can only be invoked when the object is no longer considered active under the criteria listed above.
+  \item The preserver of any object that is active must have its preserver called upon the termination of the runtime with sucessful completion of a Matte program. In this case, the lifetime of the object is not guaranteed since the activeness of the runtime is not defined after a Matte program finishes.
+  \item The preserver of any object is not guaranteed to run if the runtime encounters an unhandled \textit{error()}.
+\end{itemize}
+
+
+\lstinputlisting[language=Matte,firstnumber=1]{preserver.mt}
+
+
+
+
 \subsection{Type}            
 \subsubsection{Explicit Conversion}
 \subsubsection{Creating Types}
