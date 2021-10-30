@@ -80,7 +80,7 @@
                     _directoryEnumerate();
                     <@>ct = _directoryObjectCount();
                     <@>files = Array.new();
-                    files.setSize(ct);
+                    files.length = ct;
                     for([0, ct], ::(i){
                         files[i] = {
                             name : _directoryObjectName(i),

@@ -25,8 +25,8 @@
                 
                 set ::(newV) {
                     len = newV;
-                    @o = data[len];
-                    data[len] = o;
+                    @o = data[len-1];
+                    data[len-1] = o;
                 }
             },
 
@@ -37,6 +37,12 @@
             push :: (nm) {
                 data[len] = nm;
                 len = len + 1;
+            },
+            
+            pop :: {
+                when(len == 0) empty;
+                removeKey(data, len-1);
+                len -= 1;
             },
 
             // Function, 1 argument.

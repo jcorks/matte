@@ -266,6 +266,10 @@ MATTE_EXT_FN(matte_cli__system_exit) {
 #ifdef _POSIX_SOURCE
 #include <unistd.h>
 #include <sys/time.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 MATTE_EXT_FN(matte_cli__system_sleepms) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     if (matte_array_get_size(args) < 1) {
@@ -327,6 +331,160 @@ MATTE_EXT_FN(matte_cli__system_getticks) {
     return v;
 }
 
+static matteArray_t * dirfiles = NULL;
+
+typedef struct {
+    char * name;
+    char * path;
+    int isFile;
+} DirectoryInfo;
+
+MATTE_EXT_FN(matte_cli__system_directoryenumerate) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+
+
+    if (!dirfiles) {
+        dirfiles = matte_array_create(sizeof(DirectoryInfo));
+    } else {
+        uint32_t i;
+        uint32_t len = matte_array_get_size(dirfiles);
+        for(i = 0; i < len; ++i) {
+            DirectoryInfo * d = &matte_array_at(dirfiles, DirectoryInfo, i);
+            free(d->path);
+            free(d->name);
+        }
+        
+        matte_array_set_size(dirfiles, 0);
+    }
+
+
+
+    const int MAXLEN = 32768;
+    char * cwd = malloc(MAXLEN);
+    cwd = getcwd(cwd, MAXLEN-1);
+    uint32_t len = strlen(cwd);
+
+    struct stat sinfo;
+    DIR * d = opendir(".");
+    if (d) {
+        struct dirent * dent;
+        while ((dent = readdir(d))) {
+            if (!strcmp(dent->d_name, ".") ||
+                !strcmp(dent->d_name, "..")) continue;
+            DirectoryInfo info;
+            info.name = strdup(dent->d_name);
+            cwd[len] = 0;
+            strcat(cwd, "/");
+            strcat(cwd, info.name);
+            info.path = strdup(cwd);
+            info.isFile = 0;
+            if (!stat(info.path, &sinfo)) {
+                info.isFile = S_ISREG(sinfo.st_mode);
+            }
+            matte_array_push(dirfiles, info);
+        }
+        closedir(d);
+    }
+    
+
+    return matte_heap_new_value(heap);
+}
+
+MATTE_EXT_FN(matte_cli__system_directoryobjectcount) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteValue_t v = matte_heap_new_value(heap);
+    if (dirfiles) {
+        matte_value_into_number(
+            &v,
+            matte_array_get_size(dirfiles)
+        );
+    }
+    return v;
+}
+
+
+MATTE_EXT_FN(matte_cli__system_directoryobjectname) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    uint32_t index = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
+
+    matteValue_t v = matte_heap_new_value(heap);    
+    if (matte_vm_pending_message(vm)) return v;
+
+    if (dirfiles && (index < matte_array_get_size(dirfiles))) {
+        matteString_t * str = matte_string_create_from_c_str(
+            matte_array_at(
+                dirfiles, 
+                DirectoryInfo,
+                index
+            ).name
+        );
+        matte_value_into_string(
+            &v,
+            str
+        );
+        
+        matte_string_destroy(str);
+    }
+    return v;
+}
+
+
+MATTE_EXT_FN(matte_cli__system_directoryobjectpath) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    uint32_t index = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
+
+    matteValue_t v = matte_heap_new_value(heap);    
+    if (matte_vm_pending_message(vm)) return v;
+
+    if (dirfiles && (index < matte_array_get_size(dirfiles))) {
+        matteString_t * str = matte_string_create_from_c_str(
+            matte_array_at(
+                dirfiles, 
+                DirectoryInfo,
+                index
+            ).path
+        );
+        matte_value_into_string(
+            &v,
+            str
+        );
+        
+        matte_string_destroy(str);
+    }
+    return v;
+}
+
+
+MATTE_EXT_FN(matte_cli__system_directoryobjectisfile) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    uint32_t index = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
+
+    matteValue_t v = matte_heap_new_value(heap);    
+    if (matte_vm_pending_message(vm)) return v;
+
+    if (dirfiles && (index < matte_array_get_size(dirfiles))) {
+        matte_value_into_boolean(
+            &v,
+            matte_array_at(
+                dirfiles, 
+                DirectoryInfo,
+                index
+            ).isFile
+        );
+    }
+    return v;
+}
+
+
+
+
+
+
+
+
+
+
+
 #elif _WIN32
 
 #endif
@@ -366,11 +524,11 @@ void matte_vm_add_system_symbols(matteVM_t * vm) {
 
 
 
-    /*
+    
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_directoryenumerate"),    0, matte_cli__system_directoryenumerate, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_directoryobjectcount"),    0, matte_cli__system_directoryobjectcount, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_directoryobjectname"),    1, matte_cli__system_directoryobjectname, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_directoryobjectpath"),    1, matte_cli__system_directoryobjectpath, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_directoryobjectisfile"),    1, matte_cli__system_directoryobjectisfile, NULL);
-    */
+    
 }

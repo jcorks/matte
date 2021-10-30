@@ -145,6 +145,7 @@ void matte_vm_raise_error(matteVM_t *, matteValue_t);
 // raises an error string
 void matte_vm_raise_error_string(matteVM_t *, const matteString_t *);
 
+int matte_vm_pending_message(matteVM_t *);
 
 
 // Represents a stack frame within the current execution of the stub.

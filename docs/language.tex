@@ -18,8 +18,8 @@
 {
   otherkeywords = {:,::<=,@,=>,;},
   keywords = [3]{::, ::<=, @, =>, ;},
-  keywords = [1]{listen, send, for, foreach, if, when, loop, import, error, return},
-  keywords = [2]{introspect, removeKey, setAttributes, getAttributes, print, getExternalFunction, newtype, instantiate, empty},
+  keywords = [1]{listen, send, for, foreach, if, when, loop, import, error, return, empty, true, false},
+  keywords = [2]{introspect, removeKey, setAttributes, getAttributes, print, getExternalFunction, newtype, instantiate},
   keywords = [4]{Number, String, Boolean, Empty, Object, Type},
   sensitive = false,
   keywordstyle = [1]\color{keyword1},
@@ -50,20 +50,25 @@
 %
 % Made with love <3
 %
-
-
 \author{Johnathan Corkery}
 \title{Matte Language Specification\\
 \small Version 1.0 Draft
 }
+
+
+
+
+
+
+
 
 \begin{document}
 \maketitle
 \tableofcontents
 
 
-\chapter{Introduction}
-\section{Background}  
+\chapter{Introduction}\label{Introduction}
+\section{Background}\label{Background}
 
 With the proliferation of software and availability of hardware to run it, a
 plethora of tools have been continually made and refined to meet the 
@@ -83,7 +88,7 @@ the language, Matte, was intended to have straightforward, regular, and
 relatively simple operation, allowing for better colaboration, easier 
 extension, and simple implementation and maintenance.
   
-\section{Intent}
+\section{Intent}\label{Intent}
 
 The development of Matte as a language has a number of priorities which are 
 considered as the deveopment process of the language continues:
@@ -106,10 +111,10 @@ considered as the deveopment process of the language continues:
   for Matte to be relatively simple to implement. 
 
 \item Extensibility. The language itself is kept minimal to allow for extension of its 
-  usefulness.
+  usefulness through new packages and code written in Matte and external code.
 \end{itemize}
 
-\section{Document Scope}
+\section{Document Scope}\label{Document Scope}
 
 This document intends to:
 \begin{itemize}
@@ -125,7 +130,7 @@ This document does not:
 \end{itemize}
 
 
-\section{Conventions}
+\section{Conventions}\label{Conventions}
 \begin{itemize}
   \item All terms that refer to variables / concepts / etc that exist within the language verbatim will 
   be displayed in italics. For example, the keyword \textit{foreach()} shall be displayed as such 
@@ -147,7 +152,7 @@ This document does not:
   \textit{This is how notes will appear when used.}
 
 \end{itemize}
-\section{Terminology}
+\section{Terminology}\label{Terminology}
 
 \begin{itemize}
 
@@ -167,17 +172,42 @@ This document does not:
 \item \textbf{Value}: a datum of a certain type.
 \end{itemize}
 
-\section{Concepts}
-\chapter{Variables}
+\section{Concepts}\label{Concepts}
+
+In a broad sense, this document outlines how Matte source is processed and will be 
+executed by the runtime. The source is compiled and run by the runtime serially 
+in a well-defined manner as outlined in this document. 
+
+This document specifies behaviors that must be caught by the compiler of the 
+runtime. It is also the compiler's responsibility to deny source that does not 
+follow this document.
+
+The initial source file may reference other source files (see \textit{import()}\autoref{import}) 
+and extend the program, but an initial source is always provided.
+
+In many other languages, the concept of a "global scope" exists. In Matte, 
+this concept does not exist. Every statement and expression within Matte 
+runs within a function, and as such has lexical scope (see \autoref{Lexical Scoping}).
+This includes the lines of source that are not within an explicitly-created
+function, as these statements are part of the implicit source function 
+(see \autoref{The Source Function}). Using these concepts, employing strategies 
+to preserve the maintainability, portability, and extensibility of source can 
+be much easier.
+
+
+
+
+
+\chapter{Variables}\label{Variables}
 
 Variables act as conceptual storage points for working data values. Variable must be declared before usage.
-A variable may live past its original scope lifetime (\autoref{sec:Lexical Scoping}) by being used, captured (\autoref{sec:Reference Capture}), and stored within Objects.
+A variable may live past its original scope lifetime (\autoref{Lexical Scoping}) by being used, captured (\autoref{Reference Capture}), and stored within Objects.
 
 A variable may either be mutable or immutable. Variable values have types of their own, but 
 types are determined by the values and expressions that produce them rather than by the 
 variable. When referred to, mutable variables are referred to as "mutables", and immutable variables as "immutables".
 
-\section{Mutables}
+\section{Mutables}\label{Mutables}
 
 Within any function, mutables may be declared with a declaration statement.
 Mutables can point to different values over its lifetime by reassignment.
@@ -186,7 +216,7 @@ Mutables can point to different values over its lifetime by reassignment.
 \lstinputlisting[language=Matte,firstnumber=1]{mutable.mt}
 
 
-\section{Immutables}
+\section{Immutables}\label{Immutables}
 Within any function, immutables may be declared with a declaration statement.
 Immutables can only point to a single value throughout its lifetime. This does not, however,
 imply that immutables are constant in their values. 
@@ -206,7 +236,6 @@ For the following types, immutable variables may compute to different values dep
   \item Function  
 \end{itemize}
 
-\lstinputlisting[language=Matte,firstnumber=1]{immutable.mt}
 
 
 \noteline
@@ -216,15 +245,45 @@ alter how the object may be casted as a different type. While the immutable vari
 the same object, how this object is expressed may change depending on the context
 }
 
+\lstinputlisting[language=Matte,firstnumber=1]{immutable.mt}
 
 
 
-\section{Empty}
-\section{Boolean}
-\section{Number}
-\section{String}
-\section{Object}
-\subsection{Keys and Values}  
+
+\section{Empty}\label{Empty}
+
+Values of the \textit{Empty} type are always the same special value: \textit{empty};
+\textit{empty} is used to represent undefined situations. This includes:
+
+\begin{itemize}
+  \item Variables that have not yet been assigned a value.
+  \item Missing assignments, such access object access to non-existent key-value pairs.
+\end{itemize}
+
+Use of \textit{empty} in most situations will result in a runtime error. These situations 
+are listed contextually throughout this document.
+
+\lstinputlisting[language=Matte,firstnumber=1]{empty.mt}
+
+
+\section{Boolean}\label{Boolean}
+
+Values of the \textit{Boolean} type can be either the special value \textit{true} or 
+the special value \textit{false}. Expressions may compute to Booleans, such 
+as comparisons.
+
+
+\lstinputlisting[language=Matte,firstnumber=1]{boolean.mt}
+
+
+\section{Number}\label{Number}
+
+
+
+Values
+\section{String}\label{String}
+\section{Object}\label{Object}
+\subsection{Keys and Values}\label{Keys and Values}
 
 All objects have the potential to be used as storage tables, where objects may associate 
 value "keys" with other values. Depending on the type of key, objects may store these values 
@@ -242,13 +301,13 @@ key is equivalent to the first key.
 \end{itemize}
 
 
-\subsection{Access Methods}
+\subsection{Access Methods}\label{Access Methods}
   
-\subsection{Attributes}
-\subsubsection{Generic Operator Overloading}    
-\subsubsection{Access Overloading}
-\subsubsection{Implicit Type Conversion}
-\subsubsection{Object Preservation}
+\subsection{Attributes}\label{Attributes}
+\subsubsection{Operator Overloading}\label{Operator Overloading}
+\subsubsection{Access Overloading}\label{Access Overloading}
+\subsubsection{Type Conversion}\label{Type Conversion}
+\subsubsection{Object Preservation}\label{Object Preservation}
 
 When a value is in use within a function context, is stored within an object that is itself 
 reachable, has special reachable status by the runtime,
@@ -287,35 +346,53 @@ then:
 
 
 
-\subsection{Type}            
-\subsubsection{Explicit Conversion}
-\subsubsection{Creating Types}
-\subsubsection{Instantiation}
-\subsection{Implicit Conversion}
-\chapter{Expressions}
-\section{Operators}
-\subsection{Precedence}
-\section{Literals}
-\subsection{Strings}
-\subsection{Object}
-\subsection{List Objects}
-\chapter{Functions}
-\section{Statements}
-\section{Lexical Scoping}
-\section{Reference Capture}
-\section{Self-Refrentiability}
-\section{The Source Function}
-\section{As Expressions}
-\section{Dash Syntax}
-\section{Type-Strict Functions}
-\chapter{Flow Control}
-\section{when}
-\section{match}
-\section{loop}
-\section{for}
-\section{foreach}
-\section{if}
-\section{send/listen}
+\section{Type}\label{Type}
+\subsection{Explicit Conversion}\label{Explicit Conversion}
+\subsection{Creating Types}\label{Creating Types}
+\subsection{Instantiation}\label{Instantiation}
+\section{Implicit Conversion}\label{Implicit Conversion}
+
+In expressions, implicit conversion of a variable may take place. Implicit conversion is when 
+a value of a certain type is put in a situation where a different type is expected, but the 
+given value can logically be allowed to be expressed as a different type. When implicit 
+conversion is successful, a new value of the expected type is returned.
+
+Implicit conversion happens within:
+\begin{itemize}
+  \item Expressions(\autoref{Expressions}). As expressions are computed from left to right, the required type comes from the value to the left of the expression. All values to the right are implicitly casted to this type.
+  \item Type-Strict Functions(\autoref{Type-Strict Functions}). Type-strict functions will implicitly convert for arguments that have a type specifier and for the return value if a return type specifier is present.
+\end{itemize}
+
+For situations when an implicit conversion is not possible, an error will be thrown.
+The following behavior is expected for implicit conversions:
+
+
+
+
+\chapter{Expressions}\label{Expressions}
+\section{Operators}\label{Operators}
+\subsection{Precedence}\label{Precedence}
+\section{Literals}\label{Literals}
+\subsection{Strings}\label{Strings}
+\subsection{Object}\label{Object}
+\subsection{List Objects}\label{List Objects}
+\chapter{Functions}\label{Functions}
+\section{Statements}\label{Statements}
+\section{Lexical Scoping}\label{Lexical Scoping}
+\section{Reference Capture}\label{Reference Capture}
+\section{Self-Refrentiability}\label{Self-Refrentiability}
+\section{The Source Function}\label{The Source Function}
+\section{As Expressions}\label{As Expressions}
+\section{Dash Syntax}\label{Dash Syntax}
+\section{Type-Strict Functions}\label{Type-Strict Functions}
+\chapter{Flow Control}\label{Flow Control}
+\section{when}\label{when}
+\section{match}\label{match}
+\section{loop}\label{loop}
+\section{for}\label{for}
+\section{foreach}\label{foreach}
+\section{if}\label{if}
+\section{send/listen}\label{send/listen}
 
 The "send and listen" paradigm can serve as an alternative way to exchange information within 
 a Matte program. \textit{throw()} is a built in function that, when called, signals to the runtime
@@ -332,7 +409,7 @@ becomes the return value of this second-argument function.
 
 
 
-\subsection{error}
+\subsection{error}\label{error}
 
 Often, language use the "throw and catch" paradigm for error handling. Such can be, and is, done 
 for the Matte language using message passing. The \textit{error()} function exists for this purpose. It functions 
@@ -344,21 +421,21 @@ The format of this object is not formalized by the Matte language, except for th
 \textit{.data} property, which will always be the contents of the first argument 
 of the \textit{error()} call. Runtime implementations are 
 
-\chapter{Introspection}
-\chapter{External Interaction}
-\section{import}
-\section{getExternalFunction}
-\chapter{Built-in Modules}
-\section{Class}
-\subsection{Introduction}
-\subsection{Instantiation}
-\subsection{Interface}
-\subsection{Inhertiance}
-\subsection{Automatic Pooling}
-\section{Array}
-\section{String}
-\section{Enum}
-\section{JSON}
+\chapter{Introspection}\label{Introspection}
+\chapter{External Interaction}\label{External Interaction}
+\section{import}\label{import}
+\section{getExternalFunction}\label{getExternalFunction}
+\chapter{Built-in Modules}\label{Built-in Modules}
+\section{Class}\label{Class}
+\subsection{Introduction}\label{Introduction}
+\subsection{Instantiation}\label{Instantiation}
+\subsection{Interface}\label{Interface}
+\subsection{Inheritance}\label{Inheritance}
+\subsection{Automatic Pooling}\label{Automatic Pooling}
+\section{Array}\label{Array}
+\section{String}\label{String}
+\section{Enum}\label{Enum}
+\section{JSON}\label{JSON}
 
 
 \end{document}

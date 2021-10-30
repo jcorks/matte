@@ -1680,6 +1680,9 @@ matteValue_t matte_vm_get_external_function_as_value(
     return func;
 }
 
+int matte_vm_pending_message(matteVM_t * vm) {
+    return vm->pendingCatchable;
+}
 
 
 void matte_vm_set_debug_callback(
