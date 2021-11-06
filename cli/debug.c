@@ -314,10 +314,10 @@ static void onDebugEvent(
 
 
 
-int matte_debug(const char * input) {
+int matte_debug(const char * input, char ** argv, int argc) {
     matte_t * m = matte_create();
     vm = matte_get_vm(m);
-    matte_vm_add_system_symbols(vm);
+    matte_vm_add_system_symbols(vm, argv, argc);
     DEBUG_FILEID = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(input));
     matte_vm_set_debug_callback(vm, onDebugEvent, NULL);
     printf("Compiling %s...\n", input);

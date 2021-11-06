@@ -64,6 +64,7 @@
                 error('Cannot give a non-number type as an enum value')
         };
     };
+    ptype['type'] = enumtype;
     
     foreach(opts, ::(key, val) {
         ptype[key] = valToKey(val);
