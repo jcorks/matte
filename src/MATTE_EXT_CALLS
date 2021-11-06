@@ -183,6 +183,9 @@ static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_
 
     matteValue_t out = matte_heap_new_value(vm->heap);
     matte_value_into_new_function_ref(&out, matte_array_at(vm->extStubs, matteBytecodeStub_t *, *id));
+
+    free(id);
+    matte_table_remove(vm->externalFunctions, str);    
     return out;
 }
 static matteValue_t vm_ext_call__print(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {

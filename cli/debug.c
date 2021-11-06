@@ -313,6 +313,11 @@ static void onDebugEvent(
 }
 
 
+static void onDebugPrint(matteVM_t * vm, const matteString_t * str, void * ud) {
+    printf("%s\n", matte_string_get_c_str(str));
+}
+
+
 
 int matte_debug(const char * input) {
     matte_t * m = matte_create();
@@ -320,6 +325,7 @@ int matte_debug(const char * input) {
     matte_vm_add_system_symbols(vm);
     DEBUG_FILEID = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(input));
     matte_vm_set_debug_callback(vm, onDebugEvent, NULL);
+    matte_vm_set_print_callback(vm, onDebugPrint, NULL);
     printf("Compiling %s...\n", input);
     fflush(stdout);    
     uint32_t lenBytes;

@@ -78,7 +78,7 @@ struct matteVM_t {
     // they are placed in the table before
     matteValue_t introspectObject;
 
-    void * (*userPrint)(
+    void (*userPrint)(
         matteVM_t * vm,
         const matteString_t *,
         void * userData
@@ -1692,4 +1692,13 @@ void matte_vm_set_debug_callback(
 ) {
     vm->debug = debugCB;
     vm->debugData = data;
+}
+
+void matte_vm_set_print_callback(
+    matteVM_t * vm,
+    void(*printCB)(matteVM_t *, const matteString_t *, void *),
+    void * userData
+) {
+    vm->userPrint = printCB;
+    vm->userPrintData = userData;
 }
