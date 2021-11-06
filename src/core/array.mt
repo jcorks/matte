@@ -41,8 +41,10 @@
             
             pop :: {
                 when(len == 0) empty;
+                @out = data[len-1];
                 removeKey(data, len-1);
                 len -= 1;
+                return out;
             },
 
             // Function, 1 argument.

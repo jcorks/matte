@@ -10,26 +10,26 @@ static void show_help() {
     printf("\n\n");
     printf("options:\n\n");
 
-    printf("  [file(s)]\n");
-    printf("    - When given a list of files, Matte will run the files sequentially\n");
+    printf("  [file] [args...]\n");
+    printf("    - When given a file, Matte will run the file\n");
     printf("      by first compiling them into bytecode and then running the\n");
     printf("      bytecode in one invocation. Output from each source is printed\n");
     printf("      to stdout.\n\n");
 
-    printf("  debug [file]\n");
+    printf("  debug [file] [args...]\n");
     printf("    - When given a file, Matte will run the file in debug mode\n");
     printf("      In this mode, matte will accept gdb-style commands before\n");
     printf("      and during execution. When in this mode, type 'help' and\n");
     printf("      enter for more information.\n");
 
 
-    printf("  exec [file(s)]\n");
+    printf("  exec [files]\n");
     printf("    - When given a list of files, Matte will run the files sequentially\n");
     printf("      by assuming each file is a compiled bytecode blob.\n");
     printf("      Running a bytecode blob is done by running the root function\n");
     printf("      of the each fileID specified in the blob.\n\n");
 
-    printf("  tokenize [file(s)]\n");
+    printf("  tokenize [files]\n");
     printf("    - Assuming each file is a Matte source file, a token analysis is\n");
     printf("      run on each file and printed to stdout.\n\n");
 
@@ -131,7 +131,7 @@ int main(int argc, char ** args) {
 
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
-        matte_vm_add_system_symbols(vm);
+        matte_vm_add_system_symbols(vm, args, 0);
 
 
         matteArray_t * fileID = matte_array_create(sizeof(uint32_t));
@@ -226,46 +226,44 @@ int main(int argc, char ** args) {
         
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
-        matte_vm_add_system_symbols(vm);
+        matte_vm_add_system_symbols(vm, args+2, argc-2);
 
-        int * FILEIDS = malloc(sizeof(int)*len);
+        int FILEIDS;
 
 
         // first compile all and add them 
-        for(i = 0; i < len; ++i) {
-            FILEIDS[i] = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(args[i+1]));
-            uint32_t lenBytes;
-            uint8_t * src = dump_bytes(args[i+1], &lenBytes);
-            if (!src || !lenBytes) {
-                printf("Couldn't open source %s\n", args[i+1]);
-                exit(1);
-            }
+        FILEIDS = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(args[i+1]));
+        uint32_t lenBytes;
+        uint8_t * src = dump_bytes(args[i+1], &lenBytes);
+        if (!src || !lenBytes) {
+            printf("Couldn't open source %s\n", args[i+1]);
+            exit(1);
+        }
 
-            uint32_t outByteLen;
-            uint8_t * outBytes = matte_compiler_run(
-                src,
-                lenBytes,
-                &outByteLen,
-                onError,
-                NULL
-            );
+        uint32_t outByteLen;
+        uint8_t * outBytes = matte_compiler_run(
+            src,
+            lenBytes,
+            &outByteLen,
+            onError,
+            NULL
+        );
 
-            free(src);
-            if (!outByteLen || !outBytes) {
-                printf("Couldn't compile source %s\n", args[i+1]);
-                exit(1);
-            }
-            
+        free(src);
+        if (!outByteLen || !outBytes) {
+            printf("Couldn't compile source %s\n", args[i+1]);
+            exit(1);
+        }
+        
 
-            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(FILEIDS[i], outBytes, outByteLen);
-            free(outBytes);
-            matte_vm_add_stubs(vm, arr);
-            matte_array_destroy(arr);
-        }    
+        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(FILEIDS, outBytes, outByteLen);
+        free(outBytes);
+        matte_vm_add_stubs(vm, arr);
+        matte_array_destroy(arr);
 
         matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
         for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_vm_run_script(vm, FILEIDS[i], arr);
+            matteValue_t v = matte_vm_run_script(vm, FILEIDS, arr);
             const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(v));
             if (str && v.binID != 0) {
                 printf("> %s\n", matte_string_get_c_str(str));
@@ -277,7 +275,6 @@ int main(int argc, char ** args) {
         }
         matte_array_destroy(arr);
         matte_destroy(m);
-        free(FILEIDS);
 
         #ifdef MATTE_DEBUG__HEAP
         matte_heap_report();

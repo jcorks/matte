@@ -5,7 +5,8 @@
 #include <time.h>
 
 
-#define MATTE_EXT_FN(__T__) static matteValue_t __T__(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData)
+static matteValue_t * initialArgs;
+static uint32_t initialArgCount;
 
 MATTE_EXT_FN(matte_cli__system_print) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
@@ -19,6 +20,27 @@ MATTE_EXT_FN(matte_cli__system_print) {
     return matte_heap_new_value(heap);
 }
 
+MATTE_EXT_FN(matte_cli__system_getargcount) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteValue_t v = matte_heap_new_value(heap);
+    matte_value_into_number(&v, initialArgCount);
+    return v;
+}
+
+MATTE_EXT_FN(matte_cli__system_getarg) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    uint32_t index = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
+
+    matteValue_t v = matte_heap_new_value(heap);    
+    if (matte_vm_pending_message(vm)) return v;
+    
+    if (index < initialArgCount) {
+        matte_value_into_copy(&v, initialArgs[i]);
+    }
+    
+    matte_value_into_number(&v, initialArgCount);
+    return v;
+}
 
 
 #define GETLINE_SIZE 4096
@@ -496,7 +518,23 @@ MATTE_EXT_FN(matte_cli__system_directoryobjectisfile) {
 
 */
 
-void matte_vm_add_system_symbols(matteVM_t * vm) {
+void matte_vm_add_system_symbols(matteVM_t * vm, char ** args, int argc) {
+    initialArgCount = argc;
+    initialArgs = calloc(argc, sizeof(matteValue_t));
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    uint32_t i;
+    for(i = 0; i < initialArgCount; ++i) {
+        matteString_t * str = matte_string_create_from_c_str(args[i]);
+        initialArgs[i] = matte_heap_new_value(vm);
+        matte_value_into_string(initialArgs+i, str);
+        matte_string_destroy(str);
+    }
+
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_getargcount"),   0, matte_cli__system_getargcount,   NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_getarg"), 1, matte_cli__system_getarg, NULL);
+
+
+
     // stdlib only (system agnostic)
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_print"),   1, matte_cli__system_print,   NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_getline"), 0, matte_cli__system_getline, NULL);

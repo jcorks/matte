@@ -1,12 +1,18 @@
 @MatteString = import("Matte.String");
 @Class = import("Matte.Class");
 @Array = import("Matte.Array");
-//@JSON = import("Matte.JSON");
+@enum  = import("Matte.Enum");
+
+
+
 
 // Contains CLI-only (non-standard) extensions to work 
 // with Matte as a shell language.
 @System = Class({
+    name : "System",
     define::(this, args, classinst) {
+        @_getargcount = getExternalFunction("system_getargcount");
+        @_getarg = getExternalFunction("system_getarg");
         @_print = getExternalFunction("system_print");
 
         @_getcwd = getExternalFunction("system_getcwd");
@@ -30,6 +36,19 @@
         @initTime = _getTicks();
         
         this.interface({
+            ////// external args 
+            args : {
+                get ::{
+                    @out = Array.new();
+                    @ct = _getargcount();
+                    out.length = ct;
+                    for([0, ct], ::(i) {
+                        out[i] = _getarg(i);
+                    });
+                    return out;
+                }
+            }
+
             ////// IO
             
             println ::(a => String) {
