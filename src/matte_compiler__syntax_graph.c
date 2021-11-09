@@ -132,6 +132,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_TYPESTRING, MATTE_STR_CAST("String Type object"),
         MATTE_TOKEN_EXTERNAL_TYPEOBJECT, MATTE_STR_CAST("Object Type object"),
         MATTE_TOKEN_EXTERNAL_TYPETYPE, MATTE_STR_CAST("Type Type object"),
+        MATTE_TOKEN_EXTERNAL_TYPEFUNCTION, MATTE_STR_CAST("Function Type object"),
 
 
         MATTE_TOKEN_EXTERNAL_TYPE, MATTE_STR_CAST("Type creator built-in"),
@@ -529,6 +530,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_TYPESTRING,
             MATTE_TOKEN_EXTERNAL_TYPEOBJECT,
             MATTE_TOKEN_EXTERNAL_TYPETYPE,
+            MATTE_TOKEN_EXTERNAL_TYPEFUNCTION,
             MATTE_TOKEN_EXTERNAL_INTROSPECT,
             MATTE_TOKEN_EXTERNAL_TYPE,
             MATTE_TOKEN_EXTERNAL_INSTANTIATE,

@@ -844,7 +844,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Type");
         break;
       }
-
+      case MATTE_TOKEN_EXTERNAL_TYPEFUNCTION: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Function");
+        break;
+      }
 
 
       case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
@@ -2585,8 +2588,13 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       } 
-      case MATTE_TOKEN_EXTERNAL_TYPETYPE: {
+      case MATTE_TOKEN_EXTERNAL_TYPEFUNCTION: {
         write_instruction__pto(inst, iter->line, 5);
+        *src = iter->next;
+        return inst;
+      } 
+      case MATTE_TOKEN_EXTERNAL_TYPETYPE: {
+        write_instruction__pto(inst, iter->line, 6);
         *src = iter->next;
         return inst;
       } 

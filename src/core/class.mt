@@ -155,9 +155,9 @@
         out.interface = ::(obj){
             <@> keys = introspect.keys(obj);
             foreach(obj, ::(key, v) {
-                when(introspect.type(v) != Object)::<={
-                    error("Class interfaces can only have getters/setters and methods. (has type: " + introspect.type(v) + ")");
-                };
+                //when(introspect.type(v) != Object && introspect.type(v) != Function)::<={
+                //    error("Class interfaces can only have getters/setters and methods. (has type: " + introspect.type(v) + ")");
+                //};
                 
                 if(introspect.isCallable(v))::{
                     funcs[key] = v;

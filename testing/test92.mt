@@ -6,51 +6,51 @@
 // implementations since the language does not 
 // currently specify when garbage collection 
 // occurs
-@makePreservable = ::{
-    @mp = context;
-    @res = mp.reserved;
-    
-    if (!Boolean(res)) ::<={
-        mp.reserved = [];
-        mp.resCount = 0;
-        mp.resID = 0;
-        mp.reviveCount = 0;
-        res = mp.reserved;
-    };
-    
-    
-    when(mp.resCount != 0) ::<={
-        @o = res[mp.resCount-1];
-        removeKey(res, mp.resCount-1);
-        mp.resCount-=1;
-        mp.reviveCount += 1;
+@resID = 0;
+@reviveCount = 0;
 
-        @ops = getAttributes(o);
-        ops.preserver = ::{
-            mp.reserved[mp.resCount] = o;
-            mp.resCount+=1;        
+@makePreservable = ::<={
+    @reserved = [];
+    @resCount = 0;
+    
+    
+    return ::{
+        @res = reserved;
+        
+        
+        when(resCount != 0) ::<={
+            @o = res[resCount-1];
+            removeKey(res, resCount-1);
+            resCount-=1;
+            reviveCount += 1;
+
+            @ops = getAttributes(o);
+            ops.preserver = ::{
+                reserved[resCount] = o;
+                resCount+=1;        
+            };
+            setAttributes(o, ops);        
+            return o;
         };
-        setAttributes(o, ops);        
-        return o;
+        
+        
+        
+        
+        
+        @out = {
+            resID : resID
+        };
+        
+        resID = resID + 1;
+        
+        setAttributes(out, {
+            preserver :: {
+                reserved[resCount] = out;
+                resCount+=1;
+            }
+        });
+        return out;
     };
-    
-    
-    
-    
-    
-    @out = {
-        resID : mp.resID
-    };
-    
-    mp.resID = mp.resID + 1;
-    
-    setAttributes(out, {
-        preserver :: {
-            mp.reserved[mp.resCount] = out;
-            mp.resCount+=1;
-        }
-    });
-    return out;
 };
 
 
@@ -67,7 +67,7 @@
 };
 
 
-return ''+makePreservable.reviveCount+makePreservable.resID;
+return ''+reviveCount+resID;
 
 
 

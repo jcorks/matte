@@ -20,7 +20,7 @@ static matteValue_t vm_ext_call__loop(matteVM_t * vm, matteValue_t fn, matteArra
 static matteValue_t vm_ext_call__for(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t v = matte_array_at(args, matteValue_t, 1);
     if (!matte_value_is_callable(v)) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'for' requires the second argument to be a function."));
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'for' requires the second argument to be a Function."));
         return matte_heap_new_value(vm->heap);
     }
 

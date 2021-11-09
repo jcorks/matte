@@ -217,17 +217,17 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_OR:         return vm_operator__or          (vm, a, b);
       case MATTE_OPERATOR_BITWISE_AND:return vm_operator__bitwise_and (vm, a, b);
       case MATTE_OPERATOR_AND:        return vm_operator__and         (vm, a, b);
-      case MATTE_OPERATOR_SHIFT_LEFT: return vm_operator__shift_left  (vm, a, b);
-      case MATTE_OPERATOR_SHIFT_RIGHT:return vm_operator__shift_right (vm, a, b);
+      case MATTE_OPERATOR_SHIFT_LEFT: return vm_operator__overload_only_2(vm, "<<", a, b);
+      case MATTE_OPERATOR_SHIFT_RIGHT:return vm_operator__overload_only_2(vm, ">>", a, b);
       case MATTE_OPERATOR_POW:        return vm_operator__pow         (vm, a, b);
       case MATTE_OPERATOR_EQ:         return vm_operator__eq          (vm, a, b);
-      case MATTE_OPERATOR_POINT:      return vm_operator__point       (vm, a, b);
-      case MATTE_OPERATOR_TERNARY:    return vm_operator__ternary     (vm, a, b);
+      case MATTE_OPERATOR_POINT:      return vm_operator__overload_only_2(vm, "->", a, b);
+      case MATTE_OPERATOR_TERNARY:    return vm_operator__overload_only_2(vm, "?", a, b);
       case MATTE_OPERATOR_LESS:       return vm_operator__less        (vm, a, b);
       case MATTE_OPERATOR_GREATER:    return vm_operator__greater     (vm, a, b);
       case MATTE_OPERATOR_LESSEQ:     return vm_operator__lesseq      (vm, a, b);
       case MATTE_OPERATOR_GREATEREQ:  return vm_operator__greatereq   (vm, a, b);
-      case MATTE_OPERATOR_TRANSFORM:  return vm_operator__transform   (vm, a, b);
+      case MATTE_OPERATOR_TRANSFORM:  return vm_operator__overload_only_2(vm, "<>", a, b);
       case MATTE_OPERATOR_NOTEQ:      return vm_operator__noteq       (vm, a, b);
       case MATTE_OPERATOR_MODULO:     return vm_operator__modulo      (vm, a, b);
       case MATTE_OPERATOR_CARET:      return vm_operator__caret       (vm, a, b);
@@ -244,8 +244,8 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_NOT:         return vm_operator__not(vm, a);
       case MATTE_OPERATOR_NEGATE:      return vm_operator__negate(vm, a);
       case MATTE_OPERATOR_BITWISE_NOT: return vm_operator__bitwise_not(vm, a);
-      case MATTE_OPERATOR_POUND:       return vm_operator__pound(vm, a);
-      case MATTE_OPERATOR_TOKEN:       return vm_operator__token(vm, a);
+      case MATTE_OPERATOR_POUND:       return vm_operator__overload_only_1(vm, "#", a);
+      case MATTE_OPERATOR_TOKEN:       return vm_operator__overload_only_1(vm, "$", a);
 
       default:
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled OPR operator"));                        
@@ -1186,7 +1186,7 @@ matteValue_t matte_vm_call(
                 matte_value_into_copy(&v, matte_array_at(args, matteValue_t, i));
 
                 // sicne this function doesn't use a referrable, we need to set roots manually.
-                if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+                if (v.binID == MATTE_VALUE_TYPE_OBJECT || v.binID == MATTE_VALUE_TYPE_FUNCTION) {
                     matte_value_object_push_lock(v);
                 }
             }
@@ -1208,7 +1208,9 @@ matteValue_t matte_vm_call(
 
         len = matte_array_get_size(argsReal);
         for(i = 0; i < len; ++i) {
-            if (matte_array_at(argsReal, matteValue_t, i).binID == MATTE_VALUE_TYPE_OBJECT) {
+            int bid = matte_array_at(argsReal, matteValue_t, i).binID;
+            if (bid == MATTE_VALUE_TYPE_OBJECT ||
+                bid == MATTE_VALUE_TYPE_FUNCTION) {
                 matte_value_object_pop_lock(matte_array_at(argsReal, matteValue_t, i));
             }
             matte_heap_recycle(matte_array_at(argsReal, matteValue_t, i));

@@ -261,7 +261,10 @@ Values of the \textit{Empty} type are always the same special value: \textit{emp
 \end{itemize}
 
 Use of \textit{empty} in most situations will result in a runtime error. These situations 
-are listed contextually throughout this document.
+are listed contextually throughout this document. Otherwise, some expressions with 
+\textit{empty} are allowed, such as direct comparison against it. Since any variable 
+has the potential to be \textit{empty}, comparison is the most common operation with 
+empty.
 
 \lstinputlisting[language=Matte,firstnumber=1]{empty.mt}
 
@@ -293,11 +296,26 @@ It is safe to assume that keys of types not mentioned in this list work "lossles
 each key uniquely references a value that can be accessed consistently as long as the 
 key is equivalent to the first key.
 
+These key types have special behavior:
+
+
 \begin{itemize}
-  \item Numbers as stored as keys with a number of caveats. Storage is 
-  done using ONLY their integer parts. Reading from an object using negative numbers will yield an \textit{empty} 
-  value. Reading using numbers that above the currently highest-stored integer key will yield an 
-  \textit{empty} value. Writing a value
+  \item Numbers are stored as keys with a number of caveats. The following behavior occurs 
+  upon reading and writing values using \textit{Number}-typed keys:
+  
+  Reading:
+  \begin{itemize}
+    \item For every context with \textit{Number} keys, only the integer value of the key is used for the key. For example, reading with keys 5, 5.6, 5.999, and 5.1 will all point to the same value.    
+    \item Negative keys will always yield \textit{empty} and never throw an error.
+    \item Keys with values greater than the highest-recorded key-value pair for this object will always yield \textit{empty} and never throw an error.      
+  \end{itemize}
+
+  Writing:
+  \begin{itemize}
+    \item For every context with \textit{Number} keys, only the integer value of the key is used for the key. For example, reading with keys 5, 5.6, 5.999, and 5.1 will all point to the same value.    
+    \item Negative keys will throw an error.
+    \item Keys with values greater than the highest-recorded key-value pair will cause the table to "grow". This means that the object in question will contain new key-value pairs for all valid number keys between the previously highest-recorded index and this new one, each with \textit{empty}.
+  \end{itemize}
 \end{itemize}
 
 
