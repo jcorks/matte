@@ -128,9 +128,33 @@ There are only a handful of basic types within Matte:
         // list initializer. Equivalent to setting keys with numbers.
         c = ['a', b, 3];
 
-        // functions are also objects. Discussed in the next section
-        d = ::{};
     </pre>
+    <li><b>Function:</b> a value that represents a collection of statements and bound variables.</li>
+    <pre>
+        // Functions can be made and assigned.
+        a = ::{};
+        
+        // They can also be run immediately as part of an expression
+        result = ::<={
+            2 + 2;
+        };
+
+        // functions can also capture values that persist beyond 
+        // the lifetime of its original function
+        counter = ::<={
+            @value = 0;
+            return ::{
+                value += 1;
+                return value;
+            };
+        };
+        
+        // returns 1.. then 2... then 3
+        counter();
+        counter();
+        counter();
+
+    </pre>    
     <li><b>Type:</b> a value that denotes a type of a value. In Matte, types are explicit values. There are built-in constants for types: Empty, Boolean, Number, String, Object, and Type. You can create your own types as well.</li>
     <pre>
         // Types can be gleaned by introspecting. Introspection is covered in 
@@ -152,7 +176,7 @@ There are only a handful of basic types within Matte:
 <br>
 <br>
 <h2> 4. Functions</h2>
-In Matte functions are first-class objects. They can accept arguments, but they can also implicitly use variables using lexical "reference capture", also known as lexical closures.
+In Matte functions are a special type of value. They can accept arguments, but they can also implicitly use variables using lexical "reference capture", also known as lexical closures.
 Functions are defined with the function constructor "::". It can then be followed by parantheses "()" to declare any number of argument names, then statement scope blocks "{}" to define its behavior.
 <pre>
 
@@ -170,32 +194,16 @@ Functions are defined with the function constructor "::". It can then be followe
 
     // If a function doesn't have any arguments, you may 
     // omit the function argument parantheses.
-    @myOtherFunction = ::{
+    //
+    // When assigning a function, you may also optionally 
+    // omit the '='
+    @myOtherFunction :: {
         return '123';
     };
 
     // Should print 123
     print(myOtherFunction());
 
-</pre>
-
-Functions are not their own type, but are Objects that are callable. As such they can have their own members:
-
-<pre>
-
-    @fancyFunction = ::{
-        // if you ever need to refer to the function thats being called, 
-        // use the "context" keyword.
-        print(context.a + context.b);
-    };
-
-    // assign the properties "a" and "b" a new value
-    fancyFunction.a = 200;
-    fancyFunction.b = 44;
-
-
-    // should print 244
-    fancyFunction();
 
 </pre>
 
@@ -232,6 +240,27 @@ These "anonymous function" expressions are useful for more complex behaviors and
     ::<={
         print("I ran immediately, too!");
     };
+
+
+
+    // Using anonymous functions in conjunction with 
+    // normal ones allows for convenient methods to 
+    // store information.
+    @fancyFunction = ::<={
+        // assign the properties "a" and "b" a new value
+        a = 200;
+        b = 34;
+        
+        return :: (c) {
+            print(a + b + c);
+        };
+    };
+
+
+
+    // should print 300
+    fancyFunction(66);
+
 
 </pre>
 
@@ -1004,14 +1033,14 @@ provided contextually in code comments.
     // new() function of the newly-created class.
     @hoover = Creature.new({
         name : 'Hoover',
-        weight : '24',
-        height : '80'
+        weight : 24,
+        height : 80
     });
 
     @billy = Creature.new({
         name : 'Billy',
-        weight : '10',
-        height : '30'
+        weight : 10,
+        height : 30
     });
 
 

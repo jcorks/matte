@@ -323,8 +323,12 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, matteAr
     while(*iter) {
         if (!strcmp(iter[0], matte_string_get_c_str(str))) {
             // found!
-            src = matte_string_base64_to_bytes(MATTE_STR_CAST(iter[1]), &srcLen);
+            matteString_t * sourceAsStr = matte_string_create_from_c_str("%s", iter[1]);
+            src = matte_string_base64_to_bytes(sourceAsStr, &srcLen);
+            matte_string_destroy(sourceAsStr);
+
             fileid = matte_vm_get_new_file_id(vm, str);
+
             #ifdef MATTE_DEBUG
                 //printf("import() found ROM source for %s\n", matte_string_get_c_str(str));
                 //fflush(stdout);
