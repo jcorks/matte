@@ -198,7 +198,7 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
 
 
           case ENAMETOOLONG:
-            err = "Socket bind error: address is too long.
+            err = "Socket bind error: address is too long.";
             break;
         
           case ENOENT:
@@ -277,6 +277,12 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
     return out;
 }
 
+
+
+void matte_ext__socketio(matteVM_t * vm) {
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_create"),        0, matte_ext__memory_buffer__create,     NULL);
+
+}
 
 #endif 
 

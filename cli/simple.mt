@@ -164,7 +164,7 @@ pointer.move(-1, 10);
 
 pointer.events.uninstallHook('onMove', hook);
 pointer.move(1, 4);
-*/
+
 
 
 
@@ -182,14 +182,13 @@ pointer.move(1, 4);
                     print('ignored request to move to ' + data.x + ',' + data.y);                    
                     return false;
                 };
-                print('moved from '+ x + ',' + y + ' to '+data.x + ',' + data.y);
                 x = data.x;
                 y = data.y;          
+                print('moved from '+ x + ',' + y + ' to '+data.x + ',' + data.y);
                 // allows hooks to go  
                 return true;
             }
         };
-        
         
         this.interface({
             x : {
@@ -212,8 +211,15 @@ pointer.move(1, 4);
 
 
 @p = Point.new();
-p.x = 10;
 
+p.installHook('onMove', ::{
+    print('Moved???');
+});
+
+p.x = 10;
+p.y = -1;
+
+*/
 
 
 

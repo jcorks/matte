@@ -63,21 +63,10 @@
 
     if(d.declare) d.declare();
 
-    // returns whether the isntance inherits from the given class.
-    <@> isa ::(d) {
-        return listen(::{
-            for([0, arraylen(allclass)], ::(i){
-                if (allclass[i] == d)::<={
-                    send(true);
-                };    
-            });            
-            return false;        
-        });
-    };
 
     @dormant = [];
     @dormantCount = 0;
-    classinst.new = ::(args, noseal, outsrc) {
+    classinst.new = ::(args, refs, outsrc) {
         
         when(dormantCount > 0)::<={
             @out = dormant[dormantCount-1];
@@ -98,16 +87,18 @@
             return out;
         };
         
-        
+        if (refs == empty) ::<={
+            refs = {};
+        };
         @out = outsrc;
         if(inherits) ::<={
             out = if(out)out else instantiate(classinst.type);
             if(inherits[0] != empty)::<={
                 for([0, arraylen(inherits)], ::(i){
-                    inherits[i].new(args, true, out);
+                    inherits[i].new(args, refs, out);
                 });
             } else ::<={
-                inherits.new(args, true, out);
+                inherits.new(args, refs, out);
             };
         };
         out = if(out) out else instantiate(classinst.type);
@@ -119,22 +110,22 @@
         @mthnames; 
         @ops;
         @onRevive;
-        if(out.publicVars)::{
-            setters = out.setters;
-            getters = out.getters;
-            funcs = out.funcs;
-            ops = out.ops;
-            onRevive = out.onRevive;
+        if(introspect.keycount(refs))::<={
+            setters = refs.setters;
+            getters = refs.getters;
+            funcs = refs.funcs;
+            ops = refs.ops;
+            onRevive = refs.onRevive;
             mthnames = {
-                inherited : out.publicMethods
+                inherited : refs.publicMethods
             };
 
             varnames = {
-                inherited : out.publicVars
+                inherited : refs.publicVars
             };
-            out.publicVars = varnames;
-            out.publicMethods = mthnames;
-        }() else ::{
+            refs.publicVars = varnames;
+            refs.publicMethods = mthnames;
+        } else ::<={
             setters = {};
             getters = {};
             funcs = {};
@@ -142,57 +133,14 @@
             mthnames = {};
             ops = {};
             onRevive = [];
-            out.ops = ops;
-            out.publicVars = varnames;
-            out.publicMethods = mthnames;
-            out.setters = setters;
-            out.getters = getters;
-            out.funcs = funcs;
-            out.onRevive = onRevive;
-        }();
+            refs.ops = ops;
+            refs.publicVars = varnames;
+            refs.publicMethods = mthnames;
+            refs.setters = setters;
+            refs.getters = getters;
+            refs.funcs = funcs;
+            refs.onRevive = onRevive;
 
-
-        out.interface = ::(obj){
-            <@> keys = introspect.keys(obj);
-            foreach(obj, ::(key, v) {
-                when(introspect.type(v) != Object)::<={
-                    error("Class interfaces can only have getters/setters and methods. (has type: " + introspect.type(v) + ")");
-                };
-                
-                if(introspect.isCallable(v))::{
-                    funcs[key] = v;
-                    mthnames[key] = 'function';
-                    //print('ADDING CLASS function: ' + key);
-                }() else ::{
-                    setters[key] = v.set;
-                    getters[key] = v.get;
-                    varnames[key] = match((if(v.set) 1 else 0)+
-                                          (if(v.get) 2 else 0)) {
-                        (1) : 'Write-only',
-                        (2) : 'Read-only',
-                        (3) : 'Read/Write'
-                    };
-                }();
-            });    
-        };
-        
-        out.attributes = ::(obj) {
-            foreach(obj, ::(k, v){
-                ops[k] = v;            
-            });
-        };
-
-
-        define(out, args, classinst);
-        removeKey(out, 'interface');
-        if (funcs['onRevive']) ::<={
-            @or = funcs['onRevive'];
-            arraypush(onRevive, or);
-            funcs['onRevive'] = onRevive;
-        };
-
-
-        if(noseal == empty) ::{
             getters['introspect'] = ::{
                 return {
                     public : {
@@ -202,10 +150,6 @@
                 };
             };
             
-            
-            getters['isa'] = ::{
-                return isa;            
-            };
             ops['.'] = {
                 get ::(key) {
 
@@ -232,7 +176,51 @@
                 };
             };
             setAttributes(out, ops);
-        }();
+        };
+
+
+        funcs.interface = ::(obj){
+            <@> keys = introspect.keys(obj);
+            foreach(obj, ::(key, v) {
+                when(introspect.type(v) != Object)::<={
+                    error("Class interfaces can only have getters/setters and methods. (has type: " + introspect.type(v) + ")");
+                };
+                
+                if(introspect.isCallable(v))::{
+                    funcs[key] = v;
+                    mthnames[key] = 'function';
+                    //print('ADDING CLASS function: ' + key);
+                }() else ::{
+                    setters[key] = v.set;
+                    getters[key] = v.get;
+                    varnames[key] = match((if(v.set) 1 else 0)+
+                                          (if(v.get) 2 else 0)) {
+                        (1) : 'Write-only',
+                        (2) : 'Read-only',
+                        (3) : 'Read/Write'
+                    };
+                }();
+            });    
+        };
+        
+        funcs.attributes = ::(obj) {
+            foreach(obj, ::(k, v){
+                ops[k] = v;            
+            });
+        };
+
+
+        define(out, args, classinst);
+        removeKey(funcs, 'interface');
+        removeKey(funcs, 'attributes');
+
+        if (funcs['onRevive']) ::<={
+            @or = funcs['onRevive'];
+            arraypush(onRevive, or);
+            funcs['onRevive'] = onRevive;
+        };
+
+
         return out;
     };
     return classinst;
