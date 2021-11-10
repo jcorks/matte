@@ -35,7 +35,7 @@ MATTE_EXT_FN(matte_cli__system_getarg) {
     if (matte_vm_pending_message(vm)) return v;
     
     if (index < initialArgCount) {
-        matte_value_into_copy(&v, initialArgs[i]);
+        matte_value_into_copy(&v, initialArgs[index]);
     }
     
     matte_value_into_number(&v, initialArgCount);
@@ -525,7 +525,7 @@ void matte_vm_add_system_symbols(matteVM_t * vm, char ** args, int argc) {
     uint32_t i;
     for(i = 0; i < initialArgCount; ++i) {
         matteString_t * str = matte_string_create_from_c_str(args[i]);
-        initialArgs[i] = matte_heap_new_value(vm);
+        initialArgs[i] = matte_heap_new_value(heap);
         matte_value_into_string(initialArgs+i, str);
         matte_string_destroy(str);
     }

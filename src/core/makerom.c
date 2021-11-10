@@ -52,12 +52,13 @@ int main() {
     
 
     char * files[] = {
-        "class.mt",  "Matte.Class",
-        "array.mt",  "Matte.Array",
-        "string.mt", "Matte.String",
-        "json.mt",   "Matte.JSON",
-        "enum.mt",   "Matte.Enum",
-        "core.mt",   "Matte.Core",
+        "class.mt",      "Matte.Class",
+        "array.mt",      "Matte.Array",
+        "string.mt",     "Matte.String",
+        "json.mt",       "Matte.JSON",
+        "enum.mt",       "Matte.Enum",
+        "core.mt",       "Matte.Core",
+        "eventsystem.mt","Matte.EventSystem",
         NULL
     };
     

@@ -84,7 +84,7 @@ int main(int argc, char ** args) {
             printf("Syntax: matte debug [file]\n");
             exit(1);
         }
-        return matte_debug(args[2]);
+        return matte_debug(args[2], args, argc);
         return 0;        
     } else if (!strcmp(tool, "disassemble")) {
         if (argc < 3) {
@@ -255,12 +255,12 @@ int main(int argc, char ** args) {
             exit(1);
         }
         
-
-        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(FILEIDS, outBytes, outByteLen);
-        free(outBytes);
-        matte_vm_add_stubs(vm, arr);
-        matte_array_destroy(arr);
-
+        {
+            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(FILEIDS, outBytes, outByteLen);
+            free(outBytes);
+            matte_vm_add_stubs(vm, arr);
+            matte_array_destroy(arr);
+        }
         matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_vm_run_script(vm, FILEIDS, arr);
