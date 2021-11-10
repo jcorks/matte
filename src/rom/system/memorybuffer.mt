@@ -1,17 +1,17 @@
-<@>_mbuffer_create = getExternalFunction("__matte_ext::mbuffer_create");
-<@>_mbuffer_release = getExternalFunction("__matte_ext::mbuffer_release");
-<@>_mbuffer_set_size = getExternalFunction("__matte_ext::mbuffer_set_size");
-<@>_mbuffer_copy = getExternalFunction("__matte_ext::mbuffer_copy");
-<@>_mbuffer_set = getExternalFunction("__matte_ext::mbuffer_set");
-<@>_mbuffer_subset = getExternalFunction("__matte_ext::mbuffer_subset");
-<@>_mbuffer_append_byte = getExternalFunction("__matte_ext::mbuffer_append_byte");
-<@>_mbuffer_append = getExternalFunction("__matte_ext::mbuffer_append");
-<@>_mbuffer_remove = getExternalFunction("__matte_ext::mbuffer_remove");
-<@>_mbuffer_get_size = getExternalFunction("__matte_ext::mbuffer_get_size");
+<@>_mbuffer_create = getExternalFunction("__matte_::mbuffer_create");
+<@>_mbuffer_release = getExternalFunction("__matte_::mbuffer_release");
+<@>_mbuffer_set_size = getExternalFunction("__matte_::mbuffer_set_size");
+<@>_mbuffer_copy = getExternalFunction("__matte_::mbuffer_copy");
+<@>_mbuffer_set = getExternalFunction("__matte_::mbuffer_set");
+<@>_mbuffer_subset = getExternalFunction("__matte_::mbuffer_subset");
+<@>_mbuffer_append_byte = getExternalFunction("__matte_::mbuffer_append_byte");
+<@>_mbuffer_append = getExternalFunction("__matte_::mbuffer_append");
+<@>_mbuffer_remove = getExternalFunction("__matte_::mbuffer_remove");
+<@>_mbuffer_get_size = getExternalFunction("__matte_::mbuffer_get_size");
 
 
-<@>_mbuffer_get_index = getExternalFunction("__matte_ext::mbuffer_get_index");
-<@>_mbuffer_set_index = getExternalFunction("__matte_ext::mbuffer_set_index");
+<@>_mbuffer_get_index = getExternalFunction("__matte_::mbuffer_get_index");
+<@>_mbuffer_set_index = getExternalFunction("__matte_::mbuffer_set_index");
 
 
 return class({

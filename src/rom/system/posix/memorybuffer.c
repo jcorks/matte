@@ -238,19 +238,19 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
 
 
 
-void matte_ext__memory_buffer(matteVM_t * vm) {
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_create"),        0, matte_ext__memory_buffer__create,     NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_release"),       1, matte_ext__memory_buffer__release,    NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_set_size"),      2, matte_ext__memory_buffer__set_size,   NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_copy"),          5, matte_ext__memory_buffer__copy,       NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_set"),           4, matte_ext__memory_buffer__set,        NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_subset"),        3, matte_ext__memory_buffer__subset,     NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_append_byte"),   2, matte_ext__memory_buffer__append_byte,NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_append"),        2, matte_ext__memory_buffer__append     ,NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_remove"),        3, matte_ext__memory_buffer__remove,     NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_get_size"),      1, matte_ext__memory_buffer__get_size,   NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_get_index"),     2, matte_ext__memory_buffer__get_index,  NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_set_index"),     3, matte_ext__memory_buffer__set_index,  NULL);
+static void matte_system__memory_buffer(matteVM_t * vm) {
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_create"),        0, matte_ext__memory_buffer__create,     NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_release"),       1, matte_ext__memory_buffer__release,    NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_set_size"),      2, matte_ext__memory_buffer__set_size,   NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_copy"),          5, matte_ext__memory_buffer__copy,       NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_set"),           4, matte_ext__memory_buffer__set,        NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_subset"),        3, matte_ext__memory_buffer__subset,     NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_append_byte"),   2, matte_ext__memory_buffer__append_byte,NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_append"),        2, matte_ext__memory_buffer__append     ,NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_remove"),        3, matte_ext__memory_buffer__remove,     NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_get_size"),      1, matte_ext__memory_buffer__get_size,   NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_get_index"),     2, matte_ext__memory_buffer__get_index,  NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_set_index"),     3, matte_ext__memory_buffer__set_index,  NULL);
 
 
  

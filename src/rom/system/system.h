@@ -1,5 +1,5 @@
-#ifndef H_MATTE_EXT_INCLUDED
-#define H_MATTE_EXT_INCLUDED
+#ifndef H__MATTE_SYSTEM_INCLUDED
+#define H__MATTE_SYSTEM_INCLUDED
 
 #include "../matte_array.h"
 #include "../matte_heap.h"
