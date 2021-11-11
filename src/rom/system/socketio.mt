@@ -1,4 +1,6 @@
-@class = import('Matte.Class');
+@class = import('Matte.Core.Class');
+@Array = import('Matte.Core.Array');
+@EventSystem = import('Matte.Core.EventSystem');
 @MemoryBuffer = import('Matte.System.MemoryBuffer');
 return {
     Server : ::<={
@@ -125,7 +127,7 @@ return {
             // if cant.
             <@>_socket_server_client_pop_bytes = getExternalFunction("__matte_ext::socket_server_client_pop_bytes");
             
-            
+            <@>_socket_server_client_send_bytes = getExternalFunction("__matte_ext::socket_server_client_send_bytes");
             <@>_socket_server_client_get_pending_byte_count = getExternalFunction("__matte_ext::socket_server_client_get_pending_byte_count");
 
 
@@ -156,7 +158,7 @@ return {
                 this.events = {
                     onNewMessage ::{},
                     onIncomingData ::{},
-                    onDisconnect ::{},
+                    onDisconnect ::{}
                 };
 
                 // change update based on if a message type client or data
@@ -167,7 +169,7 @@ return {
                 if (args.message == true) ::<={
                     update = ::{
                         _socket_server_client_update(socket, id_number);
-                        for([0, _socket_server_client_get_pending_message_count(socket, )], ::(i){
+                        for([0, _socket_server_client_get_pending_message_count(socket, id_number)], ::(i){
                             this.emitEvent(
                                 'onNewMessage',
                                 _socket_server_client_get_next_message(socket, id_number)
@@ -175,11 +177,11 @@ return {
                         });
                     };
 
-                    send = ::(m => String) {
+                    sendData = ::(m => String) {
                         _socket_server_client_send_message(socket, id_number, m);
                     };
 
-                } else ::{
+                } else ::<={
                     update = ::{
                         _socket_server_client_update(socket, id_number);
                         @count = _socket_server_client_get_pending_byte_count(socket, id_number);
@@ -195,19 +197,18 @@ return {
                     };
 
 
-                    send = ::(m => MemoryBuffer) {
+                    sendData = ::(m => MemoryBuffer) {
                         _socket_server_client_send_bytes(socket, id_number, m);
                     };
-                });
+                };
 
 
 
 
-                @sendData = (if (args.message == ))
 
                 this.interface({
                     update : update,
-                    send : send;
+                    send : sendData,
                     info : {
                         get ::{
                             return info;
@@ -252,7 +253,7 @@ return {
                 );
                 
                 
-                <@>clients = Matte.Array.new();
+                <@>clients = Array.new();
 
                 // string id to 
                 <@>clientIndex = [];

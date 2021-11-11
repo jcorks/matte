@@ -1,7 +1,7 @@
 ////Test 56
 //
 // Core: String (4)
-<@>MatteString = import('Matte.String');
+<@>MatteString = import('Matte.Core.String');
 
 @str = MatteString.new("testinBdwatest");
 return ''+str.contains('st')+

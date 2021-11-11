@@ -56,8 +56,8 @@ struct matteHeap_t {
     matteValue_t type_number;
     matteValue_t type_string;
     matteValue_t type_object;
-    matteValue_t type_type;
     matteValue_t type_function;
+    matteValue_t type_type;
     matteValue_t type_any;
     
     // names for all types, on-demand
@@ -94,8 +94,8 @@ struct matteHeap_t {
     matteValue_t specialString_type_number;
     matteValue_t specialString_type_string;
     matteValue_t specialString_type_object;
-    matteValue_t specialString_type_type;
     matteValue_t specialString_type_function;
+    matteValue_t specialString_type_type;
     
     matteValue_t specialString_get;
     matteValue_t specialString_set;
@@ -625,8 +625,8 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->type_number = matte_heap_new_value(out);
     out->type_string = matte_heap_new_value(out);
     out->type_object = matte_heap_new_value(out);
-    out->type_type = matte_heap_new_value(out);
     out->type_function = matte_heap_new_value(out);
+    out->type_type = matte_heap_new_value(out);
     out->type_any = matte_heap_new_value(out);
 
     matteValue_t dummy = {};
@@ -635,8 +635,8 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     matte_value_into_new_type(&out->type_number, dummy);
     matte_value_into_new_type(&out->type_string, dummy);
     matte_value_into_new_type(&out->type_object, dummy);
-    matte_value_into_new_type(&out->type_type, dummy);
     matte_value_into_new_type(&out->type_function, dummy);
+    matte_value_into_new_type(&out->type_type, dummy);
     matte_value_into_new_type(&out->type_any, dummy);
 
     out->specialString_empty.objectID = matte_string_heap_internalize(out->stringHeap, MATTE_STR_CAST("empty"));
@@ -673,10 +673,10 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->specialString_type_string.heap = out;
     out->specialString_type_object.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_type_object.heap = out;
-    out->specialString_type_type.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_type_type.heap = out;
     out->specialString_type_function.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_type_function.heap = out;
+    out->specialString_type_type.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_type.heap = out;
 
 
     out->specialString_set.objectID = matte_string_heap_internalize(out->stringHeap, MATTE_STR_CAST("set"));
@@ -1433,7 +1433,7 @@ matteValue_t matte_value_to_type(matteValue_t v, matteValue_t t) {
         break;
       }
 
-      case 6: {
+      case 7: {
         if (v.binID != MATTE_VALUE_TYPE_TYPE) {
             matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("It is an error to convert any non-Type value to a Type."));
         } else {
@@ -1458,7 +1458,7 @@ matteValue_t matte_value_to_type(matteValue_t v, matteValue_t t) {
         break;
       }
 
-      case 7: {
+      case 6: {
         if (v.binID == MATTE_VALUE_TYPE_FUNCTION) {
             matte_value_into_copy(&out, v);
             break;
@@ -2267,8 +2267,8 @@ matteValue_t matte_value_type_name(matteValue_t v) {
       case 3:     return v.heap->specialString_type_number;
       case 4:     return v.heap->specialString_type_string;
       case 5:     return v.heap->specialString_type_object;
-      case 6:     return v.heap->specialString_type_type;
-      case 7:     return v.heap->specialString_type_function;
+      case 6:     return v.heap->specialString_type_function;
+      case 7:     return v.heap->specialString_type_type;
       default: { 
         if (v.objectID >= matte_array_get_size(v.heap->typecode2data)) {
             matte_vm_raise_error_string(v.heap->vm, MATTE_STR_CAST("VM error: no such type exists..."));                    
@@ -2296,11 +2296,11 @@ const matteValue_t * matte_heap_get_string_type(matteHeap_t * h) {
 const matteValue_t * matte_heap_get_object_type(matteHeap_t * h) {
     return &h->type_object;
 }
+const matteValue_t * matte_heap_get_function_type(matteHeap_t * h) {
+    return &h->type_function;
+}
 const matteValue_t * matte_heap_get_type_type(matteHeap_t * h) {
     return &h->type_type;
-}
-const matteValue_t * matte_heap_get_type_function(matteHeap_t * h) {
-    return &h->type_function;
 }
 const matteValue_t * matte_heap_get_any_type(matteHeap_t * h) {
     return &h->type_any;

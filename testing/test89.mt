@@ -1,4 +1,4 @@
-<@>class = import('Matte.Class');
+<@>class = import('Matte.Core.Class');
 
 
 <@>Shape = class({

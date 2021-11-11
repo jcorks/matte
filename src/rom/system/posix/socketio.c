@@ -1,23 +1,4 @@
-#include "ext.h"
-#include "../matte_array.h"
-#include "../matte_heap.h"
-#include "../matte_vm.h"
 
-
-
-
-
-#ifdef __POSIX__
-
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <time.h> 
 
 
 typedef struct {
@@ -45,7 +26,7 @@ typedef struct {
     
     
     ///// Writing
-    /
+    
     matteArray_t * pendingMessages;
     
     
@@ -70,13 +51,17 @@ typedef struct {
     
 } MatteSocket;
 
+static void matte_system__socketio(matteVM_t * vm) {
 
+}
+
+/*
 MATTE_EXT_FN(matte_ext_socket_server_create) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     const matteString_t * addr = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
-    int port = matte_value_as_number(matte_array_at(args, matteValue_t, 1)));
-    int type = matte_value_as_number(matte_array_at(args, matteValue_t, 2)));
-    int maxClients = matte_value_as_number(matte_array_at(args, matteValue_t, 3)));
+    int port = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
+    int type = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
+    int maxClients = matte_value_as_number(matte_array_at(args, matteValue_t, 3));
 
     // error in args
     if (matte_vm_pending_message(vm)) {
@@ -144,7 +129,7 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
           default:;
         }
         if (!err) {
-            matteString_r * realErr = matte_string_create_from_c_str("Socket creation error: Unknown error (%d)", errno);
+            matteString_t * realErr = matte_string_create_from_c_str("Socket creation error: Unknown error (%d)", errno);
             matte_vm_raise_error_string(vm, realErr);
             matte_string_destroy(realErr);
         } else {
@@ -156,7 +141,7 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
     
     
     // then set up address binding
-    if (bind(listen.fd, &sIn, sizeof(struct sockaddr_in) == -1) {
+    if (bind(listen.fd, &sIn.sin_addr, sizeof(struct sockaddr)) == -1) {
         const char * err = NULL;
         switch(errno) {
           case EACCES: 
@@ -180,9 +165,9 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
             break;
 
 
-          case EACCES:
-            err = "Socket bind error: Search permission is denied on a component of the path prefix";
-            break;
+          //case EACCES:
+            //err = "Socket bind error: Search permission is denied on a component of the path prefix";
+            //break;
 
           case EADDRNOTAVAIL:
             err = "Socket bind error: A nonexistent interface was requested or the requested address was not local.";
@@ -209,10 +194,6 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
             err = "Socket bind error: Inusfficient memory for operation.";
             break;
             
-
-          case ENOMEM:
-            err = "Socket bind error: Inusfficient memory for operation.";
-            break;
             
           case ENOTDIR:
             err = "Socket bind error: A component of the path prefix is not a directory.";
@@ -283,9 +264,7 @@ void matte_ext__socketio(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_create"),        0, matte_ext__memory_buffer__create,     NULL);
 
 }
-
-#endif 
-
+*/
 
 
 

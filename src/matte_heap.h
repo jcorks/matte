@@ -262,6 +262,7 @@ const matteValue_t * matte_heap_get_boolean_type(matteHeap_t *);
 const matteValue_t * matte_heap_get_number_type(matteHeap_t *);
 const matteValue_t * matte_heap_get_string_type(matteHeap_t *);
 const matteValue_t * matte_heap_get_object_type(matteHeap_t *);
+const matteValue_t * matte_heap_get_function_type(matteHeap_t *);
 const matteValue_t * matte_heap_get_type_type(matteHeap_t *);
 const matteValue_t * matte_heap_get_any_type(matteHeap_t *);
 

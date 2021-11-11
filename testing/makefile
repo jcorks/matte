@@ -1,6 +1,10 @@
+
+
 all:
 	rm -f ./*.gcda
-	gcc -DMATTE_DEBUG -fmax-errors=5 -fprofile-arcs -ftest-coverage ./*.c ../src/*.c -o ./test_driver -lm
+	gcc -g -fsanitize=address -fsanitize=undefined -DMATTE_DEBUG -DMATTE_USE_SYSTEM_EXTENSIONS -fmax-errors=5 -fprofile-arcs -ftest-coverage ./*.c ../src/*.c ../src/rom/system/system.c -o ./test_driver -lm
+
+
 
 coverage-report:
 	gcovr -r ../src/ --object-directory . --html --html-details -o index.html

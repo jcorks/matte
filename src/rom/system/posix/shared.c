@@ -1,8 +1,4 @@
-#include "shared.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-void * dump_bytes(const char * filename, uint32_t * len) {
+static void * dump_bytes(const char * filename, uint32_t * len) {
     FILE * f = fopen(filename, "rb");
     if (!f) {
         printf("Could not open input file %s\n", filename);
@@ -23,9 +19,4 @@ void * dump_bytes(const char * filename, uint32_t * len) {
     }
     fclose(f);
     return out;
-}
-
-
-void matte_vm_add_system_symbols(matteVM_t * cm, char ** argv, int argc) {
-
 }

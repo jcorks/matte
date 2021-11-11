@@ -1,7 +1,7 @@
-@MString = import('Matte.String');
-@Array = import('Matte.Array');
+@MString = import('Matte.Core.String');
+@Array = import('Matte.Core.Array');
 @JSON = {
-    name : 'Matte.JSON',
+    name : 'Matte.Core.JSON',
     encode :: (obj) {        
         @encodeValue ::(obj){
             @encodeSub = context;

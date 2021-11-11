@@ -1,8 +1,3 @@
-#include "../ext.h"
-
-#include <stdlib.h>
-#include <string.h>
-
 
 typedef struct {
     uint8_t * buffer;
@@ -67,7 +62,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__copy) {
         offsetB > mB->size ||
         offsetB + length > mB->size) {
         
-        matte_vm_raise_error_string(vm, "Copy of buffer failed: The copy is outside the range of either the source or destination.");
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Copy of buffer failed: The copy is outside the range of either the source or destination."));
         return matte_heap_new_value(heap);           
     }
 
@@ -87,9 +82,9 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set) {
 
     // length check
     if (offsetA > mA->size ||
-        offsetA + length > mA->size)
+        offsetA + length > mA->size) {
         
-        matte_vm_raise_error_string(vm, "Set of buffer failed: The copy is outside the range of destination.");
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Set of buffer failed: The copy is outside the range of destination."));
         return matte_heap_new_value(heap);           
     }
 
@@ -108,7 +103,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__subset) {
     uint64_t to   = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
 
     if (from > m->size || to > m->size || from > to) {
-        matte_vm_raise_error_string(vm, "Subset call failed: Improper indices for buffer");
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Subset call failed: Improper indices for buffer"));
         return matte_heap_new_value(heap);                   
     }
 
@@ -171,7 +166,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__remove) {
     uint64_t to   = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
 
     if (from > m->size || to > m->size || from > to) {
-        matte_vm_raise_error_string(vm, "Remove call failed: Improper indices for buffer");
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Remove call failed: Improper indices for buffer"));
         return matte_heap_new_value(heap);                   
     }
 
@@ -199,7 +194,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__get_index) {
 
     uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
     if (from < m->size) {
-        matte_vm_raise_error_string(vm, "Could not get value from buffer: index out of range.");
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Could not get value from buffer: index out of range."));
         return matte_heap_new_value(heap);                   
 
     }
@@ -217,7 +212,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
     uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
     uint8_t  val  = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
     if (from < m->size) {
-        matte_vm_raise_error_string(vm, "Could not set value in buffer: index out of range.");
+        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Could not set value in buffer: index out of range."));
         return matte_heap_new_value(heap);                   
 
     }
@@ -238,7 +233,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
 
 
 
-static void matte_system__memory_buffer(matteVM_t * vm) {
+static void matte_system__memorybuffer(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_create"),        0, matte_ext__memory_buffer__create,     NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_release"),       1, matte_ext__memory_buffer__release,    NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_set_size"),      2, matte_ext__memory_buffer__set_size,   NULL);

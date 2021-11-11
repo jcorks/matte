@@ -1,7 +1,7 @@
-<@>class = import('Matte.Class');
-<@>Array = import('Matte.Array');
+<@>class = import('Matte.Core.Class');
+<@>Array = import('Matte.Core.Array');
 @String_ = class({
-    name : 'Matte.String',
+    name : 'Matte.Core.String',
     define ::(this, args, classinst) {
         <@>MatteString = introspect.type(this);
         

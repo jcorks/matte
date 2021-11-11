@@ -1,11 +1,10 @@
-@MatteString = import("Matte.String");
-@class = import("Matte.Class");
-
-
-@_print = getExternalFunction("system_print");
+@MatteString = import("Matte.Core.String");
+@class = import("Matte.Core.Class");
+@_print = getExternalFunction("__matte_::consoleio_print");
 
 return class({
-    define(this) {
+    name : 'Matte.System.ConsoleIO',
+    define::(this) {
         this.interface({
             // Prints a simple string with a newline afterwards.
             println ::(a => String) {
@@ -29,9 +28,9 @@ return class({
                 _print(o);
             },
 
-            getln : getExternalFunction("system_getline"),
+            getln : getExternalFunction("__matte_::consoleio_getline"),
 
-            clear : getExternalFunction("system_clear")
+            clear : getExternalFunction("__matte_::consoleio_clear")
         });
     }
 }).new();

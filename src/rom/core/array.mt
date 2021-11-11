@@ -1,9 +1,9 @@
-<@>class = import('Matte.Class');
+<@>class = import('Matte.Core.Class');
 
 
 
 @Array = class({
-    name : 'Matte.Array',
+    name : 'Matte.Core.Array',
     define ::(this, args, classinst) {
         @data;
         @len;

@@ -1,7 +1,7 @@
 ////Test 52
 //
 // Core: Class (6)
-@Class = import('Matte.Class');
+@Class = import('Matte.Core.Class');
 @TestClass = Class({
     define ::(this, args, classinst) {
         @data = args;

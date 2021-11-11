@@ -1,4 +1,4 @@
-MATTE_EXT_FN(matte_cli__system_system) {
+MATTE_EXT_FN(matte_utility__system) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     if (matte_array_get_size(args) < 1) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("system() requires the first argument to be a path to a file."));
@@ -22,7 +22,7 @@ MATTE_EXT_FN(matte_cli__system_system) {
 }
 
 
-MATTE_EXT_FN(matte_cli__system_exit) {
+MATTE_EXT_FN(matte_utility__exit) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     if (matte_array_get_size(args) < 1) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("exit() requires at least one argument"));
@@ -34,16 +34,22 @@ MATTE_EXT_FN(matte_cli__system_exit) {
 
 
 
-MATTE_EXT_FN(matte_cli__system_init_rand) {
+MATTE_EXT_FN(matte_utility__init_rand) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     srand(time(NULL));
     return matte_heap_new_value(heap);
 }
 
-MATTE_EXT_FN(matte_cli__system_next_rand) {
+MATTE_EXT_FN(matte_utility__next_rand) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_number(&out, (rand() / (double)(RAND_MAX)));    
     return out;
 }
 
+static void matte_system__utility(matteVM_t * vm) {
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::utility_system"),   1, matte_utility__system, NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::utility_initRand"), 0, matte_utility__init_rand, NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::utility_nextRand"), 0, matte_utility__next_rand, NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::utility_exit"),     1, matte_utility__exit, NULL);
+}

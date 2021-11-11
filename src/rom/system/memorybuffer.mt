@@ -13,15 +13,15 @@
 <@>_mbuffer_get_index = getExternalFunction("__matte_::mbuffer_get_index");
 <@>_mbuffer_set_index = getExternalFunction("__matte_::mbuffer_set_index");
 
-
+<@>class = import('Matte.Core.Class');
 return class({
 
-    define::(this, args, thiclass) {
+    define::(this, args, thisclass) {
         <@>MBuffer = thisclass.type;
         @length = 0;
         @buffer = (
             if(args._buffer == empty) ::<={
-                return _mbuffer_create()
+                return _mbuffer_create();
             } else ::<={
                 length = _mbuffer_get_size(args._buffer);
                 return args._buffer;
@@ -62,7 +62,7 @@ return class({
                 checkReleased(this);
                 checkReleased(src);
                 _mbuffer_copy(buffer, selfOffset, src, srcOffset, len);
-            }
+            },
             
             // performs a memset
             set::(
@@ -71,9 +71,8 @@ return class({
                 len => Number
             ) {
                 checkReleased(this);
-                checkReleased(src);
-                _mbuffer_set(buffer, selfOffset, src, len);
-            }
+                _mbuffer_set(buffer, selfOffset, val, len);
+            },
             
             // copies a new buffer.
             subset::(
@@ -107,7 +106,7 @@ return class({
                 get :: {
                     return buffer;
                 }
-            }
+            },
             
             size : {
                 get :: {
@@ -134,7 +133,7 @@ return class({
                     checkReleased(this);
                     _mbuffer_set_index(this, key, val);                                    
                 }
-            },
+            }
         });
     }
 });

@@ -1,4 +1,5 @@
-@class = import("Matte.Class");
+@class = import("Matte.Core.Class");
+@Array = import('Matte.Core.Array');
 
 @_getcwd = getExternalFunction("system_getcwd");
 @_setcwd = getExternalFunction("system_setcwd");
@@ -9,9 +10,9 @@
 @_directoryObjectPath   = getExternalFunction("system_directoryobjectpath");
 @_directoryObjectIsFile = getExternalFunction("system_directoryobjectisfile");
 
-
 return class({
-    define(this) {
+    name : 'Matte.System.Filesystem',
+    define::(this) {
         this.interface({
             // Directory / Files 
             cwd : {
@@ -68,7 +69,7 @@ return class({
 
             // Given a path and a string, writes the given file.
             // on failure, throws an error.
-            writeBytes : getExternalFunction("system_writebytes"),        
+            writeBytes : getExternalFunction("system_writebytes")   
         
         });
     }

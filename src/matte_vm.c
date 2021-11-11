@@ -6,6 +6,7 @@
 #include "matte_string.h"
 #include "matte_opcode.h"
 #include "matte_compiler.h"
+#include "./rom/system/system.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -545,8 +546,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
               case 2: v = *matte_heap_get_number_type(vm->heap); break;           
               case 3: v = *matte_heap_get_string_type(vm->heap); break;           
               case 4: v = *matte_heap_get_object_type(vm->heap); break;           
-              case 5: v = *matte_heap_get_type_type(vm->heap); break;           
-              case 6: v = *matte_heap_get_any_type(vm->heap); break;           
+              case 5: v = *matte_heap_get_function_type(vm->heap); break;           
+              case 6: v = *matte_heap_get_type_type(vm->heap); break;           
+              case 7: v = *matte_heap_get_any_type(vm->heap); break;           
                 
             }
             STACK_PUSH(v);
@@ -1003,7 +1005,7 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN, 1, vm_ext_call__introspect_isnan);    
 
     //vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
-
+    matte_bind_system_functions(vm);
 
     return vm;
 }

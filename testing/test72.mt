@@ -1,7 +1,7 @@
 ////Test 57
 //
 // Core: String (5)
-<@>MatteString = import('Matte.String');
+<@>MatteString = import('Matte.Core.String');
 
 @str = MatteString.new("testinBdwatest");
 return ''+str.containsAny(['z', 'x', 'y'])+

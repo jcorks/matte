@@ -1,6 +1,7 @@
-@class = import('Matte.Class');
-@Array = import('Matte.Array');
+@class = import('Matte.Core.Class');
+@Array = import('Matte.Core.Array');
 @EventSystem = class({
+    name : 'Matte.Core.EventSystem',
     define::(this, args, thisclass) {
         <@> events = [];
                
@@ -12,8 +13,7 @@
                     when (introspect.keycount(events) != 0) error('Interface is already defined.');
                     
                     // filter to ensure types of key/val pairs
-                    foreach(evs, ::(key => String, val => Object) {
-                        if (!introspect.isCallable(val)) error('Main event handler must be a function');
+                    foreach(evs, ::(key => String, val => Function) {
                         events[key] = {
                             mainHandler : val,
                             handlers : [],
@@ -41,9 +41,9 @@
                 });
                 
                 // cancelled event. Don't call main handler or hooks.
-                when(!continue) false;
+                when(continue == false) false;
                 
-                return (if (event.mainHandler(this, data)) ::<= {
+                return (if (event.mainHandler(this, data) != false) ::<= {
                     for([0, event.hookCount], ::(i) {
                         (event.hooks[i])(this, data);
                     });
@@ -60,10 +60,9 @@
             // installed handler. The last handler is always the 
             // main handler, which is installed at creation of the 
             // event system.
-            installHandler ::(ev => String, fn) {
+            installHandler ::(ev => String, fn => Function) {
                 <@> event = events[ev];
                 when(event == empty) error("Cannot install handler for non-existent event "+ev);
-                when(!introspect.isCallable(fn)) error("Cannot install non-callable handler");
                 
                 event.handlers[event.handlerCount] = fn;
                 event.handlerCount += 1;
@@ -71,10 +70,9 @@
             
 
 
-            installHook ::(ev => String, fn) {
+            installHook ::(ev => String, fn => Function) {
                 <@> event = events[ev];
                 when(event == empty) error("Cannot install hook for non-existent event "+ev);
-                when(!introspect.isCallable(fn)) error("Cannot install non-callable hook");
                 
                 event.hooks[event.hookCount] = fn;
                 event.hookCount += 1;

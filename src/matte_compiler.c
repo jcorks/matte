@@ -3753,7 +3753,7 @@ static matteFunctionBlock_t * compile_function_block(
                             uint32_t i;
                             uint32_t len = matte_array_get_size(b->args)-1;
                             for(i = 0; i < len; ++i) {
-                                write_instruction__pto(b->typestrict_types, iter->line, 6); // any;
+                                write_instruction__pto(b->typestrict_types, iter->line, 7); // any;
                             }
                         }                            
                     }
@@ -3772,7 +3772,7 @@ static matteFunctionBlock_t * compile_function_block(
                     // because the typestrict_types exists, that means we have a 
                     // tyestrict function, so any not specified still need an "any" type 
                     // object.
-                    write_instruction__pto(b->typestrict_types, iter->line, 6); 
+                    write_instruction__pto(b->typestrict_types, iter->line, 7); 
                 }   
                 if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_END) break;
                 
@@ -3802,7 +3802,7 @@ static matteFunctionBlock_t * compile_function_block(
                     uint32_t i;
                     uint32_t len = matte_array_get_size(b->args);
                     for(i = 0; i < len; ++i) {
-                        write_instruction__pto(b->typestrict_types, iter->line, 6); // any;
+                        write_instruction__pto(b->typestrict_types, iter->line, 7); // any;
                     }
 
                 }
@@ -3820,7 +3820,7 @@ static matteFunctionBlock_t * compile_function_block(
 
             } else if (b->typestrict_types) { 
                 // no return value type, but we're in strict mode. So enter an "any" type.
-                write_instruction__pto(b->typestrict_types, iter->line, 6);             
+                write_instruction__pto(b->typestrict_types, iter->line, 7);             
             }
         } 
         if (b->typestrict_types) {

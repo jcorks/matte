@@ -1,8 +1,19 @@
-return {
-    Class : import("Matte.Class"),
-    Array : import("Matte.Array"),
-    'String' : import("Matte.String"),
-    JSON : import("Matte.JSON"),
-    Enum : import("Matte.Enum"),
-    EventSystem : import('Matte.EventSystem')
-};
+@class = import("Matte.Core.Class");
+@array = import("Matte.Core.Array");
+@string = import("Matte.Core.String");
+@json        = import("Matte.Core.JSON");
+@enum        = import("Matte.Core.Enum");
+@eventSystem = import('Matte.Core.EventSystem');
+
+return class({
+    define::(this) {
+        this.interface({
+            Class       :{get::{return class;}},
+            Array       :{get::{return array;}},
+           'String'     :{get::{return string;}},
+            JSON        :{get::{return json;}},
+            Enum        :{get::{return enum;}},
+            EventSystem :{get::{return eventSystem;}}
+        });
+    }
+}).new();

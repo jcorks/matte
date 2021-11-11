@@ -1,4 +1,4 @@
-MATTE_EXT_FN(matte_cli__system_sleepms) {
+MATTE_EXT_FN(matte_time__sleepms) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     if (matte_array_get_size(args) < 1) {
         matte_vm_raise_error_string(vm, MATTE_STR_CAST("Sleep requires a number argument"));
@@ -11,7 +11,7 @@ MATTE_EXT_FN(matte_cli__system_sleepms) {
 }
 
 
-MATTE_EXT_FN(matte_cli__system_getticks) {
+MATTE_EXT_FN(matte_time__getticks) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     struct timeval t; 
@@ -25,7 +25,7 @@ MATTE_EXT_FN(matte_cli__system_getticks) {
 
 
 
-MATTE_EXT_FN(matte_cli__system_time) {
+MATTE_EXT_FN(matte_time__time) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     time_t t = time(NULL);
     matteValue_t v = matte_heap_new_value(heap);
@@ -34,4 +34,9 @@ MATTE_EXT_FN(matte_cli__system_time) {
 }
 
 
+static void matte_system__time(matteVM_t * vm) {
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::time_sleepms"),   1, matte_time__sleepms, NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::time_getticks"),    0, matte_time__getticks, NULL);
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::time_time"),   0, matte_time__time, NULL);
 
+}

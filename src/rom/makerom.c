@@ -51,21 +51,21 @@ int main() {
     
 
     char * files[] = {
-        "core/class.mt",      "Matte.Class",
-        "core/array.mt",      "Matte.Array",
-        "core/string.mt",     "Matte.String",
-        "core/json.mt",       "Matte.JSON",
-        "core/enum.mt",       "Matte.Enum",
+        "core/class.mt",      "Matte.Core.Class",
+        "core/array.mt",      "Matte.Core.Array",
+        "core/string.mt",     "Matte.Core.String",
+        "core/json.mt",       "Matte.Core.JSON",
+        "core/enum.mt",       "Matte.Core.Enum",
+        "core/eventsystem.mt","Matte.Core.EventSystem",
         "core/core.mt",       "Matte.Core",
-        "core/eventsystem.mt","Matte.EventSystem",
         #ifdef MATTE_USE_SYSTEM_EXTENSIONS
             "system/consoleio.mt",      "Matte.System.ConsoleIO",       
             "system/filesystem.mt",     "Matte.System.Filesystem",       
             "system/memorybuffer.mt",   "Matte.System.MemoryBuffer",       
             "system/socketio.mt",       "Matte.System.SocketIO",       
-            "system/system.mt",         "Matte.System",       
             "system/time.mt",           "Matte.System.Time",       
             "system/utility.mt",        "Matte.System.Utility",               
+            "system/system.mt",         "Matte.System",       
         #endif
 
         NULL
