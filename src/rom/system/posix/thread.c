@@ -70,8 +70,8 @@ MATTE_EXT_FN(matte_cli__system_threadstart) {
 #endif
 
 
-void matte_vm_add_thread_symbols(matteVM_t * vm) {
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_threadstart"), 2, matte_cli__system_threadstart, NULL);
+static void matte_system__thread(matteVM_t * vm) {
+    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_threadstart"), 2, matte_cli__system_threadstart, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_threadjoin"), 1, matte_cli__system_threadjoin, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_threadstate"), 1, matte_cli__system_threadstate, NULL);
     matte_vm_set_external_function(vm, MATTE_STR_CAST("system_threadresult"), 1, matte_cli__system_threadresult, NULL);

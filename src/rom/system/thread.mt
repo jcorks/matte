@@ -1,18 +1,18 @@
-@_threadstart = getExternalFunction("system_threadstart");
-@_threadjoin = getExternalFunction("system_threadjoin");
+@_threadstart = getExternalFunction("__matte_::thread_start");
+@_threadjoin = getExternalFunction("__matte_::thread_join");
 // 0 -> running 
 // 1 -> finish successs
 // 2 -> finish fail
 // 3 -> unknown
-@_threadstate = getExternalFunction("system_threadstate");
+@_threadstate = getExternalFunction("__matte_::thread_state");
 
 // always a string.
-@_threadresult = getExternalFunction("system_threadresult");
+@_threadresult = getExternalFunction("__matte_::thread_result");
 
 // returns an array, 
 // 0-> thread id,
 // 1-> message (string)
-@_threadnextmessage = getExternalFunction("system_threadnextmessage");
+@_threadnextmessage = getExternalFunction("__matte_::thread_nextmessage");
 
 
 

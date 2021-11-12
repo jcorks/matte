@@ -72,16 +72,31 @@
         
         foreach(opts, ::(key, val) {
             ptype[key] = valToKey(val);
+            ptype[Number(ptype[key])] = ptype[key];
         });
         
         
         @output = {};
-        output.getter = ::(k) => enumtype {
+        @getter = ::(k) => enumtype {
             return ptype[k];
         };
-        output.setter = ::{
+        @setter = ::{
             error('Enum value is read-only');
         };
+
+        setAttributes(
+            output,
+            {
+                '[]': {
+                    get : getter,
+                    set : setter
+                },
+                '.': {
+                    get : getter,
+                    set : setter
+                }
+            }
+        )
 
         return output;
     };
