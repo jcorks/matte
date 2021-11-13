@@ -286,7 +286,7 @@
                     default: ::{
                         @other = STRINGTOARR(TOSTRINGLITERAL(a));
                         when(introspect.keycount(other) != 1) error('Can only replace a single character: the string form of the given value is more than one character');
-                        arrsrc[index] = a[0];
+                        arrsrc[index] = other[0];
                     }
                 })();
                 

@@ -96,7 +96,7 @@
                     set : setter
                 }
             }
-        )
+        );
 
         return output;
     };

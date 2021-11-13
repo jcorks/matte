@@ -1,26 +1,19 @@
 
 
 
-#ifdef _POSIX_SOURCE
 
-#include <pthread.h>
-
-static void matte_thread(void * data) {
-    /*
-    matte_t * m = matte_create();
-    matteVM_t * vm = matte_get_vm(m);
-    matte_vm_add_system_symbols(vm, NULL, 0);
-    matte_vm_add_thread_symbols(vm);
-    int FILEIDS;
-
-
-    // first compile all and add them 
-    FILEIDS = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(args[i+1]));
+static int matte_thread(matteVM_t * fromVM, const char * from, void * data) {
     uint32_t lenBytes;
-    uint8_t * src = dump_bytes(args[i+1], &lenBytes);
+
+    uint8_t * src = dump_bytes(from, &lenBytes);
+
     if (!src || !lenBytes) {
-        printf("Couldn't open source %s\n", args[i+1]);
-        exit(1);
+        matteString_t * str = matte_string_create();
+        matte_string_concat_printf(str, "Could not read from file %s", src);
+
+        matte_vm_raise_error_string(fromVM, str);
+        matte_string_destroy(str);
+        return;
     }
 
     uint32_t outByteLen;
@@ -28,15 +21,32 @@ static void matte_thread(void * data) {
         src,
         lenBytes,
         &outByteLen,
-        onError,
+        NULL,
         NULL
     );
 
     free(src);
     if (!outByteLen || !outBytes) {
-        printf("Couldn't compile source %s\n", args[i+1]);
-        exit(1);
+        matteString_t * str = matte_string_create();
+        matte_string_concat_printf(str, "Couldn't compile source %s", src);
+        matte_vm_raise_error_string(fromVM, str);
+        matte_string_destroy(str);
+        free(src);
+        return;
     }
+
+
+
+    
+    matte_t * m = matte_create();
+    matteVM_t * vm = matte_get_vm(m);
+    matte_vm_add_system_symbols(vm, NULL, 0);
+    matte_vm_add_thread_symbols(vm);
+
+
+    // first compile all and add them 
+    FILEIDS = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(from));
+
     
 
     matteArray_t * arr = matte_bytecode_stubs_from_bytecode(FILEIDS, outBytes, outByteLen);
@@ -65,9 +75,6 @@ MATTE_EXT_FN(matte_cli__system_threadstart) {
 
 }
 
-#elif _WIN32
-
-#endif
 
 
 static void matte_system__thread(matteVM_t * vm) {

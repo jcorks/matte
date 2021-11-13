@@ -221,7 +221,7 @@ int main(int argc, char ** args) {
         fwrite(outBytes, 1, outByteLen, out);
         fclose(out);
     } else { // just filenames 
-        uint32_t i;
+        uint32_t i = 0;
         uint32_t len = argc-1;
         
         matte_t * m = matte_create();

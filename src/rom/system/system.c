@@ -24,8 +24,10 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <time.h> 
+#include <pthread.h>
 
 #include "../../matte_string.h"
+
 ////////////
 #include "./posix/shared.c"
 #include "./posix/consoleio.c"
