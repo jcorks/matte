@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <assert.h>
 
+#define matte_string_temp_max_calls 128
 struct matteVM_t {
 
     // stubIndex[fileid] -> [stubid]
@@ -86,8 +87,28 @@ struct matteVM_t {
     );
     void * userPrintData;
 
+    matteString_t * string_tempVals[matte_string_temp_max_calls];
+    int string_tempIter;
+
 
 };
+
+
+
+
+
+const matteString_t * matte_vm_cstring_to_string_temporary(matteVM_t * vm, const char * s) {
+    if (vm->string_tempIter >= matte_string_temp_max_calls) 
+        vm->string_tempIter = 0;
+    matteString_t * t = vm->string_tempVals[vm->string_tempIter++];
+    if (!t) {
+        t = matte_string_create();
+        vm->string_tempVals[vm->string_tempIter-1] = t;
+    }   
+    matte_string_clear(t);
+    matte_string_concat_printf(t, "%s", s);
+    return t;
+}
 
 
 static uint8_t * vm_default_import(
@@ -234,7 +255,7 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_CARET:      return vm_operator__caret       (vm, a, b);
 
       default:
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled OPR operator"));                        
+        matte_vm_raise_error_cstring(vm, "unhandled OPR operator");                        
         return matte_heap_new_value(vm->heap);
     }
 }
@@ -249,7 +270,7 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_TOKEN:       return vm_operator__overload_only_1(vm, "$", a);
 
       default:
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("unhandled OPR operator"));                        
+        matte_vm_raise_error_cstring(vm, "unhandled OPR operator");                        
         return matte_heap_new_value(vm->heap);
     }
 }
@@ -347,7 +368,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             memcpy(&referrableStrID, inst->data, sizeof(uint32_t));
             const matteString_t * str = matte_bytecode_stub_get_string(frame->stub, referrableStrID);
             if (!str) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("No such bytecode stub string."));
+                matte_vm_raise_error_cstring(vm, "No such bytecode stub string.");
             } else {
                 matteVMStackFrame_t f = matte_vm_get_stackframe(vm, vm->namedRefIndex+1);
                 if (f.context.binID) {
@@ -389,7 +410,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             const matteString_t * str = matte_bytecode_stub_get_string(frame->stub, stringID);
             if (!str) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("NST opcode refers to non-existent string (corrupt bytecode?)"));
+                matte_vm_raise_error_cstring(vm, "NST opcode refers to non-existent string (corrupt bytecode?)");
                 break;
             }
             matteValue_t v = matte_heap_new_value(vm->heap);
@@ -425,7 +446,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteBytecodeStub_t * stub = vm_find_stub(vm, ids[0], ids[1]);
 
             if (stub == NULL) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("NFN opcode data referenced non-existent stub (either parser error OR bytecode was reused erroneously)"));
+                matte_vm_raise_error_cstring(vm, "NFN opcode data referenced non-existent stub (either parser error OR bytecode was reused erroneously)");
                 break;
             }
 
@@ -433,7 +454,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteValue_t v = matte_heap_new_value(vm->heap);
                 uint32_t i;
                 if (STACK_SIZE() < sfscount) {
-                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM internal error: too few values on stack to service SFS opcode!"));
+                    matte_vm_raise_error_cstring(vm, "VM internal error: too few values on stack to service SFS opcode!");
                     break;
                 }
                 matteValue_t * vals = calloc(sfscount, sizeof(matteValue_t));
@@ -443,7 +464,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 }
 
                 // xfer ownership of type values
-                matte_value_into_new_typed_function_ref(&v, stub, MATTE_ARRAY_CAST(vals, matteValue_t, sfscount));
+                matteArray_t arr = MATTE_ARRAY_CAST(vals, matteValue_t, sfscount);
+                matte_value_into_new_typed_function_ref(&v, stub, &arr);
                 #ifdef MATTE_DEBUG__HEAP
                     matte_heap_track_neutral(v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
                 #endif
@@ -473,7 +495,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t len;
             memcpy(&len, inst->data, 4);
             if (STACK_SIZE() < len) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("Array cannot be created. (insufficient stack size)"));
+                matte_vm_raise_error_cstring(vm, "Array cannot be created. (insufficient stack size)");
                 break;
             }
             matteValue_t v = matte_heap_new_value(vm->heap);
@@ -503,7 +525,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t len;
             memcpy(&len, inst->data, 4);
             if (STACK_SIZE() < len*2) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("Static object cannot be created. (insufficient stack size)"));
+                matte_vm_raise_error_cstring(vm, "Static object cannot be created. (insufficient stack size)");
                 break;
             }
 
@@ -561,7 +583,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t argcount;
             memcpy(&argcount, inst->data, sizeof(uint32_t));
             if (STACK_SIZE() < argcount+1) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to prepare arguments for a call, but insufficient arguments on the stack."));    
+                matte_vm_raise_error_cstring(vm, "VM error: tried to prepare arguments for a call, but insufficient arguments on the stack.");    
                 break;
             }
 
@@ -601,7 +623,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
           case MATTE_OPCODE_ARF: {            
             if (STACK_SIZE() < 1) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to prepare arguments for referrable assignment, but insufficient arguments on the stack."));    
+                matte_vm_raise_error_cstring(vm, "VM error: tried to prepare arguments for referrable assignment, but insufficient arguments on the stack.");    
                 break;            
             }
             matteValue_t * ref = matte_vm_stackframe_get_referrable(vm, 0, *(uint32_t*)inst->data); 
@@ -629,14 +651,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                   case MATTE_OPERATOR_ASSIGNMENT_BRIGHT: vOut = vm_operator__assign_bright(vm, ref, v); break;
                   default:
                     vOut = matte_heap_new_value(vm->heap);
-                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent referrable operation (corrupt bytecode?)."));                        
+                    matte_vm_raise_error_cstring(vm, "VM error: tried to access non-existent referrable operation (corrupt bytecode?).");                        
 
                 }                
                 STACK_POP();
                 matte_heap_recycle(v);
                 STACK_PUSH(vOut); // new value is pushed
             } else {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent referrable."));    
+                matte_vm_raise_error_cstring(vm, "VM error: tried to access non-existent referrable.");    
             }
             break;
           }          
@@ -651,7 +673,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }    
           case MATTE_OPCODE_CPY: {
             if (!STACK_SIZE()) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: cannot CPY with empty stack"));    
+                matte_vm_raise_error_cstring(vm, "VM error: cannot CPY with empty stack");    
                 break;
             }       
             matteValue_t m = STACK_PEEK(0);
@@ -662,7 +684,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }   
           case MATTE_OPCODE_OSN: {
             if (STACK_SIZE() < 3) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: OSN opcode requires 3 on the stack."));                
+                matte_vm_raise_error_cstring(vm, "VM error: OSN opcode requires 3 on the stack.");                
                 break;        
             }
             int opr = *(uint32_t*)(inst->data);
@@ -711,7 +733,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                   case MATTE_OPERATOR_ASSIGNMENT_BLEFT: out = vm_operator__assign_bleft(vm, ref, val); break;
                   case MATTE_OPERATOR_ASSIGNMENT_BRIGHT: out = vm_operator__assign_bright(vm, ref, val); break;
                   default:
-                    matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: tried to access non-existent assignment operation (corrupt bytecode?)."));                        
+                    matte_vm_raise_error_cstring(vm, "VM error: tried to access non-existent assignment operation (corrupt bytecode?).");                        
                 }               
                 
                 matte_value_object_pop_lock(*ref);
@@ -735,7 +757,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
           case MATTE_OPCODE_OLK: {
             if (STACK_SIZE() < 2) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: OLK opcode requires 2 on the stack."));                
+                matte_vm_raise_error_cstring(vm, "VM error: OLK opcode requires 2 on the stack.");                
                 break;        
             }
             
@@ -756,12 +778,12 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_EXT: {
             uint64_t call = *(uint64_t*)inst->data;
             if (call >= matte_array_get_size(vm->externalFunctionIndex)) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("VM error: unknown external call."));                
+                matte_vm_raise_error_cstring(vm, "VM error: unknown external call.");                
                 break;        
             }
             matteBytecodeStub_t * stub = matte_array_at(vm->extStubs, matteBytecodeStub_t *, call);
             if (stub == NULL) {
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("EXT opcode data referenced non-existent stub (either parser error OR bytecode was reused erroneously)"));
+                matte_vm_raise_error_cstring(vm, "EXT opcode data referenced non-existent stub (either parser error OR bytecode was reused erroneously)");
                 break;
             }
 
@@ -820,7 +842,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 case MATTE_OPERATOR_CARET:
                 case MATTE_OPERATOR_NOTEQ: {
                     if (STACK_SIZE() < 2) {
-                        matte_vm_raise_error_string(vm, MATTE_STR_CAST("OPR operator requires 2 operands."));                        
+                        matte_vm_raise_error_cstring(vm, "OPR operator requires 2 operands.");                        
                     } else {
                         matteValue_t a = STACK_PEEK(0);
                         matteValue_t b = STACK_PEEK(1);
@@ -845,7 +867,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 case MATTE_OPERATOR_POUND:
                 case MATTE_OPERATOR_TOKEN:{
                     if (STACK_SIZE() < 1) {
-                        matte_vm_raise_error_string(vm, MATTE_STR_CAST("OPR operator requires 1 operand."));                        
+                        matte_vm_raise_error_cstring(vm, "OPR operator requires 1 operand.");                        
                     } else {
                     
                         matteValue_t a = STACK_PEEK(0);
@@ -865,7 +887,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
       
           default: 
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Unknown / unhandled opcode.")); 
+            matte_vm_raise_error_cstring(vm, "Unknown / unhandled opcode."); 
         
         }
 
@@ -946,6 +968,8 @@ static void vm_add_built_in(
 
 matteVM_t * matte_vm_create() {
     matteVM_t * vm = calloc(1, sizeof(matteVM_t));
+
+
     vm->callstack = matte_array_create(sizeof(matteVMStackFrame_t *));
     vm->stubIndex = matte_table_create_hash_pointer();
     vm->interruptOps = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
@@ -1106,6 +1130,11 @@ void matte_vm_destroy(matteVM_t * vm) {
     matte_array_destroy(vm->externalFunctionIndex); // copy, safe
     matte_table_iter_destroy(iter);
     matte_table_iter_destroy(subiter);
+
+    for(i = 0; i < matte_string_temp_max_calls; ++i) {
+        if (vm->string_tempVals[i])
+            matte_string_destroy(vm->string_tempVals[i]);
+    }
     free(vm);
 }
 
@@ -1153,7 +1182,7 @@ matteValue_t matte_vm_call(
         if (matte_array_get_size(args)) {
             return matte_value_to_type(matte_array_at(args, matteValue_t, 0), func);
         } else {
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Type conversion failed (no value given to convert)."));
+            matte_vm_raise_error_cstring(vm, "Type conversion failed (no value given to convert).");
             return matte_heap_new_value(vm->heap);
         }
     }
@@ -1250,13 +1279,14 @@ matteValue_t matte_vm_call(
         }
         int ok = 1;
         if (callable == 2 && len) { // typestrictcheck
+            matteArray_t arr = MATTE_ARRAY_CAST(
+                ((matteValue_t*)matte_array_get_data(referrables))+1,
+                matteValue_t,
+                len 
+            );
             ok = matte_value_object_function_pre_typecheck_unsafe(
                 d, 
-                MATTE_ARRAY_CAST(
-                    ((matteValue_t*)matte_array_get_data(referrables))+1,
-                    matteValue_t,
-                    len 
-                )
+                &arr  
             );
         }
         len = matte_bytecode_stub_local_count(frame->stub);
@@ -1341,7 +1371,7 @@ matteValue_t matte_vm_run_script(
     matteValue_t func = matte_heap_new_value(vm->heap);
     matteBytecodeStub_t * stub = vm_find_stub(vm, fileid, 0);
     if (!stub) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Script has no toplevel context to run."));
+        matte_vm_raise_error_cstring(vm, "Script has no toplevel context to run.");
         return func;
     }
     matte_value_into_new_function_ref(&func, stub);
@@ -1459,7 +1489,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
 
     uint32_t i;
     uint32_t len = matte_vm_get_stackframe_size(vm);
-    matte_value_into_string(&key, MATTE_STR_CAST("length"));
+    matte_value_into_string(&key, MATTE_VM_STR_CAST(vm, "length"));
     matte_value_into_number(&val, len);
     matte_value_object_set(callstack, key, val, 0);
     
@@ -1475,8 +1505,8 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
 
         const matteString_t * filename = matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(framesrc.stub));
         
-        matte_value_into_string(&key, MATTE_STR_CAST("file"));
-        matte_value_into_string(&val, filename ? filename : MATTE_STR_CAST("<unknown>"));        
+        matte_value_into_string(&key, MATTE_VM_STR_CAST(vm, "file"));
+        matte_value_into_string(&val, filename ? filename : MATTE_VM_STR_CAST(vm, "<unknown>"));        
         matte_value_object_set(frame, key, val, 0);
         
 
@@ -1485,7 +1515,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
         uint32_t instcount = 0;
         const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(framesrc.stub, &instcount);        
         
-        matte_value_into_string(&key, MATTE_STR_CAST("lineNumber"));        
+        matte_value_into_string(&key, MATTE_VM_STR_CAST(vm, "lineNumber"));        
         int lineNumber = 0;
         if (framesrc.pc - 1 < instcount) {
             lineNumber = inst[framesrc.pc-1].lineNumber;                
@@ -1497,25 +1527,25 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
         matte_string_concat_printf(str, " (%d) -> %s, line %d\n", i, filename ? matte_string_get_c_str(filename) : "<unknown>", lineNumber); 
     }
 
-
-    matte_value_into_new_object_array_ref(&val, MATTE_ARRAY_CAST(arr, matteValue_t, len));
+    matteArray_t arrA = MATTE_ARRAY_CAST(arr, matteValue_t, len);
+    matte_value_into_new_object_array_ref(&val, &arrA);
     free(arr);
-    matte_value_into_string(&key, MATTE_STR_CAST("frames"));
+    matte_value_into_string(&key, MATTE_VM_STR_CAST(vm, "frames"));
     matte_value_object_set(callstack, key, val, 0);
     
 
     
     
-    matte_value_into_string(&key, MATTE_STR_CAST("callstack"));    
+    matte_value_into_string(&key, MATTE_VM_STR_CAST(vm, "callstack"));    
     matte_value_object_set(out, key, callstack, 0);
 
 
-    matte_value_into_string(&key, MATTE_STR_CAST("summary"));
+    matte_value_into_string(&key, MATTE_VM_STR_CAST(vm, "summary"));
     matte_value_into_string(&val, str);
     matte_string_destroy(str);
     matte_value_object_set(out, key, val, 0);
 
-    matte_value_into_string(&key, MATTE_STR_CAST("data"));
+    matte_value_into_string(&key, MATTE_VM_STR_CAST(vm, "data"));
     matte_value_object_set(out, key, detail, 0);    
 
     matte_heap_recycle(val);
@@ -1532,7 +1562,7 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
             printf("Previous error: \n%s\n", 
                 matte_string_get_c_str(
                 matte_value_string_get_string_unsafe(
-                matte_value_object_access_string(vm->catchable, MATTE_STR_CAST("summary")))));
+                matte_value_object_access_string(vm->catchable, MATTE_VM_STR_CAST(vm, "summary")))));
             assert(!"VM has a new error generated before previous error could be captured. This is not allowed and is /probably/ indicative of internal VM error.");
         #endif
     }
@@ -1567,13 +1597,16 @@ void matte_vm_raise_error_string(matteVM_t * vm, const matteString_t * str) {
     matte_heap_recycle(b);
 }
 
+void matte_vm_raise_error_cstring(matteVM_t * vm, const char * str) {
+    matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, str));
+}
 
 // Gets the requested stackframe. 0 is the currently running stackframe.
 matteVMStackFrame_t matte_vm_get_stackframe(matteVM_t * vm, uint32_t i) {
     matteVMStackFrame_t ** frames = matte_array_get_data(vm->callstack);
     i = vm->stacksize - 1 - i;
     if (i >= vm->stacksize) { // invalid or overflowed
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Invalid stackframe requested."));
+        matte_vm_raise_error_cstring(vm, "Invalid stackframe requested.");
         matteVMStackFrame_t err = {0};
         return err;
     }
@@ -1588,7 +1621,7 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
     matteVMStackFrame_t ** frames = matte_array_get_data(vm->callstack);
     i = vm->stacksize - 1 - i;
     if (i >= vm->stacksize) { // invalid or overflowed
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Invalid stackframe requested in referrable query."));
+        matte_vm_raise_error_cstring(vm, "Invalid stackframe requested in referrable query.");
         return NULL;
     }
 
@@ -1601,7 +1634,7 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 
         // bad referrable
         if (!ref) {
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Invalid referrable"));
+            matte_vm_raise_error_cstring(vm, "Invalid referrable");
             return NULL;    
         } else { 
             return ref;
@@ -1613,7 +1646,7 @@ void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t ref
     matteVMStackFrame_t ** frames = matte_array_get_data(vm->callstack);
     i = vm->stacksize - 1 - i;
     if (i >= vm->stacksize) { // invalid or overflowed
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Invalid stackframe requested in referrable assignment."));
+        matte_vm_raise_error_cstring(vm, "Invalid stackframe requested in referrable assignment.");
         return;
     }
 

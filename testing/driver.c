@@ -12,7 +12,7 @@
 static int TESTID = 1;
 
 
-static void test_string_utf8() {
+static void test_string_utf8(matteVM_t * vm) {
     matteString_t * str = matte_string_create();
     assert(matte_string_get_length(str) == 0);
     assert(matte_string_get_byte_length(str) == 0);
@@ -23,19 +23,19 @@ static void test_string_utf8() {
     assert(!strcmp(matte_string_get_c_str(str), "hello4안녕world𐍈ㄅㄞˇ!!!"));
     assert(matte_string_get_char(str, 4) == 'o');
     
-    assert(matte_string_test_eq(str, MATTE_STR_CAST("hello4안녕world𐍈ㄅㄞˇ!!!")));
+    assert(matte_string_test_eq(str, MATTE_VM_STR_CAST(vm, "hello4안녕world𐍈ㄅㄞˇ!!!")));
     matte_string_set_char(str, 4, 'O');
     matte_string_append_char(str, 'i');
-    assert(!matte_string_compare(str, MATTE_STR_CAST("hellO4안녕world𐍈ㄅㄞˇ!!!i")));
-    assert(matte_string_test_contains(str, MATTE_STR_CAST("4안녕world𐍈")));
-    assert(!matte_string_test_contains(str, MATTE_STR_CAST("o4안녕woild𐍈ㄅㄞˇ")));
+    assert(!matte_string_compare(str, MATTE_VM_STR_CAST(vm, "hellO4안녕world𐍈ㄅㄞˇ!!!i")));
+    assert(matte_string_test_contains(str, MATTE_VM_STR_CAST(vm, "4안녕world𐍈")));
+    assert(!matte_string_test_contains(str, MATTE_VM_STR_CAST(vm, "o4안녕woild𐍈ㄅㄞˇ")));
 
     matteString_t * str1 = matte_string_create_from_c_str("%s", matte_string_get_c_str(str));
     matteString_t * str2 = matte_string_clone(str1);
     matteString_t * str3 = matte_string_create();
     matte_string_set(str3, str); 
     
-    assert(!matte_string_compare(str1, MATTE_STR_CAST("hellO4안녕world𐍈ㄅㄞˇ!!!i")));
+    assert(!matte_string_compare(str1, MATTE_VM_STR_CAST(vm, "hellO4안녕world𐍈ㄅㄞˇ!!!i")));
     assert(!strcmp(matte_string_get_c_str(str3), "hellO4안녕world𐍈ㄅㄞˇ!!!i"));
     assert(matte_string_test_eq(str3, str2));    
     
@@ -57,7 +57,7 @@ static void test_string_utf8() {
 }
 
 
-static void test_string() {
+static void test_string(matteVM_t * vm) {
     matteString_t * str = matte_string_create();
     assert(matte_string_get_length(str) == 0);
     assert(matte_string_get_byte_length(str) == 0);
@@ -67,19 +67,19 @@ static void test_string() {
     assert(!strcmp(matte_string_get_c_str(str), "hello4world!!!"));
     assert(matte_string_get_char(str, 4) == 'o');
     
-    assert(matte_string_test_eq(str, MATTE_STR_CAST("hello4world!!!")));
+    assert(matte_string_test_eq(str, MATTE_VM_STR_CAST(vm, "hello4world!!!")));
     matte_string_set_char(str, 4, 'O');
     matte_string_append_char(str, 'i');
-    assert(!matte_string_compare(str, MATTE_STR_CAST("hellO4world!!!i")));
-    assert(matte_string_test_contains(str, MATTE_STR_CAST("4world")));
-    assert(!matte_string_test_contains(str, MATTE_STR_CAST("o4woild")));
+    assert(!matte_string_compare(str, MATTE_VM_STR_CAST(vm, "hellO4world!!!i")));
+    assert(matte_string_test_contains(str, MATTE_VM_STR_CAST(vm, "4world")));
+    assert(!matte_string_test_contains(str, MATTE_VM_STR_CAST(vm, "o4woild")));
 
     matteString_t * str1 = matte_string_create_from_c_str("%s", matte_string_get_c_str(str));
     matteString_t * str2 = matte_string_clone(str1);
     matteString_t * str3 = matte_string_create();
     matte_string_set(str3, str);
     
-    assert(!matte_string_compare(str1, MATTE_STR_CAST("hellO4world!!!i")));
+    assert(!matte_string_compare(str1, MATTE_VM_STR_CAST(vm, "hellO4world!!!i")));
     assert(!strcmp(matte_string_get_c_str(str3), "hellO4world!!!i"));
     assert(matte_string_test_eq(str3, str2));    
     
@@ -210,8 +210,9 @@ static matteValue_t test_external_function(
 
 int main() {
     uint32_t i = 0;
-    test_string();
-    test_string_utf8();
+    matte_t * m = matte_create();
+    test_string(matte_get_vm(m));
+    test_string_utf8(matte_get_vm(m));
 
     matteString_t * infile = matte_string_create();
     matteString_t * outfile = matte_string_create();
@@ -232,7 +233,7 @@ int main() {
 
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
-        matte_vm_set_external_function(vm, MATTE_STR_CAST("external_test!"), 2, test_external_function, NULL);
+        matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "external_test!"), 2, test_external_function, NULL);
         matte_vm_set_debug_callback(vm, onErrorCatch, NULL);
 
 

@@ -543,10 +543,11 @@ static matteToken_t * matte_tokenizer_consume_word(
     const char * word
 ) {
     matteString_t * str = consume_variable_name(&t->iter);
-    if (matte_string_test_eq(str, MATTE_STR_CAST(word))) {
+    matteString_t * token = matte_string_create_from_c_str(word);
+    if (matte_string_test_eq(str, token)) {
         t->character += matte_string_get_length(str);
         t->backup = t->iter;
-        
+        matte_string_destroy(token);
         return new_token(
             str,
             line,
@@ -556,6 +557,7 @@ static matteToken_t * matte_tokenizer_consume_word(
     } else {
         t->iter = t->backup;        
         matte_string_destroy(str);
+        matte_string_destroy(token);
         return NULL;
     }
 }
@@ -1831,7 +1833,9 @@ int matte_syntax_graph_continue(
     int constructID
 ) {
     if (!matte_syntax_graph_is_construct(GRAPHSRC, constructID)) {
-        graph->onError(MATTE_STR_CAST("Internal error (no such constrctID)"), 0, 0, graph->onErrorData);
+        matteString_t * str = matte_string_create_from_c_str("Internal error (no such constrctID)");
+        graph->onError(str, 0, 0, graph->onErrorData);
+        matte_string_destroy(str);
         return 0;
     }
 
@@ -2010,7 +2014,7 @@ static uint32_t get_local_referrable(
     uint32_t len;
 
     // special: always refers to the calling context.
-    if (matte_string_test_eq(iter->text, MATTE_STR_CAST("context"))) {
+    if (!strcmp(matte_string_get_c_str(iter->text), "context")) {
         return 0;
     }
 
@@ -2469,7 +2473,7 @@ static matteArray_t * compile_base_value(
 
     switch(iter->ttype) {
       case MATTE_TOKEN_LITERAL_BOOLEAN:
-        write_instruction__nbl(inst, iter->line, matte_string_test_eq(iter->text, MATTE_STR_CAST("true")));
+        write_instruction__nbl(inst, iter->line, !strcmp(matte_string_get_c_str(iter->text), "true"));
         *src = iter->next;
         return inst;
 
@@ -2490,7 +2494,9 @@ static matteArray_t * compile_base_value(
         matteString_t * str = iter->text;
         uint32_t strl = matte_string_get_length(str);
         if(strl == 2) {
-            write_instruction__nst(inst, iter->line, function_intern_string(block, MATTE_STR_CAST("")));
+            matteString_t * empty = matte_string_create();
+            write_instruction__nst(inst, iter->line, function_intern_string(block, empty));
+            matte_string_destroy(empty);
         } else {        
             write_instruction__nst(inst, iter->line, function_intern_string(block, matte_string_get_substr(iter->text, 1, strl-2)));
         }

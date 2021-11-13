@@ -62,7 +62,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__copy) {
         offsetB > mB->size ||
         offsetB + length > mB->size) {
         
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Copy of buffer failed: The copy is outside the range of either the source or destination."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Copy of buffer failed: The copy is outside the range of either the source or destination."));
         return matte_heap_new_value(heap);           
     }
 
@@ -84,7 +84,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set) {
     if (offsetA > mA->size ||
         offsetA + length > mA->size) {
         
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Set of buffer failed: The copy is outside the range of destination."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Set of buffer failed: The copy is outside the range of destination."));
         return matte_heap_new_value(heap);           
     }
 
@@ -103,7 +103,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__subset) {
     uint64_t to   = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
 
     if (from > m->size || to > m->size || from > to) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Subset call failed: Improper indices for buffer"));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Subset call failed: Improper indices for buffer"));
         return matte_heap_new_value(heap);                   
     }
 
@@ -166,7 +166,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__remove) {
     uint64_t to   = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
 
     if (from > m->size || to > m->size || from > to) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Remove call failed: Improper indices for buffer"));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Remove call failed: Improper indices for buffer"));
         return matte_heap_new_value(heap);                   
     }
 
@@ -194,7 +194,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__get_index) {
 
     uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
     if (from < m->size) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Could not get value from buffer: index out of range."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not get value from buffer: index out of range."));
         return matte_heap_new_value(heap);                   
 
     }
@@ -212,7 +212,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
     uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
     uint8_t  val  = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
     if (from < m->size) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("Could not set value in buffer: index out of range."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not set value in buffer: index out of range."));
         return matte_heap_new_value(heap);                   
 
     }
@@ -234,18 +234,18 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
 
 
 static void matte_system__memorybuffer(matteVM_t * vm) {
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_create"),        0, matte_ext__memory_buffer__create,     NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_release"),       1, matte_ext__memory_buffer__release,    NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_set_size"),      2, matte_ext__memory_buffer__set_size,   NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_copy"),          5, matte_ext__memory_buffer__copy,       NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_set"),           4, matte_ext__memory_buffer__set,        NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_subset"),        3, matte_ext__memory_buffer__subset,     NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_append_byte"),   2, matte_ext__memory_buffer__append_byte,NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_append"),        2, matte_ext__memory_buffer__append     ,NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_remove"),        3, matte_ext__memory_buffer__remove,     NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_get_size"),      1, matte_ext__memory_buffer__get_size,   NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_get_index"),     2, matte_ext__memory_buffer__get_index,  NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_set_index"),     3, matte_ext__memory_buffer__set_index,  NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_create"),        0, matte_ext__memory_buffer__create,     NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_release"),       1, matte_ext__memory_buffer__release,    NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_set_size"),      2, matte_ext__memory_buffer__set_size,   NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_copy"),          5, matte_ext__memory_buffer__copy,       NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_set"),           4, matte_ext__memory_buffer__set,        NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_subset"),        3, matte_ext__memory_buffer__subset,     NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_append_byte"),   2, matte_ext__memory_buffer__append_byte,NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_append"),        2, matte_ext__memory_buffer__append     ,NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_remove"),        3, matte_ext__memory_buffer__remove,     NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_get_size"),      1, matte_ext__memory_buffer__get_size,   NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_get_index"),     2, matte_ext__memory_buffer__get_index,  NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_set_index"),     3, matte_ext__memory_buffer__set_index,  NULL);
 
 
  

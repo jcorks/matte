@@ -45,7 +45,7 @@ static int matte_thread(matteVM_t * fromVM, const char * from, void * data) {
 
 
     // first compile all and add them 
-    FILEIDS = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(from));
+    FILEIDS = matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, from));
 
     
 
@@ -78,12 +78,12 @@ MATTE_EXT_FN(matte_cli__system_threadstart) {
 
 
 static void matte_system__thread(matteVM_t * vm) {
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::mbuffer_threadstart"), 2, matte_cli__system_threadstart, NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_threadjoin"), 1, matte_cli__system_threadjoin, NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_threadstate"), 1, matte_cli__system_threadstate, NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_threadresult"), 1, matte_cli__system_threadresult, NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_threadnextmessage"), 0, matte_cli__system_threadnextmessage, NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("system_threadsendmessage"), 2, matte_cli__system_threadsendmesssage, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_threadstart"), 2, matte_cli__system_threadstart, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "system_threadjoin"), 1, matte_cli__system_threadjoin, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "system_threadstate"), 1, matte_cli__system_threadstate, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "system_threadresult"), 1, matte_cli__system_threadresult, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "system_threadnextmessage"), 0, matte_cli__system_threadnextmessage, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "system_threadsendmessage"), 2, matte_cli__system_threadsendmesssage, NULL);
 
 
 }

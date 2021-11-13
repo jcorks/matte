@@ -41,12 +41,6 @@ DEALINGS IN THE SOFTWARE.
 #define array_resize_amt 1.4
 #define array_presize_amt 16
 
-struct matteArray_t {
-    uint32_t allocSize;
-    uint32_t size;
-    uint32_t sizeofType;
-    uint8_t * data;
-};
 
 
 matteArray_t * matte_array_create(uint32_t typesize) {
@@ -71,18 +65,17 @@ const matteArray_t * matte_array_empty() {
     return &empty;
 }
 
-#define matte_array_temp_max_calls 128
-static matteArray_t * tempVals[matte_array_temp_max_calls] = {0};
-static int tempIter = 0;
 
-const matteArray_t * matte_array_temporary_from_static_array(void * arr, uint32_t sizeofType, uint32_t len) {
-    if (tempIter >= matte_array_temp_max_calls) tempIter = 0;
-    if (tempVals[tempIter]) {
-        matte_array_destroy(tempVals[tempIter]);
-    }
-    tempVals[tempIter] = matte_array_create(sizeofType);
-    matte_array_push_n(tempVals[tempIter], arr, len);
-    return tempVals[tempIter++];
+// For core library thread safety..... we are removing temporaries..
+
+
+matteArray_t matte_array_temporary_from_static_array(void * data, uint32_t sizeofType, uint32_t len) {
+    matteArray_t arr;
+    arr.sizeofType = sizeofType;
+    arr.size = len;
+    arr.allocSize = len;
+    arr.data = data;
+    return arr;
 }
 
 

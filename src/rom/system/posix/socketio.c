@@ -86,7 +86,7 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
             matte_string_get_c_str(addr),
             &sIn.sin_addr
         ) == 0) {
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("Given address is not in ipv4 format, ie. xxx.xxx.xxx.xxx"));
+            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Given address is not in ipv4 format, ie. xxx.xxx.xxx.xxx"));
             return matte_heap_new_value(heap);
         }
     }
@@ -133,7 +133,7 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
             matte_vm_raise_error_string(vm, realErr);
             matte_string_destroy(realErr);
         } else {
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST(err));
+            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
         }
         return matte_heap_new_value(heap);
        
@@ -209,7 +209,7 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
             matte_vm_raise_error_string(vm, realErr);
             matte_string_destroy(realErr);
         } else {
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST(err));
+            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
         }
         return matte_heap_new_value(heap);    
     } 
@@ -239,7 +239,7 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
             matte_vm_raise_error_string(vm, realErr);
             matte_string_destroy(realErr);
         } else {
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST(err));
+            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
         }
         return matte_heap_new_value(heap);
 
@@ -261,7 +261,7 @@ MATTE_EXT_FN(matte_ext_socket_server_create) {
 
 
 void matte_ext__socketio(matteVM_t * vm) {
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_ext::mbuffer_create"),        0, matte_ext__memory_buffer__create,     NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_ext::mbuffer_create"),        0, matte_ext__memory_buffer__create,     NULL);
 
 }
 */

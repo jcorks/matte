@@ -8,7 +8,9 @@ static int object_has_operator(matteValue_t a, const char * operator) {
     if (!opSrc) {
         return 0;
     }
-    result = matte_value_object_access_string(*opSrc, MATTE_STR_CAST(operator));
+    matteString_t * opstr = matte_string_create_from_c_str("%s", operator);
+    result = matte_value_object_access_string(*opSrc, opstr);
+    matte_string_destroy(opstr);
     int r = result.binID != 0;
     matte_heap_recycle(result);
     return r;  
@@ -17,16 +19,18 @@ static int object_has_operator(matteValue_t a, const char * operator) {
 static matteValue_t vm_run_object_operator_2(matteVM_t * vm, matteValue_t a, const char * operator, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(a.heap);
     const matteValue_t * opSrc = matte_value_object_get_attributes_unsafe(a);
+    matteString_t * opstr = matte_string_create_from_c_str("%s", operator);
     if (opSrc) {
-        matteValue_t op = matte_value_object_access_string(*opSrc, MATTE_STR_CAST(operator));
-        
-        result = matte_vm_call(vm, op, MATTE_ARRAY_CAST(&b, matteValue_t, 1), MATTE_STR_CAST(operator));
+        matteValue_t op = matte_value_object_access_string(*opSrc, opstr);
+        matteArray_t arr = MATTE_ARRAY_CAST(&b, matteValue_t, 1);
+        result = matte_vm_call(vm, op, &arr, opstr);
         matte_heap_recycle(op);
     } else {
         matteString_t * err = matte_string_create_from_c_str("%s operator on object without operator overloading is undefined.", operator);
         matte_vm_raise_error_string(vm, err);
         matte_string_destroy(err);
     }
+    matte_string_destroy(opstr);
     return result;
 }
 
@@ -34,25 +38,27 @@ static matteValue_t vm_run_object_operator_2(matteVM_t * vm, matteValue_t a, con
 static matteValue_t vm_run_object_operator_1(matteVM_t * vm, matteValue_t a, const char * operator) {
     matteValue_t result = matte_heap_new_value(a.heap);
     const matteValue_t * opSrc = matte_value_object_get_attributes_unsafe(a);
+    matteString_t * opstr = matte_string_create_from_c_str("%s", operator);
     if (opSrc) {
-        matteValue_t op = matte_value_object_access_string(*opSrc, MATTE_STR_CAST(operator));
+        matteValue_t op = matte_value_object_access_string(*opSrc, opstr);
         
-        result = matte_vm_call(vm, op, matte_array_empty(), MATTE_STR_CAST(operator));
+        result = matte_vm_call(vm, op, matte_array_empty(), opstr);
         matte_heap_recycle(op);
     } else {
         matteString_t * err = matte_string_create_from_c_str("%s operator on object without operator overloading is undefined.", operator);
         matte_vm_raise_error_string(vm, err);
         matte_string_destroy(err);
     }
+    matte_string_destroy(opstr);
     return result;
 }
 
 static void bad_operator(
     matteVM_t * vm,    
-    const matteString_t * operator, 
+    const char * operator, 
     matteValue_t obj
 ) {
-    matteString_t * errMessage = matte_string_clone(operator);
+    matteString_t * errMessage = matte_string_create_from_c_str("%s", operator);
     matte_string_concat_printf(errMessage, "%s", " operator on value of type ");
     matte_string_concat(errMessage, matte_value_string_get_string_unsafe(matte_value_type_name(matte_value_get_type(obj))));
     matte_string_concat_printf(errMessage, "%s", " is undefined.");
@@ -100,7 +106,7 @@ static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_
       }      
       
       default: 
-        bad_operator(vm, MATTE_STR_CAST("+"), a);
+        bad_operator(vm, "+", a);
         break;
       
     }
@@ -126,7 +132,7 @@ static matteValue_t vm_operator__sub(matteVM_t * vm, matteValue_t a, matteValue_
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("-"), a);
+        bad_operator(vm, "-", a);
         break;
 
     }
@@ -154,7 +160,7 @@ static matteValue_t vm_operator__div(matteVM_t * vm, matteValue_t a, matteValue_
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("/"), a);
+        bad_operator(vm, "/", a);
         break;
 
 
@@ -181,7 +187,7 @@ static matteValue_t vm_operator__mult(matteVM_t * vm, matteValue_t a, matteValue
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("*"), a);
+        bad_operator(vm, "*", a);
         break;
 
     }
@@ -204,7 +210,7 @@ static matteValue_t vm_operator__not(matteVM_t * vm, matteValue_t a) {
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("!"), a);
+        bad_operator(vm, "!", a);
         break;
 
 
@@ -217,7 +223,6 @@ static matteValue_t vm_operator__negate(matteVM_t * vm, matteValue_t a) {
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        //matte_vm_raise_error_string(vm, MATTE_STR_CAST("- operator on number value is undefined."));
         matte_value_into_number(
             &result, 
             -matte_value_as_number(a)
@@ -230,77 +235,13 @@ static matteValue_t vm_operator__negate(matteVM_t * vm, matteValue_t a) {
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("-()"), a);
+        bad_operator(vm, "-()", a);
         break;
     }
     return result;
 }
 
-/*
-static matteValue_t vm_operator__preinc(matteVM_t * vm, matteValue_t a) {
-    matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
-      case MATTE_VALUE_TYPE_EMPTY: 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("++ operator on empty value is undefined."));
-        return result;
 
-      case MATTE_VALUE_TYPE_NUMBER: 
-        //matte_vm_raise_error_string(vm, MATTE_STR_CAST("- operator on number value is undefined."));
-        matte_value_into_number(&a, 1+matte_value_as_number(a));
-        matte_value_into_number(
-            &result, 
-            matte_value_as_number(a)
-        );
-        break;
-
-      case MATTE_VALUE_TYPE_STRING: { 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("++ operator on string value is undefined."));
-        break;
-      }
-      case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("++ operator on boolean value is undefined."));
-        break;
-      
-      case MATTE_VALUE_TYPE_OBJECT: {
-        result = vm_run_object_operator_1(vm, a, "++()");
-        break;
-      }      
-    }
-    return result;
-}
-
-static matteValue_t vm_operator__predec(matteVM_t * vm, matteValue_t a) {
-    matteValue_t result = matte_heap_new_value(vm->heap);
-    switch(a.binID) {
-      case MATTE_VALUE_TYPE_EMPTY: 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("-- operator on empty value is undefined."));
-        return result;
-
-      case MATTE_VALUE_TYPE_NUMBER: 
-        //matte_vm_raise_error_string(vm, MATTE_STR_CAST("- operator on number value is undefined."));
-        matte_value_into_number(&a, matte_value_as_number(a)-1);
-        matte_value_into_number(
-            &result, 
-            matte_value_as_number(a)
-        );
-        break;
-
-      case MATTE_VALUE_TYPE_STRING: { 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("-- operator on string value is undefined."));
-        break;
-      }
-      case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("-- operator on boolean value is undefined."));
-        break;
-      
-      case MATTE_VALUE_TYPE_OBJECT: {
-        result = vm_run_object_operator_1(vm, a, "--()");
-        break;
-      }      
-    }
-    return result;
-}
-*/
 static matteValue_t vm_operator__bitwise_not(matteVM_t * vm, matteValue_t a) {
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
@@ -311,7 +252,7 @@ static matteValue_t vm_operator__bitwise_not(matteVM_t * vm, matteValue_t a) {
       }      
       
       default: 
-        bad_operator(vm, MATTE_STR_CAST("~"), a);
+        bad_operator(vm, "~", a);
         break;
 
     }
@@ -336,7 +277,7 @@ static matteValue_t vm_operator__bitwise_or(matteVM_t * vm, matteValue_t a, matt
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("|"), a);
+        bad_operator(vm, "|", a);
         break;
 
     }
@@ -361,7 +302,7 @@ static matteValue_t vm_operator__or(matteVM_t * vm, matteValue_t a, matteValue_t
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("||"), a);
+        bad_operator(vm, "||", a);
         break;
 
     }
@@ -385,7 +326,7 @@ static matteValue_t vm_operator__bitwise_and(matteVM_t * vm, matteValue_t a, mat
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("&"), a);
+        bad_operator(vm, "&", a);
         break;
 
     }
@@ -410,7 +351,7 @@ static matteValue_t vm_operator__and(matteVM_t * vm, matteValue_t a, matteValue_
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("&&"), a);
+        bad_operator(vm, "&&", a);
         break;
 
 
@@ -433,7 +374,7 @@ static matteValue_t vm_operator__overload_only_2(
       }      
       
       default: 
-        bad_operator(vm, MATTE_STR_CAST(operator), a);
+        bad_operator(vm, operator, a);
         break;
 
     }
@@ -454,7 +395,7 @@ static matteValue_t vm_operator__overload_only_1(
       }      
       
       default: 
-        bad_operator(vm, MATTE_STR_CAST(operator), a);
+        bad_operator(vm, operator, a);
         break;
 
     }
@@ -484,7 +425,7 @@ static matteValue_t vm_operator__pow(matteVM_t * vm, matteValue_t a, matteValue_
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("**"), a);
+        bad_operator(vm, "**", a);
         break;
     }
     return result;
@@ -530,7 +471,7 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
                 a.objectID == b.objectID 
             );
         } else {            
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("== operator with Function and non-function is undefined."));            
+            matte_vm_raise_error_cstring(vm, "== operator with Function and non-function is undefined.");            
         }
         break;
       }
@@ -552,7 +493,7 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
                 );
             } else {
                 // not defined.
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("== operator with object and non-empty or non-object values is undefined."));
+                matte_vm_raise_error_cstring(vm, "== operator with object and non-empty or non-object values is undefined.");
 
             }
         }
@@ -565,7 +506,7 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
                 a.objectID == b.objectID 
             );
         } else {            
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("== operator with Type and non-type is undefined."));            
+            matte_vm_raise_error_cstring(vm, "== operator with Type and non-type is undefined.");            
         }
         break;
       }      
@@ -614,7 +555,7 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
                 a.objectID != b.objectID 
             );
         } else {            
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("!= operator with Function and non-function is undefined."));            
+            matte_vm_raise_error_cstring(vm, "!= operator with Function and non-function is undefined.");            
         }
         break;
       }
@@ -636,7 +577,7 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
                 );
             } else {
                 // not defined.
-                matte_vm_raise_error_string(vm, MATTE_STR_CAST("!= operator with object and non-empty or non-object values is undefined."));
+                matte_vm_raise_error_cstring(vm, "!= operator with object and non-empty or non-object values is undefined.");
 
             }
         }
@@ -651,7 +592,7 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
             );
         } else {
             
-            matte_vm_raise_error_string(vm, MATTE_STR_CAST("!= operator with Type and non-type is undefined."));            
+            matte_vm_raise_error_cstring(vm, "!= operator with Type and non-type is undefined.");            
         }
         break;
       }      
@@ -696,7 +637,7 @@ static matteValue_t vm_operator__less(matteVM_t * vm, matteValue_t a, matteValue
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("<"), a);
+        bad_operator(vm, "<", a);
         break;
     }
     return result;
@@ -735,7 +676,7 @@ static matteValue_t vm_operator__greater(matteVM_t * vm, matteValue_t a, matteVa
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST(">"), a);
+        bad_operator(vm, ">", a);
         break;
 
     }
@@ -775,7 +716,7 @@ static matteValue_t vm_operator__lesseq(matteVM_t * vm, matteValue_t a, matteVal
         break;
       }      
       default: 
-        bad_operator(vm, MATTE_STR_CAST("<="), a);
+        bad_operator(vm, "<=", a);
         break;
 
     }
@@ -815,7 +756,7 @@ static matteValue_t vm_operator__greatereq(matteVM_t * vm, matteValue_t a, matte
       }      
       
       default: 
-        bad_operator(vm, MATTE_STR_CAST(">="), a);
+        bad_operator(vm, ">=", a);
         break;
 
     }
@@ -846,7 +787,7 @@ static matteValue_t vm_operator__modulo(matteVM_t * vm, matteValue_t a, matteVal
       }      
       
       default: 
-        bad_operator(vm, MATTE_STR_CAST("%"), a);
+        bad_operator(vm, "%", a);
         break;
 
     }
@@ -870,7 +811,7 @@ static matteValue_t vm_operator__caret(matteVM_t * vm, matteValue_t a, matteValu
       }      
       
       default: 
-        bad_operator(vm, MATTE_STR_CAST("^"), a);
+        bad_operator(vm, "^", a);
         break;
 
     }
@@ -902,7 +843,7 @@ static matteValue_t vm_operator__assign_add(matteVM_t * vm, matteValue_t * a, ma
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("+="), *a);
+        bad_operator(vm, "+=", *a);
         return result;
 
     }
@@ -929,7 +870,7 @@ static matteValue_t vm_operator__assign_sub(matteVM_t * vm, matteValue_t * a, ma
         break;
       }      
       default: 
-        bad_operator(vm, MATTE_STR_CAST("-="), *a);
+        bad_operator(vm, "-=", *a);
         return result;
 
     }
@@ -957,7 +898,7 @@ static matteValue_t vm_operator__assign_div(matteVM_t * vm, matteValue_t * a, ma
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("/="), *a);
+        bad_operator(vm, "/=", *a);
         return result;
 
     }
@@ -985,7 +926,7 @@ static matteValue_t vm_operator__assign_mult(matteVM_t * vm, matteValue_t * a, m
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("*="), *a);
+        bad_operator(vm, "*=", *a);
         return result;
 
     }
@@ -1013,7 +954,7 @@ static matteValue_t vm_operator__assign_mod(matteVM_t * vm, matteValue_t * a, ma
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("%="), *a);
+        bad_operator(vm, "%=", *a);
         return result;
 
     }
@@ -1040,7 +981,7 @@ static matteValue_t vm_operator__assign_pow(matteVM_t * vm, matteValue_t * a, ma
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("**="), *a);
+        bad_operator(vm, "**=", *a);
         return result;
 
     }
@@ -1059,7 +1000,7 @@ static matteValue_t vm_operator__assign_and(matteVM_t * vm, matteValue_t * a, ma
         break;
       }      
       default: 
-        bad_operator(vm, MATTE_STR_CAST("&="), *a);
+        bad_operator(vm, "&=", *a);
         return result;
 
 
@@ -1081,7 +1022,7 @@ static matteValue_t vm_operator__assign_or(matteVM_t * vm, matteValue_t * a, mat
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST("|="), *a);
+        bad_operator(vm, "|=", *a);
         return result;
 
 
@@ -1100,7 +1041,7 @@ static matteValue_t vm_operator__assign_xor(matteVM_t * vm, matteValue_t * a, ma
         break;
       }      
       default: 
-        bad_operator(vm, MATTE_STR_CAST("^="), *a);
+        bad_operator(vm, "^=", *a);
         return result;
 
     }
@@ -1118,7 +1059,7 @@ static matteValue_t vm_operator__assign_bleft(matteVM_t * vm, matteValue_t * a, 
         break;
       }      
       default: 
-        bad_operator(vm, MATTE_STR_CAST("<<="), *a);
+        bad_operator(vm, "<<=", *a);
         return result;
 
     }
@@ -1137,7 +1078,7 @@ static matteValue_t vm_operator__assign_bright(matteVM_t * vm, matteValue_t * a,
       }      
 
       default: 
-        bad_operator(vm, MATTE_STR_CAST(">>="), *a);
+        bad_operator(vm, ">>=", *a);
         return result;
     }
     matte_value_into_copy(&result, *a);

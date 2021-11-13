@@ -145,6 +145,9 @@ void matte_vm_raise_error(matteVM_t *, matteValue_t);
 // raises an error string
 void matte_vm_raise_error_string(matteVM_t *, const matteString_t *);
 
+// convenience function that raises an error string from a c string 
+void matte_vm_raise_error_cstring(matteVM_t *, const char * );
+
 int matte_vm_pending_message(matteVM_t *);
 
 
@@ -253,5 +256,19 @@ void matte_vm_set_print_callback(
     void *
 );
 
+/// Returns a temporary string built from the given cstring 
+/// It is meant as a convenience function, but it has the following 
+/// restrictions:
+///     - This must only be used on one thread at a time. It is not thread-safe.
+///     - The reference fizzles after subsequent calls to this function. 
+///       The string must only be used for quick operations. 
+///
+/// If your use case does not adhere to these, you should 
+/// allocate a new string instead.
+const matteString_t * matte_vm_cstring_to_string_temporary(matteVM_t * vm, const char * );
+
+/// A shorter form of matte_vm_cstring_to_string_temporary().
+///
+#define MATTE_VM_STR_CAST(__vm__, __cstr__) matte_vm_cstring_to_string_temporary(__vm__, __cstr__)
 
 #endif

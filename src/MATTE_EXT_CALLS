@@ -3,11 +3,11 @@
 static matteValue_t vm_ext_call__loop(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     if (!matte_value_is_callable(a)) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'loop' requires only argument to be a function."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'loop' requires only argument to be a function."));
         return matte_heap_new_value(vm->heap);
     }
     for(;;) {
-        matteValue_t result = matte_vm_call(vm, a, matte_array_empty(), MATTE_STR_CAST("loop"));
+        matteValue_t result = matte_vm_call(vm, a, matte_array_empty(), MATTE_VM_STR_CAST(vm, "loop"));
         int resultB = matte_value_as_boolean(result);
         matte_heap_recycle(result);
         if (!resultB) break;
@@ -20,14 +20,14 @@ static matteValue_t vm_ext_call__loop(matteVM_t * vm, matteValue_t fn, matteArra
 static matteValue_t vm_ext_call__for(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t v = matte_array_at(args, matteValue_t, 1);
     if (!matte_value_is_callable(v)) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'for' requires the second argument to be a Function."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'for' requires the second argument to be a Function."));
         return matte_heap_new_value(vm->heap);
     }
 
     matteValue_t params = matte_array_at(args, matteValue_t, 0);
     
     if (params.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'for' requires the first argument to be an Object."));    
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'for' requires the first argument to be an Object."));    
         return matte_heap_new_value(vm->heap);
     }
     matteValue_t a = matte_value_object_access_index(params, 0);
@@ -41,7 +41,8 @@ static matteValue_t vm_ext_call__for(matteVM_t * vm, matteValue_t fn, matteArray
         matteValue_t iter = matte_heap_new_value(vm->heap);
         while(current < end && !vm->pendingCatchable) {
             matte_value_into_number(&iter, current);
-            matteValue_t result = matte_vm_call(vm, v, MATTE_ARRAY_CAST(&iter, matteValue_t, 1), MATTE_STR_CAST("'for' inner function"));
+            matteArray_t arr = MATTE_ARRAY_CAST(&iter, matteValue_t, 1);
+            matteValue_t result = matte_vm_call(vm, v, &arr, MATTE_VM_STR_CAST(vm, "'for' inner function"));
             if (result.binID != 0) {
                 current = matte_value_as_number(result);
             } else {
@@ -61,7 +62,8 @@ static matteValue_t vm_ext_call__for(matteVM_t * vm, matteValue_t fn, matteArray
         if (incr < 0) {
             while(current > end && !vm->pendingCatchable) {
                 matte_value_into_number(&iter, current);
-                matteValue_t result = matte_vm_call(vm, v, MATTE_ARRAY_CAST(&iter, matteValue_t, 1), MATTE_STR_CAST("'for' inner function"));
+                matteArray_t arr = MATTE_ARRAY_CAST(&iter, matteValue_t, 1);
+                matteValue_t result = matte_vm_call(vm, v, &arr, MATTE_VM_STR_CAST(vm, "'for' inner function"));
                 if (result.binID != 0) {
                     current = matte_value_as_number(result);
                 } else {
@@ -73,7 +75,8 @@ static matteValue_t vm_ext_call__for(matteVM_t * vm, matteValue_t fn, matteArray
         } else {
             while(current < end && !vm->pendingCatchable) {
                 matte_value_into_number(&iter, current);
-                matteValue_t result = matte_vm_call(vm, v, MATTE_ARRAY_CAST(&iter, matteValue_t, 1), MATTE_STR_CAST("'for' inner function"));
+                matteArray_t arr = MATTE_ARRAY_CAST(&iter, matteValue_t, 1);
+                matteValue_t result = matte_vm_call(vm, v, &arr, MATTE_VM_STR_CAST(vm, "'for' inner function"));
                 if (result.binID != 0) {
                     current = matte_value_as_number(result);
                 } else {
@@ -97,12 +100,12 @@ static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteValue_t fn, matteA
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     matteValue_t b = matte_array_at(args, matteValue_t, 1);
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'foreach' requires first argument to be an Object."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'foreach' requires first argument to be an Object."));
         return matte_heap_new_value(vm->heap);
     }
     
     if (!matte_value_is_callable(b)) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'foreach' requires the second argument to be a function."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'foreach' requires the second argument to be a function."));
         return matte_heap_new_value(vm->heap);
     }
     matte_value_object_foreach(a, b);
@@ -112,7 +115,7 @@ static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteValue_t fn, matteA
 static matteValue_t vm_ext_call__remove_key(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'removeKey' requires first argument to be an Object."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'removeKey' requires first argument to be an Object."));
         return matte_heap_new_value(vm->heap);
     }
     matte_value_object_remove_key(
@@ -125,13 +128,13 @@ static matteValue_t vm_ext_call__remove_key(matteVM_t * vm, matteValue_t fn, mat
 static matteValue_t vm_ext_call__set_attributes(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'setAttributes' requires first argument to be an Object."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'setAttributes' requires first argument to be an Object."));
         return matte_heap_new_value(vm->heap);
     }
 
     matteValue_t b = matte_array_at(args, matteValue_t, 1);
     if (b.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'setAttributes' requires second argument to be an Object."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'setAttributes' requires second argument to be an Object."));
         return matte_heap_new_value(vm->heap);
     }
 
@@ -145,7 +148,7 @@ static matteValue_t vm_ext_call__set_attributes(matteVM_t * vm, matteValue_t fn,
 static matteValue_t vm_ext_call__get_attributes(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'getAttributes' requires first argument to be an object."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'getAttributes' requires first argument to be an object."));
         return matte_heap_new_value(vm->heap);
     }
 
@@ -178,7 +181,7 @@ static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_
 
     uint32_t * id = matte_table_find(vm->externalFunctions, str);
     if (!id) {
-        matteString_t * strerr = matte_string_create_from_c_str("getExternalFunction() was unable to find an externa function of the name: ");
+        matteString_t * strerr = matte_string_create_from_c_str("%s", "getExternalFunction() was unable to find an externa function of the name: ");
         matte_string_concat(strerr, str);
         matte_vm_raise_error_string(vm, strerr);
         matte_string_destroy(strerr);
@@ -226,11 +229,11 @@ static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, matteArr
 static matteValue_t vm_ext_call__listen(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t v = matte_array_at(args, matteValue_t, 0);
     if (!matte_value_is_callable(v)) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("listen() requires that the function argument is callable"));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "listen() requires that the function argument is callable"));
         return matte_heap_new_value(vm->heap);
     }
     
-    matteValue_t out = matte_vm_call(vm, v, matte_array_empty(), MATTE_STR_CAST("listen"));
+    matteValue_t out = matte_vm_call(vm, v, matte_array_empty(), MATTE_VM_STR_CAST(vm, "listen"));
     if (vm->pendingCatchable) {
 
         matte_heap_recycle(out);            
@@ -245,7 +248,8 @@ static matteValue_t vm_ext_call__listen(matteVM_t * vm, matteValue_t fn, matteAr
         // 2) run a response function and return its result
         if (matte_array_get_size(args) > 1 && matte_value_is_callable(matte_array_at(args, matteValue_t, 1))) {
             matteValue_t response = matte_array_at(args, matteValue_t, 1);
-            out = matte_vm_call(vm, response, MATTE_ARRAY_CAST(&catchable, matteValue_t, 1), MATTE_STR_CAST("listen response"));
+            matteArray_t arr = MATTE_ARRAY_CAST(&catchable, matteValue_t, 1);
+            out = matte_vm_call(vm, response, &arr, MATTE_VM_STR_CAST(vm, "listen response"));
             matte_heap_recycle(catchable);
             return out;
         } else {

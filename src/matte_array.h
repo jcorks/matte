@@ -64,24 +64,6 @@ void matte_array_destroy(
     matteArray_t * array
 );
 
-/// Creates a temporary array whos data is managed for you.
-///
-const matteArray_t * matte_array_temporary_from_static_array(
-    /// The data to populate the temporary array for you.
-    void * array, 
-
-    /// Size of the object within the input array.
-    uint32_t sizeofType, 
-
-    /// The object count that the array holds.
-    uint32_t length
-);
-
-/// Convenience call for matte_array_temperator_from_static_array() 
-/// The first argument is the array pointer
-/// The second argument is the type of each member within the array 
-/// The third argument is the number of members in the array
-#define MATTE_ARRAY_CAST(__D__,__T__,__L__) (matte_array_temporary_from_static_array(__D__, sizeof(__T__), __L__))
 
 /// Returns an empty, read-only array. 
 ///
@@ -248,6 +230,32 @@ void matte_array_set_size(
     uint32_t size
 );
 
+struct matteArray_t {
+    uint32_t allocSize;
+    uint32_t size;
+    uint32_t sizeofType;
+    uint32_t padding0;
+    uint8_t * data;
+};
+
+/// Creates a temporary array whos data is managed for you.
+/// Temporary arrays are "read only" and should to be modified.
+matteArray_t matte_array_temporary_from_static_array(
+    /// The data to populate the temporary array for you.
+    void * array, 
+
+    /// Size of the object within the input array.
+    uint32_t sizeofType, 
+
+    /// The object count that the array holds.
+    uint32_t length
+);
+
+/// Convenience call for matte_array_temperator_from_static_array() 
+/// The first argument is the array pointer
+/// The second argument is the type of each member within the array 
+/// The third argument is the number of members in the array
+#define MATTE_ARRAY_CAST(__D__,__T__,__L__) (matte_array_temporary_from_static_array(__D__, sizeof(__T__), __L__))
 
 
 #endif

@@ -117,7 +117,9 @@ static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, mat
     for(i = 0; i < len; ++i) {
         matteValue_t key = matte_heap_new_value(vm->heap);
         matteValue_t value = matte_heap_new_value(vm->heap);
-        matte_value_into_string(&key, MATTE_STR_CAST(names[i]));
+        matteString_t * str = matte_string_create_from_c_str("%s", names[i]);
+        matte_value_into_string(&key, str);
+        matte_string_destroy(str);
         matte_value_into_new_function_ref(&value, functions[i]);
         matte_value_object_set(obj, key, value, 0);
         // OK, strings are copied when set.
@@ -144,7 +146,7 @@ static matteValue_t vm_ext_call__introspect_keys(matteVM_t * vm, matteValue_t fn
         
         return out;
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.keys' only accepts Object parameters."));
+        matte_vm_raise_error_cstring(vm, "'introspect.keys' only accepts Object parameters.");
     }
     
     return matte_heap_new_value(vm->heap);
@@ -159,7 +161,7 @@ static matteValue_t vm_ext_call__introspect_values(matteVM_t * vm, matteValue_t 
         
         return out;
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.values' only accepts Object parameters."));
+        matte_vm_raise_error_cstring(vm, "'introspect.values' only accepts Object parameters.");
     }
 
     
@@ -174,7 +176,7 @@ static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
         matte_value_into_number(&out, matte_value_object_get_key_count(a));
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.keycount' only accepts Object parameters."));
+        matte_vm_raise_error_cstring(vm, "'introspect.keycount' only accepts Object parameters.");
     }
 
     
@@ -200,7 +202,7 @@ static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t 
         
         return len;
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.length' only accepts String parameters."));
+        matte_vm_raise_error_cstring(vm, "'introspect.length' only accepts String parameters.");
     }
 
     
@@ -210,7 +212,7 @@ static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t 
 static matteValue_t vm_ext_call__introspect_arraytostring(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.arrayToString' expects an Object."));
+        matte_vm_raise_error_cstring(vm, "'introspect.arrayToString' expects an Object.");
         return matte_heap_new_value(vm->heap);
     } 
 
@@ -228,7 +230,7 @@ static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t 
     if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
         key = matte_value_as_number(v);
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.charAt' requires a Number index as its second argument."));
+        matte_vm_raise_error_cstring(vm, "'introspect.charAt' requires a Number index as its second argument.");
         return matte_heap_new_value(vm->heap);
     }
 
@@ -238,7 +240,7 @@ static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t 
         matte_value_into_string(&strV, matte_string_get_substr(strVal, key, key));        
         return strV;
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.charAt' only accepts String parameters."));
+        matte_vm_raise_error_cstring(vm, "'introspect.charAt' only accepts String parameters.");
     }
     
     return matte_heap_new_value(vm->heap);
@@ -252,7 +254,7 @@ static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValu
     if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
         key = matte_value_as_number(v);
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.charCodeAt' requires a Number index as its second argument."));              
+        matte_vm_raise_error_cstring(vm, "'introspect.charCodeAt' requires a Number index as its second argument.");              
         return matte_heap_new_value(vm->heap);
     }
 
@@ -262,7 +264,7 @@ static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValu
         
         return strV;
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.charCodeAt' only accepts String parameters."));
+        matte_vm_raise_error_cstring(vm, "'introspect.charCodeAt' only accepts String parameters.");
     }
     
     return matte_heap_new_value(vm->heap);
@@ -274,7 +276,7 @@ static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t 
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     if (a.binID != MATTE_VALUE_TYPE_OBJECT &&
         a.binID != MATTE_VALUE_TYPE_STRING) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.subset' requires a String or Object as its first argument."));        
+        matte_vm_raise_error_cstring(vm, "'introspect.subset' requires a String or Object as its first argument.");        
         return matte_heap_new_value(vm->heap);
     }
 
@@ -284,7 +286,7 @@ static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t 
     if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
         from = matte_value_as_number(v);
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.subset' requires a Number start index as argument 2."));        
+        matte_vm_raise_error_cstring(vm, "'introspect.subset' requires a Number start index as argument 2.");        
         return matte_heap_new_value(vm->heap);
     }
 
@@ -292,7 +294,7 @@ static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t 
     if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
         to = matte_value_as_number(v);
     } else {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.subset' requires a Number end index as argument 3."));                
+        matte_vm_raise_error_cstring(vm, "'introspect.subset' requires a Number end index as argument 3.");                
         return matte_heap_new_value(vm->heap);
     }
 
@@ -311,7 +313,7 @@ static matteValue_t vm_ext_call__introspect_floor(matteVM_t * vm, matteValue_t f
 
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.floor' requires a Number as its argument."));                
+        matte_vm_raise_error_cstring(vm, "'introspect.floor' requires a Number as its argument.");                
         return out;
     }
     matte_value_into_number(&out, floor(matte_value_as_number(a)));
@@ -324,7 +326,7 @@ static matteValue_t vm_ext_call__introspect_ceil(matteVM_t * vm, matteValue_t fn
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.ceil' requires a Number as its argument."));                        
+        matte_vm_raise_error_cstring(vm, "'introspect.ceil' requires a Number as its argument.");                        
         return out;
     }
     matte_value_into_number(&out, ceil(matte_value_as_number(a)));
@@ -337,7 +339,7 @@ static matteValue_t vm_ext_call__introspect_round(matteVM_t * vm, matteValue_t f
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.round' requires a Number as its argument."));                
+        matte_vm_raise_error_cstring(vm, "'introspect.round' requires a Number as its argument.");                
         return out;
     }
     matte_value_into_number(&out, round(matte_value_as_number(a)));
@@ -349,7 +351,7 @@ static matteValue_t vm_ext_call__introspect_toradians(matteVM_t * vm, matteValue
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.toRadians' requires a Number as its argument."));                        
+        matte_vm_raise_error_cstring(vm, "'introspect.toRadians' requires a Number as its argument.");                        
         return out;
     }
     matte_value_into_number(&out, matte_value_as_number(a) * (M_PI / 180.0));
@@ -361,7 +363,7 @@ static matteValue_t vm_ext_call__introspect_todegrees(matteVM_t * vm, matteValue
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.toDegrees' requires a Number as its argument."));                
+        matte_vm_raise_error_cstring(vm, "'introspect.toDegrees' requires a Number as its argument.");                
         return out;
     }
     matte_value_into_number(&out, matte_value_as_number(a) * (180.0 / M_PI));
@@ -374,7 +376,7 @@ static matteValue_t vm_ext_call__introspect_sin(matteVM_t * vm, matteValue_t fn,
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.sin' requires a Number as its argument."));                
+        matte_vm_raise_error_cstring(vm, "'introspect.sin' requires a Number as its argument.");                
         return out;
     }
     matte_value_into_number(&out, sin(matte_value_as_number(a)));
@@ -384,14 +386,14 @@ static matteValue_t vm_ext_call__introspect_sin(matteVM_t * vm, matteValue_t fn,
 
 static matteValue_t vm_ext_call__introspect_cos(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
+        matte_vm_raise_error_cstring(vm, "introspect functions require that the first argument is the value to introspect.");    
         return matte_heap_new_value(vm->heap);
     }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.cos' requires a Number as its argument."));                        
+        matte_vm_raise_error_cstring(vm, "'introspect.cos' requires a Number as its argument.");                        
         return out;
     }
     matte_value_into_number(&out, cos(matte_value_as_number(a)));
@@ -404,7 +406,7 @@ static matteValue_t vm_ext_call__introspect_tan(matteVM_t * vm, matteValue_t fn,
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.tan' requires a Number as its argument."));                
+        matte_vm_raise_error_cstring(vm, "'introspect.tan' requires a Number as its argument.");                
         return out;
     }
     matte_value_into_number(&out, tan(matte_value_as_number(a)));
@@ -417,7 +419,7 @@ static matteValue_t vm_ext_call__introspect_abs(matteVM_t * vm, matteValue_t fn,
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.abs' requires a Number as its argument."));                
+        matte_vm_raise_error_cstring(vm, "'introspect.abs' requires a Number as its argument.");                
         return out;
     }
     matte_value_into_number(&out, fabs(matte_value_as_number(a)));
@@ -428,14 +430,14 @@ static matteValue_t vm_ext_call__introspect_abs(matteVM_t * vm, matteValue_t fn,
 
 static matteValue_t vm_ext_call__introspect_sqrt(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("introspect functions require that the first argument is the value to introspect."));    
+        matte_vm_raise_error_cstring(vm, "introspect functions require that the first argument is the value to introspect.");    
         return matte_heap_new_value(vm->heap);
     }
     matteValue_t a = matte_array_at(args, matteValue_t, 0);;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.sqrt' requires a Number as its argument."));                
+        matte_vm_raise_error_cstring(vm, "'introspect.sqrt' requires a Number as its argument.");                
         return out;
     }
     matte_value_into_number(&out, sqrt(matte_value_as_number(a)));
@@ -448,7 +450,7 @@ static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t f
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
-        matte_vm_raise_error_string(vm, MATTE_STR_CAST("'introspect.isNaN' requires a Number as its argument."));                
+        matte_vm_raise_error_cstring(vm, "'introspect.isNaN' requires a Number as its argument.");                
         return out;
     }
     matte_value_into_boolean(&out, isnan(matte_value_as_number(a)));
@@ -457,7 +459,7 @@ static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t f
 /*
 static matteValue_t vm_ext_call__introspect_nowrite(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_vm_raise_error_string(vm, MATTE_STR_CAST("Introspection object is not editable."));
+    matte_vm_raise_error_cstring(vm, "Introspection object is not editable.");
     matte_value_into_boolean(&out, 0);
     return out;
 }

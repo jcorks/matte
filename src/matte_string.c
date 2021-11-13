@@ -500,25 +500,6 @@ void matte_string_truncate(
 
 
 
-#define matte_string_temp_max_calls 128
-static matteString_t * tempVals[matte_string_temp_max_calls];
-static int tempIter = 0;
-static int tempInit = 0;
-
-const matteString_t * matte_string_temporary_from_c_str(const char * s) {
-    if (!tempInit) {
-        uint32_t i;
-        for(i = 0; i < matte_string_temp_max_calls; ++i)
-            tempVals[i] = matte_string_create();
-        tempInit = 1;
-    }    
-
-    if (tempIter >= matte_string_temp_max_calls) tempIter = 0;
-    matteString_t * t = tempVals[tempIter++];
-    matte_string_set_cstr(t, s, strlen(s));
-    return t;
-}
-
 
 
 

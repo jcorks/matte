@@ -323,7 +323,7 @@ int matte_debug(const char * input, char ** argv, int argc) {
     matte_t * m = matte_create();
     vm = matte_get_vm(m);
     matte_vm_add_system_symbols(vm, argv, argc);
-    DEBUG_FILEID = matte_vm_get_new_file_id(vm, MATTE_STR_CAST(input));
+    DEBUG_FILEID = matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, input));
     matte_vm_set_debug_callback(vm, onDebugEvent, NULL);
     matte_vm_set_print_callback(vm, onDebugPrint, NULL);
     printf("Compiling %s...\n", input);

@@ -11,6 +11,10 @@ void matte_string_heap_destroy(matteStringHeap_t *);
 
 uint32_t matte_string_heap_internalize(matteStringHeap_t *, const matteString_t *);
 
+// same as matte_string_heap_internalize(), but accepts a c string for convenience
+uint32_t matte_string_heap_internalize_cstring(matteStringHeap_t *, const char *);
+
+
 // null if fail
 const matteString_t * matte_string_heap_find(const matteStringHeap_t *, uint32_t);
 

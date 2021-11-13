@@ -23,7 +23,7 @@ MATTE_EXT_FN(matte_consoleio__getline) {
     fgets(buffer, GETLINE_SIZE, stdin);
 
     matteValue_t v =  matte_heap_new_value(heap);
-    matte_value_into_string(&v, MATTE_STR_CAST(buffer));
+    matte_value_into_string(&v, MATTE_VM_STR_CAST(vm, buffer));
     free(buffer);
     return v;    
 }
@@ -44,8 +44,8 @@ MATTE_EXT_FN(matte_consoleio__print) {
 }
 
 static void matte_system__consoleio(matteVM_t * vm) {
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::consoleio_print"),   1, matte_consoleio__print,   NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::consoleio_getline"), 0, matte_consoleio__getline, NULL);
-    matte_vm_set_external_function(vm, MATTE_STR_CAST("__matte_::consoleio_clear"),   0, matte_consoleio__clear, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::consoleio_print"),   1, matte_consoleio__print,   NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::consoleio_getline"), 0, matte_consoleio__getline, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::consoleio_clear"),   0, matte_consoleio__clear, NULL);
 }
 

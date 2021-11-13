@@ -97,25 +97,6 @@ void matte_string_destroy(
 
 
 
-/// Returns a temporary string built from the given cstring 
-/// It is meant as a convenience function, but it has the following 
-/// restrictions:
-///     - This must only be used on the main thread. It is not thread-safe
-///     - The reference fizzles after subsequent calls to this function. 
-///       The string must only be used for quick operations. 
-///
-/// If your use case does not adhere to these, you should 
-/// allocate a new string instead.
-const matteString_t * matte_string_temporary_from_c_str(
-    /// The cstring to cast as a matte string.
-    const char * cstr
-);
-
-
-/// A shorter form of matte_string_temporary_from_c_str().
-///
-#define MATTE_STR_CAST(__s__) matte_string_temporary_from_c_str(__s__)
-
 
 /// Sets the contents of the string A to the contents of string B
 ///
