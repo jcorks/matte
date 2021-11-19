@@ -12,10 +12,6 @@
 // returns: worker id
 @_workerstart = getExternalFunction("__matte_::async_start");
 
-// Wait for worker to exit.
-// arg0: worker id
-@_workerjoin = getExternalFunction("__matte_::async_join");
-
 
 // arg0: worker id
 // returns: state number 
@@ -29,6 +25,7 @@
 // returns: empty if no parent, else a string.
 @_workerinput = getExternalFunction("__matte_::async_input");
 
+// arg0: worker id
 // always a string.
 @_workerresult = getExternalFunction("__matte_::async_result");
 
@@ -43,21 +40,26 @@
 // 1-> message (string)
 @_workernextmessage = getExternalFunction("__matte_::async_nextmessage");
 
-
+// returns a string IFF the worker ended in error. Else, empty
+// arg0: worker id. 
+@_workererror = getExternalFunction("__matte_::async_error");
 
 
 @Array       = import('Matte.Core.Array');
 @EventSystem = import('Matte.Core.EventSystem');
+@Time        = import('Matte.System.Time');
+@class       = import('Matte.Core.Class');
 
 
 @workers = Array.new();
-@ASync = class({
+@Async;
+return class({
     name : 'Matte.System.Async',
     inherits:[EventSystem],
     define::(this) {
 
         this.events = {
-            onNewMessage::{}
+            onNewParentMessage::{}
         };
 
         @idToWorker::(id) {
@@ -76,41 +78,73 @@
             loop(::{
                 @nextm = _workernextmessage();
                 when(nextm != empty) ::<={
-                    this.emitEvent({
-                        'onNewMessage'
-                        {
-                            id: idToWorker(nextm[0]),
-                            message : nextm[1]
-                        }
-                    });
+                    // empty means from parent
+                    if (nextm[0] == empty) ::<= {
+                        this.emitEvent(
+                            'onNewParentMessage',
+                            {
+                                message : nextm[1]
+                            }
+                        );
+                    } else ::<= {                    
+                        idToWorker(nextm[0]).emitEvent(
+                            'onNewMessage',
+                            {
+                                message : nextm[1]
+                            }
+                        );
+                    };
                     return true;
                 };
                 return false;
+            });
+        };
+        
+        // state checking 
+        @checkStates::{
+            foreach(workers, ::(k, v) {
+                v.updateState();
             });
         };
 
 
         @Worker = class({
             name : 'Matte.System.Async.Worker',
+            inherits : [EventSystem],
             define::(this, args, classinst) {
-                @id = _workerstart(args.sourcepath, args.input);
+                <@>State = classinst.State;
+                @id = _workerstart(String(args.importPath), String(args.input));
                 @curstate = State.Unknown;
-                when(!id) error('The worker failed to start with the given args');
+                when(id == empty) error('The worker failed to start with the given args');
                 workers.push(this);
+                this.events = {
+                    onNewMessage::{},
+                    // when the state is detected to have changed
+                    // If the state is Finished, result will return
+                    // the result of the worker if present.
+                    onStateChange::{}
+                };
+                
 
-                @queryState ::() => State.type {
-                    curstate = match(_workerstate(id)) {
-                        (0): State.Running,
-                        (1): State.Finished,
-                        (2): State.Failed,
-                        (3): State.Unknown
-                    };
+                @queryState ::() => Number {
+                    return _workerstate(id);
                 };
                 queryState();
 
                 this.interface({
-                    join ::{
-                        _workerjoin(id);
+                    wait ::{
+                        @waiting = true;
+                        this.installHook('onStateChange', ::(worker, state){
+                            if (state == State.Finished || state == State.Failed) ::<={
+                                waiting = false;
+                            };
+                        });
+                        
+                        loop(::{
+                            Time.sleep(50);
+                            Async.update();
+                            return waiting;
+                        });
                     },
 
                     // semd ,essage tp a tjread
@@ -118,35 +152,47 @@
                         _workersendmessage(id, m);   
                     },
 
-                    state: {
+                    result: {
                         get ::{
-                            queryState();
-                            return curstate;
+                            return _workerresult(id);
                         }
                     },
 
-
-                    output : {
-                        return _workerresult(id);
+                    updateState:: {
+                        <@>newState = queryState();
+                        if (newState != curstate) ::<= {       
+                            this.emitEvent('onStateChange', newState);
+                            curstate = newState;
+                        };
+                    },
+                    
+                    'error': {
+                        get ::{
+                            return _workererror(id);
+                        }
                     }
                 });
 
             }
         });
-        Worker.State = enum({
+        Worker.State = {
             Running  : 0,
             Finished : 1,
             Failed   : 2,
             Unknown  : 3
-        }, 'Matte.System.Async.Worker.State');
-
+        };
 
         this.interface({
             update::{
                 checkMessages();
+                checkStates();
             },
 
             Worker : {get::{return Worker;}},
+
+            input : {
+                get::{return _workerinput();}
+            },
 
             sendToParent::(m) {
                 _workersendmessage(empty, m);
@@ -157,4 +203,54 @@
 }).new();
 
 
-return ASync;
+
+/*
+@Async = import('Matte.System.Async');
+@JSON = import('Matte.Core.JSON');
+
+
+
+@w = Async.Worker.new({
+    importPath: 'helper.mt',
+    input : JSON.encode({a:"hello", count:4200})
+});
+
+
+
+loop(::<={        
+    @isDone = false;
+    w.installHook('onStateChange', ::(worker, state) {
+        when(state == Async.Worker.State.Finished) ::<= {
+            print('Done');    
+            isDone = true;
+        };
+        
+        when(state == Async.Worker.State.Failed) ::<= {
+            print('Failed');    
+            print('From worker:');
+            print(w.error);
+            isDone = true;
+        };
+    });
+
+    w.installHook('onNewMessage', ::(worker, message) {
+        print('Message from worker: ' + message);
+    });
+
+    
+    return ::{
+        for([0, 10], ::(i) {
+            print(introspect.arrayToString([97+i]));
+        });
+        Async.update();
+        return !isDone;
+    };
+});
+
+
+
+
+
+
+*/
+

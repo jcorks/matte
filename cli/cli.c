@@ -55,6 +55,37 @@ static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * 
     fflush(stdout);
 }
 
+static void unhandledError(
+    matteVM_t * vm, 
+    uint32_t file, 
+    int lineNumber, 
+    matteValue_t val,
+    void * d
+) {
+    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
+        matteValue_t s = matte_value_object_access_string(val, MATTE_VM_STR_CAST(vm, "summary"));
+        if (s.binID) {
+            
+            printf(
+                "Unhandled error: %s\n", 
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(s))
+            );
+            fflush(stdout);
+            return;
+        }
+    }
+    
+    printf(
+        "Unhandled error (%s, line %d)\n", 
+        matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), 
+        lineNumber
+    );
+    fflush(stdout);
+}
+
+static void onDebugPrint(matteVM_t * vm, const matteString_t * str, void * ud) {
+    printf("%s\n", matte_string_get_c_str(str));
+}
 
 
 
@@ -131,6 +162,8 @@ int main(int argc, char ** args) {
 
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
+        matte_vm_set_print_callback(vm, onDebugPrint, NULL);
+        matte_vm_set_unhandled_callback(vm, unhandledError, NULL);
         matte_vm_add_system_symbols(vm, args, 0);
 
 
@@ -226,6 +259,8 @@ int main(int argc, char ** args) {
         
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
+        matte_vm_set_print_callback(vm, onDebugPrint, NULL);
+        matte_vm_set_unhandled_callback(vm, unhandledError, NULL);
         matte_vm_add_system_symbols(vm, args+2, argc-2);
 
         int FILEIDS;

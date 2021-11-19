@@ -139,12 +139,12 @@
                     iter.removeChar(0);
 
                     loop(::{
-                        match(iter.charAt(0)) {
-                            ('.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::{
+                        return match(iter.charAt(0)) {
+                            ('0', '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::<={
                                 rawnumstr = rawnumstr + iter.charAt(0);
                                 iter.removeChar(0);
                                 return true;
-                            }(),
+                            },
 
                             default: false
                         };       

@@ -55,7 +55,6 @@ int main() {
         "core/array.mt",      "Matte.Core.Array",
         "core/string.mt",     "Matte.Core.String",
         "core/json.mt",       "Matte.Core.JSON",
-        "core/enum.mt",       "Matte.Core.Enum",
         "core/eventsystem.mt","Matte.Core.EventSystem",
         "core/core.mt",       "Matte.Core",
         #ifdef MATTE_USE_SYSTEM_EXTENSIONS
@@ -65,6 +64,7 @@ int main() {
             "system/socketio.mt",       "Matte.System.SocketIO",       
             "system/time.mt",           "Matte.System.Time",       
             "system/utility.mt",        "Matte.System.Utility",               
+            "system/async.mt",        "Matte.System.Async",               
             "system/system.mt",         "Matte.System",       
         #endif
 

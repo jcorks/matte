@@ -27,6 +27,11 @@
 #include <pthread.h>
 
 #include "../../matte_string.h"
+#include "../../matte_vm.h"
+#include "../../matte_heap.h"
+#include "../../matte.h"
+#include "../../matte_compiler.h"
+#include "../../matte_bytecode_stub.h"
 
 ////////////
 #include "./posix/shared.c"
@@ -36,6 +41,7 @@
 #include "./posix/socketio.c"
 #include "./posix/time.c"
 #include "./posix/utility.c"
+#include "./posix/async.c"
 #else
 #error "Unknown system"
 #endif
@@ -53,6 +59,7 @@ void matte_bind_system_functions(matteVM_t * vm) {
     matte_system__socketio(vm);
     matte_system__time(vm);
     matte_system__utility(vm);
+    matte_system__async(vm);
 }
 
 

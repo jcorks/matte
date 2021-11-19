@@ -48,6 +48,10 @@ struct matteVM_t {
 
     void(*debug)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t, void *);
     void * debugData;
+
+    void(*unhandled)(matteVM_t *, uint32_t file, int lineNumber, matteValue_t, void *);
+    void * unhandledData;
+
    
     // last line (for debug line change)  
     uint32_t lastLine;
@@ -74,6 +78,8 @@ struct matteVM_t {
     uint32_t nextID;
 
     int pendingCatchable;
+    int errorLastLine;
+    uint32_t errorLastFile;
 
     // array of ready introspection objects.
     // when introspection objects are destroyed,
@@ -1342,14 +1348,13 @@ matteValue_t matte_vm_call(
 
         // uh oh... unhandled errors...
         if (!vm->stacksize && vm->pendingCatchable) {
-            if (vm->debug) {
-                vm->debug(
+            if (vm->unhandled) {
+                vm->unhandled(
                     vm,
-                    MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED,
-                    0,
-                    0,
+                    vm->errorLastFile,
+                    vm->errorLastLine,
                     vm->catchable,
-                    vm->debugData                   
+                    vm->unhandledData                   
                 );                
             }     
             #ifdef MATTE_DEBUG
@@ -1495,7 +1500,12 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
     
     
     matteValue_t * arr = malloc(sizeof(matteValue_t) * len);
-    matteString_t * str = matte_string_create_from_c_str("Matte Language VM callstack (%d entries):\n", len);
+    matteString_t * str;
+    if (detail.binID == MATTE_VALUE_TYPE_STRING) {
+        str = matte_string_create_from_c_str("%s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(detail)));        
+    } else {
+        str = matte_string_create_from_c_str("<no string data available>\n");    
+    }
     
     for(i = 0; i < len; ++i) {
         matteVMStackFrame_t framesrc = matte_vm_get_stackframe(vm, i);
@@ -1570,6 +1580,17 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     matteValue_t info = vm_info_new_object(vm, val);
     vm->catchable = info;
     vm->pendingCatchable = 1;
+    uint32_t instcount;
+    matteVMStackFrame_t framesrc = matte_vm_get_stackframe(vm, 0);
+    const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(framesrc.stub, &instcount);        
+    if (framesrc.pc - 1 < instcount) {
+        vm->errorLastLine = inst[framesrc.pc-1].lineNumber;                
+    } else {
+        vm->errorLastLine = -1;
+    }
+    vm->errorLastFile = matte_bytecode_stub_get_file_id(framesrc.stub);
+
+    
     matte_value_object_push_lock(info);
     
     if (vm->debug) {
@@ -1730,6 +1751,16 @@ void matte_vm_set_debug_callback(
     vm->debug = debugCB;
     vm->debugData = data;
 }
+
+void matte_vm_set_unhandled_callback(
+    matteVM_t * vm,
+    void(*cb)(matteVM_t *, uint32_t file, int lineNumber, matteValue_t, void *),
+    void * data
+) {
+    vm->unhandled = cb;
+    vm->unhandledData = data;
+}
+
 
 void matte_vm_set_print_callback(
     matteVM_t * vm,

@@ -49,9 +49,6 @@ typedef enum {
     // This event is signaled right when the error is raised, so it may 
     // be caught by the software.
     MATTE_VM_DEBUG_EVENT__ERROR_RAISED,
-
-    // 
-    MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED
 } matteVMDebugEvent_t;
 
 
@@ -246,6 +243,14 @@ void matte_vm_set_debug_callback(
     void(*)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *),
     void *
 );
+// gets a debug event callback.
+void matte_vm_set_unhandled_callback(
+    matteVM_t * vm,
+    void(*)(matteVM_t *, uint32_t file, int lineNumber, matteValue_t value, void *),
+    void *
+);
+
+
 
 // Sets a handler for the built-in print function.
 // This is most convenient for debugging. This default behavior 

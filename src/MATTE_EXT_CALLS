@@ -8,6 +8,11 @@ static matteValue_t vm_ext_call__loop(matteVM_t * vm, matteValue_t fn, matteArra
     }
     for(;;) {
         matteValue_t result = matte_vm_call(vm, a, matte_array_empty(), MATTE_VM_STR_CAST(vm, "loop"));
+        if (result.binID != MATTE_VALUE_TYPE_BOOLEAN) {
+            matte_heap_recycle(result);
+            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'loop' requires the looping function to return a boolean."));
+            return matte_heap_new_value(vm->heap);        
+        }
         int resultB = matte_value_as_boolean(result);
         matte_heap_recycle(result);
         if (!resultB) break;
@@ -198,10 +203,9 @@ static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_
 static matteValue_t vm_ext_call__print(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
     if (matte_array_get_size(args)) {
         const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
-        if (str) {
+        if (str && vm->userPrint) {
             vm->userPrint(vm, str, vm->userPrintData);
         }
-        fflush(stdout);
     }
     return matte_heap_new_value(vm->heap);
 }
