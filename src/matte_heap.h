@@ -139,6 +139,16 @@ void matte_value_object_set_userdata(matteValue_t, void *);
 // Else, returns NULL.
 void * matte_value_object_get_userdata(matteValue_t);
 
+// Registers a function to call with the object's userdata
+// and given data after the object has been cleaned up by 
+// the VM. This is useful for native implementations 
+// that use object wrappers which require explicit 
+// cleanup usually by user code. This keeps code 
+// simpler within the Matte context since the native 
+// impllementation can avoid requiring this explicit 
+// cleanup since it can be automated.
+void matte_value_object_set_native_finalizer(matteValue_t, void (*)(void * objectUserdata, void * functionUserdata), void * functionUserData);
+
 // returns whether the matte value is empty
 int matte_value_is_empty(matteValue_t);
 

@@ -6,16 +6,40 @@ typedef struct {
 } MatteMemoryBuffer;
 
 
-MATTE_EXT_FN(matte_ext__memory_buffer__create) {
+static void auto_cleanup_buffer(void * ud, void * fd) {
+    if (ud) {
+        MatteMemoryBuffer * b = ud;
+        free(ud->buffer);
+        free(ud);
+    }
+}
+
+// helper for other system implementations that 
+// deal with raw data: 
+static matte_system_shared__create_memory_buffer_from_raw(matteVM_t * vm, const uint8_t * data, uint32_t size) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_new_object_ref(&out);
-    
-    
+    matte_value_object_set_native_finalizer(out, auto_cleanup_buffer, NULL);    
     MatteMemoryBuffer * m = calloc(1, sizeof(MatteMemoryBuffer));
     matte_value_object_set_userdata(out, m);    
+    
+    if (data && size) {    
+        m->buffer = malloc(size);
+        memcpy(m->buffer, data, size);
+        m->alloc = size;
+        m->size = size;
+    }
+    
     return out;
 }
+
+
+MATTE_EXT_FN(matte_ext__memory_buffer__create) {
+    return matte_system_shared__create_memory_buffer_from_raw(vm, NULL, 0);
+}
+
+
 
 MATTE_EXT_FN(matte_ext__memory_buffer__release) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
@@ -193,7 +217,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__get_index) {
     MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
 
     uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
-    if (from < m->size) {
+    if (from >= m->size) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not get value from buffer: index out of range."));
         return matte_heap_new_value(heap);                   
 
@@ -211,7 +235,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
 
     uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
     uint8_t  val  = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
-    if (from < m->size) {
+    if (from >= m->size) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not set value in buffer: index out of range."));
         return matte_heap_new_value(heap);                   
 

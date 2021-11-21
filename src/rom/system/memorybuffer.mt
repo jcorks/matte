@@ -14,17 +14,17 @@
 <@>_mbuffer_set_index = getExternalFunction("__matte_::mbuffer_set_index");
 
 <@>class = import('Matte.Core.Class');
-return class({
-
+@MemoryBuffer = class({
+    name: 'Matte.System.MemoryBuffer',
     define::(this, args, thisclass) {
         <@>MBuffer = thisclass.type;
         @length = 0;
         @buffer = (
-            if(args._buffer == empty) ::<={
+            if (args == empty) ::<={
                 return _mbuffer_create();
             } else ::<={
-                length = _mbuffer_get_size(args._buffer);
-                return args._buffer;
+                length = _mbuffer_get_size(args);
+                return args;
             }
         );
             
@@ -81,9 +81,7 @@ return class({
             ) => MBuffer {
                 checkReleased(this);
                 return thisclass.new(
-                    {
-                        _buffer:_mbuffer_subset(buffer, from, to)
-                    }
+                    _mbuffer_subset(buffer, from, to)
                 );
             },
             
@@ -116,8 +114,8 @@ return class({
                 
                 set ::(v) {
                     checkReleased(this);
-                    length = 0;         
-                    _mbuffer_set_size(this, 0);       
+                    length = v;         
+                    _mbuffer_set_size(buffer, v);       
                 }
             }
         });
@@ -126,14 +124,34 @@ return class({
             '[]' : {
                 get ::(key => Number){
                     checkReleased(this);
-                    _mbuffer_get_index(this, key);                    
+                    return _mbuffer_get_index(buffer, key);                    
                 },
                 
                 set ::(key => Number, val => Number) {
                     checkReleased(this);
-                    _mbuffer_set_index(this, key, val);                                    
+                    _mbuffer_set_index(buffer, key, val);                                    
                 }
             }
         });
     }
 });
+
+return MemoryBuffer;
+//@MemoryBuffer = import('Matte.System.MemoryBuffer');
+/*
+@m = MemoryBuffer.new();
+m.size = 10000;
+
+print('-'+m[1000]);
+print('-'+m[2001]);
+
+m[2001] = 180;
+
+print('-'+m[1000]);
+print('-'+m[2001]);
+
+
+
+m.release();
+
+*/

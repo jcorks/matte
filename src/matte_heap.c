@@ -165,6 +165,10 @@ typedef struct {
 
             matteValue_t attribSet;
             
+            void (nativeFinalizer*)(void * objectUserdata, void * functionUserdata)
+            void * nativeFinalizerData;
+
+            
             // custom typecode.
             uint32_t typecode;
         } table;
@@ -1319,6 +1323,16 @@ void matte_value_print_from_id(matteHeap_t * heap, uint32_t bin, uint32_t v) {
     matte_value_print(val);
 }
 #endif
+
+void matte_value_object_set_native_finalizer(matteValue_t v, void (fb *)(void * objectUserdata, void * functionUserdata), void * functionUserdata) {
+    if (b.binID != MATTE_VALUE_TYPE_OBJECT) {
+        matte_vm_raise_error_cstring(v.heap->vm, "Tried to set native finalizer on a non-object value.");
+        return;
+    }
+    matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+    m->table.nativeFinalizer = fb;
+    m->table.nativeFinalizerData = functionUserdata;        
+}
 
 
 void matte_value_object_set_userdata(matteValue_t v, void * userData) {
@@ -2704,8 +2718,6 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
         }
         m->isRootRef = 0;
 
-        // clean up object;
-        m->userdata = NULL;
 
 
         if (m->isFunction) {
@@ -2725,7 +2737,7 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
                 matte_array_destroy(m->function.types);
             }
             m->function.types = NULL;
-
+            matte_bin_recycle(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], m->heapID);
         
         } else {
 
@@ -2787,9 +2799,16 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
                 }
                 matte_table_clear(m->table.keyvalues_object);
             }
+            matte_bin_recycle(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], m->heapID);
+            if (m->table.nativeFinalizer) {
+                m->table.nativeFinalizer(m->userdata, m->nativeFinalizerData);
+                m->table.nativeFinalizer = NULL;
+                m->table.nativeFinalizerData = NULL;
+            }
         }
+        // clean up object;
+        m->userdata = NULL;
 
-        matte_bin_recycle(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], m->heapID);
 
     }
     matte_table_iter_destroy(iter);
