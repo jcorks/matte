@@ -141,6 +141,20 @@ void matte_array_remove(
 );
 
 
+/// Removes count members of the array starting at the given index.
+///
+void matte_array_remove_n(
+    /// The array to modify.
+    matteArray_t * array, 
+
+    /// The index to start to remove.
+    uint32_t index,
+    
+    /// The number of members to remove.
+    uint32_t count
+);
+
+
 
 /// Compares 2 elements within an array.
 /// Each points to an element within an array; this is used 

@@ -165,6 +165,22 @@ void matte_array_remove(matteArray_t * t, uint32_t index) {
 }
 
 
+void matte_array_remove_n(matteArray_t * t, uint32_t index, uint32_t ct) {
+    #ifdef MATTE_DEBUG
+        assert(t && "matteArray_t pointer cannot be NULL.");
+        assert(index + ct < t->size);
+    #endif
+
+    uint32_t indexByte = index*t->sizeofType;
+    memmove(
+        t->data+(indexByte),
+        t->data+(indexByte + ct*t->sizeofType),
+        ((t->size - ct)*t->sizeofType) - indexByte
+    );
+    t->size-=ct;
+}
+
+
 
 void * matte_array_get_data(const matteArray_t * t) {
     #ifdef MATTE_DEBUG

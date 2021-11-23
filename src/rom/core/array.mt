@@ -52,11 +52,27 @@
             // Removes the element at the specified index and returns it.
             // Like all array operations, the specified index is 
             // 0-indexed.
-            remove ::(nm) {
+            remove ::(nm => Number) {
                 when(nm < 0 || nm >= len) empty;
                 @out = data[nm];
                 removeKey(data, nm);
+                len -= 1;
                 return out;
+            },
+            
+            // Function, 1 argument 
+            // No return value 
+            // Removes the first element that equals the given value.
+            removeValue ::(v) {
+                listen(::{
+                    for([0, len], ::(i) {
+                        if (data[i] == v) ::<={
+                            removeKey(data, i);
+                            len -= 1;
+                            send(empty);
+                        };
+                    });
+                });
             },
 
 

@@ -1,28 +1,33 @@
 
+#define MEMORYBUFFER_ID_TAG 0xf3f01bbf
+
 typedef struct {
     uint8_t * buffer;
     uint64_t size;
     uint64_t alloc;
+    uint32_t idval;
 } MatteMemoryBuffer;
 
 
 static void auto_cleanup_buffer(void * ud, void * fd) {
     if (ud) {
         MatteMemoryBuffer * b = ud;
-        free(ud->buffer);
-        free(ud);
+        free(b->buffer);
+        free(b);
     }
 }
 
 // helper for other system implementations that 
 // deal with raw data: 
-static matte_system_shared__create_memory_buffer_from_raw(matteVM_t * vm, const uint8_t * data, uint32_t size) {
+static matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t * vm, const uint8_t * data, uint32_t size) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_new_object_ref(&out);
     matte_value_object_set_native_finalizer(out, auto_cleanup_buffer, NULL);    
     MatteMemoryBuffer * m = calloc(1, sizeof(MatteMemoryBuffer));
+    m->idval = MEMORYBUFFER_ID_TAG;
     matte_value_object_set_userdata(out, m);    
+
     
     if (data && size) {    
         m->buffer = malloc(size);
@@ -32,6 +37,18 @@ static matte_system_shared__create_memory_buffer_from_raw(matteVM_t * vm, const 
     }
     
     return out;
+}
+
+const uint8_t * matte_system_shared__get_raw_from_memory_buffer(matteVM_t * vm, matteValue_t b, uint32_t * size) {
+    MatteMemoryBuffer * mB = matte_value_object_get_userdata(b);
+    if (!mB || mB->idval != MEMORYBUFFER_ID_TAG) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Invalid memory buffer instance."));
+        *size = 0;
+        return NULL;                
+    }
+    
+    *size = mB->size;
+    return mB->buffer;
 }
 
 
@@ -45,7 +62,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__release) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
     MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
-
+    m->idval = 0;
     free(m->buffer);
     free(m);
     matte_value_object_set_userdata(a, NULL);

@@ -165,7 +165,7 @@ typedef struct {
 
             matteValue_t attribSet;
             
-            void (nativeFinalizer*)(void * objectUserdata, void * functionUserdata)
+            void (*nativeFinalizer)(void * objectUserdata, void * functionUserdata);
             void * nativeFinalizerData;
 
             
@@ -1324,8 +1324,8 @@ void matte_value_print_from_id(matteHeap_t * heap, uint32_t bin, uint32_t v) {
 }
 #endif
 
-void matte_value_object_set_native_finalizer(matteValue_t v, void (fb *)(void * objectUserdata, void * functionUserdata), void * functionUserdata) {
-    if (b.binID != MATTE_VALUE_TYPE_OBJECT) {
+void matte_value_object_set_native_finalizer(matteValue_t v, void (*fb)(void * objectUserdata, void * functionUserdata), void * functionUserdata) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(v.heap->vm, "Tried to set native finalizer on a non-object value.");
         return;
     }
@@ -2801,7 +2801,7 @@ static void object_cleanup(matteHeap_t * h, matteObject_t * m) {
             }
             matte_bin_recycle(h->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], m->heapID);
             if (m->table.nativeFinalizer) {
-                m->table.nativeFinalizer(m->userdata, m->nativeFinalizerData);
+                m->table.nativeFinalizer(m->userdata, m->table.nativeFinalizerData);
                 m->table.nativeFinalizer = NULL;
                 m->table.nativeFinalizerData = NULL;
             }

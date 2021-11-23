@@ -25,6 +25,8 @@
 #include <errno.h>
 #include <time.h> 
 #include <pthread.h>
+#include <fcntl.h>
+
 
 #include "../../matte_string.h"
 #include "../../matte_vm.h"

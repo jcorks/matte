@@ -2,7 +2,7 @@
 @Array = import('Matte.Core.Array');
 @EventSystem = import('Matte.Core.EventSystem');
 @MemoryBuffer = import('Matte.System.MemoryBuffer');
-return {
+@SocketIO = {
     Server : ::<={
         // Creates a new socket bound to an address and port.
         // args:
@@ -59,18 +59,7 @@ return {
         // - Send out pending data
         // - updates the states of clients
         <@>_socket_server_client_update = getExternalFunction("__matte_::socket_server_client_update");
-        
-        // Gets the state of a client 
-        // args:
-        // arg0: socket server object 
-        // arg1: client id 
-        //
-        // returns:
-        // A number flag indicating the state. (Number) 
-        //  0 => Disconnected 
-        //  1 => Connected
-        <@>_socket_server_client_get_state = getExternalFunction("__matte_::socket_server_client_get_state");
-        
+
         // Gets a string containing the address of the client
         //
         // args:
@@ -122,16 +111,21 @@ return {
         
         ///////// if in raw mode 
 
-            // returns:
-            // a MemoryBuffer object of the given number of bytes OR throws an error 
-            // if cant.
-            <@>_socket_server_client_pop_bytes = getExternalFunction("__matte_::socket_server_client_pop_bytes");
-            
-            <@>_socket_server_client_send_bytes = getExternalFunction("__matte_::socket_server_client_send_bytes");
+            // arg0: server 
+            // arg1: client 
+            // returns: number of bytes waiting to be read.
             <@>_socket_server_client_get_pending_byte_count = getExternalFunction("__matte_::socket_server_client_get_pending_byte_count");
 
 
+            // returns:
+            // a MemoryBuffer object of the given number of bytes OR throws an error 
+            // if cant.
+            <@>_socket_server_client_read_bytes = getExternalFunction("__matte_::socket_server_client_read_bytes");
+            
+            <@>_socket_server_client_write_bytes = getExternalFunction("__matte_::socket_server_client_write_bytes");
 
+
+            
         
         
         
@@ -144,13 +138,14 @@ return {
 
         // actual client that a user interacts with.
         <@>Client = class({
+            name: 'Matte.System.SocketIO.Server.Client',
             inherits:[EventSystem],
             define::(this, args, thisclass) {
                 @id = args.id;
                 @id_number = Number(id);
                 @pendingMessages = {};
                 @socket = args.socket;
-                @info = _socket_server_client_infostring(args.socket);
+                @info = _socket_server_client_infostring(socket, id_number);
                 @address = _socket_server_client_address(socket, id_number);
 
 
@@ -187,7 +182,7 @@ return {
                         @count = _socket_server_client_get_pending_byte_count(socket, id_number);
 
                         if (count > 0) ::<={
-                            <@> bytes = _socket_server_client_pop_bytes(socket, id_number, count);
+                            <@> bytes = MemoryBuffer.new(_socket_server_client_read_bytes(socket, id_number, count));
                             this.emitEvent(
                                 'onIncomingData',
                                 bytes
@@ -197,8 +192,8 @@ return {
                     };
 
 
-                    sendData = ::(m => MemoryBuffer) {
-                        _socket_server_client_send_bytes(socket, id_number, m);
+                    sendData = ::(m => MemoryBuffer.type) {
+                        _socket_server_client_write_bytes(socket, id_number, m.handle);
                     };
                 };
 
@@ -208,10 +203,16 @@ return {
 
                 this.interface({
                     update : update,
-                    send : sendData,
+                    sendData : sendData,
                     info : {
                         get ::{
                             return info;
+                        }
+                    },
+
+                    id : {
+                        get :: {
+                            return id_number;
                         }
                     },
 
@@ -230,6 +231,7 @@ return {
         });
 
         <@>Server = class({
+            name: 'Matte.System.SocketIO.Server',
             inherits:[EventSystem],
             define::(this, args, thisclass) {
 
@@ -244,10 +246,10 @@ return {
                 ) {
                     return _socket_server_create(address, port, type, maxClients, timeout);
                 }(
-                    args.address,
+                    (if (args.restrictAddress == empty) "" else args.restrictAddress),
                     args.port,
                     0, // => always TCP for now
-                    (if (args.maxClients == 0) 128 else args.maxClients),
+                    128,
                     100, // => timeout in seconds. not sure yet!
                     Boolean(args.messageMode)
                 );
@@ -259,8 +261,7 @@ return {
                 <@>clientIndex = [];
                                 
                 this.events = {
-                    onNewClient ::{},
-                    onDisconnectClient ::{}
+                    onNewClient ::{}
                 };
             
             
@@ -280,6 +281,7 @@ return {
                                 @client = Client.new({id:id, socket:socket});
                                 clients.push(client);
                                 clientIndex[id] = true;
+                                found[id] = true;
 
                                 this.emitEvent('onNewClient', client);
                             };
@@ -289,14 +291,14 @@ return {
                         @i = 0;
                         loop(::{
                             when(i == clients.length) false;
-
-                            if (found[clients[i].id]) ::<= {
+                            @idKey = String(clients[i].id);
+                            if (found[idKey]) ::<= {
                                 clients[i].update();
                                 i+=1;
                             } else ::<={
-                                this.emitEvent('onDisconnectClient', clients[i]);
-                                removeKey(clients, i);
-                                removeKey(clientIndex, clients[i].id);                                
+                                clients[i].emitEvent('onDisconnect', clients[i]);
+                                clients.remove(i);
+                                removeKey(clientIndex, idKey);                                
                             };
                             return true;
                         });                  
@@ -321,7 +323,7 @@ return {
         //      - 1 => UDP
         //
         // CAN THROW AN ERROR if the socket could not be created
-        @_socket_create_cl = getExternalFunction("__matte_::socket_client_create");
+        //@_socket_create_cl = getExternalFunction("__matte_::socket_client_create");
 
 
         return class({
@@ -333,18 +335,20 @@ return {
     }
 };
 
+return SocketIO;
 
 
 /*
-
 //Server example:
 
-@SocketIO     = import("Matte.System.SocketIO");
-@MemoryBuffer = import("Matte.System.MemoryBuffer");
-
+//@SocketIO     = import("Matte.System.SocketIO");
+//@MemoryBuffer = import("Matte.System.MemoryBuffer");
+@Array = import("Matte.Core.Array");
+@Time = import("Matte.System.Time");
+@ConsoleIO = import("Matte.System.ConsoleIO");
 
 /// hexdump style printing of a memory buffer
-<@> dumphex::(data => MemoryBuffer) {
+<@> dumphex = ::<={
     @hextable = {
         0: '0',
         1: '1',
@@ -468,25 +472,29 @@ return {
     };
 
     <@> numberToAscii::(n => Number) {
-        <@> res = asciitable(n);
+        <@> res = asciitable[n];
         when(res == empty) '__';
         return res + ' ';
     };
 
-    return ::{
-        print('[' + data.size + ' Bytes]');
+    return ::(data => MemoryBuffer.type){
+        ConsoleIO.println('[' + data.size + ' Bytes]');
         @line       = '';
         @lineAsText = ''; 
         for([0, data.size], ::(i) {
             if (i%8 == 0) ::<={
-                print(line + "      " + lineToText);
+                ConsoleIO.println(line + "      " + lineAsText);
                 line = '';
-                lineToText = '';
+                lineAsText = '';
             };
 
             line = line + numberToHex(data[i]) + ' ';
-            lineToText = lineToText + numberToAscii(data[i])); 
+            lineAsText = lineAsText + numberToAscii(data[i]); 
         });
+        
+        if (lineAsText != '') ::<= {
+            ConsoleIO.println(line + "      " + lineAsText);            
+        };
     };
 };
 
@@ -494,23 +502,41 @@ return {
 
 
 
+
 @server = SocketIO.Server.new({
-    address : '127.0.0.1',
     port : 8080
 });
 
+@sendDataString::(client, str => String) {
+    @m = MemoryBuffer.new();
+    <@>len = introspect.length(str); 
+    m.size = len;
+    for([0, len], ::(i){
+        m[i] = introspect.charCodeAt(str, i);
+    });
+    
+    client.sendData(m);
+};
 
-
-
-server.installHook('onNewClient', ::(client){
+server.installHook('onNewClient', ::(t, client){
     print('Server: ' + client.address + ' has connected.');
 
     client.installHook('onDisconnect', ::{
         print('Server: ' + client.address + ' has disconnected');    
     });
 
-    client.installHook('onIncomingData', ::(data) {
+    client.installHook('onIncomingData', ::(t, data) {
         print('Server: ' + client.address + ' has sent ' + data.size + 'bytes.');
         dumphex(data);
+        sendDataString(client, 'whoa!!');
     });
 });
+
+
+loop(::{
+    server.update();
+    Time.sleep(20);
+
+    return true;
+});
+*/
