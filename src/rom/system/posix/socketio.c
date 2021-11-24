@@ -45,7 +45,7 @@ typedef struct {
     
     
     
-} MatteSocket_Client;
+} MatteSocketServer_Client;
 
 
 #define INTEGRITY_ID_SOCKET_OBJECT 0x080850c3
@@ -66,7 +66,7 @@ typedef struct {
     int mode;
     int poolid;
     
-} MatteSocket;
+} MatteSocketServer;
 
 
 
@@ -87,7 +87,7 @@ MATTE_EXT_FN(matte_socket__server_create) {
 
 
 
-    MatteSocket listens = {};
+    MatteSocketServer listens = {};
     listens.maxClients = maxClients;    
     struct sockaddr_in sIn = {}; 
 
@@ -262,11 +262,11 @@ MATTE_EXT_FN(matte_socket__server_create) {
     } 
     
     
-    MatteSocket * s = malloc(sizeof(MatteSocket));
+    MatteSocketServer * s = malloc(sizeof(MatteSocketServer));
     *s = listens;
     s->poolid = 1003;
     s->integID = INTEGRITY_ID_SOCKET_OBJECT;
-    s->clients = matte_array_create(sizeof(MatteSocket_Client*));
+    s->clients = matte_array_create(sizeof(MatteSocketServer_Client*));
     
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_new_object_ref(&out);
@@ -279,7 +279,7 @@ MATTE_EXT_FN(matte_socket__server_create) {
 MATTE_EXT_FN(matte_socket__server_update) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t v = matte_array_at(args, matteValue_t, 0);
-    MatteSocket * s = matte_value_object_get_userdata(v);
+    MatteSocketServer * s = matte_value_object_get_userdata(v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
         return matte_heap_new_value(heap);
@@ -289,7 +289,7 @@ MATTE_EXT_FN(matte_socket__server_update) {
     uint32_t i;
     uint32_t len = matte_array_get_size(s->clients);
     for(i = 0; i < len; ++i) {
-        MatteSocket_Client * client = matte_array_at(s->clients, MatteSocket_Client *, i);
+        MatteSocketServer_Client * client = matte_array_at(s->clients, MatteSocketServer_Client *, i);
         if (!client->connected) {
             if (client->fd) close(client->fd);
             matte_array_destroy(client->indata);
@@ -308,7 +308,7 @@ MATTE_EXT_FN(matte_socket__server_update) {
     socklen_t slen = sizeof(struct sockaddr_in);
     if ((newfd = accept(s->fd, &inaddr, &slen)) != -1) {
         char addrString[15];
-        MatteSocket_Client * client = calloc(1, sizeof(MatteSocket_Client));
+        MatteSocketServer_Client * client = calloc(1, sizeof(MatteSocketServer_Client));
         if (slen >= sizeof(struct sockaddr_in)) {
             const char * t =  inet_ntoa(inaddr.sin_addr);
             if (t) {
@@ -400,7 +400,7 @@ MATTE_EXT_FN(matte_socket__server_update) {
 MATTE_EXT_FN(matte_socket__server_client_index_to_id) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t v = matte_array_at(args, matteValue_t, 0);
-    MatteSocket * s = matte_value_object_get_userdata(v);
+    MatteSocketServer * s = matte_value_object_get_userdata(v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
         return matte_heap_new_value(heap);
@@ -412,7 +412,7 @@ MATTE_EXT_FN(matte_socket__server_client_index_to_id) {
         return matte_heap_new_value(heap);    
     }
 
-    MatteSocket_Client * client = matte_array_at(s->clients, MatteSocket_Client *, index);
+    MatteSocketServer_Client * client = matte_array_at(s->clients, MatteSocketServer_Client *, index);
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_number(&out, client->id);
     return out;
@@ -423,7 +423,7 @@ MATTE_EXT_FN(matte_socket__server_client_index_to_id) {
 MATTE_EXT_FN(matte_socket__server_get_client_count) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t v = matte_array_at(args, matteValue_t, 0);
-    MatteSocket * s = matte_value_object_get_userdata(v);
+    MatteSocketServer * s = matte_value_object_get_userdata(v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
         return matte_heap_new_value(heap);
@@ -434,10 +434,10 @@ MATTE_EXT_FN(matte_socket__server_get_client_count) {
 }
 
 
-MatteSocket_Client * id_to_client(matteVM_t * vm, matteValue_t * args, MatteSocket ** sout) {
+MatteSocketServer_Client * id_to_client(matteVM_t * vm, matteValue_t * args, MatteSocketServer ** sout) {
     *sout = NULL;
     matteValue_t v = args[0];
-    MatteSocket * s = matte_value_object_get_userdata(v);
+    MatteSocketServer * s = matte_value_object_get_userdata(v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
         return NULL;
@@ -448,7 +448,7 @@ MatteSocket_Client * id_to_client(matteVM_t * vm, matteValue_t * args, MatteSock
     uint32_t size = matte_array_get_size(s->clients);
     uint32_t i;
     for(i = 0; i < size; ++i) {
-        MatteSocket_Client * client = matte_array_at(s->clients, MatteSocket_Client *, i);
+        MatteSocketServer_Client * client = matte_array_at(s->clients, MatteSocketServer_Client *, i);
         if (client->id == id) {
             return client;
         }        
@@ -460,8 +460,8 @@ MatteSocket_Client * id_to_client(matteVM_t * vm, matteValue_t * args, MatteSock
 
 
 MATTE_EXT_FN(matte_socket__server_client_update) {
-    MatteSocket * s;
-    MatteSocket_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer * s;
+    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -529,7 +529,7 @@ MATTE_EXT_FN(matte_socket__server_client_update) {
             
         
         // write any pending data waiting to go out to the client.
-        if (matte_array_get_size(client->outdata)) {
+        if (client->connected && matte_array_get_size(client->outdata)) {
             ssize_t writesize;
             while((writesize = write(
                 client->fd, 
@@ -591,8 +591,6 @@ MATTE_EXT_FN(matte_socket__server_client_update) {
                 if (err) {
                     matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
                 }
-            } else if (writesize == 0) {
-                client->connected = 0;
             }
         }
     } else {
@@ -602,8 +600,8 @@ MATTE_EXT_FN(matte_socket__server_client_update) {
 }
 
 MATTE_EXT_FN(matte_socket__server_client_address) {
-    MatteSocket * s;
-    MatteSocket_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer * s;
+    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -616,8 +614,8 @@ MATTE_EXT_FN(matte_socket__server_client_address) {
 
 
 MATTE_EXT_FN(matte_socket__server_client_infostring) {
-    MatteSocket * s;
-    MatteSocket_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer * s;
+    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -629,8 +627,8 @@ MATTE_EXT_FN(matte_socket__server_client_infostring) {
 }
 
 MATTE_EXT_FN(matte_socket__server_client_terminate) {
-    MatteSocket * s;
-    MatteSocket_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer * s;
+    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -647,8 +645,8 @@ MATTE_EXT_FN(matte_socket__server_client_terminate) {
 }
 
 MATTE_EXT_FN(matte_socket__server_client_get_pending_byte_count) {
-    MatteSocket * s;
-    MatteSocket_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer * s;
+    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -660,8 +658,8 @@ MATTE_EXT_FN(matte_socket__server_client_get_pending_byte_count) {
 }
 
 MATTE_EXT_FN(matte_socket__server_client_read_bytes) {
-    MatteSocket * s;
-    MatteSocket_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer * s;
+    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -677,8 +675,8 @@ MATTE_EXT_FN(matte_socket__server_client_read_bytes) {
 }
 
 MATTE_EXT_FN(matte_socket__server_client_write_bytes) {
-    MatteSocket * s;
-    MatteSocket_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer * s;
+    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -716,6 +714,513 @@ MATTE_EXT_FN(matte_socket__server_client_send_message) {
 
 
 
+typedef struct {
+    int socketfd;
+    
+    // 0 -> data, 1 -> message
+    int mode;
+    
+    // from remote client, delivered.
+    matteArray_t * indata;
+    
+    // to remove client, to be delivered.
+    matteArray_t * outdata;
+    
+    
+    // 0-> disconnected / never connected 
+    // 1-> pending connection 
+    // 2-> connected
+    int state;
+} MatteSocketClient;
+
+MATTE_EXT_FN(matte_socket__client_create) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    const matteString_t * addr = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
+    int port = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
+    int type = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
+    int mode = matte_value_as_boolean(matte_array_at(args, matteValue_t, 3));
+    // error in args
+    if (matte_vm_pending_message(vm)) {
+        return matte_heap_new_value(heap);
+    }
+
+    struct addrinfo hints = {};
+    struct addrinfo * result = NULL;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM; 
+
+    char ps[100];
+    sprintf(ps, "%d", port);
+    int s = getaddrinfo(matte_string_get_c_str(addr), ps, &hints, &result);
+
+    if (s) {
+        matteString_t * errstr = matte_string_create_from_c_str(
+            "Socket creation error: address parsing failed: %s\n",
+            gai_strerror(s)
+        );
+        
+        matte_vm_raise_error_string(vm, errstr);
+        matte_string_destroy(errstr);
+        return matte_heap_new_value(heap);
+    }
+    
+    if (!result) {
+        matteString_t * errstr = matte_string_create_from_c_str(
+            "Socket creation error: no address %s exists or is available\n",
+            matte_string_get_c_str(addr)
+        );
+        matte_vm_raise_error_string(vm, errstr);
+        matte_string_destroy(errstr);
+        return matte_heap_new_value(heap);        
+    }
+        
+
+
+    
+    
+    int socketfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    
+    if (socketfd == -1) {
+        const char * err = NULL;
+        switch(errno) {
+          case EACCES:
+            err = "Socket creation error: Permission to create a socket of the specified type and/or protocol is denied.";
+            break;
+            
+          case EAFNOSUPPORT:
+            err = "Socket creation error: The implementation does not support the specified address family.";
+            break;
+            
+          case EINVAL:
+            err = "Socket creation error: Unknown protocol, or protocol family not available.";
+            break;
+            
+          case EMFILE:
+            err = "Socket creation error: No more file descriptors can be openned by the process";
+            break;
+            
+          case ENOBUFS:
+          case ENOMEM:
+            err = "Socket creation error: Inusfficient memory.";
+            break;
+            
+            
+          case EPROTONOSUPPORT:
+            err = "Socket creation error: Unsupported protocol.";
+            break;
+
+          default:;
+        }
+        if (!err) {
+            matteString_t * realErr = matte_string_create_from_c_str("Socket creation error: Unknown error (%d)", errno);
+            matte_vm_raise_error_string(vm, realErr);
+            matte_string_destroy(realErr);
+        } else {
+            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
+        }
+        freeaddrinfo(result);
+        return matte_heap_new_value(heap);
+    }
+    
+    int res = connect(socketfd, result->ai_addr, result->ai_addrlen);
+    freeaddrinfo(result);
+    
+    if (res != 0) {
+        const char * err = NULL;
+        switch(errno) {
+          case EINPROGRESS:
+            // nonblocking, so we need to check progress later to see if we 
+            // graduated from a connecting state to a connected state
+            break;
+            
+          case EACCES:
+          case EPERM:
+            err = "Socket connect error: Permission denied by runtime.";
+            break;            
+          case EADDRINUSE:
+          case EADDRNOTAVAIL:
+            err = "Socket connect error: Local address already in use.";
+            break;            
+
+          case EAFNOSUPPORT:
+            err = "Socket connect error: Unsuported address family.";
+            break;            
+
+          case EAGAIN:
+            err = "Socket connect error: Internal error (unix socket waiting?)";
+            break;            
+
+          case EALREADY:
+            err = "Socket connect error: Internal error (connect already in progress?)";
+            break;            
+          case EBADF:
+            err = "Socket connect error: Bad socket.";
+            break;            
+
+          case ECONNREFUSED:
+            err = "Socket connect error: Connection Refused.";
+            break;            
+
+          case EFAULT:
+            err = "Socket connect error: Socket structure out of bounds.";
+            break;            
+
+          case EISCONN:
+            err = "Socket connect error: Socket is already connected.";
+            break;
+            
+          case ENETUNREACH:
+            err = "Socket connect error: Network is unreachable.";
+            break;
+            
+          case ENOTSOCK:
+            err = "Socket connect error: Not a socket.";
+            break;
+            
+          case EPROTOTYPE:
+            err = "Socket connect error: Bad socket type.";
+            break;
+            
+          case ETIMEDOUT:
+            err = "Socket connect error: Connection timed out.";
+            break;
+            
+          default:
+            err = NULL;
+            {
+                matteString_t * realErr = matte_string_create_from_c_str("Socket connect error: Unknown error (%d)", errno);
+                matte_vm_raise_error_string(vm, realErr);
+                matte_string_destroy(realErr);
+                close(socketfd);
+                return matte_heap_new_value(heap);
+            }
+          
+        
+        }    
+        if (err) {
+            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
+            close(socketfd);
+            return matte_heap_new_value(heap);
+        } 
+    }    
+    
+    
+    MatteSocketClient * cl = calloc(1, sizeof(MatteSocketClient));
+    cl->socketfd = socketfd;
+    cl->indata = matte_array_create(1);
+    cl->outdata = matte_array_create(1);    
+    cl->state = res == 0 ? 2 : 1; // if res == 0, then connection was immediate somehow. Probably localhost loop?
+    cl->mode = mode;
+    
+    matteValue_t out = matte_heap_new_value(heap);
+    matte_value_into_new_object_ref(&out);
+    matte_value_object_set_userdata(out, cl);
+    return out;
+}
+
+
+MATTE_EXT_FN(matte_socket__client_delete) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    MatteSocketClient * cl = matte_value_object_get_userdata(matte_array_at(args, matteValue_t, 0));
+    
+    if (cl->socketfd) close(cl->socketfd);
+    matte_array_destroy(cl->indata);
+    matte_array_destroy(cl->outdata);
+    free(cl);
+
+    return matte_heap_new_value(heap);
+}
+
+
+MATTE_EXT_FN(matte_socket__client_update) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    MatteSocketClient * cl = matte_value_object_get_userdata(matte_array_at(args, matteValue_t, 0));
+    
+
+    // pending connection... check its status! note: it could fail.
+    // on failure, it expects the user code to call the delete function 
+    // to cleanup 
+    if (cl->state == 1) {
+        int status = -1;
+        int statusSize = sizeof(int);
+        getsockopt(cl->socketfd, SOL_SOCKET, SO_ERROR, &status, &statusSize);
+        
+        if (status == 0) {
+            // connected!!!
+            cl->state = 2;
+        } else {
+            const char * err = NULL;
+            switch(status) {
+              case EINPROGRESS:
+                // nonblocking, so we need to check progress later to see if we 
+                // graduated from a connecting state to a connected state
+                break;
+                
+              case EACCES:
+              case EPERM:
+                err = "Socket connect error: Permission denied by runtime.";
+                break;            
+              case EADDRINUSE:
+              case EADDRNOTAVAIL:
+                err = "Socket connect error: Local address already in use.";
+                break;            
+
+              case EAFNOSUPPORT:
+                err = "Socket connect error: Unsuported address family.";
+                break;            
+
+              case EAGAIN:
+                err = "Socket connect error: Internal error (unix socket waiting?)";
+                break;            
+
+              case EALREADY:
+                err = "Socket connect error: Internal error (connect already in progress?)";
+                break;            
+              case EBADF:
+                err = "Socket connect error: Bad socket.";
+                break;            
+
+              case ECONNREFUSED:
+                err = "Socket connect error: Connection Refused.";
+                break;            
+
+              case EFAULT:
+                err = "Socket connect error: Socket structure out of bounds.";
+                break;            
+
+              case EISCONN:
+                err = "Socket connect error: Socket is already connected.";
+                break;
+                
+              case ENETUNREACH:
+                err = "Socket connect error: Network is unreachable.";
+                break;
+                
+              case ENOTSOCK:
+                err = "Socket connect error: Not a socket.";
+                break;
+                
+              case EPROTOTYPE:
+                err = "Socket connect error: Bad socket type.";
+                break;
+                
+              case ETIMEDOUT:
+                err = "Socket connect error: Connection timed out.";
+
+                break;
+                
+              default:
+                err = NULL;
+                {
+                    matteString_t * realErr = matte_string_create_from_c_str("Socket connect error: Unknown error (%d)", errno);
+                    matte_vm_raise_error_string(vm, realErr);
+                    matte_string_destroy(realErr);
+                    cl->state = 0;
+                    return matte_heap_new_value(heap);
+                }
+            }
+            
+            if (err) {
+                cl->state = 0;
+                matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
+                return matte_heap_new_value(heap);
+            }
+        }
+    } else if (cl->state == 2) {
+        // normal connection case: check for incoming/outgoing data
+        if (cl->mode == 0) {
+            #define READBLOCKSIZE 512
+            uint8_t block[READBLOCKSIZE];
+
+            ssize_t readsize;
+            while((readsize = read(cl->socketfd, block, READBLOCKSIZE)) > 0) {
+                matte_array_push_n(cl->indata, block, readsize);
+            }
+            
+            if (readsize < 0) {
+                const char * err = NULL;
+                switch(errno) {
+                  case EWOULDBLOCK: // EAGAIN == EWOULDBLOCK
+                    break;
+                   
+                  case EBADF:
+                    err = "Socket read error: bad file descriptor.";
+                    break;
+                  case EFAULT:
+                    err = "Socket read error: source reading buffer address is invalid.";
+                    break;
+                  case EINTR:
+                    err = "Socket read error: signal interrupted.";
+                    break;
+                  case EINVAL:
+                    err = "Socket read error: file descriptor is not of a type that can be read.";
+                    break;
+                  case EIO:
+                    err = "Socket read error: I/O error. (Please check your hardware!)";
+                    break;
+                  case EISDIR:
+                    err = "Socket read error: the file descriptor points to a directory.";
+                  default:; {
+                    matteString_t * realErr = matte_string_create_from_c_str("Socket read error: Unknown error (%d)", errno);
+                    matte_vm_raise_error_string(vm, realErr);
+                    matte_string_destroy(realErr);
+                    break;
+                  }
+                }            
+                
+                if (err) {
+                    matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
+                }
+            } else if (readsize == 0) {
+                cl->state = 0; // normal disconnect
+            }   
+            
+                
+            // write any pending data waiting to go out to the client.
+            if (cl->state == 2 && matte_array_get_size(cl->outdata)) {
+                ssize_t writesize;
+                while((writesize = write(
+                    cl->socketfd, 
+                    matte_array_get_data(cl->outdata),
+                    matte_array_get_size(cl->outdata) 
+                )) > 0) {
+                    matte_array_remove_n(cl->outdata, 0, writesize);            
+                }
+                
+                if (writesize < 0) {
+                    const char * err = NULL;
+                    switch(errno) {
+                      case EWOULDBLOCK: // EAGAIN == EWOULDBLOCK
+                        break;
+                       
+                      case EBADF:
+                        err = "Socket write error: bad file descriptor.";
+                        break;
+                      case EDESTADDRREQ:
+                        err = "Socket write error: mismatch for socket vs connect. (internal parameter error).";
+                        break;
+                      case EDQUOT:
+                        err = "Socket write error: no space left on the filesystem (quota).";
+                        break;
+                      case EFAULT:
+                        err = "Socket write error: source reading buffer address is invalid.";
+                        break;
+                      case EFBIG:
+                        err = "Socket write error: size too big / out of bounds.";
+                        break;
+                      case EINTR:
+                        err = "Socket write error: signal interrupted.";
+                        break;
+                      case EINVAL:
+                        err = "Socket write error: file descriptor is not of a type that can be read.";
+                        break;
+                      case ENOSPC:
+                        err = "Socket write error: no room left in socket's underlying device.";
+                        break;
+                      case EPERM:
+                        err = "Socket write error: permission error.";
+                        break;
+                      case EPIPE:
+                        err = "Socket write error: other end of pipe was closed.";
+                        break;
+                      case EIO:
+                        err = "Socket write error: I/O error. (Please check your hardware!)";
+                        break;
+                      case EISDIR:
+                        err = "Socket write error: the file descriptor points to a directory.";
+                      default:; {
+                        matteString_t * realErr = matte_string_create_from_c_str("Socket write error: Unknown error (%d)", errno);
+                        matte_vm_raise_error_string(vm, realErr);
+                        matte_string_destroy(realErr);
+                        break;
+                      }
+                    }            
+                    
+                    if (err) {
+                        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
+                    }
+                } 
+            }
+            
+            
+                     
+        } else {
+            assert(!"TODO");
+        }
+    }
+
+    return matte_heap_new_value(heap);
+}
+
+
+MATTE_EXT_FN(matte_socket__client_get_state) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    MatteSocketClient * cl = matte_value_object_get_userdata(matte_array_at(args, matteValue_t, 0));
+
+
+
+    matteValue_t v = matte_heap_new_value(heap);    
+    matte_value_into_number(&v, cl->state);
+    return v;
+}
+
+MATTE_EXT_FN(matte_socket__client_get_host_info) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    MatteSocketClient * cl = matte_value_object_get_userdata(matte_array_at(args, matteValue_t, 0));
+
+    matteValue_t v = matte_heap_new_value(heap);    
+    matte_value_into_string(&v, MATTE_VM_STR_CAST(vm, ""));
+    return v;
+}
+
+
+MATTE_EXT_FN(matte_socket__client_get_pending_byte_count) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    MatteSocketClient * cl = matte_value_object_get_userdata(matte_array_at(args, matteValue_t, 0));
+
+    matteValue_t v = matte_heap_new_value(heap);    
+    matte_value_into_number(&v, matte_array_get_size(cl->indata));
+    return v;
+}
+
+MATTE_EXT_FN(matte_socket__client_read_bytes) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    MatteSocketClient * cl = matte_value_object_get_userdata(matte_array_at(args, matteValue_t, 0));
+
+    matteValue_t m = matte_system_shared__create_memory_buffer_from_raw(
+        vm,
+        matte_array_get_data(cl->indata),
+        matte_array_get_size(cl->indata)
+    );
+    matte_array_set_size(cl->indata, 0);
+    return m; 
+}
+
+
+MATTE_EXT_FN(matte_socket__client_write_bytes) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    MatteSocketClient * cl = matte_value_object_get_userdata(matte_array_at(args, matteValue_t, 0));
+
+    uint32_t bufsize;
+    const uint8_t * buf = matte_system_shared__get_raw_from_memory_buffer(
+        vm,
+        matte_array_at(args, matteValue_t, 1),
+        &bufsize
+    );
+    if (!buf) {
+        return matte_heap_new_value(heap);        
+    }
+    
+    uint32_t oldsize = matte_array_get_size(cl->outdata);
+    matte_array_set_size(cl->outdata, oldsize+bufsize);
+    memcpy(matte_array_get_data(cl->outdata)+oldsize, buf, bufsize);
+    return matte_heap_new_value(heap);        
+}
+
+
+
+
 void matte_system__socketio(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_create"),             6, matte_socket__server_create,     NULL);
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_update"),             1, matte_socket__server_update,     NULL);
@@ -735,6 +1240,14 @@ void matte_system__socketio(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_get_pending_message_count"),   2, matte_socket__server_client_get_pending_message_count, NULL);
 
 
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_create"),  4, matte_socket__client_create, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_delete"),  1, matte_socket__client_delete, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_update"),  1, matte_socket__client_update, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_state"),  1, matte_socket__client_get_state, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_host_info"),  1, matte_socket__client_get_host_info, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_pending_byte_count"),  1, matte_socket__client_get_pending_byte_count, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_read_bytes"),  1, matte_socket__client_read_bytes, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_write_bytes"),  2, matte_socket__client_write_bytes, NULL);
 
 }
 

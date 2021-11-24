@@ -321,25 +321,158 @@
         // arg2: type (number)
         //      - 0 => TCP 
         //      - 1 => UDP
+        // arg3: mode (number)
+        //      - 0 => raw 
+        //      - 1 => message
         //
         // CAN THROW AN ERROR if the socket could not be created
-        //@_socket_create_cl = getExternalFunction("__matte_::socket_client_create");
+        // returns socket handle (number)
+        @_socket_client_create = getExternalFunction("__matte_::socket_client_create");
 
+        // cleans up the socket, terminating the connection.
+        // arg0: socket handle
+        @_socket_client_delete = getExternalFunction("__matte_::socket_client_delete");
 
-        return class({
-            define::(this, args, thisclass) {
+        // arg0: socket handle
+        // CAN THROW AN ERROR if the state is 1 (pending connection) and the connection 
+        // fails to complete 
+        @_socket_client_update = getExternalFunction("__matte_::socket_client_update");
+
+        // arg0: socket handle 
+        // returns state:
+        // 0 -> disconnected 
+        // 1 -> pending connection 
+        // 2 -> connected
+        @_socket_client_get_state = getExternalFunction("__matte_::socket_client_get_state");
+        
+        // arg0: socket handle 
+        // returns a string about the host if connected or pending connection.
+        @_socket_client_get_host_info = getExternalFunction("__matte_::socket_client_get_host_info");
+        
+        ///////// if in raw mode 
+            // arg0: socket handle 
+            @_socket_get_pending_byte_count = getExternalFunction("__matte_::socket_client_get_pending_byte_count");
+    
+            // returns:
+            // a MemoryBuffer object of the given number of bytes OR throws an error 
+            // if cant.
+            <@>_socket_client_read_bytes = getExternalFunction("__matte_::socket_client_read_bytes");
+            
+            <@>_socket_client_write_bytes = getExternalFunction("__matte_::socket_client_write_bytes");
+
                 
+                
+        return class({
+            name : 'Matte.System.SocketIO.Client',
+            inherits : [EventSystem],
+            define::(this, args, thisclass) {
+                @socket;
+                
+                this.events = {
+                    'onConnectSuccess': ::{},
+                    'onConnectFail': ::{},
+                    'onDisconnect': ::{},
+                    
+                    'onIncomingData': ::{},
+                    'onNewMessage': ::{}
+                };
+                @state = 0;                
+                @update; 
+                @sendData;
+                
+                if(true) ::<={
+                    update = ::{
+                        when(socket == empty) empty;
+                        // raw mode
+                        @err;
+                        listen(::{
+                            _socket_client_update(socket);
+                        }, ::(er) {
+                            err = er;
+                        });
+
+                        @oldstate = state;
+                        @newstate = _socket_client_get_state(socket);
+                        state = newstate;
+                        
+                        match(true) {
+                            (oldstate == 2 && newstate == 0): this.emitEvent('onDisconnect'),
+                            (oldstate == 1 && newstate == 0): ::<={
+                                this.emitEvent('onConnectFail', err);
+                                _socket_client_delete(socket);
+                                socket = empty;
+                            },
+                            (oldstate != 2 && newstate == 2): this.emitEvent('onConnectSuccess')
+                        };
+                        
+                        when(state != 2) empty;
+                        
+                        
+                        @count = _socket_get_pending_byte_count(socket);                        
+                        if (count > 0) ::<={
+                            <@> bytes = MemoryBuffer.new(_socket_client_read_bytes(socket, count));
+                            this.emitEvent(
+                                'onIncomingData',
+                                bytes
+                            );             
+                            bytes.release();
+                        };
+                    };
+
+                    sendData = ::(m => MemoryBuffer.type) {
+                        when(socket == empty) empty;
+                        _socket_client_write_bytes(socket, m.handle);
+                    };
+
+                } else ::<={
+                    error('TODO');                
+                };
+                
+                
+                
+                
+                this.interface({
+                    connect::(addr => String, port => Number, mode) {
+                        when (socket != empty) error('Socket is already connected.');
+                        if (mode == empty) ::<={
+                            mode = 0;
+                        };
+                        
+                        listen(::{
+                            socket = _socket_client_create(addr, port, 0, mode);
+                        }, ::(e){
+                            this.emitEvent('onConnectFail', e);
+                        });
+                    },
+                    
+                    disconnect::{
+                        when(socket == empty) empty;
+                        _socket_client_delete(socket);
+                        socket = empty;              
+                    },
+                    
+                    update : update,
+                    sendData : sendData,
+                    
+                    host : {
+                        get :: {
+                            when(socket == empty) '';
+                            return _socket_client_get_host_info(socket);
+                        }
+                    }              
+                });
             }        
         });            
     
     }
 };
 
+
 return SocketIO;
 
 
+
 /*
-//Server example:
 
 //@SocketIO     = import("Matte.System.SocketIO");
 //@MemoryBuffer = import("Matte.System.MemoryBuffer");
@@ -498,15 +631,6 @@ return SocketIO;
     };
 };
 
-
-
-
-
-
-@server = SocketIO.Server.new({
-    port : 8080
-});
-
 @sendDataString::(client, str => String) {
     @m = MemoryBuffer.new();
     <@>len = introspect.length(str); 
@@ -517,6 +641,56 @@ return SocketIO;
     
     client.sendData(m);
 };
+*/
+
+
+
+
+
+//client example:
+/*
+@client = SocketIO.Client.new();
+
+client.installHook('onConnectSuccess', ::{
+    ConsoleIO.println('Successfully connected.');
+    sendDataString(client, 'whoa!!');
+});
+
+client.installHook('onConnectFail', ::(v, reason => String) {
+    ConsoleIO.println('Connection failed: ' + String(reason));
+});
+
+client.installHook('onDisconnect', ::{
+    ConsoleIO.println('Disconnected');
+});
+
+client.installHook('onIncomingData', ::(v, data => MemoryBuffer.type) {
+    @a = [];
+    for([0, data.size], ::(i) {
+        a[i] = data[i];
+    });
+    @str = introspect.arrayToString(a);
+    ConsoleIO.println('Message from server: ' + str);
+});
+
+client.connect('127.0.0.1', 8080);
+loop(::{    
+    client.update();
+    Time.sleep(20);
+    return true;
+});
+*/
+
+
+//Server example:
+
+
+/*
+@server = SocketIO.Server.new({
+    port : 8080
+});
+
+
 
 server.installHook('onNewClient', ::(t, client){
     print('Server: ' + client.address + ' has connected.');
@@ -539,4 +713,5 @@ loop(::{
 
     return true;
 });
+
 */
