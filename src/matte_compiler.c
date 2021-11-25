@@ -2302,6 +2302,18 @@ static void merge_instructions(
     matte_array_destroy(arr);
 }
 
+static void merge_instructions_rev(
+    matteArray_t * m,
+    matteArray_t * arr
+) {
+    matte_array_insert_n(
+        m,
+        0,
+        matte_array_get_data(arr),
+        matte_array_get_size(arr)
+    );
+    matte_array_destroy(arr);
+}
 
 typedef struct matteExpressionNode_t matteExpressionNode_t;
 struct matteExpressionNode_t {
@@ -3519,10 +3531,20 @@ static matteArray_t * compile_expression(
                 merge_instructions(n->next->value, n->value);
                 write_instruction__arf(n->next->value, n->next->line, referrable, n->postOp - POST_OP_SYMBOLIC__ASSIGN_REFERRABLE);
             } else {
+            
+                if (n->postOp == MATTE_OPERATOR_AND) {
+                    // insert code to short circuit
+                    //
+                    // if n->value (the current node on the left) evaluates to 
+                    // false, repush that false and jump to the end of THIS expression.
+                    // else, keep going as if the branch didnt exist
+                    
+                }
+                //} else if (n->postOp == MATTE_OPERATOR_OR) {
+                
                 // [1] op [2] -> [1 2 op]
-                merge_instructions(n->next->value, n->value);
+                merge_instructions_rev(n->next->value, n->value);
                 write_instruction__opr(n->next->value, n->next->line, n->postOp);
-
             }
 
 

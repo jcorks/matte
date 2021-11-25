@@ -850,8 +850,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     if (STACK_SIZE() < 2) {
                         matte_vm_raise_error_cstring(vm, "OPR operator requires 2 operands.");                        
                     } else {
-                        matteValue_t a = STACK_PEEK(0);
-                        matteValue_t b = STACK_PEEK(1);
+                        matteValue_t a = STACK_PEEK(1);
+                        matteValue_t b = STACK_PEEK(0);
                         matteValue_t v = vm_operator_2(
                             vm,
                             inst->data[0],
