@@ -110,36 +110,33 @@ static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * 
 
 static void onErrorCatch(
     matteVM_t * vm, 
-    matteVMDebugEvent_t event, 
     uint32_t file, 
     int lineNumber, 
     matteValue_t value, 
     void * data
 ) {
-    if (event == MATTE_VM_DEBUG_EVENT__UNHANDLED_ERROR_RAISED) {
-        const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(value));
-        printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
-        printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
-        uint32_t stacksize = matte_vm_get_stackframe_size(vm);
-        printf("Callstack: \n");
-        uint32_t i;
-        uint32_t count;
-        for(i = 0; i < stacksize; ++i) {
-            matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, i);
-            const matteString_t * str = matte_vm_get_script_name_by_id(
-                vm, 
-                matte_bytecode_stub_get_file_id(frame.stub)
-            );
+    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(value));
+    printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
+    printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
+    uint32_t stacksize = matte_vm_get_stackframe_size(vm);
+    printf("Callstack: \n");
+    uint32_t i;
+    uint32_t count;
+    for(i = 0; i < stacksize; ++i) {
+        matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, i);
+        const matteString_t * str = matte_vm_get_script_name_by_id(
+            vm, 
+            matte_bytecode_stub_get_file_id(frame.stub)
+        );
 
-            printf("(@%d, file %s, line %d)\n", 
-                i,
-                str ? matte_string_get_c_str(str) : "???",
-                (matte_bytecode_stub_get_instructions(frame.stub, &count))[frame.pc].lineNumber
-            );
-        }
-
-        exit(1);
+        printf("(@%d, file %s, line %d)\n", 
+            i,
+            str ? matte_string_get_c_str(str) : "???",
+            (matte_bytecode_stub_get_instructions(frame.stub, &count))[frame.pc].lineNumber
+        );
     }
+
+    exit(1);
 
 }
 
@@ -234,7 +231,7 @@ int main() {
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
         matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "external_test!"), 2, test_external_function, NULL);
-        matte_vm_set_debug_callback(vm, onErrorCatch, NULL);
+        matte_vm_set_unhandled_callback(vm, onErrorCatch, NULL);
 
 
         if (!lenBytes) {

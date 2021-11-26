@@ -3409,6 +3409,10 @@ static matteArray_t * compile_expression(
     int appearanceID = 0;
     int lvalue;
     int vstartType;
+
+    // if an expression uses && or ||, we need special 
+    // editing to do short circuiting 
+    int hasandor = 0;
     matteExpressionNode_t * prev = NULL;
     while(iter->ttype != MATTE_TOKEN_MARKER_EXPRESSION_END) {
         int preOp = -1;
@@ -3530,7 +3534,7 @@ static matteArray_t * compile_expression(
                 }
                 merge_instructions(n->next->value, n->value);
                 write_instruction__arf(n->next->value, n->next->line, referrable, n->postOp - POST_OP_SYMBOLIC__ASSIGN_REFERRABLE);
-            } else {
+            } else { // normal case.
             
                 if (n->postOp == MATTE_OPERATOR_AND) {
                     // insert code to short circuit
@@ -3538,10 +3542,23 @@ static matteArray_t * compile_expression(
                     // if n->value (the current node on the left) evaluates to 
                     // false, repush that false and jump to the end of THIS expression.
                     // else, keep going as if the branch didnt exist
-                    
+                    //
+                    // Since we don't know the end of the expression yet, we will add a special marker
+                    // instead and replace it after the expression has ended.
+                    matteBytecodeStubInstruction_t marker;
+                    marker.lineNumber = n->line;
+                    marker.opcode = 0xffff;
+                    marker.data[0] = 1;
+                    matte_array_push(n->value, marker);
+                    hasandor = 1;
+                } else if (n->postOp == MATTE_OPERATOR_OR) {
+                    matteBytecodeStubInstruction_t marker;
+                    marker.lineNumber = n->line;
+                    marker.opcode = 0xffff;
+                    marker.data[0] = 2;
+                    matte_array_push(n->value, marker);                    
+                    hasandor = 1;
                 }
-                //} else if (n->postOp == MATTE_OPERATOR_OR) {
-                
                 // [1] op [2] -> [1 2 op]
                 merge_instructions_rev(n->next->value, n->value);
                 write_instruction__opr(n->next->value, n->next->line, n->postOp);
@@ -3562,7 +3579,40 @@ static matteArray_t * compile_expression(
     #ifdef MATTE_DEBUG
         assert(len && "If len is 0, that means this expression has NO nodes. Which is definitely. Bad.");
     #endif
+
     merge_instructions(outInst, matte_array_at(nodes, matteExpressionNode_t *, len-1)->value);
+
+    // and/or uses placeholders because we need the short circuiting behavior
+    // which requires knowing how large the expression is in terms of 
+    // instructions.
+    //
+    // TODO: this currently does not add any logic to remove 
+    // pre-pushed values on the stack for operations that would have been 
+    // computed if not short-circuiting.
+    if (hasandor) {
+        uint32_t len = matte_array_get_size(outInst);
+        for(i = 0; i < len; ++i) {
+            matteBytecodeStubInstruction_t * inst = &matte_array_at(outInst, matteBytecodeStubInstruction_t, i);
+            if (inst->opcode == 0xffff) {
+                switch(inst->data[0]) {
+                  case 1: {// AND 
+                    inst->opcode = MATTE_OPCODE_SCA;
+                    uint32_t skipAmt = len - i - 1;
+                    memcpy(inst->data, &skipAmt, sizeof(uint32_t));                    
+                    break;
+                  }
+                  case 2: {// OLD
+                    inst->opcode = MATTE_OPCODE_SCO;
+                    uint32_t skipAmt = len - i - 1;
+                    memcpy(inst->data, &skipAmt, sizeof(uint32_t));                    
+                    break;
+                  }
+
+                }
+            }
+        }
+    }
+
 
     // whew... now cleanup thanks
     // at this point, all nodes "value" attributes have been cleaned and transfered.

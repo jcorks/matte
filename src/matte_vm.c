@@ -311,6 +311,8 @@ static const char * opcode_to_str(int oc) {
       case MATTE_OPCODE_ASP: return "ASP";
       case MATTE_OPCODE_PNR: return "PNR";
       case MATTE_OPCODE_SFS: return "SFS";
+      case MATTE_OPCODE_SCA: return "SCA";
+      case MATTE_OPCODE_SCO: return "SCO";
 
       default:
         return "???";
@@ -806,7 +808,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             // ez pz
             frame->pc = instCount;
             break;
-          }    
+          }
           // used to implement all branching
           case MATTE_OPCODE_SKP: {
             uint32_t count = *(uint32_t*)inst->data;
@@ -817,7 +819,24 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             STACK_POP();
             matte_heap_recycle(condition);
             break;
-          }    
+          }
+          case MATTE_OPCODE_SCA: {
+            uint32_t count = *(uint32_t*)inst->data;
+            matteValue_t condition = STACK_PEEK(0);
+            if (!matte_value_as_boolean(condition)) {
+                frame->pc += count;
+            }
+            break;
+          }
+          case MATTE_OPCODE_SCO: {
+            uint32_t count = *(uint32_t*)inst->data;
+            matteValue_t condition = STACK_PEEK(0);
+            if (matte_value_as_boolean(condition)) {
+                frame->pc += count;
+            }
+            break;
+          }
+
           case MATTE_OPCODE_ASP: {
             uint32_t count = *(uint32_t*)inst->data;
             frame->pc += count;

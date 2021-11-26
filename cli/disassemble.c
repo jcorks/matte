@@ -253,7 +253,15 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
             case MATTE_OPCODE_SKP:          
                 a = *(uint32_t*)data.bytes;
                 fprintf(fout, "skp %d\n", a);
-                break;            
+                break;  
+            case MATTE_OPCODE_SCA:          
+                a = *(uint32_t*)data.bytes;
+                fprintf(fout, "sca %d\n", a);
+                break;  
+            case MATTE_OPCODE_SCO:          
+                a = *(uint32_t*)data.bytes;
+                fprintf(fout, "sco %d\n", a);
+                break;  
             case MATTE_OPCODE_ASP:          
                 a = *(uint32_t*)data.bytes;
                 fprintf(fout, "asp %d\n", a);

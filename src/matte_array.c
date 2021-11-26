@@ -95,18 +95,19 @@ matteArray_t * matte_array_clone(const matteArray_t * src) {
 }
 
 
-/*
+
 void matte_array_insert_n(matteArray_t * t, uint32_t index, void * ele, uint32_t count) {
     if (index >= t->size) {
         matte_array_push_n(t, ele, count);
         return;
     }
+    uint32_t tsize = t->size;
     matte_array_set_size(t, t->size+count);    
     
     memmove(
         t->data+(t->sizeofType*(index+count)),
         t->data+(t->sizeofType*index),
-        t->sizeofType*(t->size-index)
+        t->sizeofType*(tsize-index)
     );
 
     memcpy(
@@ -115,7 +116,7 @@ void matte_array_insert_n(matteArray_t * t, uint32_t index, void * ele, uint32_t
         count*(t->sizeofType)
     );
 }
-*/
+
 
 
 uint32_t matte_array_get_size(const matteArray_t * t) {

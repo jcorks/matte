@@ -71,7 +71,18 @@ typedef enum {
     
     // indicates to the VM that the next NFN is 
     // a strict function.
-    MATTE_OPCODE_SFS
+    MATTE_OPCODE_SFS,
+
+
+
+    // Shhort circuit: &&
+    // Peek the top. If false, skip by given count
+    MATTE_OPCODE_SCA,
+
+    // Shhort circuit: OR
+    // Peek the top. If true, skip by given count
+    MATTE_OPCODE_SCO,
+
         
 } matteOpcode_t;
 
