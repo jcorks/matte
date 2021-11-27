@@ -1,3 +1,5 @@
+#include "../../core/string.c"
+
 #ifdef MATTE_USE_SYSTEM_EXTENSIONS
 
 #ifdef __WIN32__
@@ -35,12 +37,13 @@
 #include "../../matte.h"
 #include "../../matte_compiler.h"
 #include "../../matte_bytecode_stub.h"
+#include "system.h"
 
 ////////////
 #include "./posix/shared.c"
+#include "./posix/memorybuffer.c"
 #include "./posix/consoleio.c"
 #include "./posix/filesystem.c"
-#include "./posix/memorybuffer.c"
 #include "./posix/socketio.c"
 #include "./posix/time.c"
 #include "./posix/utility.c"
@@ -63,6 +66,8 @@ void matte_bind_system_functions(matteVM_t * vm) {
     matte_system__time(vm);
     matte_system__utility(vm);
     matte_system__async(vm);
+    
+    matte_core__string(vm);
 }
 
 
@@ -70,6 +75,8 @@ void matte_bind_system_functions(matteVM_t * vm) {
 
 #else 
 void matte_bind_system_functions() {
-    
+    matte_core__string(vm);        
 }
 #endif
+
+

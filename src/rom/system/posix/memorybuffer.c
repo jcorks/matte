@@ -41,7 +41,7 @@ static matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t
 
 const uint8_t * matte_system_shared__get_raw_from_memory_buffer(matteVM_t * vm, matteValue_t b, uint32_t * size) {
     MatteMemoryBuffer * mB = matte_value_object_get_userdata(b);
-    if (!mB || mB->idval != MEMORYBUFFER_ID_TAG) {
+    if (!(mB && mB->idval == MEMORYBUFFER_ID_TAG)) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Invalid memory buffer instance."));
         *size = 0;
         return NULL;                

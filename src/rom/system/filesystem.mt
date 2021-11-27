@@ -1,15 +1,16 @@
 @class = import("Matte.Core.Class");
 @Array = import('Matte.Core.Array');
+@MemoryBuffer = import('Matte.System.MemoryBuffer');
 
-@_getcwd = getExternalFunction("system_getcwd");
-@_setcwd = getExternalFunction("system_setcwd");
+@_getcwd = getExternalFunction("__matte_::filesystem_getcwd");
+@_setcwd = getExternalFunction("__matte_::filesystem_setcwd");
 
-@_directoryEnumerate = getExternalFunction("system_directoryenumerate");
-@_directoryObjectCount  = getExternalFunction("system_directoryobjectcount");
-@_directoryObjectName   = getExternalFunction("system_directoryobjectname");
-@_directoryObjectPath   = getExternalFunction("system_directoryobjectpath");
-@_directoryObjectIsFile = getExternalFunction("system_directoryobjectisfile");
-
+@_directoryEnumerate = getExternalFunction("__matte_::filesystem_directoryenumerate");
+@_directoryObjectCount  = getExternalFunction("__matte_::filesystem_directoryobjectcount");
+@_directoryObjectName   = getExternalFunction("__matte_::filesystem_directoryobjectname");
+@_directoryObjectPath   = getExternalFunction("__matte_::filesystem_directoryobjectpath");
+@_directoryObjectIsFile = getExternalFunction("__matte_::filesystem_directoryobjectisfile");
+@_readBytes = getExternalFunction("__matte_::filesystem_readbytes");
 return class({
     name : 'Matte.System.Filesystem',
     define::(this) {
@@ -27,7 +28,7 @@ return class({
             
             // changes directory to the directory above.
             // Throws an error on failure.
-            cwdUp : getExternalFunction("system_cwdup"),
+            cwdUp : getExternalFunction("__matte_::filesystem_cwdup"),
             
             // returns a Matte.Array describing the contents of the current directory.
             // Each member of the array is an object with the following 
@@ -55,21 +56,23 @@ return class({
             // reads the contents of a file and returns a string of its contents
             // Expects one argument: a path to the file
             // On failure, throws an error.
-            readString : getExternalFunction("system_readstring"),
+            readString : getExternalFunction("__matte_::filesystem_readstring"),
 
-            // reads the contents of a file and returns an array of byte values of its contents.
+            // reads the contents of a file and returns MemoryBuffer of its contents.
             // Expects one argument: a path to the file
             // On failure, throws an error.
-            readBytes : getExternalFunction("system_readbytes"),
-
-
-            // Given a path and a string, writes the given file.
-            // on failure, throws an error.
-            writeString : getExternalFunction("system_writestring"),
+            readBytes : ::(p){
+            
+                return MemoryBuffer.new(_readBytes(p));  
+            },
 
             // Given a path and a string, writes the given file.
             // on failure, throws an error.
-            writeBytes : getExternalFunction("system_writebytes")   
+            writeString : getExternalFunction("__matte_::filesystem_writestring"),
+
+            // Given a path and a MemoryBuffer, writes the given file.
+            // on failure, throws an error.
+            writeBytes : getExternalFunction("__matte_::filesystem_writebytes")   
         
         });
     }

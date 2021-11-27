@@ -46,6 +46,17 @@
                 len -= 1;
                 return out;
             },
+            
+            insert ::(i, v) {
+                when (i >= len) error('No such index to insert at.);
+                when (i == len-1) this.push(v);
+                
+                for([i, len], ::(i) {
+                    data[i+1] = data[i];
+                });
+                data[i] = v;
+                len += 1;
+            }
 
             // Function, 1 argument.
             // Returns.

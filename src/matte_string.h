@@ -220,6 +220,19 @@ void matte_string_append_char(
     uint32_t value
 );
 
+void matte_string_insert_n_chars(
+    matteString_t *,
+    uint32_t position,
+    uint32_t * values,
+    uint32_t nvalues
+);
+
+void matte_string_remove_n_chars(
+    matteString_t *,
+    uint32_t position,
+    uint32_t nvalues
+);
+
 
 /// Gets the byte length of the data representation 
 /// of this string. Depending on the context, this could 

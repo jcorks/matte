@@ -302,6 +302,57 @@ void matte_string_append_char(matteString_t * t, uint32_t value) {
     t->utf8[t->len++] = value;
 }
 
+void matte_string_insert_n_chars(
+    matteString_t * t,
+    uint32_t position,
+    uint32_t * values,
+    uint32_t nvalues
+) {
+    if (position >= t->len) return;
+    while(t->len + nvalues >= t->alloc) {
+        t->alloc*=1.4;
+        t->utf8 = realloc(t->utf8, t->alloc*sizeof(uint32_t));
+    }
+    if (t->cstrtemp) {
+        free(t->cstrtemp);
+        t->cstrtemp = NULL;
+    }
+    
+    if (position == t->len-1) {
+        uint32_t i;
+        uint32_t len = nvalues;
+        for(i = 0; i < len; ++i)
+            t->utf8[t->len++] = values[i];
+    } else {       
+        memmove(t->utf8+position+nvalues, t->utf8+position, nvalues*sizeof(uint32_t));
+        for(i = 0; i < len; ++i)
+            t->utf8[t->position+i] = values[i];
+        t->len += nvalues;
+    }
+}
+
+void matte_string_remove_n_chars(
+    matteString_t * t,
+    uint32_t position,
+    uint32_t nvalues
+) {
+    if (position >= t->len) return;
+    if (t->cstrtemp) {
+        free(t->cstrtemp);
+        t->cstrtemp = NULL;
+    }
+    
+    if (position + nvalues >= t->len) {
+        matte_string_truncate(t, position);
+        return;
+    }
+
+    memmove(t->utf8+position, t->utf8+position+nvalues, nvalues*sizeof(uint32_t));
+    t->len -= nvalues;
+}
+
+
+
 
 uint32_t matte_string_get_byte_length(const matteString_t * t) {
     // for now same as string length. will change when unicode is supported.

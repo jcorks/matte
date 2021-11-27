@@ -240,22 +240,7 @@ MATTE_EXT_FN(matte_filesystem__readbytes) {
         return matte_heap_new_value(heap);
     }
 
-    matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_new_object_ref(&out);
-
-    uint32_t i;
-    for(i = 0; i < len; ++i) {
-        matteValue_t key = matte_heap_new_value(heap);
-        matteValue_t val = matte_heap_new_value(heap);
-
-        matte_value_into_number(&key, i);
-        matte_value_into_number(&val, bytes[i]);
-
-        matte_value_object_set(out, key, val, 1);
-
-        matte_heap_recycle(key);
-        matte_heap_recycle(val);
-    }
+    matteValue_t out = matte_system_shared__create_memory_buffer_from_raw(vm, bytes, len);
     free(bytes);
     return out;
 }
@@ -314,7 +299,11 @@ MATTE_EXT_FN(matte_filesystem__writebytes) {
 
 
     matteValue_t obj = matte_array_at(args, matteValue_t, 1);
-
+    uint32_t bsize = 0;
+    uint8_t * buffer = matte_system_shared__get_raw_from_memory_buffer(vm, obj, &bsize);
+    if (!buffer) {
+        return matte_heap_new_value(heap);
+    }
 
     FILE * f = fopen(matte_string_get_c_str(str), "wb");
     if (!f) {
@@ -322,26 +311,13 @@ MATTE_EXT_FN(matte_filesystem__writebytes) {
         return matte_heap_new_value(heap);
     }
 
-    uint32_t len = matte_value_object_get_key_count(obj);
-    uint32_t i, n;
-    uint8_t * chunk = malloc(4096);
-    uint32_t chunkSize;
 
-    for(i = 0; i < len;) {
-        for(n = 0; n < 4096 && i < len; ++n, ++i) {
-            // TODO: unsafe
-            chunk[n] = matte_value_as_number(*matte_value_object_array_at_unsafe(obj, i));
-        }
-
-        // todo: unicode
-        if (!fwrite(chunk, 1, n, f)) {
-            fclose(f);
-            free(chunk);
-            return matte_heap_new_value(heap);
-        }
+    if (!fwrite(buffer, 1, bsize, f)) {
+        fclose(f);
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeBytes() could not complete the write operation. Perhaps insufficient space?"));
+        return matte_heap_new_value(heap);
     }
     fclose(f);
-    free(chunk);
     return matte_heap_new_value(heap);
 }
 
@@ -358,6 +334,11 @@ static void matte_system__filesystem(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_directoryobjectname"),    1, matte_filesystem__directoryobjectname, dirfiles);
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_directoryobjectpath"),    1, matte_filesystem__directoryobjectpath, dirfiles);
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_directoryobjectisfile"),    1, matte_filesystem__directoryobjectisfile, dirfiles);
+
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_readstring"), 1, matte_filesystem__readstring, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_readbytes"), 1, matte_filesystem__readbytes, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writestring"), 2, matte_filesystem__writestring, NULL);
+    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writebytes"), 2, matte_filesystem__writebytes, NULL);
 
 }
 
