@@ -1,4 +1,14 @@
-#include "../../core/string.c"
+#include "../matte_string.h"
+#include "../matte_vm.h"
+#include "../matte_heap.h"
+#include "../matte.h"
+#include "../matte_compiler.h"
+#include "../matte_bytecode_stub.h"
+#include "native.h"
+
+
+// core native implementations
+#include "./core/string.c"
 
 #ifdef MATTE_USE_SYSTEM_EXTENSIONS
 
@@ -31,34 +41,25 @@
 #include <fcntl.h>
 
 
-#include "../../matte_string.h"
-#include "../../matte_vm.h"
-#include "../../matte_heap.h"
-#include "../../matte.h"
-#include "../../matte_compiler.h"
-#include "../../matte_bytecode_stub.h"
-#include "system.h"
 
 ////////////
-#include "./posix/shared.c"
-#include "./posix/memorybuffer.c"
-#include "./posix/consoleio.c"
-#include "./posix/filesystem.c"
-#include "./posix/socketio.c"
-#include "./posix/time.c"
-#include "./posix/utility.c"
-#include "./posix/async.c"
+#include "./system/posix/shared.c"
+#include "./system/posix/memorybuffer.c"
+#include "./system/posix/consoleio.c"
+#include "./system/posix/filesystem.c"
+#include "./system/posix/socketio.c"
+#include "./system/posix/time.c"
+#include "./system/posix/utility.c"
+#include "./system/posix/async.c"
 #else
 #error "Unknown system"
 #endif
 
 
-#include "system.h"
 
 
 
-
-void matte_bind_system_functions(matteVM_t * vm) {
+void matte_bind_native_functions(matteVM_t * vm) {
     matte_system__consoleio(vm);
     matte_system__filesystem(vm);
     matte_system__memorybuffer(vm);
@@ -74,7 +75,7 @@ void matte_bind_system_functions(matteVM_t * vm) {
 
 
 #else 
-void matte_bind_system_functions() {
+void matte_bind_native_functions() {
     matte_core__string(vm);        
 }
 #endif

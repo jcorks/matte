@@ -9,17 +9,18 @@
 <@>_string_count      = getExternalFunction("__matte_::string_count");
 <@>_string_charcodeat = getExternalFunction("__matte_::string_charcodeat");
 <@>_string_charat     = getExternalFunction("__matte_::string_charat");
-<@>_string_setchar    = getExternalFunction("__matte_::string_setchar");
-<@>_string_setcharcode= getExternalFunction("__matte_::string_setcharcode");
+<@>_string_setcharat  = getExternalFunction("__matte_::string_setcharat");
+<@>_string_setcharcodeat= getExternalFunction("__matte_::string_setcharcodeat");
+<@>_string_append     = getExternalFunction("__matte_::string_append");
 <@>_string_removechar = getExternalFunction("__matte_::string_removechar");
 <@>_string_substr     = getExternalFunction("__matte_::string_substr");
 <@>_string_split      = getExternalFunction("__matte_::string_split");
-
+<@>_string_get_string = getExternalFunction("__matte_::string_get_string");
 @String_ = class({
     name : 'Matte.Core.String',
     define ::(this, args, classinst) {
         <@>MatteString = introspect.type(this);
-        <@>handle = m        
+        <@>handle = _string_create(if (args != empty) String(args) else empty);  
 
         
         
@@ -105,7 +106,7 @@
             
             
             substr::(from => Number, to => Number) {
-                return classinst.new(_string_subset(handle, from, to));
+                return classinst.new(_string_substr(handle, from, to));
             },
 
             split::(sub) {  
@@ -114,7 +115,7 @@
                 foreach(a, ::(k, v) {
                     aconv.push(classinst.new(v));
                 });
-                return ;
+                return aconv;
             },
             
             
@@ -132,73 +133,83 @@
             
             */
             scan::(fmt) {
-                @tokens = classinst.new(fmt).split('[%]');
-                @startsWith = (_string_charat(handle, 0) == '[' &&
-                               _string_charat(handle, 1) == '%' &&
-                               _string_charat(handle, 2) == ']');
+                fmt = classinst.new(fmt);
+                @tokens = fmt.split('[%]');
+                @startsWith = (fmt.charAt(0) == '[' &&
+                            fmt.charAt(1) == '%' &&
+                            fmt.charAt(2) == ']');
 
-                @len = _string_get_length(handle);
-                @endsWith = (_string_charat  (handle, len-3) == '[' &&
-                               _string_charat(handle, len-2) == '%' &&
-                               _string_charat(handle, len-1) == ']');
+                @len = fmt.length;
+                @endsWith = (fmt.charAt(len-3) == '[' &&
+                            fmt.charAt(len-2) == '%' &&
+                            fmt.charAt(len-1) == ']');
 
                 
                 
-                for([0, tokens.length-1], ::(i) {
-                    tokens.insert(1+i*2, empty);
-                });
-
                 
                 
                 @out = Array.new();
                 @searchIndex = 0;
                 @lastIndex;
+
                 loop(::{
-                    @searchStr = this.substr(searchIndex, len-1);
+                    @searchStr = this.substr(searchIndex, this.length-1);
+                    @offset = 0;
+                    @locs = [];
+
                     return listen(::{
-                        lastIndex = empty;
                         for([0, tokens.length], ::(i) {
-                            @index = searchStr.search(tokens[i]);
-                            when (index == -1) ::<={
-                                out.length = 0;
-                                // if the first token couldnt be found, then we have Issues
-                                lastIndex = empty;
-                                send(i != 0);                                
+                            @localAt = searchStr.search(tokens[i]);
+                            locs[i] = {
+                                at: localAt + offset,
+                                len: tokens[i].length
                             };
-                            
-                            
-                            if (startsWith && i == 0) ::<={
-                                if (index > 0) ::<={                                
-                                    out.push(this.substr(0, index-1));
-                                } else ::<= {
-                                    out.push(classinst.new(''));                                
+
+
+                            // if very first sub anchor,
+                            // set the initial looping 
+                            if (i == 0) ::<={
+                                // couldnt find first anchor.... will not pass
+                                if (localAt == -1) ::<={
+                                    send(false);
                                 };
+
+                                // progress the initial iter
+                                searchIndex = locs[0].at+locs[0].len;
                             };
-                            
-                            if (i != 0) ::<={
-                                out.push(this.substr(lastIndex, index));
-                            } else ::<= {
-                                searchIndex = index;
-                            }; 
-                            
-                            lastIndex = index;                        
+
+                            // abort
+                            if (localAt == -1) ::{
+                                send(true);
+                            };
+
+                            offset = locs[i].at + locs[i].len;
+                            // shortens the search path
+                            searchStr = searchStr.substr(localAt+locs[i].len, searchStr.length-1);
                         });
-                        
-                        // if all tokens are reached, then we are dont.
+                        // all anchors found. Populate find array.
+                        if (startsWith) ::<={
+                            out.push(this.substr(0, locs[0].at-1));
+                        };
+
+                        for([0, introspect.keycount(locs)-1], ::(i) {
+                            out.push(this.substr(
+                                locs[i  ].at+locs[i  ].len,
+                                locs[i+1].at-1
+                            ));
+                        });
+
+
+                        if (endsWith) ::<={
+                            @loc = locs[introspect.keycount(locs)-1];
+                            out.push(this.substr(loc.at + loc.len, this.length-1));
+                        };
+
+
                         return false;
+
                     });
                 });
-
-
-                if (endsWith && lastIndex != empty) ::<={
-                    if (index > 0) ::<={                                
-                        out.push(this.substr(lastIndex, index-1));
-                    } else ::<= {
-                        out.push(classinst.new(''));                                
-                    };
-                };
-
-
                 return out;
             }
             
@@ -208,10 +219,7 @@
         
         this.attributes({
             (String) :: {
-                when(hasStr) strsrc;
-                strsrc = arrintr.arrayToString(arrsrc);
-                hasStr = true;
-                return strsrc;
+                return _string_get_string(handle);
             },
 
             'foreach' :: {
@@ -234,16 +242,12 @@
             
             '[]' : {
                 get ::(index => Number) {   
-                    when(index < 0 || index >= arrlen) error('Index out of bounds for string.');
-                    when(hasStr) introspect.charAt(strsrc, index);
-                    return introspect.charAt(String(this), index);
+                    _string_charat(handle, index);
                 },
                 
                 
-                set ::(index => Number, b => String) {
-                    when(index < 0 || index >= arrlen) error('Index out of bounds for string.');
-                    arrsrc[index] = introspect.charCodeAt(b, 0);
-                    hasStr = false;
+                set ::(index => Number, b) {
+                    _string_setcharat(handle, index, String(b));
                 }
             }
         });

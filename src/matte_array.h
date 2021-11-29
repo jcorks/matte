@@ -76,19 +76,7 @@ matteArray_t * matte_array_clone(
     const matteArray_t * array
 );
 
-/// Returns the size of the array
-///
-uint32_t matte_array_get_size(
-    /// The array to query.
-    const matteArray_t * array
-);
 
-/// Returns the size of each element in bytes.
-///
-uint32_t matte_array_get_type_size(
-    /// The array to query.
-    const matteArray_t * array
-);
 
 /// Adds an additional element to the array.
 ///
@@ -222,15 +210,6 @@ void * matte_array_get_data(
 );
 
 
-/// Clears the contents of the array.
-/// After this operation, the size of the array
-/// is 0.
-///
-void matte_array_clear(
-    /// The array to modify.
-    matteArray_t * array
-);
-
 
 /// Sets the size of the array
 /// If the array were to be larger than it could account for,
@@ -251,6 +230,15 @@ struct matteArray_t {
     uint32_t padding0;
     uint8_t * data;
 };
+
+
+/// Returns the size of the array
+///
+#define matte_array_get_size(__A__) ((__A__)->size)
+
+/// Returns the size of each element in bytes.
+///
+#define matte_array_get_type_size(__A__) ((__A__)->sizeofType)
 
 /// Creates a temporary array whos data is managed for you.
 /// Temporary arrays are "read only" and should to be modified.

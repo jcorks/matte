@@ -221,6 +221,11 @@ void matte_value_object_foreach(matteValue_t object, matteValue_t function);
 // invokes assigner if present
 const matteValue_t * matte_value_object_set(matteValue_t, matteValue_t key, matteValue_t value, int isBracket);
 
+// Given that the value is an object, DIRECTLY sets a numbered-index value, bypassing 
+// the attribute overrides and any safety checks. Only use if you know what youre doing.
+void matte_value_object_set_index_unsafe(matteValue_t, uint32_t i, matteValue_t value);
+
+
 // Sets the attributes set for this object, which describes how 
 // the object should respond to different operators and events.
 // This existing attributes object is replaced with this new object.

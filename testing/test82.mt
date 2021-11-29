@@ -4,15 +4,12 @@
 @Matte = import('Matte.Core');
 
 @a = Matte.String.new('abcdefgh');
-@arr = a.characterize();
 
 
 @strout = '';
-for([0, arr.length], ::(i) {
-    strout = strout + arr[i];
+foreach(a, ::(k, v) {
+    strout = strout + v;
 });
-
-strout = strout + Matte.String.new().valueize().length;
 
 
 return strout;

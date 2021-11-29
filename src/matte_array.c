@@ -119,19 +119,7 @@ void matte_array_insert_n(matteArray_t * t, uint32_t index, void * ele, uint32_t
 
 
 
-uint32_t matte_array_get_size(const matteArray_t * t) {
-    #ifdef MATTE_DEBUG
-        assert(t && "matteArray_t pointer cannot be NULL.");
-    #endif
-    return t->size;
-}
 
-uint32_t matte_array_get_type_size(const matteArray_t * t) {
-    #ifdef MATTE_DEBUG
-        assert(t && "matteArray_t pointer cannot be NULL.");
-    #endif
-    return t->sizeofType;
-}
 
 void matte_array_push_n(matteArray_t * t, const void * elements, uint32_t count) {
     #ifdef MATTE_DEBUG

@@ -2000,13 +2000,14 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
         if (set.binID) {
             v = matte_vm_call(v.heap->vm, set, matte_array_empty(), NULL);
             if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
-                // raise error
+                matte_vm_raise_error_string(v.heap->vm, MATTE_VM_STR_CAST(v.heap->vm, "foreach attribute MUST return a function."));
+                return;
             } else {
                 m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
             }
         }
     }
-
+    matte_value_object_push_lock(v);
 
     matteValue_t args[] = {
         matte_heap_new_value(v.heap),
@@ -2100,6 +2101,7 @@ void matte_value_object_foreach(matteValue_t v, matteValue_t func) {
         args[0].binID = 0;
         matte_table_iter_destroy(iter);
     }
+    matte_value_object_pop_lock(v);
 
 }
 
@@ -2226,6 +2228,24 @@ const matteValue_t * matte_value_object_set(matteValue_t v, matteValue_t key, ma
     } else {
         return object_put_prop(m, key, value);
     }
+}
+
+void matte_value_object_set_index_unsafe(matteValue_t v, uint32_t index, matteValue_t val) {
+    matteObject_t * m = matte_bin_fetch(v.heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.objectID);
+    matteValue_t * newV = &matte_array_at(m->table.keyvalues_number, matteValue_t, index);
+    matteValue_t out = matte_heap_new_value(val.heap);
+    matte_value_into_copy(&out, val);
+
+    // track reference
+    if (val.binID == MATTE_VALUE_TYPE_OBJECT || val.binID == MATTE_VALUE_TYPE_FUNCTION) {
+        object_link_parent_value(m, &val);
+    }
+    if (newV->binID == MATTE_VALUE_TYPE_OBJECT || newV->binID == MATTE_VALUE_TYPE_FUNCTION) {
+        object_unlink_parent_value(m, newV);
+    }
+
+    matte_heap_recycle(*newV);
+    *newV = out;
 }
 
 

@@ -317,16 +317,17 @@ void matte_string_insert_n_chars(
         free(t->cstrtemp);
         t->cstrtemp = NULL;
     }
-    
+
+    uint32_t i;
+    uint32_t len = nvalues;
+
     if (position == t->len-1) {
-        uint32_t i;
-        uint32_t len = nvalues;
         for(i = 0; i < len; ++i)
             t->utf8[t->len++] = values[i];
     } else {       
-        memmove(t->utf8+position+nvalues, t->utf8+position, nvalues*sizeof(uint32_t));
+        memmove(t->utf8+position+nvalues, t->utf8+position, (t->len-position)*sizeof(uint32_t));
         for(i = 0; i < len; ++i)
-            t->utf8[t->position+i] = values[i];
+            t->utf8[position+i] = values[i];
         t->len += nvalues;
     }
 }
@@ -347,8 +348,8 @@ void matte_string_remove_n_chars(
         return;
     }
 
-    memmove(t->utf8+position, t->utf8+position+nvalues, nvalues*sizeof(uint32_t));
     t->len -= nvalues;
+    memmove(t->utf8+position, t->utf8+position+nvalues, (t->len - position)*sizeof(uint32_t));
 }
 
 

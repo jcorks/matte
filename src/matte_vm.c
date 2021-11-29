@@ -6,7 +6,7 @@
 #include "matte_string.h"
 #include "matte_opcode.h"
 #include "matte_compiler.h"
-#include "./rom/system/system.h"
+#include "./rom/native.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -96,6 +96,11 @@ struct matteVM_t {
     matteString_t * string_tempVals[matte_string_temp_max_calls];
     int string_tempIter;
 
+    // for parts of the implementation that request it, 
+    // if these are set, the next pushed stackframe will contain 
+    // these as the restart condition dataset.
+    int (*pendingRestartCondition)(matteVM_t *,matteVMStackFrame_t *, matteValue_t, void *);
+    void * pendingRestartConditionData;
 
 };
 
@@ -208,6 +213,16 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
         matte_array_set_size(frame->valueStack, 0);
         frame->pc = 0;
            
+    }
+
+    if (vm->pendingRestartCondition) {
+        frame->restartCondition     = vm->pendingRestartCondition;
+        frame->restartConditionData = vm->pendingRestartConditionData;
+        vm->pendingRestartCondition = NULL;
+        vm->pendingRestartConditionData = NULL;
+    } else {
+        frame->restartCondition = NULL;
+        frame->restartConditionData = NULL;
     }
     return frame;
 }
@@ -335,7 +350,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
     matteValue_t output = matte_heap_new_value(vm->heap);
 
-
+  RELOOP:
     while(frame->pc < instCount) {
         inst = program+frame->pc++;
         // TODO: optimize out
@@ -922,9 +937,21 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         // If there is no handler, the catchable propogates down the callstack.
         if (vm->pendingCatchable) {
             break;
-        }
+        } 
         
     }
+
+    // it's VERY important that the restart condition is not run when 
+    // pendingCatchable is true, as the stack value top does not correspond
+    // to anything meaningful
+    if (frame->restartCondition && !vm->pendingCatchable) {
+        matteValue_t v = (matte_array_get_size(frame->valueStack) ? matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1) : matte_heap_new_value(vm->heap));
+        if (frame->restartCondition(vm, frame, v, frame->restartConditionData)) {
+            frame->pc = 0;
+            goto RELOOP;
+        }
+    }
+
     // top of stack is output
     if (matte_array_get_size(frame->valueStack)) {
         
@@ -1054,7 +1081,7 @@ matteVM_t * matte_vm_create() {
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN, 1, vm_ext_call__introspect_isnan);    
 
     //vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
-    matte_bind_system_functions(vm);
+    matte_bind_native_functions(vm);
 
     return vm;
 }
