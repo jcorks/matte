@@ -1,7 +1,7 @@
 <@>class = import('Matte.Core.Class');
 
 
-
+// Arrays contain a number-indexed collection of values.
 @Array = class({
     name : 'Matte.Core.Array',
     define ::(this, args, classinst) {

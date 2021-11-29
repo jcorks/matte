@@ -200,14 +200,6 @@ void matte_array_insert_n(
 );
 
 
-/// Gets a pointer to the raw data of the array
-/// This pointer is guaranteed to be a contiguous memory block of the 
-/// current state of the array. It is editable.
-///
-void * matte_array_get_data(
-    /// The array to query.
-    const matteArray_t * array
-);
 
 
 
@@ -239,6 +231,13 @@ struct matteArray_t {
 /// Returns the size of each element in bytes.
 ///
 #define matte_array_get_type_size(__A__) ((__A__)->sizeofType)
+
+/// Gets a pointer to the raw data of the array
+/// This pointer is guaranteed to be a contiguous memory block of the 
+/// current state of the array. It is editable.
+///
+#define matte_array_get_data(__A__) ((void*)(__A__)->data)
+
 
 /// Creates a temporary array whos data is managed for you.
 /// Temporary arrays are "read only" and should to be modified.

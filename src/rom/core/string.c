@@ -96,7 +96,7 @@ MATTE_EXT_FN(matte_core__string_search) {
     uint32_t i, n;
     uint32_t len = matte_string_get_length(st->str);
     uint32_t lenOther = matte_string_get_length(other);
-    if (!lenOther) {
+    if (!lenOther || lenOther > len) {
         matte_value_into_number(&out, -1);
         return out;      
     }

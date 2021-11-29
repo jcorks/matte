@@ -242,7 +242,7 @@
             
             '[]' : {
                 get ::(index => Number) {   
-                    _string_charat(handle, index);
+                    return _string_charat(handle, index);
                 },
                 
                 

@@ -171,12 +171,6 @@ void matte_array_remove_n(matteArray_t * t, uint32_t index, uint32_t ct) {
 
 
 
-void * matte_array_get_data(const matteArray_t * t) {
-    #ifdef MATTE_DEBUG
-        assert(t && "matteArray_t pointer cannot be NULL.");
-    #endif
-    return t->data;
-}
 
 
 
