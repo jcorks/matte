@@ -420,7 +420,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }
           case MATTE_OPCODE_NBL: {
-            double val;
             matteValue_t v = matte_heap_new_value(vm->heap);
             matte_value_into_boolean(&v, inst->data[0]);
             STACK_PUSH(v);
