@@ -63,12 +63,12 @@ static void unhandledError(
     void * d
 ) {
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matteValue_t s = matte_value_object_access_string(val, MATTE_VM_STR_CAST(vm, "summary"));
+        matteValue_t s = matte_value_object_access_string(matte_vm_get_heap(vm), val, MATTE_VM_STR_CAST(vm, "summary"));
         if (s.binID) {
             
             printf(
                 "Unhandled error: %s\n", 
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(s))
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), s))
             );
             fflush(stdout);
             return;
@@ -207,8 +207,8 @@ int main(int argc, char ** args) {
         uint32_t len = matte_array_get_size(fileID);
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_vm_run_script(vm, matte_array_at(fileID, uint32_t, i), arr);
-            printf("> %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_value_as_string(v))));
-            matte_heap_recycle(v);
+            printf("> %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), v))));
+            matte_heap_recycle(matte_vm_get_heap(vm), v);
         }
 
         matte_destroy(m);
@@ -299,14 +299,14 @@ int main(int argc, char ** args) {
         matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
         for(i = 0; i < len; ++i) {
             matteValue_t v = matte_vm_run_script(vm, FILEIDS, arr);
-            const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(v));
+            const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), v));
             if (str && v.binID != 0) {
                 printf("> %s\n", matte_string_get_c_str(str));
                 
             } else {
                 // output object was not string coercible.
             }
-            matte_heap_recycle(v);
+            matte_heap_recycle(matte_vm_get_heap(vm), v);
         }
         matte_array_destroy(arr);
         matte_destroy(m);

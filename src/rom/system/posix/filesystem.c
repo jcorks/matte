@@ -60,6 +60,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectcount) {
     matteArray_t * dirfiles = userData;
     if (dirfiles) {
         matte_value_into_number(
+            heap, 
             &v,
             matte_array_get_size(dirfiles)
         );
@@ -70,7 +71,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectcount) {
 
 MATTE_EXT_FN(matte_filesystem__directoryobjectname) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    uint32_t index = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
+    uint32_t index = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 0));
 
     matteValue_t v = matte_heap_new_value(heap);    
     if (matte_vm_pending_message(vm)) return v;
@@ -85,6 +86,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectname) {
             ).name
         );
         matte_value_into_string(
+            heap, 
             &v,
             str
         );
@@ -97,7 +99,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectname) {
 
 MATTE_EXT_FN(matte_filesystem__directoryobjectpath) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    uint32_t index = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
+    uint32_t index = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 0));
 
     matteValue_t v = matte_heap_new_value(heap);    
     if (matte_vm_pending_message(vm)) return v;
@@ -112,6 +114,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectpath) {
             ).path
         );
         matte_value_into_string(
+            heap, 
             &v,
             str
         );
@@ -124,7 +127,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectpath) {
 
 MATTE_EXT_FN(matte_filesystem__directoryobjectisfile) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    uint32_t index = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
+    uint32_t index = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 0));
 
     matteValue_t v = matte_heap_new_value(heap);    
     if (matte_vm_pending_message(vm)) return v;
@@ -132,6 +135,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectisfile) {
 
     if (dirfiles && (index < matte_array_get_size(dirfiles))) {
         matte_value_into_boolean(
+            heap, 
             &v,
             matte_array_at(
                 dirfiles, 
@@ -152,7 +156,7 @@ MATTE_EXT_FN(matte_filesystem__getcwd) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     char * cwd = getcwd(path, MAXLEN-1);
     matteValue_t v = matte_heap_new_value(heap);
-    matte_value_into_string(&v, MATTE_VM_STR_CAST(vm, cwd));
+    matte_value_into_string(heap, &v, MATTE_VM_STR_CAST(vm, cwd));
     free(path);
     return v;
 }
@@ -163,7 +167,7 @@ MATTE_EXT_FN(matte_filesystem__setcwd) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "setting the current path requires a path string to an existing directory."));
         return matte_heap_new_value(heap);
     }
-    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not update the path (value is not string coercible)"));
         return matte_heap_new_value(heap);
@@ -192,7 +196,7 @@ MATTE_EXT_FN(matte_filesystem__readstring) {
         return matte_heap_new_value(heap);
     }
 
-    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "readString() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);
@@ -213,7 +217,7 @@ MATTE_EXT_FN(matte_filesystem__readstring) {
         matte_string_append_char(compiled, bytes[i]);
     }
     matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_string(&out, compiled);
+    matte_value_into_string(heap, &out, compiled);
     free(bytes);
     matte_string_destroy(compiled);
     return out;
@@ -226,7 +230,7 @@ MATTE_EXT_FN(matte_filesystem__readbytes) {
         return matte_heap_new_value(heap);
     }
 
-    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "readBytes() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);
@@ -252,14 +256,14 @@ MATTE_EXT_FN(matte_filesystem__writestring) {
         return matte_heap_new_value(heap);
     }
 
-    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeString() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);
     }
 
 
-    const matteString_t * data = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 1)));
+    const matteString_t * data = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 1)));
     if (!data) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeString() requires the second argument to be string coercible."));
         return matte_heap_new_value(heap);
@@ -290,7 +294,7 @@ MATTE_EXT_FN(matte_filesystem__writebytes) {
         return matte_heap_new_value(heap);
     }
 
-    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeBytes() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);

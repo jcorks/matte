@@ -131,14 +131,15 @@ static void matte_thread_error(
     matteValue_t val,
     void * d
 ) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
     MatteAsyncStartData * startData = d;
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matteValue_t s = matte_value_object_access_string(val, MATTE_VM_STR_CAST(vm, "summary"));
+        matteValue_t s = matte_value_object_access_string(heap, val, MATTE_VM_STR_CAST(vm, "summary"));
         if (s.binID) {
             MatteAsyncStartData * startData = d;
             *startData->errorString = matte_string_create_from_c_str(
                 "Unhandled error: \n%s\n", 
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(s)), 
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, s)), 
                 matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), 
                 lineNumber
             );
@@ -199,7 +200,7 @@ static void * matte_thread(void * userData) {
     
     matte_t * m = matte_create();
     matteVM_t * vm = matte_get_vm(m);
-
+    matteHeap_t * heap = matte_vm_get_heap(vm);
 
     // first compile all and add them 
     int FILEIDS = matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, startData->from));
@@ -225,8 +226,8 @@ static void * matte_thread(void * userData) {
     
 
     if (v.binID == MATTE_VALUE_TYPE_STRING) {
-        *startData->result = matte_string_clone(matte_value_string_get_string_unsafe(v));
-        matte_heap_recycle(v);        
+        *startData->result = matte_string_clone(matte_value_string_get_string_unsafe(heap, v));
+        matte_heap_recycle(heap, v);        
     } else {
     }
 
@@ -263,8 +264,8 @@ MATTE_EXT_FN(matte_async__start) {
     MatteWorkerChildInfo * ch = calloc(1, sizeof(MatteWorkerChildInfo));
     MatteAsyncStartData * init = calloc(1, sizeof(MatteAsyncStartData));
     init->errorString = &ch->errorString;
-    init->from = strdup(matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_value_as_string(path))));
-    init->input = matte_string_clone(matte_value_string_get_string_unsafe(input));
+    init->from = strdup(matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, path))));
+    init->input = matte_string_clone(matte_value_string_get_string_unsafe(heap, input));
     init->stateRef = &(ch->state);
     init->fromVM = vm;
     ch->workerid = matte_async_next_id();
@@ -273,14 +274,14 @@ MATTE_EXT_FN(matte_async__start) {
     pthread_create(&(ch->pthreadID), NULL, matte_thread, init);
     
     matteValue_t id = matte_heap_new_value(heap);
-    matte_value_into_number(&id, ch->workerid);
+    matte_value_into_number(heap, &id, ch->workerid);
     return id;
 }
 
 
 MATTE_EXT_FN(matte_async__state) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    int id = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
+    int id = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 0));
     MatteWorkerChildInfo * ch = find_child(id);
     if (!ch) {
         matte_vm_raise_error_cstring(vm, "No such async primitive ID.");
@@ -288,7 +289,7 @@ MATTE_EXT_FN(matte_async__state) {
     }
     
     matteValue_t result = matte_heap_new_value(heap);
-    matte_value_into_number(&result, ch->state);
+    matte_value_into_number(heap, &result, ch->state);
     return result;   
 }
 
@@ -296,7 +297,7 @@ MATTE_EXT_FN(matte_async__input) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     if (asyncSelf.inputString) {
         matteValue_t v = matte_heap_new_value(heap);
-        matte_value_into_string(&v, asyncSelf.inputString);
+        matte_value_into_string(heap, &v, asyncSelf.inputString);
         return v;
     } else {
         return matte_heap_new_value(heap);
@@ -305,8 +306,8 @@ MATTE_EXT_FN(matte_async__input) {
 }
 
 MATTE_EXT_FN(matte_async__result) {
-    int id = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
     matteHeap_t * heap = matte_vm_get_heap(vm);
+    int id = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 0));
     MatteWorkerChildInfo * ch = find_child(id);
     if (!ch) {
         matte_vm_raise_error_cstring(vm, "No such async primitive ID.");
@@ -315,7 +316,7 @@ MATTE_EXT_FN(matte_async__result) {
 
     if (ch->result) {
         matteValue_t v = matte_heap_new_value(heap);
-        matte_value_into_string(&v, ch->result);
+        matte_value_into_string(heap, &v, ch->result);
         return v;
     } else {
         return matte_heap_new_value(heap);
@@ -324,8 +325,8 @@ MATTE_EXT_FN(matte_async__result) {
 
 
 MATTE_EXT_FN(matte_async__error) {
-    int id = matte_value_as_number(matte_array_at(args, matteValue_t, 0));
     matteHeap_t * heap = matte_vm_get_heap(vm);
+    int id = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 0));
     MatteWorkerChildInfo * ch = find_child(id);
     if (!ch) {
         matte_vm_raise_error_cstring(vm, "No such async primitive ID.");
@@ -334,7 +335,7 @@ MATTE_EXT_FN(matte_async__error) {
 
     if (ch->errorString) {
         matteValue_t v = matte_heap_new_value(heap);
-        matte_value_into_string(&v, ch->errorString);
+        matte_value_into_string(heap, &v, ch->errorString);
         return v;
     } else {
         return matte_heap_new_value(heap);

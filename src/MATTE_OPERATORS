@@ -2,29 +2,29 @@
 
 
 
-static int object_has_operator(matteValue_t a, const char * operator) {
-    const matteValue_t * opSrc = matte_value_object_get_attributes_unsafe(a);
+static int object_has_operator(matteVM_t * vm, matteValue_t a, const char * operator) {
+    const matteValue_t * opSrc = matte_value_object_get_attributes_unsafe(vm->heap, a);
     matteValue_t result;
     if (!opSrc) {
         return 0;
     }
     matteString_t * opstr = matte_string_create_from_c_str("%s", operator);
-    result = matte_value_object_access_string(*opSrc, opstr);
+    result = matte_value_object_access_string(vm->heap, *opSrc, opstr);
     matte_string_destroy(opstr);
     int r = result.binID != 0;
-    matte_heap_recycle(result);
+    matte_heap_recycle(vm->heap, result);
     return r;  
 }
 
 static matteValue_t vm_run_object_operator_2(matteVM_t * vm, matteValue_t a, const char * operator, matteValue_t b) {
-    matteValue_t result = matte_heap_new_value(a.heap);
-    const matteValue_t * opSrc = matte_value_object_get_attributes_unsafe(a);
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    const matteValue_t * opSrc = matte_value_object_get_attributes_unsafe(vm->heap, a);
     matteString_t * opstr = matte_string_create_from_c_str("%s", operator);
     if (opSrc) {
-        matteValue_t op = matte_value_object_access_string(*opSrc, opstr);
+        matteValue_t op = matte_value_object_access_string(vm->heap, *opSrc, opstr);
         matteArray_t arr = MATTE_ARRAY_CAST(&b, matteValue_t, 1);
         result = matte_vm_call(vm, op, &arr, opstr);
-        matte_heap_recycle(op);
+        matte_heap_recycle(vm->heap, op);
     } else {
         matteString_t * err = matte_string_create_from_c_str("%s operator on object without operator overloading is undefined.", operator);
         matte_vm_raise_error_string(vm, err);
@@ -36,14 +36,14 @@ static matteValue_t vm_run_object_operator_2(matteVM_t * vm, matteValue_t a, con
 
 
 static matteValue_t vm_run_object_operator_1(matteVM_t * vm, matteValue_t a, const char * operator) {
-    matteValue_t result = matte_heap_new_value(a.heap);
-    const matteValue_t * opSrc = matte_value_object_get_attributes_unsafe(a);
+    matteValue_t result = matte_heap_new_value(vm->heap);
+    const matteValue_t * opSrc = matte_value_object_get_attributes_unsafe(vm->heap, a);
     matteString_t * opstr = matte_string_create_from_c_str("%s", operator);
     if (opSrc) {
-        matteValue_t op = matte_value_object_access_string(*opSrc, opstr);
+        matteValue_t op = matte_value_object_access_string(vm->heap, *opSrc, opstr);
         
         result = matte_vm_call(vm, op, matte_array_empty(), opstr);
-        matte_heap_recycle(op);
+        matte_heap_recycle(vm->heap, op);
     } else {
         matteString_t * err = matte_string_create_from_c_str("%s operator on object without operator overloading is undefined.", operator);
         matte_vm_raise_error_string(vm, err);
@@ -60,7 +60,7 @@ static void bad_operator(
 ) {
     matteString_t * errMessage = matte_string_create_from_c_str("%s", operator);
     matte_string_concat_printf(errMessage, "%s", " operator on value of type ");
-    matte_string_concat(errMessage, matte_value_string_get_string_unsafe(matte_value_type_name(matte_value_get_type(obj))));
+    matte_string_concat(errMessage, matte_value_string_get_string_unsafe(vm->heap, matte_value_type_name(vm->heap, matte_value_get_type(vm->heap, obj))));
     matte_string_concat_printf(errMessage, "%s", " is undefined.");
     matte_vm_raise_error_string(vm, errMessage);
     matte_string_destroy(errMessage);
@@ -75,20 +75,20 @@ static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_
         
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             &result, 
-            matte_value_as_number(a) +
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) +
+            matte_value_as_number(vm->heap, b)
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, b));
         
         matteString_t * str = matte_string_clone(astr);
         matte_string_concat(str, bstr);
         
-        matte_value_into_string(
+        matte_value_into_string(vm->heap, 
             &result, 
             str
         );
@@ -119,10 +119,10 @@ static matteValue_t vm_operator__sub(matteVM_t * vm, matteValue_t a, matteValue_
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             &result, 
-            matte_value_as_number(a) -
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) -
+            matte_value_as_number(vm->heap, b)
         );
         break;
 
@@ -146,10 +146,10 @@ static matteValue_t vm_operator__div(matteVM_t * vm, matteValue_t a, matteValue_
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             &result, 
-            matte_value_as_number(a) /
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) /
+            matte_value_as_number(vm->heap, b)
         );
         break;
 
@@ -174,10 +174,10 @@ static matteValue_t vm_operator__mult(matteVM_t * vm, matteValue_t a, matteValue
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             &result, 
-            matte_value_as_number(a) *
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) *
+            matte_value_as_number(vm->heap, b)
         );
         break;
 
@@ -198,9 +198,9 @@ static matteValue_t vm_operator__not(matteVM_t * vm, matteValue_t a) {
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            !matte_value_as_boolean(a)
+            !matte_value_as_boolean(vm->heap, a)
         );
         break;
 
@@ -223,9 +223,9 @@ static matteValue_t vm_operator__negate(matteVM_t * vm, matteValue_t a) {
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             &result, 
-            -matte_value_as_number(a)
+            -matte_value_as_number(vm->heap, a)
         );
         break;
       
@@ -263,10 +263,10 @@ static matteValue_t vm_operator__bitwise_or(matteVM_t * vm, matteValue_t a, matt
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_boolean(a) |
-            matte_value_as_boolean(b)
+            matte_value_as_boolean(vm->heap, a) |
+            matte_value_as_boolean(vm->heap, b)
         );
         break;
         
@@ -288,10 +288,10 @@ static matteValue_t vm_operator__or(matteVM_t * vm, matteValue_t a, matteValue_t
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_boolean(a) ||
-            matte_value_as_boolean(b)
+            matte_value_as_boolean(vm->heap, a) ||
+            matte_value_as_boolean(vm->heap, b)
         );
         break;
       
@@ -313,10 +313,10 @@ static matteValue_t vm_operator__bitwise_and(matteVM_t * vm, matteValue_t a, mat
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_boolean(a) &
-            matte_value_as_boolean(b)
+            matte_value_as_boolean(vm->heap, a) &
+            matte_value_as_boolean(vm->heap, b)
         );
         break;
 
@@ -337,18 +337,18 @@ static matteValue_t vm_operator__and(matteVM_t * vm, matteValue_t a, matteValue_
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
       case MATTE_VALUE_TYPE_BOOLEAN: {
-        int vb = matte_value_as_boolean(a);
+        int vb = matte_value_as_boolean(vm->heap, a);
         // short circuit
         if (!vb) {
-            matte_value_into_boolean(
+            matte_value_into_boolean(vm->heap, 
                 &result, 
                 0
             );
         }        
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
             vb &&
-            matte_value_as_boolean(b)
+            matte_value_as_boolean(vm->heap, b)
         );
         break;
 
@@ -419,10 +419,10 @@ static matteValue_t vm_operator__pow(matteVM_t * vm, matteValue_t a, matteValue_
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             &result, 
-            pow(matte_value_as_number(a),
-                matte_value_as_number(b))
+            pow(matte_value_as_number(vm->heap, a),
+                matte_value_as_number(vm->heap, b))
         );
         break;
 
@@ -442,41 +442,41 @@ static matteValue_t vm_operator__pow(matteVM_t * vm, matteValue_t a, matteValue_
 static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
     if (b.binID == MATTE_VALUE_TYPE_EMPTY && a.binID != MATTE_VALUE_TYPE_EMPTY) {
-        matte_value_into_boolean(&result, 0);
+        matte_value_into_boolean(vm->heap, &result, 0);
         return result;
     }
     switch(a.binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
-        matte_value_into_boolean(&result, b.binID == 0);
+        matte_value_into_boolean(vm->heap, &result, b.binID == 0);
         return result;
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_number(a) ==
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) ==
+            matte_value_as_number(vm->heap, b)
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result,
-            a.objectID == matte_value_as_string(b).objectID
+            a.value.id == matte_value_as_string(vm->heap, b).value.id
         );
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_boolean(a) ==
-            matte_value_as_boolean(b)
+            matte_value_as_boolean(vm->heap, a) ==
+            matte_value_as_boolean(vm->heap, b)
         );
         break;
 
       case MATTE_VALUE_TYPE_FUNCTION: {
         if (b.binID == MATTE_VALUE_TYPE_FUNCTION) {
-            matte_value_into_boolean(
+            matte_value_into_boolean(vm->heap, 
                 &result, 
-                a.objectID == b.objectID 
+                a.value.id == b.value.id 
             );
         } else {            
             matte_vm_raise_error_cstring(vm, "== operator with Function and non-function is undefined.");            
@@ -485,19 +485,19 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
       }
 
       case MATTE_VALUE_TYPE_OBJECT: {
-        if (object_has_operator(a, "==")) {
+        if (object_has_operator(vm, a, "==")) {
             result = vm_run_object_operator_2(vm, a, "==", b);
         } else {
             if (b.binID == 0) {
                 // if we're here, we know a is not empty, so this will always be false
-                matte_value_into_boolean(
+                matte_value_into_boolean(vm->heap, 
                     &result, 
                     0
                 );
             } else if (b.binID == MATTE_VALUE_TYPE_OBJECT) {
-                matte_value_into_boolean(
+                matte_value_into_boolean(vm->heap, 
                     &result, 
-                    a.objectID == b.objectID
+                    a.value.id == b.value.id
                 );
             } else {
                 // not defined.
@@ -509,9 +509,9 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
       }
       case MATTE_VALUE_TYPE_TYPE: {
         if (b.binID == MATTE_VALUE_TYPE_TYPE) {
-            matte_value_into_boolean(
+            matte_value_into_boolean(vm->heap, 
                 &result, 
-                a.objectID == b.objectID 
+                a.value.id == b.value.id 
             );
         } else {            
             matte_vm_raise_error_cstring(vm, "== operator with Type and non-type is undefined.");            
@@ -525,42 +525,42 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
 static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValue_t b) {
     matteValue_t result = matte_heap_new_value(vm->heap);
     if (b.binID == MATTE_VALUE_TYPE_EMPTY && a.binID != MATTE_VALUE_TYPE_EMPTY) {
-        matte_value_into_boolean(&result, 1);
+        matte_value_into_boolean(vm->heap, &result, 1);
         return result;
     }
 
     switch(a.binID) {
       case MATTE_VALUE_TYPE_EMPTY: 
-        matte_value_into_boolean(&result, b.binID != 0);
+        matte_value_into_boolean(vm->heap, &result, b.binID != 0);
         return result;
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_number(a) !=
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) !=
+            matte_value_as_number(vm->heap, b)
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result,
-            a.objectID != matte_value_as_string(b).objectID
+            a.value.id != matte_value_as_string(vm->heap, b).value.id
         );
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_boolean(a) !=
-            matte_value_as_boolean(b)
+            matte_value_as_boolean(vm->heap, a) !=
+            matte_value_as_boolean(vm->heap, b)
         );
         break;
       
       case MATTE_VALUE_TYPE_FUNCTION: {
         if (b.binID == MATTE_VALUE_TYPE_FUNCTION) {
-            matte_value_into_boolean(
+            matte_value_into_boolean(vm->heap, 
                 &result, 
-                a.objectID != b.objectID 
+                a.value.id != b.value.id 
             );
         } else {            
             matte_vm_raise_error_cstring(vm, "!= operator with Function and non-function is undefined.");            
@@ -569,19 +569,19 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
       }
       
       case MATTE_VALUE_TYPE_OBJECT: {
-        if (object_has_operator(a, "!=")) {
+        if (object_has_operator(vm, a, "!=")) {
             result = vm_run_object_operator_2(vm, a, "!=", b);
         } else {
             if (b.binID == 0) {
                 // if we're here, we know a is not empty, so this will always be false
-                matte_value_into_boolean(
+                matte_value_into_boolean(vm->heap, 
                     &result, 
                     1
                 );
             } else if (b.binID == MATTE_VALUE_TYPE_OBJECT) {
-                matte_value_into_boolean(
+                matte_value_into_boolean(vm->heap, 
                     &result, 
-                    a.objectID != b.objectID
+                    a.value.id != b.value.id
                 );
             } else {
                 // not defined.
@@ -594,9 +594,9 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
       } 
       case MATTE_VALUE_TYPE_TYPE: {
         if (b.binID == MATTE_VALUE_TYPE_TYPE) {
-            matte_value_into_boolean(
+            matte_value_into_boolean(vm->heap, 
                 &result, 
-                a.objectID != b.objectID 
+                a.value.id != b.value.id 
             );
         } else {
             
@@ -616,18 +616,18 @@ static matteValue_t vm_operator__less(matteVM_t * vm, matteValue_t a, matteValue
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_number(a) <
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) <
+            matte_value_as_number(vm->heap, b)
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, b));
         if (!astr || !bstr) return result;
         
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result,
             matte_string_compare(
                 astr,
@@ -657,18 +657,18 @@ static matteValue_t vm_operator__greater(matteVM_t * vm, matteValue_t a, matteVa
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_number(a) >
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) >
+            matte_value_as_number(vm->heap, b)
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, b));
         if (!astr || !bstr) return result;
         
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result,
             matte_string_compare(
                 astr,
@@ -698,18 +698,18 @@ static matteValue_t vm_operator__lesseq(matteVM_t * vm, matteValue_t a, matteVal
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_number(a) <=
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) <=
+            matte_value_as_number(vm->heap, b)
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, b));
         if (!astr || !bstr) return result;
         
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result,
             matte_string_compare(
                 astr,
@@ -737,18 +737,18 @@ static matteValue_t vm_operator__greatereq(matteVM_t * vm, matteValue_t a, matte
     switch(a.binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_number(a) >=
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, a) >=
+            matte_value_as_number(vm->heap, b)
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(matte_value_as_string(a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(matte_value_as_string(b));
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, b));
         if (!astr || !bstr) return result;
         
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result,
             matte_string_compare(
                 astr,
@@ -782,10 +782,10 @@ static matteValue_t vm_operator__modulo(matteVM_t * vm, matteValue_t a, matteVal
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             &result, 
-            fmod(matte_value_as_number(a),
-                 matte_value_as_number(b))
+            fmod(matte_value_as_number(vm->heap, a),
+                 matte_value_as_number(vm->heap, b))
         );
         break;
       
@@ -807,10 +807,10 @@ static matteValue_t vm_operator__caret(matteVM_t * vm, matteValue_t a, matteValu
     matteValue_t result = matte_heap_new_value(vm->heap);
     switch(a.binID) {
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        matte_value_into_boolean(
+        matte_value_into_boolean(vm->heap, 
             &result, 
-            matte_value_as_boolean(a) ^
-            matte_value_as_boolean(b)
+            matte_value_as_boolean(vm->heap, a) ^
+            matte_value_as_boolean(vm->heap, b)
         );
         break;      
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -838,10 +838,10 @@ static matteValue_t vm_operator__assign_add(matteVM_t * vm, matteValue_t * a, ma
     switch(a->binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             a, 
-            matte_value_as_number(*a) +
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, *a) +
+            matte_value_as_number(vm->heap, b)
         );
         break;
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -855,7 +855,7 @@ static matteValue_t vm_operator__assign_add(matteVM_t * vm, matteValue_t * a, ma
         return result;
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -865,10 +865,10 @@ static matteValue_t vm_operator__assign_sub(matteVM_t * vm, matteValue_t * a, ma
     switch(a->binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             a, 
-            matte_value_as_number(*a) -
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, *a) -
+            matte_value_as_number(vm->heap, b)
         );
         break;
       
@@ -882,7 +882,7 @@ static matteValue_t vm_operator__assign_sub(matteVM_t * vm, matteValue_t * a, ma
         return result;
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -893,10 +893,10 @@ static matteValue_t vm_operator__assign_div(matteVM_t * vm, matteValue_t * a, ma
     switch(a->binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             a, 
-            matte_value_as_number(*a) /
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, *a) /
+            matte_value_as_number(vm->heap, b)
         );
         break;
       
@@ -910,7 +910,7 @@ static matteValue_t vm_operator__assign_div(matteVM_t * vm, matteValue_t * a, ma
         return result;
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -920,10 +920,10 @@ static matteValue_t vm_operator__assign_mult(matteVM_t * vm, matteValue_t * a, m
     switch(a->binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             a, 
-            matte_value_as_number(*a) *
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, *a) *
+            matte_value_as_number(vm->heap, b)
         );
         break;
       
@@ -938,7 +938,7 @@ static matteValue_t vm_operator__assign_mult(matteVM_t * vm, matteValue_t * a, m
         return result;
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -949,10 +949,10 @@ static matteValue_t vm_operator__assign_mod(matteVM_t * vm, matteValue_t * a, ma
     switch(a->binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             a, 
-            fmod(matte_value_as_number(*a),
-                 matte_value_as_number(b))
+            fmod(matte_value_as_number(vm->heap, *a),
+                 matte_value_as_number(vm->heap, b))
         );
         break;
       
@@ -966,7 +966,7 @@ static matteValue_t vm_operator__assign_mod(matteVM_t * vm, matteValue_t * a, ma
         return result;
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -976,10 +976,10 @@ static matteValue_t vm_operator__assign_pow(matteVM_t * vm, matteValue_t * a, ma
     switch(a->binID) {
 
       case MATTE_VALUE_TYPE_NUMBER: 
-        matte_value_into_number(
+        matte_value_into_number(vm->heap, 
             a, 
-            matte_value_as_number(*a) *
-            matte_value_as_number(b)
+            matte_value_as_number(vm->heap, *a) *
+            matte_value_as_number(vm->heap, b)
         );
         break;
       
@@ -993,7 +993,7 @@ static matteValue_t vm_operator__assign_pow(matteVM_t * vm, matteValue_t * a, ma
         return result;
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -1013,7 +1013,7 @@ static matteValue_t vm_operator__assign_and(matteVM_t * vm, matteValue_t * a, ma
 
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -1035,7 +1035,7 @@ static matteValue_t vm_operator__assign_or(matteVM_t * vm, matteValue_t * a, mat
 
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -1053,7 +1053,7 @@ static matteValue_t vm_operator__assign_xor(matteVM_t * vm, matteValue_t * a, ma
         return result;
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -1071,7 +1071,7 @@ static matteValue_t vm_operator__assign_bleft(matteVM_t * vm, matteValue_t * a, 
         return result;
 
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }
 
@@ -1089,6 +1089,6 @@ static matteValue_t vm_operator__assign_bright(matteVM_t * vm, matteValue_t * a,
         bad_operator(vm, ">>=", *a);
         return result;
     }
-    matte_value_into_copy(&result, *a);
+    matte_value_into_copy(vm->heap, &result, *a);
     return result;
 }

@@ -22,11 +22,11 @@ static void auto_cleanup_buffer(void * ud, void * fd) {
 static matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t * vm, const uint8_t * data, uint32_t size) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_new_object_ref(&out);
-    matte_value_object_set_native_finalizer(out, auto_cleanup_buffer, NULL);    
+    matte_value_into_new_object_ref(heap, &out);
+    matte_value_object_set_native_finalizer(heap, out, auto_cleanup_buffer, NULL);    
     MatteMemoryBuffer * m = calloc(1, sizeof(MatteMemoryBuffer));
     m->idval = MEMORYBUFFER_ID_TAG;
-    matte_value_object_set_userdata(out, m);    
+    matte_value_object_set_userdata(heap, out, m);    
 
     
     if (data && size) {    
@@ -40,7 +40,8 @@ static matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t
 }
 
 const uint8_t * matte_system_shared__get_raw_from_memory_buffer(matteVM_t * vm, matteValue_t b, uint32_t * size) {
-    MatteMemoryBuffer * mB = matte_value_object_get_userdata(b);
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    MatteMemoryBuffer * mB = matte_value_object_get_userdata(heap, b);
     if (!(mB && mB->idval == MEMORYBUFFER_ID_TAG)) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Invalid memory buffer instance."));
         *size = 0;
@@ -61,20 +62,20 @@ MATTE_EXT_FN(matte_ext__memory_buffer__create) {
 MATTE_EXT_FN(matte_ext__memory_buffer__release) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
     m->idval = 0;
     free(m->buffer);
     free(m);
-    matte_value_object_set_userdata(a, NULL);
+    matte_value_object_set_userdata(heap, a, NULL);
     return matte_heap_new_value(heap);
 }
 
 MATTE_EXT_FN(matte_ext__memory_buffer__set_size) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
 
-    uint64_t length = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
+    uint64_t length = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
     if (m->alloc < length) {
         m->alloc = length;
         m->buffer = realloc(m->buffer, length);
@@ -88,13 +89,13 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_size) {
 MATTE_EXT_FN(matte_ext__memory_buffer__copy) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * mA = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * mA = matte_value_object_get_userdata(heap, a);
     matteValue_t b = matte_array_at(args, matteValue_t, 2);
-    MatteMemoryBuffer * mB = matte_value_object_get_userdata(b);
+    MatteMemoryBuffer * mB = matte_value_object_get_userdata(heap, b);
 
-    uint64_t offsetA = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
-    uint64_t offsetB = matte_value_as_number(matte_array_at(args, matteValue_t, 3));
-    uint64_t length  = matte_value_as_number(matte_array_at(args, matteValue_t, 4));
+    uint64_t offsetA = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
+    uint64_t offsetB = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 3));
+    uint64_t length  = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 4));
 
 
     // length check
@@ -114,11 +115,11 @@ MATTE_EXT_FN(matte_ext__memory_buffer__copy) {
 MATTE_EXT_FN(matte_ext__memory_buffer__set) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * mA = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * mA = matte_value_object_get_userdata(heap, a);
 
-    uint64_t offsetA = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
-    uint8_t  val     = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
-    uint64_t length  = matte_value_as_number(matte_array_at(args, matteValue_t, 3));
+    uint64_t offsetA = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
+    uint8_t  val     = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 2));
+    uint64_t length  = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 3));
 
 
     // length check
@@ -138,10 +139,10 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set) {
 MATTE_EXT_FN(matte_ext__memory_buffer__subset) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
 
-    uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
-    uint64_t to   = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
+    uint64_t from = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
+    uint64_t to   = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 2));
 
     if (from > m->size || to > m->size || from > to) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Subset call failed: Improper indices for buffer"));
@@ -151,7 +152,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__subset) {
 
     matteValue_t out = matte_heap_new_value(heap);
     MatteMemoryBuffer * mOut = calloc(1, sizeof(MatteMemoryBuffer));
-    matte_value_object_set_userdata(out, m);    
+    matte_value_object_set_userdata(heap, out, m);    
     
     mOut->size = (from-to)+1;
     mOut->alloc = mOut->size;
@@ -164,9 +165,9 @@ MATTE_EXT_FN(matte_ext__memory_buffer__subset) {
 MATTE_EXT_FN(matte_ext__memory_buffer__append_byte) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
 
-    uint8_t val   = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
+    uint8_t val   = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
 
     if (m->alloc == m->size) {
         m->alloc = 10 + m->alloc*1.1;
@@ -180,9 +181,9 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append_byte) {
 MATTE_EXT_FN(matte_ext__memory_buffer__append) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * mA = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * mA = matte_value_object_get_userdata(heap, a);
     matteValue_t b = matte_array_at(args, matteValue_t, 1);
-    MatteMemoryBuffer * mB = matte_value_object_get_userdata(b);
+    MatteMemoryBuffer * mB = matte_value_object_get_userdata(heap, b);
 
 
 
@@ -201,10 +202,10 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append) {
 MATTE_EXT_FN(matte_ext__memory_buffer__remove) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
 
-    uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
-    uint64_t to   = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
+    uint64_t from = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
+    uint64_t to   = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 2));
 
     if (from > m->size || to > m->size || from > to) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Remove call failed: Improper indices for buffer"));
@@ -221,19 +222,19 @@ MATTE_EXT_FN(matte_ext__memory_buffer__remove) {
 MATTE_EXT_FN(matte_ext__memory_buffer__get_size) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
 
     matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_number(&out, m->size);
+    matte_value_into_number(heap, &out, m->size);
     return out;    
 }
 
 MATTE_EXT_FN(matte_ext__memory_buffer__get_index) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
 
-    uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
+    uint64_t from = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
     if (from >= m->size) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not get value from buffer: index out of range."));
         return matte_heap_new_value(heap);                   
@@ -241,17 +242,17 @@ MATTE_EXT_FN(matte_ext__memory_buffer__get_index) {
     }
 
     matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_number(&out, m->buffer[from]);
+    matte_value_into_number(heap, &out, m->buffer[from]);
     return out;    
 }
 
 MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_array_at(args, matteValue_t, 0);
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(a);
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
 
-    uint64_t from = matte_value_as_number(matte_array_at(args, matteValue_t, 1));
-    uint8_t  val  = matte_value_as_number(matte_array_at(args, matteValue_t, 2));
+    uint64_t from = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
+    uint8_t  val  = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 2));
     if (from >= m->size) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not set value in buffer: index out of range."));
         return matte_heap_new_value(heap);                   
@@ -260,7 +261,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
 
     m->buffer[from] = val;
     matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_number(&out, m->buffer[from]);
+    matte_value_into_number(heap, &out, m->buffer[from]);
     return matte_heap_new_value(heap);
 }
 

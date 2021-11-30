@@ -22,7 +22,7 @@ MATTE_EXT_FN(matte_consoleio__getline) {
     fgets(buffer, GETLINE_SIZE, stdin);
 
     matteValue_t v =  matte_heap_new_value(heap);
-    matte_value_into_string(&v, MATTE_VM_STR_CAST(vm, buffer));
+    matte_value_into_string(heap, &v, MATTE_VM_STR_CAST(vm, buffer));
     free(buffer);
     return v;    
 }
@@ -34,7 +34,7 @@ MATTE_EXT_FN(matte_consoleio__print) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     if (matte_array_get_size(args) < 1) return matte_heap_new_value(heap);
 
-    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 0)));
     if (str) {
         printf("%s", matte_string_get_c_str(str));
         fflush(stdout);

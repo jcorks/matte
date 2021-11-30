@@ -6,7 +6,7 @@ MATTE_EXT_FN(matte_time__sleepms) {
     }
 
 
-    usleep(1000*matte_value_as_number(matte_array_at(args, matteValue_t, 0)));
+    usleep(1000*matte_value_as_number(heap, matte_array_at(args, matteValue_t, 0)));
     return matte_heap_new_value(heap);
 }
 
@@ -18,7 +18,7 @@ MATTE_EXT_FN(matte_time__getticks) {
     gettimeofday(&t, NULL);
 
     matteValue_t v = matte_heap_new_value(heap);
-    matte_value_into_number(&v, t.tv_sec*1000LL + t.tv_usec/1000);
+    matte_value_into_number(heap, &v, t.tv_sec*1000LL + t.tv_usec/1000);
     return v;
 }
 
@@ -29,7 +29,7 @@ MATTE_EXT_FN(matte_time__time) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     time_t t = time(NULL);
     matteValue_t v = matte_heap_new_value(heap);
-    matte_value_into_number(&v, t);
+    matte_value_into_number(heap, &v, t);
     return v;
 }
 

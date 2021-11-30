@@ -72,6 +72,7 @@
 
 
 @docAll ::(instr) {
+    print('Splitting lines..');
     <@>lines = MatteString.new(instr).split('\n');
     for([0, lines.length], ::(i){
         @l = lines[i];
@@ -335,9 +336,9 @@
 @Filesystem   = import('Matte.System.Filesystem');
 //@DocClass     = import('../tools/docclass.mt');
 
-
-
-print(DocClass.documentAsJSON(Filesystem.readString('../src/rom/core/array.mt')));
+print('Reading file');
+@f = Filesystem.readString('../src/rom/core/array.mt');
+print(DocClass.documentAsJSON(f));
 
 
 

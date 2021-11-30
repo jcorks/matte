@@ -5,7 +5,7 @@ MATTE_EXT_FN(matte_utility__system) {
         return matte_heap_new_value(heap);
     }
 
-    const matteString_t * str = matte_value_string_get_string_unsafe(matte_value_as_string(matte_array_at(args, matteValue_t, 0)));
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 0)));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "system() requires the first argument to be string coercible."));
         return matte_heap_new_value(heap);
@@ -13,6 +13,7 @@ MATTE_EXT_FN(matte_utility__system) {
 
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_boolean(
+        heap, 
         &out,
         system(matte_string_get_c_str(str)) == 0
     );
@@ -28,7 +29,7 @@ MATTE_EXT_FN(matte_utility__exit) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "exit() requires at least one argument"));
         return matte_heap_new_value(heap);
     }
-    exit(matte_value_as_number(matte_array_at(args, matteValue_t, 0)));
+    exit(matte_value_as_number(heap, matte_array_at(args, matteValue_t, 0)));
     return matte_heap_new_value(heap);
 }
 
@@ -43,7 +44,7 @@ MATTE_EXT_FN(matte_utility__init_rand) {
 MATTE_EXT_FN(matte_utility__next_rand) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_number(&out, (rand() / (double)(RAND_MAX)));    
+    matte_value_into_number(heap, &out, (rand() / (double)(RAND_MAX)));    
     return out;
 }
 

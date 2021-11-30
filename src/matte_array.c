@@ -126,7 +126,7 @@ void matte_array_push_n(matteArray_t * t, const void * elements, uint32_t count)
         assert(t && "matteArray_t pointer cannot be NULL.");
     #endif
     while(t->size + count > t->allocSize) {
-        t->allocSize += t->allocSize*array_presize_amt+1;
+        t->allocSize += t->allocSize*array_resize_amt+1;
         t->data = realloc(t->data, t->allocSize*t->sizeofType);
     }
     memcpy(
@@ -179,7 +179,7 @@ void matte_array_set_size(matteArray_t * t, uint32_t size) {
         assert(t && "matteArray_t pointer cannot be NULL.");
     #endif
     while(size >= t->allocSize) {
-        t->allocSize += t->allocSize*array_presize_amt;
+        t->allocSize += t->allocSize*array_resize_amt;
         t->data = realloc(t->data, t->allocSize*t->sizeofType);
     }
     t->size = size;
