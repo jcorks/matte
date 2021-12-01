@@ -1,0 +1,1113 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matte Language: Quick Guide</title>
+    <style>@font-face { font-family: Consolas; src: url('Consolas.ttf');}</style>
+    <script src="matte_synbox_c.js"></script>
+    <script src="matte_synbox.js"></script>
+
+</head>
+<body>
+
+<h1>Matte Language: Quick Guide</h1>
+<br>
+<h2>1. Introduction</h2>
+
+This guide is intended for those who are already familiar with programming concepts from popular imperative languages, like Python, C/C++, C#, and Java. Matte uses a lot of the same conventions and features, with some key differences.
+<p>
+Throughout the guide, code samples will be provided. If using a javascript-enabled browser, you may hover your pointer / tap the code to get fine details about the syntax used. For example:
+<pre>
+    <@>myFunction = ::{
+        print("Hello, world!");
+    };
+    myFunction();
+</pre>
+
+<hr>
+<br>
+<h2>2. Overview</h2>
+
+Matte is a dynamically typed, imperative language with C-like features. You will find many concepts familiar to existing languages that match this profile.
+For example, C-line single and multiline comments are readily available:
+<pre>
+    // A comment.
+    /* A multi-line comment. */
+</pre>
+
+
+As such, every line that isnt a comment is part of a statement. Statements may span multiple lines, but <b>statements must always end in a semicolon ";"</b>
+This will generate a compilation error if missing.
+
+Remember that <b>every statement is part of some function's scope. There is only one kind of scope: function scope. This is the core of Matte as a language: everything is or a statement within a function.</b> This includes statements written "nakedly" outside a user-defined function. This is referred to as the toplevel or script function. 
+<b>There is no such thing as global scope.</b> Values declared at the toplevel of a script are not visible outside the script without explicit exporting.
+
+
+
+
+
+<hr>
+<br>
+<h2>3. Variables</h2>
+
+In Matte, all variables MUST be declared before use. Spontaneous use of variables that are not declared will throw a compilation error.
+<p>
+Variables are declared with the @ symbol:
+<pre>
+    // Normal variable.
+    @myVariable;
+
+    // Wrapping the @ in <> will make the variable immutable.
+    // Immutable values that are modified will fail to compile.
+    <@>immutableVariable = 42;    
+
+</pre>
+
+You can add an inline assignment with the declaration as well:
+<pre>
+    @myOtherVariable = 3;
+
+    // Okay to use myOtherVariable since it was declared.
+    @another = 4 + myOtherVariable;
+
+    // Displays 7
+    print(another);
+</pre>
+
+Variable names can contain any non-symbol character (other than _, which is allowed). 
+
+<br>
+<h3>3.1 Types</h3>
+
+Variables can be any type, but in most cases, they retain the type of the last assignment.
+There are only a handful of basic types within Matte:
+<ul>
+    <li><b>Empty:</b> represents a value without value. </li>
+    <pre>
+        // empty is a special value. 
+        @e = empty;
+
+        // Values that are declared but NOT set are 
+        // given the empty value.
+        @f;
+    </pre>
+    <li><b>Number:</b> A simple number value. Follows the semantics of double-precision IEEE 754 floating point numbers. In the standard implementation, this is accomplished with C "double" types.</li> 
+    <pre>
+        // Number values 
+        @a = 10;
+        @b = 1.4;
+        @c = (1 * 7.8) / 2;
+        @d = (a + b) / 2;  
+        @e = (a ** 3);  
+    </pre>
+    <li><b>Immutable String:</b> A read-only string. Created with 'single' or "double" quotes.</li>
+    <pre>
+        // string values can take single or double quotes.
+        a = '10';
+        b = "10";
+        c = "A String!";
+        d = 'Escape\ncharacters\nsupported';    
+    </pre>
+    <li><b>Boolean:</b> Either true or false.</li>
+    <pre>
+        // boolean values 
+        a = false;
+        b = true;
+        c = (1 == 2); // should be false 
+        d = (10 == 10); // should be true
+    </pre>
+    <li><b>Object:</b> a value that contains other values like a table.</li>
+    <pre>
+        // objects. They follow javascript style syntax.
+        a = {}; 
+        b = {
+            member : 12,
+            'otherMember' : 30
+        };
+        // list initializer. Equivalent to setting keys with numbers.
+        c = ['a', b, 3];
+
+    </pre>
+    <li><b>Function:</b> a value that represents a collection of statements and bound variables.</li>
+    <pre>
+        // Functions can be made and assigned.
+        a = ::{};
+        
+        // They can also be run immediately as part of an expression
+        result = ::<={
+            2 + 2;
+        };
+
+        // functions can also capture values that persist beyond 
+        // the lifetime of its original function
+        counter = ::<={
+            @value = 0;
+            return ::{
+                value += 1;
+                return value;
+            };
+        };
+        
+        // returns 1.. then 2... then 3
+        counter();
+        counter();
+        counter();
+
+    </pre>    
+    <li><b>Type:</b> a value that denotes a type of a value. In Matte, types are explicit values. There are built-in constants for types: Empty, Boolean, Number, String, Object, and Type. You can create your own types as well.</li>
+    <pre>
+        // Types can be gleaned by introspecting. Introspection is covered in 
+        // a later section.
+        @f = introspect.type(40);
+
+        // will print "true"
+        print(f == Number);
+
+        // Types can be used as functions to explicitly convert between types.
+        // will print 7
+        print(2 + Number('5'));
+
+    </pre>
+</ul>
+
+
+<hr>
+<br>
+<br>
+<h2> 4. Functions</h2>
+In Matte functions are a special type of value. They can accept arguments, but they can also implicitly use variables using lexical "reference capture", also known as lexical closures.
+Functions are defined with the function constructor "::". It can then be followed by parantheses "()" to declare any number of argument names, then statement scope blocks "{}" to define its behavior.
+<pre>
+
+    // declare a new variable that is a function. It takes one argument 
+    // that can be referred to by "myString"
+    @myFunction = ::(myString) {
+        print(myString);
+    };
+
+    // run the function with one argument.
+    // Should print Hello, world!
+    myFunction('Hello, world!');
+
+
+
+    // If a function doesn't have any arguments, you may 
+    // omit the function argument parantheses.
+    //
+    // When assigning a function, you may also optionally 
+    // omit the '='
+    @myOtherFunction :: {
+        return '123';
+    };
+
+    // Should print 123
+    print(myOtherFunction());
+
+
+</pre>
+
+The <b>context</b> keyword can always be used to refer to the running function. 
+
+<br>
+<br>
+
+
+Sometimes, it is useful to run a function immediately after creation without assigning it to a variable. 
+These "anonymous function" expressions are useful for more complex behaviors and convenience:
+
+<pre>
+
+    // The function can be called immediately using the 
+    // () like you would on a function reference.
+    ::{
+        print("I ran immediately.");
+    }();
+
+    // The () behaves the same as if it 
+    // were a typical variable.
+    ::(argument) {
+        print('Hello, ' + argument);
+    }('World!!');
+
+    
+    // Most commonly, it is convenient to 
+    // run an entire block with no arguments, like 
+    // in the first example. However, excessive () 
+    // can make code harder to read in certain 
+    // situations. Alternatively, you can use 
+    // "dash function syntax" to accomplish the same behavior:
+    ::<={
+        print("I ran immediately, too!");
+    };
+
+
+
+    // Using anonymous functions in conjunction with 
+    // normal ones allows for convenient methods to 
+    // store information.
+    @fancyFunction = ::<={
+        // assign the properties "a" and "b" a new value
+        a = 200;
+        b = 34;
+        
+        return :: (c) {
+            print(a + b + c);
+        };
+    };
+
+
+
+    // should print 300
+    fancyFunction(66);
+
+
+</pre>
+
+<br>
+<h3> 4.1 Type-strict Functions</h3>
+In Matte it is possible to place type restrictions on functions. This can help produce more quality code, ensuring guarantees that incoming variables 
+are of an expected type. When functions place any of these restrictions, the functions are referred to as "type-strict" functions.
+
+Functions can have any argument or its return value be of a specified type. If type is violated, an error is thrown.
+Matte supports conversion semantics, so if an incoming variable is not of the required type, the incoming variable 
+will attempt to be converted.
+
+<pre>
+    // Specifies that both a and b must be 
+    // of type Number.
+    <@>myAdder::(a => Number, b => Number) {
+        return a + b;
+    };
+
+    // Ok!
+    myAdder(10, 4);
+
+    // Throws an error 
+    myAdder('50', 4);
+
+</pre>
+
+
+
+
+
+
+<hr>
+<br>
+<h2> 5. Flow Control</h2>
+Matte's flow control is a bit different than other languages. For example, "while" and "switch" do not exist, but instead, there is "loop" and "match" respectively that do similar things. 
+
+<h3> 5.1 when</h3>
+
+When writing more algorithm-focused code, it is a common pattern in C-like languages to use an if statement to return from a function early. In Matte, this pattern is accomplished with the <i>when</i> statement:
+
+<pre>
+    // Fibonacci sequence using "when"
+    // "context" always refers to the currently running function.
+    @fib = ::(n){
+        when(n <  1) 0;
+        when(n <= 2) 1;
+        return context(n-1) + context(n-2);
+    };
+
+    print(fib(5));
+
+
+    // When assigning a function, the '=' can be ommitted optionally
+    @hi_low_mid ::(a, b) {
+        when(a < b) "lo";
+        when(a > b) "hi";
+    
+        // if no conditionals are true, when 
+        // continues on.    
+        return "mid";
+    };
+
+    // should print lo
+    print(hi_low_mid(10, 40));
+    
+
+
+
+</pre>
+
+
+<h3> 5.2 match</h3>
+
+<i>match</i> is the analog to C-like's "switch / case". 
+Given an expression and a series of possibilities, <i>match</i> will compute and return a new expression, called a conclusion, for the choice that matches a possibility.
+
+<pre>
+    @statement = 1;
+
+
+    match(statement) {
+        // The syntax is (possibility) : conclusion.
+        (0) : print("It's zero"),
+        (1) : print("It's one")
+    };
+    
+    
+    
+    // match returns an expression, so it can be used like so.
+    // note that ONLY the conslusion
+    print(match(statement){
+        (0)       : '0',
+        (1)       : '1',
+        // if multiple possibilities lead to the same conclusion, 
+        (2, 3, 4) : '2, 3, or 4!',
+        default   : "don't know!"
+    });
+    
+    
+    // If it is desired to get the same behavior 
+    // as C-like language's "if-else", match can be used 
+    // in conjunction with anonymous function expressions 
+    // to easily create this structure.
+    
+    <@>judgeValue ::(i) {
+        match(true) {
+            (i > 20): ::<={
+                print('greater than 20');
+            },
+    
+            (i < 20): ::<={
+                print('less than 20');
+            },
+    
+            default: ::<={
+                print('exactly 20');
+            }
+        };
+    };
+    
+    // should print 'greater than 20'
+    judgeValue(50);
+
+</pre>
+
+<br>
+<h3> 5.3 loop</h3>
+<i>loop</i> is similar to "while" in C-like languages in concept, but the behavior is different. <i>loop</i> is a function 
+that takes a single argument, a function, and runs it at least once until it returns <i>false</i>. If the function returns 
+<i>true</i>, the function is immediately called again.
+
+
+<pre>
+    @counter = 0;
+    loop(::{
+        // It is common (and readable) to use the 
+        // when statement as a termination condition.
+        when(counter == 10) false;
+
+        counter += 1;
+        return true;
+    });
+</pre>
+
+</br>
+<h3> 5.4 for</h3>
+
+In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is a list of numbers, denoting the start value, end value, and optional iteration value. The second argument is a function to be called for each iteration. The function receives one value, which is the value of the for loop's iterator as a Number.
+
+<pre>
+    // Basic for loop, iterates 10 times in a C-style manner using 0-based indices.
+    //
+    // Should print 
+    //
+    // 0
+    // 1
+    // 2
+    // 3
+    //
+    for([0, 4], ::(i){
+        print(i);
+    });
+
+    // The 3rd number in the list is the increment for the iterator.
+    // If ommitted, the default is 1.
+    //
+    // Should print 
+    //
+    // 0
+    // 2
+    // 4
+    // 6
+    // 8
+    for([0, 10, 2], ::(i){
+        print(i);
+    });
+</pre>
+
+</br>
+<h3> 5.5 foreach</h3>
+
+Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iteration. <i>foreach</i> iterates over an Object's keys and values.
+
+<pre>
+    @object = ['a', 'b', 'c'];
+
+    // Should print 
+    //
+    // 0 -> a 
+    // 1 -> b 
+    // 2 -> c
+    //
+    foreach(object, ::(key, value){
+        print('' + key + '->' + value);
+    });
+</pre>
+ 
+
+
+<h3> 5.6 if</h3>
+
+The if expression in matte can be used to control or avoid computation of another expression. Unlike in other languages, <b>if and else only work with one expression. If you need multiple expressions, have your expression compute to a function or function expression.</b>
+
+<pre>
+    @myVal = false;
+
+    // if computes the proceeding expression if the 
+    // expression within parentheses computes to true.
+
+    // should print false
+    if (myVal == false) print("myVal is false");
+
+    // should not print
+    if (myVal == true) print("myVal is true");
+
+
+    // if an "if" statement requires multiple statements, 
+    // a new function can be created and immediately run containing the 
+    // expressions to be run. However, in most cases, other 
+    // structures can be used to make more readable code.
+
+
+    // should print 42
+    if (myVal == false) ::<={
+        @val = 4 * 8 + 10;
+        print(val);
+    };
+
+    print('myVal is ' + (if (myVal) 'true' else 'false'));
+
+</pre>
+
+Its important to remember that, in Matte, <i>if</i> is an expression; it computes to a value. Specifically, <i>if</i> returns the computed expression.
+This makes <i>if</i> equivalent to the ternary <i>?:</i> seen in some C-like languages.
+
+
+<hr>
+<br>
+<h2> 6. Introspection</h2>
+Often, it is useful to get more information about a particular value, or work with it in a more in-depth way. introspection provides language-standard functions that 
+work with basic values. It is invoked by using the built-in constant "introspect" and calling one of its recognized functions:
+
+<ul>
+    <li><b>introspect.type(<i>value</i>):</b> Returns the type of the value.</li>
+    <li><b>introspect.keys(<i>value</i>):</b> For an object, returns a list of all of the object's keys to stored values.</li>
+    <li><b>introspect.values(<i>value</i>):</b> For an object, returns a list of all of the object's stored values.</li>
+    <li><b>introspect.keycount(<i>value</i>):</b> For an object, returns the number of stored values that the object has.</li>
+    <li><b>introspect.isCallable(<i>value</i>):</b> For an object, returns whether the object is a function.</li>
+    <li><b>introspect.arrayToString(<i>value</i>):</b> For an object, gathers all values key'd by number, interprets those values as number UTF8 codepoints, and returns a new string from those codepoints.</li>
+    <li><b>introspect.length(<i>value</i>):</b> For a string, returns now many codepoints are within the string.</li>
+    <li><b>introspect.charAt(<i>value, index</i>):</b> For a string, returns a single-character string at the index within the string.</li>
+    <li><b>introspect.charCodeAt(<i>value, index</i>):</b> For a string, returns the number value of the character at the given index.</li>
+    <li><b>introspect.subset(<i>value, from, to</i>):</b> For a string or list object, returns a new string or object with only the values between and including the indices "from" and "to".</li>
+    <li><b>introspect.floor(<i>value</i>):</b> For a number, returns the value's integer component.</li>
+    <li><b>introspect.ceil(<i>value</i>):</b> For a number, returns the value's integer component + 1.</li>
+    <li><b>introspect.round(<i>value</i>):</b> For a number, returns the value rounded.</li>
+    <li><b>introspect.toRadians(<i>value</i>):</b> For a number, interprets the value as a degree value and returns the corresponding radians.</li>
+    <li><b>introspect.toDegrees(<i>value</i>):</b> For a number, interprets the value as a radian value and returns the corresponding degrees.</li>
+    <li><b>introspect.sin(<i>value</i>):</b> For a number, returns sin(value).</li>
+    <li><b>introspect.cos(<i>value</i>):</b> For a number, returns cos(value).</li>
+    <li><b>introspect.tan(<i>value</i>):</b> For a number, returns tan(value).</li>
+    <li><b>introspect.abs(<i>value</i>):</b> For a number, returns its absolute value.</li>
+    <li><b>introspect.sqrt(<i>value</i>):</b> For a number, returns its square root.</li>
+    <li><b>introspect.isNaN(<i>value</i>):</b> For a number, returns whether its value is "not a number".</li>
+</ul>
+
+<pre>
+    @str = 'Hello, world!';
+
+    // Should print 'o'
+    print(introspect.charAt(str, 4));
+
+    // Should print '13'
+    print(introspect.length(str));
+
+    // Should print '42'
+    print(introspect.abs(-42));
+
+</pre>
+
+<hr>
+<br>
+<h2> 7. Errors</h2>
+
+Any function has the potential to throw an error. Once an error is thrown, function computation is 
+halted until something "catches" the error. Outside of what was mentioned already, you can generate 
+your own errors with the built-in <i>error</i> function:
+<pre>
+    // Throws an error.
+    error();
+
+    // The error function can take an argument of any type.
+    error('An error occurred');
+    error({
+        message : 'An error occurred!',
+        id : 10
+    });
+
+</pre>
+
+By default, there is no catching mechanism for errors. If all function computations are halted 
+by an error propogation, the VM invokes a "default error handler" and halts execution. This 
+is referred to as a "fatal" error, since user Matte code can no longer respond to the error.
+
+So, it is often useful to specify an error catching mechanism. Error catching is done by setting 
+the <i>catch</i> property of a function. When an error is caught, functions up the callstack are 
+not interrupted.
+
+<pre>
+    @errorExample :: {
+        context.catch = ::(err) {
+            print("The following error was caught: " + err);
+        };
+    
+    
+        print("1");
+        print("2");
+        error('Uh oh!');
+        print("3");
+        print("4");
+    };
+    
+    // should print:
+    //
+    // 1
+    // 2
+    // The following error was caught: Uh oh!
+    //
+    errorExample();
+    
+    
+    
+    
+    // this can also be used to protect 
+    // your code from external functions that 
+    // may encounter an unexpected issue.
+    //
+    // because "mySafeFunction" implements a 
+    // catch, errors that propogate from inner functions 
+    // will be caught here, preventing further functions 
+    // from being interrupted.
+    //
+    // 
+    @dangerousFunction ::{
+        print('a');
+        print('b');
+        error('Uh oh again!');
+        print('c');
+        print('d');
+    };
+    
+    @mySafeFunction ::{
+        context.catch = ::{
+            print('Caught external error');
+        };
+    
+        print(1);
+        dangerousFunction();
+        print(2);
+    };
+    
+    // Should, in total, print:
+    //
+    // Starting safe operation..
+    // 1
+    // a 
+    // b 
+    // Caught external error 
+    // Ending safe operation..
+    //
+    print('Starting safe operation..');
+    mySafeFunction();
+    print('Ending safe operation..');
+
+</pre>
+
+<hr>
+<br>
+<h2> 8. Import</h2>
+
+The built-in <i>import</i> function can be used to execute external Matte sources. The VM can be customized to 
+respond to import in a variety of ways, but the default behavior is to search for either a built-in module 
+or to load an external Matte source file.
+
+When loading your own sources, import will return the computed value of your source. <b>Sources may return a single 
+value; this what import returns. </b> This can be used to implement information hiding and other design patterns 
+for extensible software.
+
+In a file called module.mt:
+<pre>
+    @privateData = 'Hello, World!';
+
+    @myModule = {
+        getData ::{
+            return privateData;
+        }
+    };
+
+
+    return myModule;
+</pre>
+    
+In another file which is run in the VM:
+<pre>
+    @module = import('module.mt');
+
+    // prints 'Hello, World!'
+    print(module.getData());
+
+</pre>
+
+Note: <b>importing the same module for than once, by default, will just return the same computed result from the first import. Take care if you are using a custom import implementation.</b>
+
+
+<br>
+<h3> 8.1 Built-in Modules</h3>
+
+Matte comes with a small set of pre-compiled modules that can be loaded using the 
+default VM import. 
+
+<ul>
+    <li><b>Matte.Class:</b> Imports an function that can be used to create classes with a proper interface, setters/getters, inheritance, and more.</li>
+    <li><b>Matte.String:</b> Imports a class that can be used for everyday string manipulation.</li>
+    <li><b>Matte.Array:</b> Imports a class that can be used for creating, managing, and sorting sets.</li>
+    <li><b>Matte.JSON:</b> Imports a set of functions that can be used for workign with JSON files.</li>
+    <li><b>Matte.Enum:</b> Imports a function that can be used to create strictly typed enums.</li>
+    <li><b>Matte.Core:</b> Imports an object that contains all of the built-in matte features separately available.</li>
+</ul>
+
+<hr>
+<br>
+<h2> 9. Advanced Features</h2>
+
+These features are still considered core parts of the language, but they take into account many of the aforementioned features. 
+
+<br>
+<h3> 9.1 Operator Overloading</h3>
+
+Any object has the potential to react with special behavior to a number of operators. By default, 
+using most operators when the object has not specified now to react to them will throw an error.
+
+Using the <i>setAttributes</i> built-in function, reaction to these operators can be 
+specified.
+
+<pre>
+    @special = {
+        data : ''
+    };
+
+    // throws an error
+    special << 'a';
+
+
+    // setAttributes takes the object to modify 
+    // and an attronites object, keyed with strings of the 
+    // operator to specify overloading with.
+    setAttributes(special, {
+        '<<' ::(other) {
+            special.data = special.data + other;
+        }
+    });
+
+
+    special << 'a';
+    special << 'b';
+
+    // prints 'ab'
+    print(special.data);
+
+</pre>
+
+<i>setAttributes</i> will overwrite the previous operator object if it is different. To retrieve the existing 
+operator object, <i>getAttributes</i> can be called.
+
+Here are the list of built-in operators that can be overloaded:
+<ul>
+    <li><b>Add Operator('+'):</b> 1 argument </li>
+    <li><b>Sub Operator('-'):</b> 1 argument </li>
+    <li><b>Point Operator ('->'):</b> 1 argument </li>
+    <li><b>Division Operator ('/'):</b> 1 argument </li>
+    <li><b>Multiplication Operator ('*'):</b> 1 argument </li>
+    <li><b>Power Operator ('**'):</b> 1 argument </li>
+    <li><b>Not Operator ('!'):</b> 0 arguments </li>
+    <li><b>Not Equals Operator ('!='):</b> 1 argument </li>
+    <li><b>Bitwise Or Operator ('|'):</b> 1 argument </li>
+    <li><b>Or Operator ('||'):</b> 1 argument </li>
+    <li><b>Bitwise And Operator ('&'):</b> 1 argument </li>
+    <li><b>And Operator ('&&'):</b> 1 argument </li>
+    <li><b>Less-Than Operator ('<'):</b> 1 argument </li>
+    <li><b>Less-Than-Or-Equals Operator ('<='):</b> 1 argument </li>
+    <li><b>Left Shift Operator ('<<'):</b> 1 argument </li>
+    <li><b>Transform Operator ('<>'):</b> 1 argument </li>
+    <li><b>Greater-Than Operator ('>'):</b> 1 argument </li>
+    <li><b>Right Shift Operator ('>>'):</b> 1 argument </li>
+    <li><b>Greater-Than-Or-Equals Operator ('>='):</b> 1 argument </li>
+    <li><b>Equals Operator ('=='):</b> 1 argument </li>
+    <li><b>Bitwise Not Operator ('~'):</b> 0 arguments </li>
+    <li><b>Pound Operator ('#'):</b> 0 arguments </li>
+    <li><b>Ternary Operator ('?'):</b> 0 arguments </li>
+    <li><b>Token Operator ('$'):</b> 0 arguments </li>
+    <li><b>Caret Operator ('^'):</b> 0 arguments </li>
+    <li><b>Modulo ('%'):</b> 1 argument </li>
+
+</ul>
+
+
+<br>
+<h3> 9.2 Special Attributes </h3>
+
+Along with typical operator overloading, there exist a few special features that are able to be overloaded using <i>setAttributes</i> that behave differently than the usual operators:
+<ul>
+    <li><b>Foreach Operator</b> ('foreach')</li>
+    When <i>foreach</i> is called with the object, instead of going through all keys and values of the object as a table, the <i>foreach</i> operator implementation can return a new object whose keys / values will be used instead. This is very handy for objects with complicated public interfaces.
+    <br>
+    <li><b>Bracket Access Operator</b> ('[]')</li>
+    When an object's members are accessed using '[]', this operator is called. Within the operator object, this member is an object with get/set property functions.
+    <br>
+    <li><b>Dot Access Operator</b> ('.')</li>
+    Behaves identically to the Bracket Access Operator overloading, except responds to when the object is accessed using the dot operator.
+    <br>
+    <li><b>Preservation Operator</b> ('preserver')</li>
+    In Matte, Objects that are no longer used are automatically removed by the VM. If that object has a preservation operator, a function is called right when the object would be normally removed.
+    The logic of this function can then "preserve" this object by interacting with it.
+    <b> After the preserver operator is called, the preserver operator is removed from the operator object. It can be re-added, but must be done so manually.</b>
+    <br>
+</ul>
+
+<pre>
+    @secret = {
+        internalData : 'dontTouch',
+        internalData2 : 100
+    };
+
+    setAttributes(
+        secret, 
+        {
+            '[]' : {
+                get ::(key) {
+                    return 'Bracket access with: ' + key;
+                },
+
+                set ::(key, value) {
+                    print('Bracket set with: ' + key + ' = ' + value);                    
+                }
+            },
+
+            '.' : {
+                get ::(key) {
+                    return 'Dot access with: ' + key;
+                },
+
+                set ::(key, value) {
+                    return 'Dot set with: ' + key + ' = ' + value;                    
+                }
+            },
+
+            'foreach' ::{
+                return {
+                    'a' : 100,
+                    'b' : 1000
+                };
+            }
+        }
+    );
+
+    
+    // will print 'Bracket access with: test'
+    print(secret['test']);
+
+    // will print 'Bracket set with: A = 400'
+    secret['A'] = 400;
+
+    // will print 'Bracket access with: something'
+    print(secret.something);
+
+    // will print 'Bracket set with: otherThing = 600'
+    secret.otherThing = 600;
+
+    // will print:
+    // a -> 100 
+    // b -> 1000
+    foreach(secret, ::(key, value) {
+        print('' + key +' -> ' + value);
+    });
+</pre>
+
+<br>
+<h3> 9.3 Type Conversion</h3>
+
+Within the attributes object given as the argument for <i>setAttributes</i>, the object can also contain functions key'd with 
+Type values to specify how the object should convert to another type. Typically, conversion to/from objects throws an error, as 
+it is not defined how objects can be converted to other types by default.
+
+<pre>
+    @cool = {
+        asNumber : 42,
+        asString : 'Forty-two'
+    };
+
+    setAttributes(
+        cool,
+        {
+            (String) :: {
+                return cool.asString;
+            },
+            
+            (Number) :: {
+                return cool.asNumber;
+            }
+        }
+    );
+
+
+    // prints 52
+    print(10 + cool);
+
+    // prints 'The number is: Forty-two'
+    print('The number is: ' + cool);
+</pre>
+
+<br>
+<h3> 9.4 Custom Types</h3>
+
+Along with the basic types, Matte lets you create additional, custom types. This allows for more advanced behavior 
+for type-strict functions in controlling how data should flow.
+
+New type values are created with the <i>newtype</i> built-in function. This creates a new Type value that is 
+completely unique. New objects of this type can be created using the <i>instantiate</i> built-in function.
+
+<pre>
+    // Creates the new Type. The newtype function can take 
+    // a special setup argument.
+    @MyBasicType = newtype();
+
+    // Same as newtype(), except errors will report the name of the type.
+    @MyType = newtype({name: 'MyType'});
+
+    // You can use this to control inheritance
+    @MyInheritedType = newtype({inherits: MyType});
+
+
+    // Creates a new object with the give type. The type cannot be changed.
+    @myInstance = instantiate(MyType);
+    myInstance.data = 'Hello!';
+
+    // You can use MyType anywhere you would a built-in Type
+    @myFunction ::(a => MyType) {
+        print(a.data);
+    };
+
+
+
+
+
+    // Throws an error because the argument 
+    // is an object that is not of type "MyType"
+    myFunction({data: 'Hi!'});
+
+    // prints 'Hello!', since myInstance is of type MyType
+    myFunction(myInstance);
+
+    // prints 'Hi!', since myInheritedInstance inherits from MyType
+    @myInheritedInstance = instantiate(MyInheritedType);
+    myInheritedInstance.data = 'Hi!';
+    myFunction(myInheritedInstance);
+
+</pre>
+
+
+
+<br>
+<h3> 9.5 Classes</h3>
+
+Classes take into account all these features to be implemented as a feature on top of the language. It is standardly
+provided as a core module under the name 'Matte.Class'. Further explanation will be 
+provided contextually in code comments.
+
+<pre>
+    // Retrieves the class module.
+    // Afterwards 'class' is set to the class function, a special 
+    // function that can be used to create classes.
+    @class = import('Matte.Class');
+
+
+    // the class function takes one argument: an object with a variety of 
+    // members describing the class.
+    @Creature = class({
+        // The name is an optional member. Internally, the class creates a new 
+        // Type for all instances of the class, so this name can be provided 
+        // to make uses of the class more straightforward if errors occur. 
+        name : 'Creature',
+
+        // The define property is a required member, it is a function that 
+        // is called whenever a new instance of the class is requested.
+        // This is where the implementation of your class goes.
+        // 'this' refers to the new instance of the class that is being created. 
+        // It is the instance that will be worked with in user code.
+        // 'arguments' refers to an argument object, if any, provided when the user 
+        // created a new instance of the class. 'thisclass' refers to the 
+        // output of the class function, in our case, MyClass. 
+        define ::(this, arguments, thisclass) {
+
+            // because these are variabels that are local to the define function, it 
+            // is common to use these variables as typical "private variables" for 
+            // the class.
+            @selfWeight = arguments.weight;
+            @selfHeight = arguments.height;
+            @realname = if (arguments.name != empty) arguments.name else 'No Name';
+
+
+
+            // In the define function only, the output object contains 
+            // a special function called 'interface'. The interface function 
+            // defines the public members of the instance as members of an object. 
+            // For most readability, this interface object is usually just an 
+            // object literal.
+            //
+            // Object interfaces can have 2 possible types of members:
+            // 1) functions. If an interface property is a function, 
+            // the function will be called as-is with user-provided arguments. 
+            // This is convenient, since the interface function can 
+            // easily access the local "private" variables.
+            //
+            // 2) variable set/get. If an interface property is an object, the member name 
+            // refers to a property. The property is controlled by setters and getter functions
+            // specified with 'get' and 'set'. The return value of 'get' is returned to the user 
+            // when accessing the property. the 'set' argument is given to the function when 
+            // the user requests to modify the property.
+            this.interface({
+                // Example of an interface member function.
+                printReport ::{
+                    print(realname + ' weighs ' + selfWeight + 
+                          'kg and is ' + selfHeight + 'cm tall.');
+                },
+
+
+                // Another example, this time with a type-strict function.
+                eat ::(foodAmount => Number) {
+                    selfWeight += foodAmount / 4;
+                    selfHeight += foodAmount / 8;
+                },
+
+                // Example of an interface member property.
+                name : {
+                    get ::{
+                        return realname;
+                    },
+
+                    set ::{
+                        error('This animal has already been named!');
+                    }
+                },
+
+                // Another example of an interface member property.
+                // If the 'set' property is omitted, the property is 
+                // automatically registered as read-only, causing it 
+                // to throw an error if a user tries to modify it.
+                weight : {
+                    get ::{
+                        return selfHeight;
+                    }
+                }
+            });
+        }
+    });
+
+    // once the class is created. instances can be made.
+    // This is done by taking the class and calling the 
+    // new() function of the newly-created class.
+    @hoover = Creature.new({
+        name : 'Hoover',
+        weight : 24,
+        height : 80
+    });
+
+    @billy = Creature.new({
+        name : 'Billy',
+        weight : 10,
+        height : 30
+    });
+
+
+    // should print 'Hoover weighs 24kg and is 80cm tall.'
+    hoover.printReport();
+
+    // should print 'Hoover'
+    print(hoover.name);
+
+    // should print 'Hoover weights 30kg and is 88cm tall'
+    hoover.eat(8);
+    hoover.printReport();
+
+
+    // should throw an error, as the set property 
+    // call throws an error.
+    hoover.name = 'Sammy';
+
+    // should throw an error, since the property is read-only.
+    hoover.weight = 1000000;
+
+    // should throw an error, since the argument isn't a Number.
+    hoover.eat('something');
+
+    // should throw an error, what is not part of public interface 
+    hoover.what();
+
+
+
+    @Biter = class({
+        name : 'Biter',
+
+        // Inheritance is also possible using the inherits property.
+        // It accepts a list of inherited classes.
+        // 
+        // When inheriting, the object goes through 
+        // inherited types' define function before this one's in order.
+        inherits : [Creature],
+
+        define ::(this, arguments, thisclass) {
+            this.interface({
+
+                // All classes have a type member that is the Type value for that 
+                // class' instances.
+                bite ::(other => Creature.type) {
+                    print(this.name + ' has bitten ' + other.name + '. Ouch!!');                    
+                }
+            });
+        }
+    });
+
+    @george = Biter.new({
+        name : 'George',
+        weight : '10',
+        height : '30'
+    });
+
+    // Because Biter inherits from Creature, it has all of 
+    // Creature's members.
+    george.printReport();
+
+    // Should print 'George has bitten Billy. Ouch!!'
+    george.bite(billy);
+
+</pre>
+
+Johnathan Corkery - <a href="https://github.com/jcorks">https://github.com/jcorks</a>
+</body>
+</html>
+    
