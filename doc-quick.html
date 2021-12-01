@@ -547,15 +547,17 @@ work with basic values. It is invoked by using the built-in constant "introspect
 <h2> 7. Messages</h2>
 
 You may have noticed that with features such as <i>foreach</i>, <i>for</i>, and <i>loop</i> are functionally (no pun intended)
-different from their C counterparts. With each running its own function, something like "break" doesn't fundamentally 
+different from their C-like counterparts. With each running its own function, something like "break" doesn't fundamentally 
 make sense in Matte. 
+<br>
 <br>
 Instead, however, we have messaging. Messaging allows you to abandon a calling context to an 
 earlier context level. This is accomplished using <i>listen()</i> and <i>send()</i>
 <br>
-
+<br>
 <i>listen()</i> accepts a function and will either return that functions result OR the result of 
 a <i>send()</i> call. For example:
+<br>
 <pre> 
     // Assume we have a function that returns an Object with numbered 
     // keys, each referring to its own Object with numbered keys 
@@ -580,13 +582,14 @@ a <i>send()</i> call. For example:
     });
 
 </pre>
+<br>
 
 Sometimes, its useful to respond to call a special function when any message is
 received rather than just getting the result of the <i>send</i>. This can be accomplished by 
 adding a second argument to the <i>listen</i>. When present and is a function, this 
 second function will ONLY be called when a message is received.
-
-</pre>
+<br>
+<pre>
     listen(::{
         for([0, 100], ::(y) {
             for([0, 100], ::(x) {
@@ -602,6 +605,8 @@ second function will ONLY be called when a message is received.
 </pre>
 
 Messages should be used in controlled instances, as any uncaught message is a fatal error.
+<br>
+<br>
 
 
 
@@ -675,7 +680,7 @@ Error catching is equivalent to catching regular messages with <i>send</i>:
             print(2);
         }, ::{        
             print('Caught external error');
-        };
+        });
     };
     
     // Should, in total, print:
