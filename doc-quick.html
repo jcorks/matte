@@ -544,16 +544,77 @@ work with basic values. It is invoked by using the built-in constant "introspect
 
 <hr>
 <br>
-<h2> 7. Errors</h2>
+<h2> 7. Messages</h2>
 
-Any function has the potential to throw an error. Once an error is thrown, function computation is 
-halted until something "catches" the error. Outside of what was mentioned already, you can generate 
+You may have noticed that with features such as <i>foreach</i>, <i>for</i>, and <i>loop</i> are functionally (no pun intended)
+different from their C counterparts. With each running its own function, something like "break" doesn't fundamentally 
+make sense in Matte. 
+<br>
+Instead, however, we have messaging. Messaging allows you to abandon a calling context to an 
+earlier context level. This is accomplished using <i>listen()</i> and <i>send()</i>
+<br>
+
+<i>listen()</i> accepts a function and will either return that functions result OR the result of 
+a <i>send()</i> call. For example:
+<pre> 
+    // Assume we have a function that returns an Object with numbered 
+    // keys, each referring to its own Object with numbered keys 
+    // (an array of arrays), each holding a boolean.
+    @my2DArray = make100by100();
+
+    
+    // listen takes the function and runs it immediately.
+    @result = listen(::{
+        for([0, 100], ::(y) {
+            for([0, 100], ::(x) {
+                // If a true cell is found, all functions are stopped 
+                // up until the nearest listen(), carrying the expression 
+                // 'Found!' with it.
+                when(my2DArray[x][y] == true) send('Found!');
+            });    
+        });
+        
+        // If send was not called, listen() just returns the result 
+        // if its function.
+        return 'Not found...';
+    });
+
+</pre>
+
+Sometimes, its useful to respond to call a special function when any message is
+received rather than just getting the result of the <i>send</i>. This can be accomplished by 
+adding a second argument to the <i>listen</i>. When present and is a function, this 
+second function will ONLY be called when a message is received.
+
+</pre>
+    listen(::{
+        for([0, 100], ::(y) {
+            for([0, 100], ::(x) {
+                // If a true cell is found, all functions are stopped 
+                // up until the nearest listen(), carrying the expression 
+                // 'Found!' with it.
+                when(my2DArray[x][y] == true) send('Found!');
+            });    
+        });
+    }, ::(message) {
+        print('A message was received: ' + message);
+    });
+</pre>
+
+Messages should be used in controlled instances, as any uncaught message is a fatal error.
+
+
+
+<h3> 7.1 Error Messages</h3>
+
+Any function has the potential to throw an error. In Matte, errors are just a special 
+type of message. Outside of what was mentioned already, you can generate 
 your own errors with the built-in <i>error</i> function:
 <pre>
     // Throws an error.
     error();
 
-    // The error function can take an argument of any type.
+    // The error function can take an argument of any type, like send()
     error('An error occurred');
     error({
         message : 'An error occurred!',
@@ -562,26 +623,20 @@ your own errors with the built-in <i>error</i> function:
 
 </pre>
 
-By default, there is no catching mechanism for errors. If all function computations are halted 
-by an error propogation, the VM invokes a "default error handler" and halts execution. This 
-is referred to as a "fatal" error, since user Matte code can no longer respond to the error.
-
-So, it is often useful to specify an error catching mechanism. Error catching is done by setting 
-the <i>catch</i> property of a function. When an error is caught, functions up the callstack are 
-not interrupted.
+Since not handling a message is a fatal error, it is often useful to specify an error catching mechanism. 
+Error catching is equivalent to catching regular messages with <i>send</i>:
 
 <pre>
     @errorExample :: {
-        context.catch = ::(err) {
+        listen(::{
+            print("1");
+            print("2");
+            error('Uh oh!');
+            print("3");
+            print("4");
+        }, ::(err) {        
             print("The following error was caught: " + err);
-        };
-    
-    
-        print("1");
-        print("2");
-        error('Uh oh!');
-        print("3");
-        print("4");
+        });
     };
     
     // should print:
@@ -614,13 +669,13 @@ not interrupted.
     };
     
     @mySafeFunction ::{
-        context.catch = ::{
+        listen(::{    
+            print(1);
+            dangerousFunction();
+            print(2);
+        }, ::{        
             print('Caught external error');
         };
-    
-        print(1);
-        dangerousFunction();
-        print(2);
     };
     
     // Should, in total, print:
