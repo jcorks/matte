@@ -12,4 +12,5 @@ After being simultaneously amazed and frustrated with my
 favorite languages, I decided, for some reason, to make my own that 
 incorporates pieces of my favorite languages with some... creative liberties.
 
-I'll put more info here as I go on.
+* For information on current status: https://jcorks.github.io/matte/
+* For a language overview: https://jcorks.github.io/matte/doc-quick.html
