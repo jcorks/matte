@@ -324,6 +324,17 @@ MATTE_EXT_FN(matte_filesystem__writebytes) {
     return matte_heap_new_value(heap);
 }
 
+void matte_system__filesystem_cleanup(matteVM_t * vm, void * v) {
+    matteArray_t * dirfiles = v;
+    uint32_t i;
+    uint32_t len = matte_array_get_size(dirfiles);
+    for(i = 0; i < len; ++i) {
+        DirectoryInfo * d = &matte_array_at(dirfiles, DirectoryInfo, i);
+        free(d->path);
+        free(d->name);
+    }        
+    matte_array_destroy(dirfiles);
+}
 
 static void matte_system__filesystem(matteVM_t * vm) {
     matteArray_t * dirfiles = matte_array_create(sizeof(DirectoryInfo));
@@ -342,6 +353,7 @@ static void matte_system__filesystem(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_readbytes"), 1, matte_filesystem__readbytes, NULL);
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writestring"), 2, matte_filesystem__writestring, NULL);
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writebytes"), 2, matte_filesystem__writebytes, NULL);
-
+    
+    matte_vm_add_shutdown_callback(vm, matte_system__filesystem_cleanup, dirfiles);
 }
 

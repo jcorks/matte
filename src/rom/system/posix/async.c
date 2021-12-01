@@ -352,6 +352,11 @@ MATTE_EXT_FN(matte_async__nextmessage) {
     return matte_heap_new_value(heap);    
 }
 
+static void matte_system__async_cleanup(matteVM_t * vm) {
+    matte_array_destroy(asyncSelf.messagesReceived);
+    matte_array_destroy(asyncSelf.messagesPending);
+    matte_array_destroy(asyncSelf.children);
+}
 
 static void matte_system__async(matteVM_t * vm) {
     asyncSelf.messagesReceived = matte_array_create(sizeof(MatteWorkerPendingMessage));
@@ -367,4 +372,5 @@ static void matte_system__async(matteVM_t * vm) {
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_sendmessage"),   2, matte_async__sendmessage,   NULL);
     matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_nextmessage"),   0, matte_async__nextmessage,   NULL);
 
+    matte_vm_add_shutdown_callback(vm, matte_system__async_cleanup, NULL);
 }

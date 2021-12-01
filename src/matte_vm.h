@@ -260,7 +260,12 @@ void matte_vm_set_unhandled_callback(
     void *
 );
 
-
+// Adds a function to be called right when the VM is destroyed.
+void matte_vm_add_shutdown_callback(
+    matteVM_t * vm,
+    void(*)(matteVM_t *, void *),
+    void *
+);
 
 // Sets a handler for the built-in print function.
 // This is most convenient for debugging. This default behavior 

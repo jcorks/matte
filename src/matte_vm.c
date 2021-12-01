@@ -102,10 +102,17 @@ struct matteVM_t {
     int (*pendingRestartCondition)(matteVM_t *,matteVMStackFrame_t *, matteValue_t, void *);
     void * pendingRestartConditionData;
 
+
+    // called before anything else in vm_destroy
+    matteArray_t * cleanupFunctionSets;
+
 };
 
 
-
+typedef struct {
+    void (*fn)(matteVM_t *, void *);
+    void * data;
+} MatteCleanupFunctionSet;
 
 
 const matteString_t * matte_vm_cstring_to_string_temporary(matteVM_t * vm, const char * s) {
@@ -1035,6 +1042,7 @@ matteVM_t * matte_vm_create() {
     vm->userImport = vm_default_import;
     vm->defaultImport_table = matte_table_create_hash_matte_string();
     vm->nextID = 1;
+    vm->cleanupFunctionSets = matte_array_create(sizeof(MatteCleanupFunctionSet));
 
     // add built in functions
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,    0, vm_ext_call__noop);
@@ -1086,6 +1094,16 @@ matteVM_t * matte_vm_create() {
 }
 
 void matte_vm_destroy(matteVM_t * vm) {
+    uint32_t i;
+    uint32_t len = matte_array_get_size(vm->cleanupFunctionSets);
+    for(i = 0; i < len; ++i) {
+        MatteCleanupFunctionSet f = matte_array_at(vm->cleanupFunctionSets, MatteCleanupFunctionSet, i);
+        f.fn(vm, f.data);
+    }
+    matte_array_destroy(vm->cleanupFunctionSets);
+    
+    
+
     matteTableIter_t * iter = matte_table_iter_create();
     matteTableIter_t * subiter = matte_table_iter_create();
 
@@ -1160,8 +1178,7 @@ void matte_vm_destroy(matteVM_t * vm) {
 
 
 
-    uint32_t i;
-    uint32_t len = matte_array_get_size(vm->callstack);
+    len = matte_array_get_size(vm->callstack);
     for(i = 0; i < len; ++i) {
         matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t *, i);
         matte_string_destroy(frame->prettyName);
@@ -1803,6 +1820,18 @@ void matte_vm_set_unhandled_callback(
 ) {
     vm->unhandled = cb;
     vm->unhandledData = data;
+}
+
+void matte_vm_add_shutdown_callback(
+    matteVM_t * vm,
+    void(*fn)(matteVM_t *, void *),
+    void * data
+) {
+    MatteCleanupFunctionSet f;
+    f.fn = fn;
+    f.data = data;
+    
+    matte_array_push(vm->cleanupFunctionSets, f);
 }
 
 

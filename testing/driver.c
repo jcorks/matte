@@ -212,7 +212,9 @@ int main() {
     matte_t * m = matte_create();
     test_string(matte_get_vm(m));
     test_string_utf8(matte_get_vm(m));
-
+    matte_destroy(m);
+    m = NULL;
+    
     matteString_t * infile = matte_string_create();
     matteString_t * outfile = matte_string_create();
 
