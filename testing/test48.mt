@@ -3,32 +3,35 @@
 // Errors
 
 @errMessage;
-listen(
-    ::{
-        error('Testing');
+listen(to:::{
+        error(data:'Testing');
     },
      
-    ::(t) {
+    onMessage:::(t) {
         errMessage = t.data;
     }
 );
 
-listen(
+listen(to:
     ::{
         error();
     },
      
-    ::(t) {
+    onMessage:::(t) {
         errMessage = errMessage + String(t.data == empty);
     }
 );
 
 
-listen(::{
-    listen();
-}, ::{
-    errMessage = errMessage + 'failed!';
-});
+listen(to:
+    ::{
+        listen();
+    }, 
+    
+    onMessage:::{
+        errMessage = errMessage + 'failed!';
+    }
+);
 
 
 

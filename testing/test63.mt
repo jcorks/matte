@@ -1,10 +1,10 @@
 ////Test 48
 //
 // Core: Class (2)
-@Class = import('Matte.Core.Class');
-@TestClass = Class({
-    define ::(this, args, classinst) {
+@Class = import(module:'Matte.Core.Class');
+@TestClass = Class(definition:{
+    instantiate ::(this, thisType) {
         
     }
 });
-return ''+introspect.type(TestClass);
+return ''+introspect.type(of=:TestClass);

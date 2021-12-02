@@ -8,7 +8,7 @@
 @createObject::{
     @out = {};
     
-    setAttributes(out, {
+    setAttributes(of:out, attributes:{
         preserver :: {
             if (!deletedOnce) ::<={
                 deletedOnce = true;

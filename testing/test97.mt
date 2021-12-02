@@ -5,15 +5,15 @@
 
 @out = '';
 
-listen(::{
-    for([0, 1], 1);
+listen(to:::{
+    for(in:[0, 1], do:1);
 }, ::{
     out = out + 'nofn';
 });
 
 
-listen(::{
-    for([10, 4, 1], ::{
+listen(to:::{
+    for(in:[10, 4, 1], do:::{
         out = out + 'a';
     });
 }, ::{
@@ -21,7 +21,7 @@ listen(::{
 });
 
 
-listen(::{
+listen(to:::{
     for();
 }, ::{
     out = out + 'nofn';
@@ -29,16 +29,16 @@ listen(::{
 
 
 
-listen(::{
-    for([5, 0, -1], ::{
+listen(to:::{
+    for(in:[5, 0, -1], do:::{
         out = out + 'b';
     });
 }, ::{
     out = out + 'norun';
 });
 
-listen(::{
-    for(0, ::{
+listen(to:::{
+    for(in:0, do:::{
     
     });
 }, ::{
@@ -47,8 +47,8 @@ listen(::{
 
 
 
-listen(::{
-    for([0, 10], ::(i){
+listen(to:::{
+    for(in:[0, 10], do:::(i){
         out = out + 'c';        
         when (i == 4) 10; 
     });
@@ -57,7 +57,7 @@ listen(::{
 });
 
 
-for([0, 3, 1], ::(i){
+for(in:[0, 3, 1], do:::(i){
     out = out + 'd';        
 });
 

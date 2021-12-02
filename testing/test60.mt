@@ -2,5 +2,5 @@
     return '' + a + b + "hello!";    
 };
 
-return myStrictFunn(100, false);
+return myStrictFunn(a:100, b:false);
 

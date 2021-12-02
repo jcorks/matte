@@ -1,8 +1,8 @@
 //// Test 39
 //
 // basic matching
-<@>m :: (exp){
-    return match(exp) {
+<@>m :: (value){
+    return match(value) {
         (0)           : 'none',
         (1)           : 'one',
         (2, 3, 4)     : 'few',
@@ -11,4 +11,4 @@
         default       : 'toomany'
     };
 };
-return m(8)+m(0)+m(2)+m(399);
+return m(value:8)+m(value:0)+m(value:2)+m(value:399);

@@ -7,7 +7,7 @@
 @createObject::{
     @out = {};
     
-    setAttributes(out, {
+    setAttributes(of:out, attributes:{
         preserver :: {
             deleted += 1;
         }           

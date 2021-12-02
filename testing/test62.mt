@@ -31,4 +31,4 @@
 };
 
 
-return '' + decider(30) + decider(2) + decider(99) + otherDecider(3) + decider(300);
+return '' + decider(a:30) + decider(a:2) + decider(a:99) + otherDecider(i:3) + decider(a:300);

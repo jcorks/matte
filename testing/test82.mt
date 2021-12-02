@@ -1,13 +1,13 @@
 //// Test82
 //
 // 
-@Matte = import('Matte.Core');
+@Matte = import(module:'Matte.Core');
 
-@a = Matte.String.new('abcdefgh');
+@a = Matte.String.new(from:'abcdefgh');
 
 
 @strout = '';
-foreach(a, ::(k, v) {
+foreach(in:a, do:::(k, v) {
     strout = strout + v;
 });
 

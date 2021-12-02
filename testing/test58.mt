@@ -3,7 +3,7 @@
 // decrement
 
 @s = 10;
-for([0, 7], ::{
+for(in:[0, 7], do:::{
     s*=-1;
 });
 return ''+s;

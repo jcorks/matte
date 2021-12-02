@@ -2,22 +2,22 @@
 //
 // String: substr 
 
-@Matte = import('Matte.Core');
-@a = Matte.String.new('This is a string');
+@Matte = import(module:'Matte.Core');
+@a = Matte.String.new(from:'This is a string');
 
 @output = 'errorDidntHappen';
-listen(::{
+listen(to:::{
     
     // should error out, not allowed.
-    output = String(a.substr('a', []));    
-}, ::{
+    output = String(from:a.substr('a', []));    
+}, onMessage:::{
     output = 'a';
 });
 
 
 return '' + output + 
-        a.substr(0, 3) + 
-        a.substr(5, 6) +
-        a.substr(8, 8) +
-        a.substr(10, a.length-1) +
-        (Matte.String.new('test').substr(0, 3));
+        a.substr(from:0, to:3) + 
+        a.substr(from:5, to:6) +
+        a.substr(from:8, to:8) +
+        a.substr(from:10, to:a.length-1) +
+        (Matte.String.new(from:'test').substr(from:0, to:3));

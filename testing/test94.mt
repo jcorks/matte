@@ -1,9 +1,9 @@
 return 0;
 @a = 0;
-@from = getExternalFunction("system_getticks")();
+@from = getExternalFunction(name:"system_getticks")();
 
-@makeThing ::(i) {
-    print('' + i + '@ ' + (getExternalFunction("system_getticks")() - from));
+@makeThing ::(index) {
+    print(message='' + index + '@ ' + (getExternalFunction(name:"system_getticks")() - from));
 };
 
 loop(::{
@@ -11,7 +11,7 @@ loop(::{
     a+=1;
     if (a%10 == 0) ::<={
         when(a%100 == 0) ::<={
-           return makeThing(a);
+           return makeThing(index:a);
         };
     };
     

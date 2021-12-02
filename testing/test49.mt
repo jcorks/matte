@@ -3,15 +3,15 @@
 // Errors
 
 @errMessage;
-@emptyOnError = listen(::{    
-    listen(
+@emptyOnError = listen(to:::{    
+    listen(to: 
         ::{
-            error('Testing');
+            error(data:'Testing');
         },
 
-        ::(msg) {
+        onMessage: ::(msg) {
             errMessage = 'InnerMessage';
-            error('whoops');
+            error(data:'whoops');
         }
     );
     

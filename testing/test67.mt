@@ -1,12 +1,17 @@
 ////Test 52
 //
 // Core: Class (6)
-@Class = import('Matte.Core.Class');
+@Class = import(module:'Matte.Core.Class');
 @TestClass = Class({
-    define ::(this, args, classinst) {
-        @data = args;
+    define ::(this, thisType) {
+        @data;
 
-        this.interface({
+        this.constructor = ::(input) {
+            data = input;
+        };
+
+
+        this.interface = {
             data : {
                 get :: {
                     return data - 400;
@@ -16,10 +21,10 @@
                     data = 1000 + v;
                 }
             }
-        });
+        };
     }
 });
 
-@instance  = TestClass.new(1);
+@instance  = TestClass.new(input:1);
 instance.data = 3;
 return ''+instance.data;

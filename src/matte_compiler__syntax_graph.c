@@ -182,6 +182,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR, "Function Constructor '::'",
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH, "Function Constructor Dash'<='",
         MATTE_TOKEN_FUNCTION_TYPESPEC, "Function Type Specifier '=>'",
+        MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER, "Function Parameter Specifier ':='",
 
         MATTE_TOKEN_WHEN, "'when' Statement",
         MATTE_TOKEN_GATE_RETURN, "'gate' Else Operator",
@@ -244,6 +245,8 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             NULL,
 
             // one or more args
+            matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
+            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER),
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
             matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_split(

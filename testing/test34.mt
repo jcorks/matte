@@ -2,9 +2,12 @@
 //
 // empty object
 @r = {};
-setAttributes(r, {
-    (String) ::{
-        return 'Testing';
+setAttributes(
+    of:r, 
+    attributes:{
+        (String) ::{
+            return 'Testing';
+        }
     }
-});
-return String(r);
+);
+return String(from:r);

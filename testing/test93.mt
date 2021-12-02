@@ -1,29 +1,29 @@
 return 0;
-@class = import('Matte.Class');
+@class = import(module:'Matte.Class');
 
-@Expensive = class({
-    define ::(this, args, thisclass) {
+@Expensive = class(definition:{
+    instantiate::(this, thisType) {
         @revivalCount = 0;
         @accum = 'a';
-        this.interface({
+        this.interface = {
             use ::{
                 accum = accum + 'a';
             },
             
             onRevive ::{
-                print("During this lifetime, ive accumulated " + accum + '\n');
+                print(message:"During this lifetime, ive accumulated " + accum + '\n');
                 accum = 'a';
                 revivalCount+=1;
             }
             
-        });
+        };
         
         
-        this.operator({
+        this.operator = {
             (String) :: {
                 return 'IAM' + accum;
             }        
-        });
+        };
     }
 });
 
@@ -53,7 +53,7 @@ return 0;
 
 
     a.use();
-    for([0, 10], ::{
+    for(in:[0, 10], do:::{
         b.use();
         d.use();
     });

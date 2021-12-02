@@ -9,30 +9,30 @@
 };
 
 @op = {
-    '+=' ::(i => Number) {
-        test.data += i;
+    '+=' ::(value => Number) {
+        test.data += value;
     }
 };
 
-setAttributes(test, op);
+setAttributes(of:test, attributes:op);
 
 test +=  100;
 test +=  10;
 out = out + test.data;
 
-setAttributes(test, op);
+setAttributes(of:test, attributes:op);
 test +=  1;
 out = out + test.data;
 
-listen(::{
-    setAttributes(10, op);    
+listen(to:::{
+    setAttributes(of:10, attributes:op);    
 }, ::{
     out = out + 'noobj0';
 });
 
 
-listen(::{
-    setAttributes(test, 0);    
+listen(to:::{
+    setAttributes(of:test, attributes:0);    
 }, ::{
     out = out + 'noobj1';
 });
@@ -52,20 +52,20 @@ out = out + test.data;
     }
 };
 
-setAttributes(test, op2);
+setAttributes(of:test, attributes:op2);
 test +=  33;
 out = out + test.data;
 
 
 
-out = out + Boolean(getAttributes(test) == op2);
-listen(::{
-    getAttributes('d');
-}, ::{
+out = out + Boolean(from:getAttributes(of:test) == op2);
+listen(to:::{
+    getAttributes(of:'d');
+}, onMessage:::{
     out = out + 'noobjEX';
 });
 
-out = out + Boolean(getAttributes(test) == op);
+out = out + Boolean(from:getAttributes(of:test) == op);
 
 
 

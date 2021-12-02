@@ -15,30 +15,30 @@
 
 @out = '';
 
-listen(::{
-    removeKey(100);
+listen(to:::{
+    removeKey(from:100);
 }, ::{
     out = out + 'noobj';
 });
 
 
-removeKey(testObj, 'hello');
+removeKey(from:testObj, key:'hello');
 out = out + String(testObj.hello);
 
-removeKey(testObj, '');
-removeKey(testObj, 'hello1');
+removeKey(from:testObj, key:'');
+removeKey(from:testObj, key:'hello1');
 
 out = out + testObj[String];
 out = out + testObj[keyobj];
 
-out = out + introspect.keycount(testObj);
+out = out + introspect.keycount(of:testObj);
 
-removeKey(testObj, String);
-removeKey(testObj, keyobj);
-removeKey(testObj, 'keyobj');
-removeKey(testObj, String); // ok
+removeKey(from:testObj, key:String);
+removeKey(from:testObj, key:keyobj);
+removeKey(from:testObj, key:'keyobj');
+removeKey(from:testObj, key:String); // ok
 
-out = out + introspect.keycount(testObj);
+out = out + introspect.keycount(of:testObj);
 
 return out;
 

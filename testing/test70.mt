@@ -3,9 +3,9 @@
 // Core: String (3)
 <@>MatteString = import('Matte.Core.String');
 
-@str = MatteString.new("testing");
-return ''+str.search('st')+
-          str.search('testing')+
-          str.search('aaa')+
-          str.search('') +
-          str.search(MatteString.new('in'));
+@str = MatteString.new(from:"testing");
+return ''+str.search(for:'st')+
+          str.search(for:'testing')+
+          str.search(for:'aaa')+
+          str.search(for:'') +
+          str.search(for:MatteString.new('in'));

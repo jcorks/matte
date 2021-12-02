@@ -1,12 +1,17 @@
 ////Test 51
 //
 // Core: Class (5)
-@Class = import('Matte.Core.Class');
-@TestClass = Class({
-    define ::(this, args, classinst) {
-        @str = args;
+@Class = import(module:'Matte.Core.Class');
+@TestClass = Class(definition:{
+    instantiate::(this, thisType) {
+        @str;
 
-        this.interface({
+        this.constructor = ::(stringInput) {
+            str = stringInput;
+        };
+
+
+        this.interface = {
             mutate :: {
                 str = str + 'OHWOW2';
             },
@@ -16,11 +21,11 @@
                     return str;
                 }
             }
-        });
+        };
     }
 });
 
-@instance  = TestClass.new('isitworking');
+@instance  = TestClass.new(stringInput : 'isitworking');
 instance.mutate();
 
 return ''+instance.data;

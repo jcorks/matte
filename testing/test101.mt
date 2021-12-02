@@ -4,15 +4,15 @@
 
 @fn;
 @out = '';
-listen(::{
+listen(to:::{
     fn = getExternalFunction();
     fn();
 }, ::{
     out = out + 'nofn';
 });
 
-listen(::{
-    fn = getExternalFunction({});
+listen(to:::{
+    fn = getExternalFunction(name:{});
     fn();
 }, ::{
     out = out + 'nostr';
@@ -20,8 +20,8 @@ listen(::{
 
 
 
-fn = getExternalFunction('external_test!');
-out = out + fn(4, 20);
+fn = getExternalFunction(name:'external_test!');
+out = out + fn(a:4, b:20);
 
 
 

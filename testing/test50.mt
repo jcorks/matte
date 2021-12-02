@@ -4,10 +4,10 @@
 
 
 @errMessage;
-@n100 = listen(::{
-    error('Testing');    
+@n100 = listen(to:::{
+    error(data:'Testing');    
     return 50;
-}, :: (info){
+}, onMessage: :: (info){
     errMessage = 
         'callstack:' + 
         info.callstack.length +':' + 

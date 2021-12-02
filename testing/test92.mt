@@ -20,16 +20,16 @@
         
         when(resCount != 0) ::<={
             @o = res[resCount-1];
-            removeKey(res, resCount-1);
+            removeKey(from:res, key:resCount-1);
             resCount-=1;
             reviveCount += 1;
 
-            @ops = getAttributes(o);
+            @ops = getAttributes(from:o);
             ops.preserver = ::{
                 reserved[resCount] = o;
                 resCount+=1;        
             };
-            setAttributes(o, ops);        
+            setAttributes(of:o, attributes:ops);        
             return o;
         };
         
@@ -43,7 +43,7 @@
         
         resID = resID + 1;
         
-        setAttributes(out, {
+        setAttributes(of:out, attributes:{
             preserver :: {
                 reserved[resCount] = out;
                 resCount+=1;

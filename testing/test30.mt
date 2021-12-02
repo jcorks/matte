@@ -1,5 +1,5 @@
 //// Test 30
 //
 // introspection testing 
-return (introspect.length('aaa'));
+return (introspect.length(of:'aaa'));
 

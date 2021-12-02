@@ -9,4 +9,4 @@
 @g :: (a) {
     return a + 40;
 };
-return g(f()+10);
+return g(a:f()+10);

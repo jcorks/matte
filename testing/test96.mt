@@ -5,27 +5,27 @@
 
 @output = '';
 
-listen(::{
+listen(to:::{
     loop();
-}, ::{
+}, onMessage:::{
     output = output + 'noarg';
 });
 
 
-listen(::{
+listen(to:::{
     loop('hi');
-}, ::{
+}, onMessage:::{
     output = output + 'nofn';
 });
 
-listen(::{
-    loop(::{
-        for([0, 10], ::{
+listen(to:::{
+    loop(do:::{
+        for(in:[0, 10], do:::{
 
         });
         return false;
     });
-}, ::{
+}, onMessage:::{
     output = output + 'norun';
 });
 

@@ -1,5 +1,5 @@
 ////Test 47
 //
 // Core: Class
-@c = import('Matte.Core.Class');
-return introspect.type(c);
+@c = import(module:'Matte.Core.Class');
+return introspect.type(of:c);

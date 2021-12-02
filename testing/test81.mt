@@ -1,14 +1,14 @@
 //// Test81
 //
 // 
-@Matte = import('Matte.Core');
+@Matte = import(module:'Matte.Core');
 
-@a = Matte.String.new('abcdefgh');
+@a = Matte.String.new(from:'abcdefgh');
 
 
 @strout = '';
-for([0, a.length], ::(i){
-    strout = strout + a.charCodeAt(i);
+for(in:[0, a.length], do:::(i){
+    strout = strout + a.charCodeAt(index:i);
 });
 
 

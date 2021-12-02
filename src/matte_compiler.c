@@ -1321,7 +1321,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<=");
         break;  
       }
-
+      case MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
+        break;
+      }
       case MATTE_TOKEN_FUNCTION_TYPESPEC: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "=>");
         break;  

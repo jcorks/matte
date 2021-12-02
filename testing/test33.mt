@@ -3,7 +3,7 @@
 // for loop
 @iter = 0;
 @iter2 = 0;
-for([0, 10010], ::(i){
+for(in:[0, 10010], do:::(i){
     iter = i;
     iter2 = iter2+1;
 });

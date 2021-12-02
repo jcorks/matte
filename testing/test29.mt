@@ -20,6 +20,6 @@
 
 
 @p = Point();
-p.move(14, 23);
+p.move(newX:14, newY:23);
 
 return '' + p.getX() + p.getY();

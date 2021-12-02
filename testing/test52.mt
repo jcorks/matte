@@ -9,14 +9,12 @@
 };
 
 
-@result = 'ee' + fn(11); // ok 
+@result = 'ee' + fn(a:11); // ok 
 
-listen(::{
-
-
-    result = result + fn(100); //
-    result = result + fn(0); // NOT OK
-    result = result + fn(1000); // ok
+listen(to: ::{
+    result = result + fn(a:100); //
+    result = result + fn(a:0); // NOT OK
+    result = result + fn(a:1000); // ok
     
 });
 

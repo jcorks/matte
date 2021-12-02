@@ -4,8 +4,8 @@
 
 @out = '';
 
-listen(::{
-    foreach('aaa', ::{
+listen(to:::{
+    foreach(in:'aaa', do:::{
     
     });
 }, ::{
@@ -14,8 +14,8 @@ listen(::{
 
 
 
-listen(::{
-    foreach({}, 'aaa');
+listen(to:::{
+    foreach(in:{}, do:'aaa');
 }, ::{
     out = out + 'nofn';
 });
@@ -23,8 +23,8 @@ listen(::{
 
 
 
-listen(::{
-    foreach({}, ::{
+listen(to:::{
+    foreach(in:{}, do:::{
         out = 'c';
     });
 }, ::{
@@ -35,8 +35,8 @@ listen(::{
 
 
 
-listen(::{
-    foreach(['a', 'b', 'c'], ::(key => Number, val => String) {
+listen(to:::{
+    foreach(in:['a', 'b', 'c'], do:::(key => Number, val => String) {
         out = out + val;
     });
 }, ::{

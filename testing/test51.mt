@@ -5,9 +5,9 @@
 
 @errMessage = 0;
 @iterCheck = 0;
-@n100 = listen(::{    
+@n100 = listen(to:::{    
 
-    for([0, 100], ::(i) {
+    for(in:[0, 100], do:::(i) {
         errMessage = errMessage + i;        
         when(i == 50) ::{
             iterCheck = i;
@@ -16,7 +16,7 @@
     });
 
     return 100;
-}, ::(i){
+}, onMessage: ::(i){
     errMessage = i.data;
 });
 return ''+n100 + errMessage + iterCheck;
