@@ -2,31 +2,31 @@
 //
 // default import 
 
-@val = import('mytestmodule.mt');
+@val = import(module:'mytestmodule.mt');
 
 @out = '';
 out = out + val.mydata;
 
 
-out = out + Boolean(val == import('mytestmodule.mt'));
+out = out + Boolean(from:val == import(module:'mytestmodule.mt'));
 
-listen(::{
+listen(to:::{
     out = out + import();   
-}, ::{
+}, onMessage:::{
     out = out + 'noim';
 });
 
 
-listen(::{
-    out = out + import('not a file.mt');   
-}, ::{
+listen(to:::{
+    out = out + import(module:'not a file.mt');   
+}, onMessage:::{
     out = out + 'noen';
 });
 
 
-listen(::{
-    out = out + import('badfile.mt');   
-}, ::{
+listen(to:::{
+    out = out + import(module:'badfile.mt');   
+}, onMessage:::{
     out = out + 'nocmp';
 });
 

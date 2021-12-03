@@ -7,13 +7,19 @@
 #include <string.h>
 #include <assert.h>
 
+// ASSUMES THAT STRING IDS AS GIVEN BY 
+// THE HEAP PERSIST THROUGHOUT THE HEAP'S LIFETIME
+// AS IN THE CURRENT IMPLEMENTATION. this will need 
+// to change if the heap string handling changes!
+
+
 struct matteBytecodeStub_t {
     uint32_t fileID;
     uint32_t stubID;
     
-    matteString_t ** argNames;
-    matteString_t ** localNames;
-    matteString_t ** strings;
+    matteValue_t * argNames;
+    matteValue_t * localNames;
+    matteValue_t * strings;
 
     matteBytecodeStubCapture_t * captures; 
     matteBytecodeStubInstruction_t * instructions;
@@ -39,7 +45,7 @@ static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
 }
 
 
-static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
+static uint32_t chomp_string(matteHeap_t * heap, uint8_t ** bytes, uint32_t * left) {
     matteString_t * str = matte_string_create();
     uint32_t len = 0;
     ADVANCE(uint32_t, len);
@@ -49,11 +55,14 @@ static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
         ADVANCE(int32_t, ch);
         matte_string_append_char(str, ch);
     }
-    return str;
+    matteValue_t v = matte_heap_new_value(heap);
+    matte_value_into_string(heap, &v, str);
+    matte_string_destroy(str);
+    return v;
 }
 
 
-static matteBytecodeStub_t * bytes_to_stub(uint32_t fileID, uint8_t ** bytes, uint32_t * left) {
+static matteBytecodeStub_t * bytes_to_stub(matteHeap_t * heap, uint32_t fileID, uint8_t ** bytes, uint32_t * left) {
     matteBytecodeStub_t * out = calloc(1, sizeof(matteBytecodeStub_t));
     uint32_t i;
     uint8_t ver = 0;
@@ -62,17 +71,17 @@ static matteBytecodeStub_t * bytes_to_stub(uint32_t fileID, uint8_t ** bytes, ui
     out->fileID = fileID;
     ADVANCE(uint32_t, out->stubID);
     ADVANCE(uint8_t, out->argCount);
-    out->argNames = malloc(sizeof(matteString_t *)*out->argCount);
+    out->argNames = malloc(sizeof(matteValue_t)*out->argCount);
     for(i = 0; i < out->argCount; ++i) {
         out->argNames[i] = chomp_string(bytes, left);    
     }        
     ADVANCE(uint8_t, out->localCount);
-    out->localNames = malloc(sizeof(matteString_t *)*out->localCount);
+    out->localNames = malloc(sizeof(matteValue_t)*out->localCount);
     for(i = 0; i < out->localCount; ++i) {
         out->localNames[i] = chomp_string(bytes, left);    
     }        
     ADVANCE(uint32_t, out->stringCount);
-    out->strings = malloc(sizeof(matteString_t *)*out->stringCount);
+    out->strings = malloc(sizeof(matteValue_t)*out->stringCount);
     for(i = 0; i < out->stringCount; ++i) {
         out->strings[i] = chomp_string(bytes, left);    
     }       
@@ -99,17 +108,6 @@ static matteBytecodeStub_t * bytes_to_stub(uint32_t fileID, uint8_t ** bytes, ui
 
 void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
     uint32_t i;
-    for(i = 0; i < b->argCount; ++i) {
-        matte_string_destroy(b->argNames[i]);
-    }     
-    free(b->argNames);   
-    for(i = 0; i < b->localCount; ++i) {
-        matte_string_destroy(b->localNames[i]);
-    }     
-    free(b->localNames);   
-    for(i = 0; i < b->stringCount; ++i) {
-        matte_string_destroy(b->strings[i]);
-    }     
     free(b->strings);   
     free(b->captures);
     free(b->instructions);
@@ -117,15 +115,15 @@ void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
 }
 
 
-
 matteArray_t * matte_bytecode_stubs_from_bytecode(
+    matteHeap_t * heap,
     uint32_t fileID,
     const uint8_t * bytecodeRaw, 
     uint32_t len
 ) {
     matteArray_t * arr = matte_array_create(sizeof(matteBytecodeStub_t *));
     while(len) {
-        matteBytecodeStub_t * s = bytes_to_stub(fileID, (uint8_t**)(&bytecodeRaw), &len);
+        matteBytecodeStub_t * s = bytes_to_stub(heap, fileID, (uint8_t**)(&bytecodeRaw), &len);
         matte_array_push(arr, s);
     }
     return arr;
@@ -152,18 +150,18 @@ uint8_t matte_bytecode_stub_local_count(const matteBytecodeStub_t * stub) {
 }
 
 
-const matteString_t * matte_bytecode_stub_get_arg_name(const matteBytecodeStub_t * stub, uint8_t i) {
-    if (i >= stub->argCount) return NULL;
+matteValue_t matte_bytecode_stub_get_arg_name(const matteBytecodeStub_t * stub, uint8_t i) {
+    if (i >= stub->argCount) return {};
     return stub->argNames[i];
 }
 
-const matteString_t * matte_bytecode_stub_get_local_name(const matteBytecodeStub_t * stub, uint8_t i) {
-    if (i >= stub->localCount) return NULL;
+matteValue_t matte_bytecode_stub_get_local_name(const matteBytecodeStub_t * stub, uint8_t i) {
+    if (i >= stub->localCount) return {};
     return stub->localNames[i];
 }
 
-const matteString_t * matte_bytecode_stub_get_string(const matteBytecodeStub_t * stub, uint32_t i) {
-    if (i >= stub->stringCount) return NULL;
+matteValue_t matte_bytecode_stub_get_string(const matteBytecodeStub_t * stub, uint32_t i) {
+    if (i >= stub->stringCount) return {};
     return stub->strings[i];
 }
 

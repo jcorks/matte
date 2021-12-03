@@ -960,11 +960,11 @@ matteValue_t matte_value_frame_get_named_referrable(matteHeap_t * heap, matteVMS
         for(i = 0; i < len; ++i) {
             #if MATTE_DEBUG__HEAP
                 printf("TESTING %s against %s\n",
-                    matte_string_get_c_str(matte_bytecode_stub_get_arg_name(origin->function.stub, i)),
-                    matte_string_get_c_str(name)
+                    matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_bytecode_stub_get_arg_name(origin->function.stub, i))),
+                    matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, name))
                 );
             #endif
-            if (matte_string_test_eq(matte_bytecode_stub_get_arg_name(origin->function.stub, i), name)) {
+            if (matte_bytecode_stub_get_arg_name(origin->function.stub, i) == name)) {
                 matte_value_into_copy(heap, &out, *matte_value_object_array_at_unsafe(heap, contextReferrable, 1+i));
                 return out;
             }
@@ -977,11 +977,11 @@ matteValue_t matte_value_frame_get_named_referrable(matteHeap_t * heap, matteVMS
         for(i = 0; i < len; ++i) {
             #if MATTE_DEBUG__HEAP
                 printf("TESTING %s against %s\n",
-                    matte_string_get_c_str(matte_bytecode_stub_get_local_name(origin->function.stub, i)),
-                    matte_string_get_c_str(name)
+                    matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_bytecode_stub_get_local_name(origin->function.stub, i))),
+                    matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, name))
                 );
             #endif
-            if (matte_string_test_eq(matte_bytecode_stub_get_local_name(origin->function.stub, i), name)) {
+            if (matte_bytecode_stub_get_local_name(origin->function.stub, i) == name)) {
                 matte_value_into_copy(heap, &out, *matte_value_object_array_at_unsafe(heap, contextReferrable, 1+i+matte_bytecode_stub_arg_count(origin->function.stub)));
                 return out;
             }

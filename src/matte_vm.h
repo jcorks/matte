@@ -98,6 +98,7 @@ matteValue_t matte_vm_call(
     matteVM_t *,
     matteValue_t function,
     const matteArray_t * args,
+    const matteArray_t * argNames,
     const matteString_t * prettyName
 );
 
@@ -106,7 +107,7 @@ matteValue_t matte_vm_call(
 // in compilation, the error function will be run set and the empty 
 // value will always be returned. Else, the result of the 
 // expression will be returned. In the case of error,
-// The VM's error stack should not be affected.
+// The VM's error stack will not be affected.
 //
 // The source is treated as if it were a full function, thus the result 
 // returned is whatever your function returns. In other words,
@@ -222,11 +223,19 @@ void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t ref
 // Adds an external function.
 // In the script context: calling getExternalFunction() with the string identifier 
 // given will return a function object that, when called, calls this C function.
+//
+// The args are given in the order that you specific in the 
+// argNames array. The number of values within the C function 
+// will always match the number of argNames for the function.
+//
+// If the calling context does not bind an argument, the slot within the 
+// called C function will be an empty value.
 void matte_vm_set_external_function(
     matteVM_t * vm, 
     const matteString_t * identifier,
+    const matteArray_t * argNames
     uint8_t nArgs,
-    matteValue_t (*)(matteVM_t *, matteValue_t fn, matteArray_t * args, void * userData),
+    matteValue_t (*)(matteVM_t *, matteValue_t fn, const matteValue_t * args, const matteValue_t * argNames, void * userData),
     void * userData
 );
 

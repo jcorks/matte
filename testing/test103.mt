@@ -4,85 +4,85 @@
 
 @out = '';
 
-listen(::{
+listen(to:::{
     out = out + introspect.keys(2423);
-}, ::{
+}, onMessage:::{
     out = out + 1;
 });
 
 
-listen(::{
+listen(to:::{
     out = out + introspect.values(String);
-}, ::{
+}, onMessage:::{
     out = out + 2;
 });
 
-listen(::{
+listen(to:::{
     out = out + introspect.keycount(String);
-}, ::{
+}, onMessage:::{
     out = out + 3;
 });
 
 
-listen(::{
+listen(to:::{
     out = out + introspect.length([0, 1, 2]);
-}, ::{
+}, onMessage:::{
     out = out + 4;
 });
 
 
-listen(::{
-    out = out + introspect.arrayToString('aaaaaaa');
-}, ::{
+listen(to:::{
+    out = out + introspect.arrayToString(of:'aaaaaaa');
+}, onMessage:::{
     out = out + 5;
 });
 
 
-listen(::{
-    out = out + introspect.charAt('123456', 5);
-    out = out + introspect.charAt(1321, 2);
-}, ::{
+listen(to:::{
+    out = out + introspect.charAt(string:'123456', index:5);
+    out = out + introspect.charAt(string:1321, index:2);
+}, onMessage:::{
     out = out + 7;
 });
 
 
-listen(::{
-    out = out + introspect.charAt('222222', '2');
-}, ::{
+listen(to:::{
+    out = out + introspect.charAt(string:'222222', index:'2');
+}, onMessage:::{
     out = out + 8;
 });
 
-listen(::{
-    out = out + introspect.charCodeAt(1321, 1);
+listen(to:::{
+    out = out + introspect.charCodeAt(string:1321, index:1);
 }, ::{
     out = out + 9;
 });
 
-listen(::{
-    out = out + introspect.charCodeAt('222222', '2');
-}, ::{
+listen(to:::{
+    out = out + introspect.charCodeAt(string:'222222', index:'2');
+}, onMessage:::{
     out = out + 'A';
 });
 
 
 
 
-listen(::{
+listen(to:::{
     out = out + introspect.subset(20);
-}, ::{
+}, onMessage:::{
     out = out + 'B';
 });
 
-listen(::{
+listen(to:::{
     out = out + introspect.subset([0, 1, 2], 1);
-}, ::{
+}, onMessage:::{
     out = out + 'C';
 });
 
 
-listen(::{
+listen(to:::{
     out = out + introspect.subset([0, 1, 2], '1', 2);
-}, ::{
+}, onMessage:::{
     out = out + 'C';
 });
 

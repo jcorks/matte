@@ -2902,11 +2902,16 @@ static matteArray_t * compile_function_call(
     matteToken_t * iter = (*src)->next; // skip (
     matteArray_t * inst = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
     while(iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
+        // parse out the parameters
+        uint32_t i = function_intern_string(block, iter->text);
+        uint32_t nameLineNum = iter->lineNumber;
+        iter = iter->next->next; // skip :    
         matteArray_t * exp = compile_expression(g, block, functions, &iter);
         if (!exp) {
             goto L_FAIL;
         }
         merge_instructions(inst, exp); // push argument
+        write_instruction__nst(inst, nameLineNum, i);
         argCount++;
         if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_SEPARATOR)
             iter = iter->next; // skip ,

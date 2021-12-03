@@ -47,6 +47,7 @@ typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 //
 // Incomplete stubs are supported. If given, remaining attributes are 0.
 matteArray_t * matte_bytecode_stubs_from_bytecode(
+    matteHeap_t *,
     uint32_t fileID,
     const uint8_t * bytecodeRaw, 
     uint32_t len
@@ -74,16 +75,16 @@ uint8_t matte_bytecode_stub_local_count(const matteBytecodeStub_t *);
 
 
 // Gets the argument name of the local variable at the given index
-// If none, NULL is returned.
-const matteString_t * matte_bytecode_stub_get_arg_name(const matteBytecodeStub_t *, uint8_t);
+// If none, empty is returned
+matteValue_t matte_bytecode_stub_get_arg_name(const matteBytecodeStub_t *, uint8_t);
 
 // Gets the local variable name of the local variable at the given index
-// If none, NULL is returned.
-const matteString_t * matte_bytecode_stub_get_local_name(const matteBytecodeStub_t *, uint8_t);
+// If none, empty is returned.
+matteValue_t matte_bytecode_stub_get_local_name(const matteBytecodeStub_t *, uint8_t);
 
 // Gets the pre-compiled static string by local ID.
 // These local IDs are used for NST
-const matteString_t * matte_bytecode_stub_get_string(const matteBytecodeStub_t *, uint32_t stringID);
+matteValue_t matte_bytecode_stub_get_string(const matteBytecodeStub_t *, uint32_t localStringID);
 
 
 

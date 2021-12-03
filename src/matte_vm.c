@@ -105,6 +105,10 @@ struct matteVM_t {
 
     // called before anything else in vm_destroy
     matteArray_t * cleanupFunctionSets;
+    
+    matteBytecodeStubManager_t * stubManager;
+    
+    matteValue_t specialString_from;
 
 };
 
@@ -396,15 +400,15 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_PNR: {
             uint32_t referrableStrID;
             memcpy(&referrableStrID, inst->data, sizeof(uint32_t));
-            const matteString_t * str = matte_bytecode_stub_get_string(frame->stub, referrableStrID);
-            if (!str) {
+            matteValue_t v = matte_bytecode_stub_get_string(frame->stub, referrableStrID);
+            if (!v.binID) {
                 matte_vm_raise_error_cstring(vm, "No such bytecode stub string.");
             } else {
                 matteVMStackFrame_t f = matte_vm_get_stackframe(vm, vm->namedRefIndex+1);
                 if (f.context.binID) {
                     matteValue_t v = matte_value_frame_get_named_referrable(vm->heap, 
                         &f, 
-                        str
+                        v
                     ); 
                     STACK_PUSH(v);
                 }
@@ -437,13 +441,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t stringID;
             memcpy(&stringID, inst->data, sizeof(uint32_t));
 
-            const matteString_t * str = matte_bytecode_stub_get_string(frame->stub, stringID);
-            if (!str) {
+            matteValue_t v = matte_bytecode_stub_get_string(frame->stub, stringID);
+            if (!v.binID) {
                 matte_vm_raise_error_cstring(vm, "NST opcode refers to non-existent string (corrupt bytecode?)");
                 break;
             }
-            matteValue_t v = matte_heap_new_value(vm->heap);
-            matte_value_into_string(vm->heap, &v, str);
             STACK_PUSH(v);
             break;
           }
@@ -611,7 +613,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             uint32_t argcount;
             memcpy(&argcount, inst->data, sizeof(uint32_t));
-            if (STACK_SIZE() < argcount+1) {
+            if (STACK_SIZE() < argcount*2+1) {
                 matte_vm_raise_error_cstring(vm, "VM error: tried to prepare arguments for a call, but insufficient arguments on the stack.");    
                 break;
             }
@@ -620,11 +622,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             matteArray_t * args = matte_array_create(sizeof(matteValue_t));
             matte_array_set_size(args, argcount);
+            matteArray_t * argnames = matte_array_create(sizeof(matteValue_t));
+            matte_array_set_size(argnames, argcount);
 
             uint32_t i;
             for(i = 0; i < argcount; ++i) {
                 matteValue_t v = STACK_PEEK(i);
-                matte_array_at(args, matteValue_t, argcount-i-1) = v;
+                matte_array_at(argnames, matteValue_t, argcount-(i*2)-1) = v;
+                matte_array_at(args, matteValue_t,     argcount-(i*2+1)-1) = v;
             }
 
             matteValue_t function = STACK_PEEK(argcount);
@@ -637,14 +642,16 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_string_destroy(info);
             #endif
 
-            matteValue_t result = matte_vm_call(vm, function, args, NULL);
+            matteValue_t result = matte_vm_call(vm, function, args, argnames, NULL);
 
             for(i = 0; i < argcount; ++i) {
                 STACK_POP();
                 matteValue_t v = matte_array_at(args, matteValue_t, i);
                 matte_heap_recycle(vm->heap, v);
+                STACK_POP(); // always a string
             }
             matte_array_destroy(args);
+            matte_array_destroy(argnames);
             STACK_POP();
             matte_heap_recycle(vm->heap, function);
             STACK_PUSH(result);
@@ -979,12 +986,24 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
 }
 
+#define WRITE_BYTES(__T__, __VAL__) matte_array_push_n(byteout, &(__VAL__), sizeof(__T__));
+
+static void write_unistring(matteArray_t * byteout, matteString_t * str) {
+    uint32_t len = matte_string_get_length(str);
+    WRITE_BYTES(uint32_t, len);
+    uint32_t i;
+    for(i = 0; i < len; ++i) {
+        int32_t ch = matte_string_get_char(str, i);
+        WRITE_BYTES(int32_t, ch);
+    }
+}
+
 
 static void vm_add_built_in(
     matteVM_t * vm,
     uint32_t index, 
-    int nArgs, 
-    matteValue_t (*cb)(matteVM_t *, matteValue_t v, matteArray_t * args, void * userData)
+    const matteArray_t * argNames, 
+    matteValue_t (*cb)(matteVM_t *, matteValue_t v, const matteValue_t * args, void * userData)
 ) {
     ExternalFunctionSet_t * set;
     if (matte_array_get_size(vm->externalFunctionIndex) <= index) {
@@ -997,13 +1016,23 @@ static void vm_add_built_in(
     set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, index);
     set->userFunction = cb;
     set->userData = NULL;
-    set->nArgs = nArgs;
+    set->nArgs = matte_array_get_size(argNames);
 
     
-
-    typedef struct {
-        uint8_t bytes[1+4+1];
-    } FakeID;
+    matteArray_t * arr = matte_array_create(1);
+    uint8_t u8 = 1;
+    uint32_t u32 = index;
+    WRITE_BYTES(arr, v); 
+    WRITE_BYTES(arr, stubID); 
+    
+    u8 = matte_array_get_size(argNames);
+    WRITE_BYTES(arr, u8); 
+    uint32_t i;
+    for(i = 0; i < u8; ++i) {
+        write_unistring(arr, matte_array_at(argNames, matteString_t *, i));
+    }
+    
+    
     FakeID id = {0};
     uint8_t nArgsU = nArgs;
     id.bytes[0] = 1;
@@ -1012,10 +1041,10 @@ static void vm_add_built_in(
 
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
         0,
-        id.bytes, 
-        6
+        matte_array_get_data(arr), 
+        matte_array_get_size(arr)
     );
-    
+    matte_array_destroy(arr);    
     matteBytecodeStub_t * out = matte_array_at(stubs, matteBytecodeStub_t *, 0);
 
     matte_array_destroy(stubs);
@@ -1043,49 +1072,83 @@ matteVM_t * matte_vm_create() {
     vm->defaultImport_table = matte_table_create_hash_matte_string();
     vm->nextID = 1;
     vm->cleanupFunctionSets = matte_array_create(sizeof(MatteCleanupFunctionSet));
-
+    vm->stubManager = matte_bytecode_stub_manager_create();
+    
+    vm->specialString_from = matte_heap_new_value(vm->heap);
+    matte_value_into_string(&vm->specialString_from, MATTE_VM_STR_CAST(vm, "from"));
+    
     // add built in functions
-    vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,    0, vm_ext_call__noop);
-    vm_add_built_in(vm, MATTE_EXT_CALL_LOOP,    1, vm_ext_call__loop);
-    vm_add_built_in(vm, MATTE_EXT_CALL_FOR,     2, vm_ext_call__for);
-    vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, 2, vm_ext_call__foreach);
-    vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  2, vm_ext_call__import);
-    vm_add_built_in(vm, MATTE_EXT_CALL_REMOVE_KEY,  2, vm_ext_call__remove_key);
-    vm_add_built_in(vm, MATTE_EXT_CALL_SET_ATTRIBUTES,  2, vm_ext_call__set_attributes);
-    vm_add_built_in(vm, MATTE_EXT_CALL_GET_ATTRIBUTES,  1, vm_ext_call__get_attributes);
+    matteString_t * loop_name = MATTE_VM_STR_CAST("func");
+    matteString_t * for_names[] = {
+        MATTE_VM_STR_CAST(vm, "in"),
+        MATTE_VM_STR_CAST(vm, "do")
+    };
+    matteString_t * import_name = MATTE_VM_STR_CAST("module");
+    matteString_t * removeKey_names[] = {
+        MATTE_VM_STR_CAST(vm, "from"),
+        MATTE_VM_STR_CAST(vm, "key")
+    };
+    matteString_t * type_names[] = {
+        MATTE_VM_STR_CAST(vm, "name"),
+        MATTE_VM_STR_CAST(vm, "inherits")
+    };
+    matteString_t * of = MATTE_VM_STR_CAST("of");
+    matteString_t * setAttributes_names[] = {
+        of,
+        MATTE_VM_STR_CAST(vm, "attributes")
+    };
+    matteString_t * type = MATTE_VM_STR_CAST("type");
+    matteString_t * message = MATTE_VM_STR_CAST("message");
+    matteString_t * data = MATTE_VM_STR_CAST("data");
+    matteString_t * listen_names[] = {
+        MATTE_VM_STR_CAST(vm, "to"),
+        MATTE_VM_STR_CAST(vm, "onMessage")
+    };
+    matteString_t * name = MATTE_VM_STR_CAST("name");
+    matteString_t * value = MATTE_VM_STR_CAST("value");
 
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTROSPECT, 0, vm_ext_call__introspect);
-    vm_add_built_in(vm, MATTE_EXT_CALL_TYPE,       1, vm_ext_call__newtype);
-    vm_add_built_in(vm, MATTE_EXT_CALL_INSTANTIATE,1, vm_ext_call__instantiate);
-    vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      1, vm_ext_call__print);
-    vm_add_built_in(vm, MATTE_EXT_CALL_SEND,       1, vm_ext_call__send);
-    vm_add_built_in(vm, MATTE_EXT_CALL_LISTEN,     2, vm_ext_call__listen);
-    vm_add_built_in(vm, MATTE_EXT_CALL_ERROR,      1, vm_ext_call__error);
-
-    vm_add_built_in(vm, MATTE_EXT_CALL_GETEXTERNALFUNCTION, 1, vm_ext_call__getexternalfunction);
 
 
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TYPE, 1, vm_ext_call__introspect_type);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS, 1, vm_ext_call__introspect_keys);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES, 1, vm_ext_call__introspect_values);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT, 1, vm_ext_call__introspect_keycount);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE, 1, vm_ext_call__introspect_iscallable);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ARRAYTOSTRING, 1, vm_ext_call__introspect_arraytostring);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH, 1, vm_ext_call__introspect_length);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_LOOP,    MATTE_ARRAY_CAST(&loop_name, matteString_t *, 2), vm_ext_call__loop);
+    vm_add_built_in(vm, MATTE_EXT_CALL_FOR,     MATTE_ARRAY_CAST(for_names, matteString_t *, 1), vm_ext_call__for);
+    vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, MATTE_ARRAY_CAST(for_names, matteString_t *, 1), vm_ext_call__foreach);
+    vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  MATTE_ARRAY_CAST(&import_name, matteString_t *, 2), vm_ext_call__import);
+    vm_add_built_in(vm, MATTE_EXT_CALL_REMOVE_KEY,  MATTE_ARRAY_CAST(removeKey_names, matteString_t *, 2), vm_ext_call__remove_key);
+    vm_add_built_in(vm, MATTE_EXT_CALL_SET_ATTRIBUTES,  MATTE_ARRAY_CAST(setAttributes_names, matteString_t *, 2), vm_ext_call__set_attributes);
+    vm_add_built_in(vm, MATTE_EXT_CALL_GET_ATTRIBUTES,  MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__get_attributes);
+
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTROSPECT, matte_array_empty, vm_ext_call__introspect);
+    vm_add_built_in(vm, MATTE_EXT_CALL_TYPE,       MATTE_ARRAY_CAST(type_names, matteString_t *, 2), vm_ext_call__newtype);
+    vm_add_built_in(vm, MATTE_EXT_CALL_INSTANTIATE,MATTE_ARRAY_CAST(&type, matteString_t *, 1), vm_ext_call__instantiate);
+    vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      MATTE_ARRAY_CAST(&message, matteString_t *, 1), vm_ext_call__print);
+    vm_add_built_in(vm, MATTE_EXT_CALL_SEND,       MATTE_ARRAY_CAST(&message, matteString_t *, 1), vm_ext_call__send);
+    vm_add_built_in(vm, MATTE_EXT_CALL_LISTEN,     MATTE_ARRAY_CAST(listen_names, matteString_t *, 2), vm_ext_call__listen);
+    vm_add_built_in(vm, MATTE_EXT_CALL_ERROR,      MATTE_ARRAY_CAST(&data, matteString_t *, 1), vm_ext_call__error);
+
+    vm_add_built_in(vm, MATTE_EXT_CALL_GETEXTERNALFUNCTION, MATTE_ARRAY_CAST(&name, matteString_t *, 1), vm_ext_call__getexternalfunction);
+
+
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TYPE, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_type);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYS, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_keys);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_VALUES, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_values);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_KEYCOUNT, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_keycount);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISCALLABLE, , vm_ext_call__introspect_iscallable);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ARRAYTOSTRING, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_arraytostring);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_LENGTH, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_length);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARAT, 2, vm_ext_call__introspect_charat);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CHARCODEAT, 2, vm_ext_call__introspect_charcodeat);    
     vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SUBSET, 3, vm_ext_call__introspect_subset);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_FLOOR, 1, vm_ext_call__introspect_floor);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CEIL, 1, vm_ext_call__introspect_ceil);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ROUND, 1, vm_ext_call__introspect_round);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TORADIANS, 1, vm_ext_call__introspect_toradians);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TODEGREES, 1, vm_ext_call__introspect_todegrees);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SIN, 1, vm_ext_call__introspect_sin);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_COS, 1, vm_ext_call__introspect_cos);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TAN, 1, vm_ext_call__introspect_tan);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS, 1, vm_ext_call__introspect_abs);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT, 1, vm_ext_call__introspect_sqrt);    
-    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN, 1, vm_ext_call__introspect_isnan);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_FLOOR, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_floor);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_CEIL, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_ceil);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ROUND, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_round);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TORADIANS, MATTE_ARRAY_CAST(&value, matteString_t *, 1), vm_ext_call__introspect_toradians);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TODEGREES, MATTE_ARRAY_CAST(&value, matteString_t *, 1), vm_ext_call__introspect_todegrees);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SIN, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_sin);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_COS, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_cos);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TAN, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_tan);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_abs);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT, MATTE_ARRAY_CAST(&of, matteString_t *, 1), vm_ext_call__introspect_sqrt);    
+    vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN, MATTE_ARRAY_CAST(&value, matteString_t *, 1), vm_ext_call__introspect_isnan);    
 
     //vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
     matte_bind_native_functions(vm);
@@ -1232,6 +1295,7 @@ matteValue_t matte_vm_call(
     matteVM_t * vm, 
     matteValue_t func, 
     const matteArray_t * args,
+    const matteArray_t * argNames,
     const matteString_t * prettyName
 ) {
     if (vm->pendingCatchable) return matte_heap_new_value(vm->heap);
@@ -1245,9 +1309,17 @@ matteValue_t matte_vm_call(
         return matte_heap_new_value(vm->heap);
     }
 
+    if (matte_array_get_size(args) != matte_array_get_size(argNames)) {
+        matte_vm_raise_error_cstring(vm, "VM call as mismatching arguments and parameter names.");            
+        return matte_heap_new_value(vm->heap);
+    }
+
     // special case: type object as a function
     if (func.binID == MATTE_VALUE_TYPE_TYPE) {                
         if (matte_array_get_size(args)) {
+            if (matte_array_at(argNames, matteValue_t, 0) != vm->specialString_from) {
+                matte_vm_raise_error_cstring(vm, "Type conversion failed: unbound parameter to function ('from')");            
+            }
             return matte_value_to_type(vm->heap, matte_array_at(args, matteValue_t, 0), func);
         } else {
             matte_vm_raise_error_cstring(vm, "Type conversion failed (no value given to convert).");
@@ -1272,26 +1344,45 @@ matteValue_t matte_vm_call(
         }
         ExternalFunctionSet_t * set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, external);
 
-        uint32_t i;
-        uint32_t lenReal = matte_array_get_size(args);
-        uint32_t len = matte_bytecode_stub_arg_count(matte_value_get_bytecode_stub(vm->heap, d));
         matteArray_t * argsReal = matte_array_create(sizeof(matteValue_t));
-        for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_heap_new_value(vm->heap);
+        uint32_t i, n;
+        uint32_t lenReal = matte_array_get_size(args);
+        uint32_t len = matte_bytecode_stub_arg_count(frame->stub);
+        matte_array_set_size(argsReal, len);
+        // empty for any unset values.
+        memset(matte_array_get_data(argsReal), 0, sizeof(matteValue_t)*len);
+        
+        for(i = 0; i < lenReal; ++i) {
+            for(n = 0; n < len; ++n) {
+                if (matte_bytecode_stub_get_arg_name(frame->stub, n) == matte_array_at(argNames, matteValue_t, i)) {
+                    matteValue_t v = matte_array_at(args, matteValue_t, i);
+                    matte_array_at(argsReal, matteValue_t, n) = v;
+                    // sicne this function doesn't use a referrable, we need to set roots manually.
+                    if (v.binID == MATTE_VALUE_TYPE_OBJECT || v.binID == MATTE_VALUE_TYPE_FUNCTION) {
+                        matte_value_object_push_lock(vm->heap, v);
+                    }
 
-            // copy as many args as there are available.
-            // All remaining args are empty.
-            if (i < lenReal) {
-                matte_value_into_copy(vm->heap, &v, matte_array_at(args, matteValue_t, i));
-
-                // sicne this function doesn't use a referrable, we need to set roots manually.
-                if (v.binID == MATTE_VALUE_TYPE_OBJECT || v.binID == MATTE_VALUE_TYPE_FUNCTION) {
-                    matte_value_object_push_lock(vm->heap, v);
+                    break;
                 }
+            }       
+            
+            if (n == len) {
+                // couldnt find the requested name. Throw an error.
+                matteString_t * str = matte_string_create_from_c_str(
+                    "Could not bind requested parameter: '%s'", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i))
+                );
+                
+                matte_vm_raise_error_string(vm, str);
+                matte_string_destroy(str);
+                
+                matte_array_destroy(argsReal);
+                return matte_heap_new_value(vm->heap);
+                
             }
-
-            matte_array_push(argsReal, v);
         }
+        
+        
+        
         matte_value_object_push_lock(vm->heap, d);
         matteValue_t result = {};
         if (callable == 2) {
@@ -1331,20 +1422,37 @@ matteValue_t matte_vm_call(
         matteValue_t empty = matte_heap_new_value(vm->heap);
 
         // slot 0 is always the context
-        matte_array_push(referrables, frame->context);
-        uint32_t i;
+        uint32_t i, n;
         uint32_t lenReal = matte_array_get_size(args);
         uint32_t len = matte_bytecode_stub_arg_count(frame->stub);
-        for(i = 0; i < len; ++i) {
-            // copy as many args as there are available.
-            // All remaining args are empty.
+        matte_array_set_size(referrables, 1+len);
+        // empty for any unset values.
+        memset(matte_array_get_data(referrables), 0, sizeof(matteValue_t)*(len+1));
+        matte_array_at(referrables, matteValue_t, 0) = frame->context;
 
-            if (i < lenReal) {
-                matte_array_push(referrables, matte_array_at(args, matteValue_t, i));
-            } else {
-                matte_array_push(referrables, empty);
+        
+        for(i = 0; i < lenReal; ++i) {
+            for(n = 0; n < len; ++n) {
+                if (matte_bytecode_stub_get_arg_name(frame->stub, n) == matte_array_at(argNames, matteValue_t, i)) {
+                    matte_array_at(referrables, matteValue_t, n+1) = matte_array_at(args, matteValue_t, i);
+                    break;
+                }
+            }       
+            
+            if (n == len) {
+                // couldnt find the requested name. Throw an error.
+                matteString_t * str = matte_string_create_from_c_str(
+                    "Could not bind requested parameter: '%s'", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i))
+                );
+                
+                matte_vm_raise_error_string(vm, str);
+                matte_string_destroy(str);
+                
+                matte_array_destroy(referrables);
+                return matte_heap_new_value(vm->heap);
             }
         }
+
         int ok = 1;
         if (callable == 2 && len) { // typestrictcheck
             matteArray_t arr = MATTE_ARRAY_CAST(
@@ -1754,8 +1862,8 @@ void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t ref
 void matte_vm_set_external_function(
     matteVM_t * vm, 
     const matteString_t * identifier,
-    uint8_t nArgs,
-    matteValue_t (*userFunction)(matteVM_t *, matteValue_t, matteArray_t * args, void * userData),
+    const matteArray_t * argNames,
+    matteValue_t (*userFunction)(matteVM_t *, matteValue_t, const matteValue_t * args, void * userData),
     void * userData
 ) {
     if (!userFunction) return;
@@ -1774,7 +1882,7 @@ void matte_vm_set_external_function(
     vm_add_built_in(
         vm,
         *id, 
-        nArgs, 
+        argNames, 
         userFunction
     );
 

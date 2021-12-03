@@ -118,7 +118,7 @@ const matteString_t * matte_value_string_get_string_unsafe(matteHeap_t *, matteV
 // Given a function object, gets the in-scope referrable identified
 // by the given name. If none can be found, an error is raised and 
 // empty is returned.
-matteValue_t matte_value_frame_get_named_referrable(matteHeap_t * heap, matteVMStackFrame_t *, const matteString_t *);
+matteValue_t matte_value_frame_get_named_referrable(matteHeap_t * heap, matteVMStackFrame_t *, matteString_t);
 
 // 
 void matte_value_set_captured_value(matteHeap_t *, matteValue_t v, uint32_t index, matteValue_t val);
