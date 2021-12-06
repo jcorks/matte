@@ -21,26 +21,27 @@
         integer  : valInteger
     };
     
-    setAttributes(of:ref, attributes:{
-        '+' ::(a) {
-            return createNumber(value:value + (a.decimal + a.integer));
-        },
+    setAttributes(of:ref, 
+        attributes: {
+            '+' ::(other) {
+                return createNumber(value:value + (other.decimal + other.integer));
+            },
 
-        '-' ::(a) {
-            return createNumber(value:value - (a.decimal + a.integer));
-        },
+            '-' ::(other) {
+                return createNumber(value:value - (other.decimal + other.integer));
+            },
 
-        '/' ::(a) {
-            return createNumber(value:value / (a.decimal + a.integer));
-        },
+            '/' ::(other) {
+                return createNumber(value:value / (other.decimal + other.integer));
+            },
 
-        '*' ::(a) {
-            return createNumber(value:value * (a.decimal + a.integer));
-        },
+            '*' ::(other) {
+                return createNumber(value:value * (other.decimal + other.integer));
+            },
 
-        (String) :: {
-            return 'Integer:' + valInteger + ',Decimal:' + valDecimal; 
-        }
+            (String) :: {
+                return 'Integer:' + valInteger + ',Decimal:' + valDecimal; 
+            }
     });
     
     return ref;

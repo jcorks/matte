@@ -47,7 +47,7 @@ static void introspection_destroy_table(matteVM_t * vm) {
 
 
 
-static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (vm->introspectObject.binID) {
         return vm->introspectObject;
     }
@@ -130,8 +130,8 @@ static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, mat
 }
 
 
-static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];
     matteValue_t out = matte_value_get_type(vm->heap, a);
     return out;
 }
@@ -139,8 +139,8 @@ static matteValue_t vm_ext_call__introspect_type(matteVM_t * vm, matteValue_t fn
 
 
 
-static matteValue_t vm_ext_call__introspect_keys(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+static matteValue_t vm_ext_call__introspect_keys(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteValue_t out = matte_value_object_keys(vm->heap, a);
         
@@ -153,8 +153,8 @@ static matteValue_t vm_ext_call__introspect_keys(matteVM_t * vm, matteValue_t fn
 }
 
 
-static matteValue_t vm_ext_call__introspect_values(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_values(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
 
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteValue_t out = matte_value_object_values(vm->heap, a);
@@ -169,8 +169,8 @@ static matteValue_t vm_ext_call__introspect_values(matteVM_t * vm, matteValue_t 
 }
 
 
-static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
 
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID == MATTE_VALUE_TYPE_OBJECT) {
@@ -185,16 +185,16 @@ static matteValue_t vm_ext_call__introspect_keycount(matteVM_t * vm, matteValue_
 
 
 
-static matteValue_t vm_ext_call__introspect_iscallable(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_iscallable(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     matteValue_t out = matte_heap_new_value(vm->heap);
     matte_value_into_boolean(vm->heap, &out, matte_value_is_callable(vm->heap, a) != 0);
     
     return out;
 }
 
-static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     if (a.binID == MATTE_VALUE_TYPE_STRING) {
         matteValue_t len = matte_heap_new_value(vm->heap);
         const matteString_t * strVal = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
@@ -209,8 +209,8 @@ static matteValue_t vm_ext_call__introspect_length(matteVM_t * vm, matteValue_t 
     return matte_heap_new_value(vm->heap);
 }
 
-static matteValue_t vm_ext_call__introspect_arraytostring(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_arraytostring(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(vm, "'introspect.arrayToString' expects an Object.");
         return matte_heap_new_value(vm->heap);
@@ -222,11 +222,11 @@ static matteValue_t vm_ext_call__introspect_arraytostring(matteVM_t * vm, matteV
 }
 
 
-static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];
 
     uint32_t key;
-    matteValue_t v = matte_array_at(args, matteValue_t, 1);
+    matteValue_t v = args[1];
     if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
         key = matte_value_as_number(vm->heap, v);
     } else {
@@ -246,11 +246,11 @@ static matteValue_t vm_ext_call__introspect_charat(matteVM_t * vm, matteValue_t 
     return matte_heap_new_value(vm->heap);
 }
 
-static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
 
     uint32_t key;
-    matteValue_t v = matte_array_at(args, matteValue_t, 1);
+    matteValue_t v = args[1];
     if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
         key = matte_value_as_number(vm->heap, v);
     } else {
@@ -272,8 +272,8 @@ static matteValue_t vm_ext_call__introspect_charcodeat(matteVM_t * vm, matteValu
 
 
 // has 2 functions:
-static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);
+static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];
     if (a.binID != MATTE_VALUE_TYPE_OBJECT &&
         a.binID != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_cstring(vm, "'introspect.subset' requires a String or Object as its first argument.");        
@@ -282,7 +282,7 @@ static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t 
 
     uint32_t from = 0;
     uint32_t to = 0;
-    matteValue_t v = matte_array_at(args, matteValue_t, 1);
+    matteValue_t v = args[1];
     if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
         from = matte_value_as_number(vm->heap, v);
     } else {
@@ -290,7 +290,7 @@ static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t 
         return matte_heap_new_value(vm->heap);
     }
 
-    v = matte_array_at(args, matteValue_t, 2);
+    v = args[2];
     if (v.binID == MATTE_VALUE_TYPE_NUMBER) {
         to = matte_value_as_number(vm->heap, v);
     } else {
@@ -308,8 +308,8 @@ static matteValue_t vm_ext_call__introspect_subset(matteVM_t * vm, matteValue_t 
 
 
 
-static matteValue_t vm_ext_call__introspect_floor(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_floor(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
 
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -321,8 +321,8 @@ static matteValue_t vm_ext_call__introspect_floor(matteVM_t * vm, matteValue_t f
     return out;
 }
 
-static matteValue_t vm_ext_call__introspect_ceil(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_ceil(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -334,8 +334,8 @@ static matteValue_t vm_ext_call__introspect_ceil(matteVM_t * vm, matteValue_t fn
     return out;
 }
 
-static matteValue_t vm_ext_call__introspect_round(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_round(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -346,8 +346,8 @@ static matteValue_t vm_ext_call__introspect_round(matteVM_t * vm, matteValue_t f
     
     return out;
 }
-static matteValue_t vm_ext_call__introspect_toradians(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_toradians(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -358,8 +358,8 @@ static matteValue_t vm_ext_call__introspect_toradians(matteVM_t * vm, matteValue
     
     return out;
 }
-static matteValue_t vm_ext_call__introspect_todegrees(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_todegrees(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -371,8 +371,8 @@ static matteValue_t vm_ext_call__introspect_todegrees(matteVM_t * vm, matteValue
     return out;
 }
 
-static matteValue_t vm_ext_call__introspect_sin(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_sin(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -384,12 +384,8 @@ static matteValue_t vm_ext_call__introspect_sin(matteVM_t * vm, matteValue_t fn,
     return out;
 }
 
-static matteValue_t vm_ext_call__introspect_cos(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_cstring(vm, "introspect functions require that the first argument is the value to introspect.");    
-        return matte_heap_new_value(vm->heap);
-    }
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_cos(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -401,8 +397,8 @@ static matteValue_t vm_ext_call__introspect_cos(matteVM_t * vm, matteValue_t fn,
     return out;
 }
 
-static matteValue_t vm_ext_call__introspect_tan(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_tan(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -414,8 +410,8 @@ static matteValue_t vm_ext_call__introspect_tan(matteVM_t * vm, matteValue_t fn,
     return out;
 }
 
-static matteValue_t vm_ext_call__introspect_abs(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_abs(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -428,12 +424,8 @@ static matteValue_t vm_ext_call__introspect_abs(matteVM_t * vm, matteValue_t fn,
 }
 
 
-static matteValue_t vm_ext_call__introspect_sqrt(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    if (matte_array_get_size(args) < 1) {
-        matte_vm_raise_error_cstring(vm, "introspect functions require that the first argument is the value to introspect.");    
-        return matte_heap_new_value(vm->heap);
-    }
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_sqrt(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -445,8 +437,8 @@ static matteValue_t vm_ext_call__introspect_sqrt(matteVM_t * vm, matteValue_t fn
     return out;
 }
 
-static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
-    matteValue_t a = matte_array_at(args, matteValue_t, 0);;
+static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
     
     matteValue_t out = matte_heap_new_value(vm->heap);
     if (a.binID != MATTE_VALUE_TYPE_NUMBER) {
@@ -457,7 +449,7 @@ static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t f
     return out;
 }
 /*
-static matteValue_t vm_ext_call__introspect_nowrite(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData) {
+static matteValue_t vm_ext_call__introspect_nowrite(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t out = matte_heap_new_value(vm->heap);
     matte_vm_raise_error_cstring(vm, "Introspection object is not editable.");
     matte_value_into_boolean(&out, 0);

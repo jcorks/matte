@@ -9,7 +9,7 @@
     // overly complex implementations are great for testing
     // ... or so i tell myself
     if (value < 0) ::<={
-        valDecimal = introspect.abs(of:value - introspect.floor(value) - 1);
+        valDecimal = introspect.abs(of:value - introspect.floor(of:value) - 1);
         valInteger = introspect.floor(of:value) + 1;
     } else ::<={
         valDecimal = value - introspect.floor(of:value);
@@ -23,20 +23,20 @@
     
     setAttributes(of:ref, 
         attributes: {
-            '+' ::(a) {
-                return createNumber(value:value + (a.decimal + a.integer));
+            '+' ::(other) {
+                return createNumber(value:value + (other.decimal + other.integer));
             },
 
-            '-' ::(a) {
-                return createNumber(value:value - (a.decimal + a.integer));
+            '-' ::(other) {
+                return createNumber(value:value - (other.decimal + other.integer));
             },
 
-            '/' ::(a) {
-                return createNumber(value:value / (a.decimal + a.integer));
+            '/' ::(other) {
+                return createNumber(value:value / (other.decimal + other.integer));
             },
 
-            '*' ::(a) {
-                return createNumber(value:value * (a.decimal + a.integer));
+            '*' ::(other) {
+                return createNumber(value:value * (other.decimal + other.integer));
             },
 
             (String) :: {

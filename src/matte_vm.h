@@ -89,7 +89,8 @@ void matte_vm_set_import(
 matteValue_t matte_vm_run_script(
     matteVM_t *, 
     uint32_t fileid, 
-    const matteArray_t * args
+    const matteArray_t * args,
+    const matteArray_t * argNames
 );
 
 
@@ -233,9 +234,24 @@ void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t ref
 void matte_vm_set_external_function(
     matteVM_t * vm, 
     const matteString_t * identifier,
-    const matteArray_t * argNames
+    const matteArray_t * argNames,
+    matteValue_t (*)(matteVM_t *, matteValue_t fn, const matteValue_t * args, void * userData),
+    void * userData
+);
+
+
+// Same as matte_vm_set_external_function, but automatically assigns 
+// default parameter name bindings rather than requiring you to provide them.
+// This is convenient if you are developing a middleware interface 
+// to some lower-level functionality where a rea, user-facing 
+// API will rest on top of it.
+//
+// The arguments are always a-z, a being argument 0, b 1, etc.
+void matte_vm_set_external_function_autoname(
+    matteVM_t * vm, 
+    const matteString_t * identifier,
     uint8_t nArgs,
-    matteValue_t (*)(matteVM_t *, matteValue_t fn, const matteValue_t * args, const matteValue_t * argNames, void * userData),
+    matteValue_t (*)(matteVM_t *, matteValue_t fn, const matteValue_t * args, void * userData),
     void * userData
 );
 

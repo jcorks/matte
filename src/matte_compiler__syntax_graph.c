@@ -162,7 +162,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_OBJECT_ACCESSOR_DOT, "Object Accessor '.'",
         MATTE_TOKEN_GENERAL_OPERATOR1, "Single-operand Operator",
         MATTE_TOKEN_GENERAL_OPERATOR2, "Operator",
-        MATTE_TOKEN_VARIABLE_NAME, "Variable Name",
+        MATTE_TOKEN_VARIABLE_NAME, "Variable Name Label",
         MATTE_TOKEN_OBJECT_LITERAL_BEGIN, "Object Literal '{'",
         MATTE_TOKEN_OBJECT_LITERAL_END, "Object Literal '}'",
         MATTE_TOKEN_OBJECT_DEF_PROP, "Object Literal assignment ':'",
@@ -182,7 +182,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR, "Function Constructor '::'",
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH, "Function Constructor Dash'<='",
         MATTE_TOKEN_FUNCTION_TYPESPEC, "Function Type Specifier '=>'",
-        MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER, "Function Parameter Specifier ':='",
+        MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER, "Function Parameter Specifier ':'",
 
         MATTE_TOKEN_WHEN, "'when' Statement",
         MATTE_TOKEN_GATE_RETURN, "'gate' Else Operator",
@@ -255,7 +255,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
                 matte_syntax_graph_node_end(),
                 NULL,
                 matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_SEPARATOR),
-                matte_syntax_graph_node_to_parent(4), // back to arg expression
+                matte_syntax_graph_node_to_parent(6), // back to arg expression
                 NULL,
                 NULL
             ),

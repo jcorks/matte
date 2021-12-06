@@ -1,18 +1,18 @@
-@MatteString = import("Matte.Core.String");
-@Array = import('Matte.Core.Array');
-@class = import("Matte.Core.Class");
-@EventSystem = import('Matte.Core.EventSystem');
+@MatteString = import(module:"Matte.Core.String");
+@Array = import(module:'Matte.Core.Array');
+@class = import(module:"Matte.Core.Class");
+@EventSystem = import(module:'Matte.Core.EventSystem');
 
 
-@_sleepms = getExternalFunction("__matte_::time_sleepms");
-@_getTicks = getExternalFunction("__matte_::time_getticks");
+@_sleepms = getExternalFunction(name:"__matte_::time_sleepms");
+@_getTicks = getExternalFunction(name:"__matte_::time_getticks");
 @initTime = _getTicks();
 
-@Clock = class({
+@Clock = class(definitive:{
     inherits:[EventSystem],
     name : 'Matte.System.Time.Clock',
     
-    define::(this) {
+    instantiate::(this) {
         @paused = false;
         @pausedAt;
         @started;
@@ -20,11 +20,11 @@
         @autoRestart = false;
         
         this.events = {
-            onTimeout::{}
+            onTimeout::(detail){}
         };
         
         
-        this.interface({
+        this.interface = {
             autoRestart : {
                 get :: {
                     return autoRestart;
@@ -36,8 +36,8 @@
             },
             
             
-            start::(ms => Number) {
-                period = ms;
+            start::(milliseconds => Number) {
+                period = milliseconds;
                 started = _getTicks();       
             },
 
@@ -75,29 +75,29 @@
                 when(paused)          empty;
                 
                 if (_getTicks() - started > period) ::<={
-                    this.emitEvent('onTimeout');
+                    this.emit(event:'onTimeout');
                     if (autoRestart) ::<= {
-                        this.start(period);
+                        this.start(milliseconds:period);
                     };
                 };
             }
-        });
+        };
     }
 
 });
 
 
-return class({
+return class(definition:{
     name : 'Matte.System.Time',
-    define::(this) {
-        this.interface({
+    instantiate::(this) {
+        this.interface = {
 
             // sleeps approximately the given number of milliseconds
-            sleep ::(s => Number){return _sleepms(s);},
+            sleep ::(milliseconds => Number){return _sleepms(a:milliseconds);},
 
             // Gets the current time, as from the C standard time() function with the 
             // NULL argument.
-            time : getExternalFunction("__matte_::time_time"),
+            time : getExternalFunction(name:"__matte_::time_time"),
 
             // Gets the number of milliseconds since the instance of 
             getTicks ::{
@@ -112,6 +112,6 @@ return class({
                     return Clock;
                 }
             }
-        });
+        };
     }
 }).new();

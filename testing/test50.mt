@@ -5,14 +5,14 @@
 
 @errMessage;
 @n100 = listen(to:::{
-    error(data:'Testing');    
+    error(detail:'Testing');    
     return 50;
-}, onMessage: :: (info){
+}, onMessage::: (message){
     errMessage = 
         'callstack:' + 
-        info.callstack.length +':' + 
-        info.callstack.frames[0].file + ':' + 
-        info.callstack.frames[0].lineNumber;
+        message.callstack.length +':' + 
+        message.callstack.frames[0].file + ':' + 
+        message.callstack.frames[0].lineNumber;
     return 100;
 });
 return ''+n100 + errMessage;

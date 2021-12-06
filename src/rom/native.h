@@ -5,7 +5,7 @@
 #include "../matte_heap.h"
 #include "../matte_vm.h"
 
-#define MATTE_EXT_FN(__T__) static matteValue_t __T__(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData)
+#define MATTE_EXT_FN(__T__) static matteValue_t __T__(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData)
 void matte_bind_native_functions();
 
 #endif

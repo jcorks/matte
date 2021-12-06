@@ -4,11 +4,11 @@
 
 @errMessage;
 listen(to:::{
-        error(data:'Testing');
+        error(detail:'Testing');
     },
      
-    onMessage:::(t) {
-        errMessage = t.data;
+    onMessage:::(message) {
+        errMessage = message.detail;
     }
 );
 
@@ -17,8 +17,8 @@ listen(to:
         error();
     },
      
-    onMessage:::(t) {
-        errMessage = errMessage + String(t.data == empty);
+    onMessage:::(message) {
+        errMessage = errMessage + String(from:message.detail == empty);
     }
 );
 
@@ -28,11 +28,10 @@ listen(to:
         listen();
     }, 
     
-    onMessage:::{
+    onMessage:::(message){
         errMessage = errMessage + 'failed!';
     }
 );
-
 
 
 return errMessage;

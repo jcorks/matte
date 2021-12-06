@@ -1,7 +1,7 @@
-@class = import('Matte.Core.Class');
-@Array = import('Matte.Core.Array');
-@EventSystem = import('Matte.Core.EventSystem');
-@MemoryBuffer = import('Matte.System.MemoryBuffer');
+@class = import(module:'Matte.Core.Class');
+@Array = import(module:'Matte.Core.Array');
+@EventSystem = import(module:'Matte.Core.EventSystem');
+@MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
 @SocketIO = {
     Server : ::<={
         // Creates a new socket bound to an address and port.
@@ -19,7 +19,7 @@
         // socket server object.
         //
         // CAN THROW AN ERROR if the socket could not be created
-        <@>_socket_server_create = getExternalFunction("__matte_::socket_server_create");
+        <@>_socket_server_create = getExternalFunction(name:"__matte_::socket_server_create");
 
 
         // updates the socket server state. This is just:
@@ -31,7 +31,7 @@
         // returns:
         // None
         //
-        <@>_socket_server_update = getExternalFunction("__matte_::socket_server_update");
+        <@>_socket_server_update = getExternalFunction(name:"__matte_::socket_server_update");
 
 
         // Given a client 0-index, returns an ID referring to the client.
@@ -41,7 +41,7 @@
         // 
         // returns:
         // client id (Number) or empty if not a valid index.
-        <@>_socket_server_client_index_to_id = getExternalFunction("__matte_::socket_server_client_index_to_id");
+        <@>_socket_server_client_index_to_id = getExternalFunction(name:"__matte_::socket_server_client_index_to_id");
 
 
 
@@ -51,14 +51,14 @@
         // 
         // returns:
         // number of clients (Number)
-        <@>_socket_server_get_client_count  = getExternalFunction("__matte_::socket_server_get_client_count");      
+        <@>_socket_server_get_client_count  = getExternalFunction(name:"__matte_::socket_server_get_client_count");      
         
         
         // Updates the state
         // - Get any additional pending data 
         // - Send out pending data
         // - updates the states of clients
-        <@>_socket_server_client_update = getExternalFunction("__matte_::socket_server_client_update");
+        <@>_socket_server_client_update = getExternalFunction(name:"__matte_::socket_server_client_update");
 
         // Gets a string containing the address of the client
         //
@@ -68,7 +68,7 @@
         //
         // returns:
         // address of the client (string)
-        <@>_socket_server_client_address = getExternalFunction("__matte_::socket_server_client_address");
+        <@>_socket_server_client_address = getExternalFunction(name:"__matte_::socket_server_client_address");
 
         // Gets a string containing info on the client.
         //
@@ -78,7 +78,7 @@
         //
         // returns:
         // info on the client (string)
-        <@>_socket_server_client_infostring = getExternalFunction("__matte_::socket_server_client_infostring");
+        <@>_socket_server_client_infostring = getExternalFunction(name:"__matte_::socket_server_client_infostring");
 
 
 
@@ -91,7 +91,7 @@
             //
             // returns:
             // string if pending message exists, empty if none.
-            <@>_socket_server_client_get_next_message = getExternalFunction("__matte_::socket_server_client_get_next_message");
+            <@>_socket_server_client_get_next_message = getExternalFunction(name:"__matte_::socket_server_client_get_next_message");
             
             // Sends a new string message. The string 
             // has an upper limit of 16777216 characters
@@ -102,11 +102,11 @@
             // arg1: clientID
             // arg2: message (string)
             // 
-            <@>_socket_server_client_send_message = getExternalFunction("__matte_::socket_server_client_send_message");
+            <@>_socket_server_client_send_message = getExternalFunction(name:"__matte_::socket_server_client_send_message");
             
             // Gets the number of pending messages that have yet to 
             // be retrieved.
-            <@>_socket_server_client_get_pending_message_count = getExternalFunction("__matte_::socket_server_client_get_pending_message_count");
+            <@>_socket_server_client_get_pending_message_count = getExternalFunction(name:"__matte_::socket_server_client_get_pending_message_count");
         
         
         ///////// if in raw mode 
@@ -114,15 +114,15 @@
             // arg0: server 
             // arg1: client 
             // returns: number of bytes waiting to be read.
-            <@>_socket_server_client_get_pending_byte_count = getExternalFunction("__matte_::socket_server_client_get_pending_byte_count");
+            <@>_socket_server_client_get_pending_byte_count = getExternalFunction(name:"__matte_::socket_server_client_get_pending_byte_count");
 
 
             // returns:
             // a MemoryBuffer object of the given number of bytes OR throws an error 
             // if cant.
-            <@>_socket_server_client_read_bytes = getExternalFunction("__matte_::socket_server_client_read_bytes");
+            <@>_socket_server_client_read_bytes = getExternalFunction(name:"__matte_::socket_server_client_read_bytes");
             
-            <@>_socket_server_client_write_bytes = getExternalFunction("__matte_::socket_server_client_write_bytes");
+            <@>_socket_server_client_write_bytes = getExternalFunction(name:"__matte_::socket_server_client_write_bytes");
 
 
             
@@ -132,28 +132,32 @@
         
         // Request termination. If its successful, the client will be taken off the 
         // managed client list next update.
-        <@>_socket_server_client_terminate = getExternalFunction("__matte_::socket_server_client_terminate");
+        <@>_socket_server_client_terminate = getExternalFunction(name:"__matte_::socket_server_client_terminate");
         
 
 
         // actual client that a user interacts with.
-        <@>Client = class({
+        <@>Client = class(definition:{
             name: 'Matte.System.SocketIO.Server.Client',
             inherits:[EventSystem],
-            define::(this, args, thisclass) {
-                @id = args.id;
-                @id_number = Number(id);
+            instantiate::(this, thisClass) {
+                @id_number;
                 @pendingMessages = {};
-                @socket = args.socket;
-                @info = _socket_server_client_infostring(socket, id_number);
-                @address = _socket_server_client_address(socket, id_number);
+                @socket;
+                @info = _socket_server_client_infostring(a:socket, b:id_number);
+                @address = _socket_server_client_address(a:socket, b:id_number);
+                @messageIn;
 
-
+                this.constructor = ::(id, handle, message) {
+                    id_number = Number(from:id);
+                    socket = handle;
+                    messageIn = message;
+                };
 
                 this.events = {
-                    onNewMessage ::{},
-                    onIncomingData ::{},
-                    onDisconnect ::{}
+                    onNewMessage ::(detail){},
+                    onIncomingData ::(detail){},
+                    onDisconnect ::(detail){}
                 };
 
                 // change update based on if a message type client or data
@@ -161,31 +165,31 @@
                 @sendData;
                 
                 
-                if (args.message == true) ::<={
+                if (messageIn == true) ::<={
                     update = ::{
-                        _socket_server_client_update(socket, id_number);
-                        for([0, _socket_server_client_get_pending_message_count(socket, id_number)], ::(i){
-                            this.emitEvent(
-                                'onNewMessage',
-                                _socket_server_client_get_next_message(socket, id_number)
+                        _socket_server_client_update(a:socket, b:id_number);
+                        for(in:[0, _socket_server_client_get_pending_message_count(a:socket, b:id_number)], do:::(i){
+                            this.emit(
+                                event:'onNewMessage',
+                                detail:_socket_server_client_get_next_message(a:socket, b:id_number)
                             );
                         });
                     };
 
                     sendData = ::(m => String) {
-                        _socket_server_client_send_message(socket, id_number, m);
+                        _socket_server_client_send_message(a:socket, b:id_number, c:m);
                     };
 
                 } else ::<={
                     update = ::{
-                        _socket_server_client_update(socket, id_number);
-                        @count = _socket_server_client_get_pending_byte_count(socket, id_number);
+                        _socket_server_client_update(a:socket, b:id_number);
+                        @count = _socket_server_client_get_pending_byte_count(a:socket, b:id_number);
 
                         if (count > 0) ::<={
-                            <@> bytes = MemoryBuffer.new(_socket_server_client_read_bytes(socket, id_number, count));
-                            this.emitEvent(
-                                'onIncomingData',
-                                bytes
+                            <@> bytes = MemoryBuffer.new(handle:_socket_server_client_read_bytes(a:socket, b:id_number, c:count));
+                            this.emit(
+                                event:'onIncomingData',
+                                detail:bytes
                             );             
                             bytes.release();
                         };
@@ -193,7 +197,7 @@
 
 
                     sendData = ::(m => MemoryBuffer.type) {
-                        _socket_server_client_write_bytes(socket, id_number, m.handle);
+                        _socket_server_client_write_bytes(a:socket, b:id_number, c:m.handle);
                     };
                 };
 
@@ -201,7 +205,7 @@
 
 
 
-                this.interface({
+                this.interface = {
                     update : update,
                     sendData : sendData,
                     info : {
@@ -223,37 +227,41 @@
                     },
 
                     disconnect :: {
-                        _socket_server_client_terminate(socket, id_number);
+                        _socket_server_client_terminate(a:socket, b:id_number);
                     }
-                });
+                };
 
             }
         });
 
-        <@>Server = class({
+        <@>Server = class(definition:{
             name: 'Matte.System.SocketIO.Server',
             inherits:[EventSystem],
-            define::(this, args, thisclass) {
+            instantiate::(this, thisClass) {
 
                 // initialize socket right away.
-                <@>socket = ::(
-                    address => String,
-                    port => Number,
-                    type => Number,
-                    maxClients => Number,
-                    timeout => Number,
-                    messageMode => Boolean
-                ) {
-                    return _socket_server_create(address, port, type, maxClients, timeout);
-                }(
-                    (if (args.restrictAddress == empty) "" else args.restrictAddress),
-                    args.port,
-                    0, // => always TCP for now
-                    128,
-                    100, // => timeout in seconds. not sure yet!
-                    Boolean(args.messageMode)
-                );
+                @socket;
                 
+                this.constructor = ::(restrictAddress, messageMode, port) {
+                    socket = ::(
+                        address => String,
+                        port => Number,
+                        type => Number,
+                        maxClients => Number,
+                        timeout => Number,
+                        messageMode => Boolean
+                    ) {
+                        return _socket_server_create(a:address, b:port, c:type, d:maxClients, e:timeout);
+                    } (
+                        address:(if (restrictAddress == empty) "" else restrictAddress),
+                        port:port,
+                        type:0, // => always TCP for now
+                        maxClients:128,
+                        timeout:100, // => timeout in seconds. not sure yet!
+                        messageMode:Boolean(from:messageMode)
+                    );
+                };
+
                 
                 <@>clients = Array.new();
 
@@ -265,45 +273,45 @@
                 };
             
             
-                this.interface({
+                this.interface = {
                     update ::{
-                        _socket_server_update(socket);  
+                        _socket_server_update(a:socket);  
                         
                         // current client list against prev list.
-                        <@>newlen = _socket_server_get_client_count(socket);
+                        <@>newlen = _socket_server_get_client_count(a:socket);
                         <@> found = {};
-                        for([0, newlen], ::(i){
-                            @id = String(_socket_server_client_index_to_id(socket, i));
+                        for(in:[0, newlen], do:::(i){
+                            @id = String(from:_socket_server_client_index_to_id(a:socket, b:i));
                             found[id] = true;
 
                             // new client
                             if (clientIndex[id] == empty) ::<={
-                                @client = Client.new({id:id, socket:socket});
-                                clients.push(client);
+                                @client = Client.new(id:id, handle:socket);
+                                clients.push(value:client);
                                 clientIndex[id] = true;
                                 found[id] = true;
 
-                                this.emitEvent('onNewClient', client);
+                                this.emit(name:'onNewClient', detail:client);
                             };
                         }); 
 
                         // emit update disconnects or update.
                         @i = 0;
-                        loop(::{
+                        loop(function:::{
                             when(i == clients.length) false;
-                            @idKey = String(clients[i].id);
+                            @idKey = String(from:clients[i].id);
                             if (found[idKey]) ::<= {
                                 clients[i].update();
                                 i+=1;
                             } else ::<={
-                                clients[i].emitEvent('onDisconnect', clients[i]);
-                                clients.remove(i);
-                                removeKey(clientIndex, idKey);                                
+                                clients[i].emit(name:'onDisconnect', detail:clients[i]);
+                                clients.remove(index:i);
+                                removeKey(from:clientIndex, key:idKey);                                
                             };
                             return true;
                         });                  
                     }
-                });
+                };
             }
         });
         
@@ -327,54 +335,54 @@
         //
         // CAN THROW AN ERROR if the socket could not be created
         // returns socket handle (number)
-        @_socket_client_create = getExternalFunction("__matte_::socket_client_create");
+        @_socket_client_create = getExternalFunction(name:"__matte_::socket_client_create");
 
         // cleans up the socket, terminating the connection.
         // arg0: socket handle
-        @_socket_client_delete = getExternalFunction("__matte_::socket_client_delete");
+        @_socket_client_delete = getExternalFunction(name:"__matte_::socket_client_delete");
 
         // arg0: socket handle
         // CAN THROW AN ERROR if the state is 1 (pending connection) and the connection 
         // fails to complete 
-        @_socket_client_update = getExternalFunction("__matte_::socket_client_update");
+        @_socket_client_update = getExternalFunction(name:"__matte_::socket_client_update");
 
         // arg0: socket handle 
         // returns state:
         // 0 -> disconnected 
         // 1 -> pending connection 
         // 2 -> connected
-        @_socket_client_get_state = getExternalFunction("__matte_::socket_client_get_state");
+        @_socket_client_get_state = getExternalFunction(name:"__matte_::socket_client_get_state");
         
         // arg0: socket handle 
         // returns a string about the host if connected or pending connection.
-        @_socket_client_get_host_info = getExternalFunction("__matte_::socket_client_get_host_info");
+        @_socket_client_get_host_info = getExternalFunction(name:"__matte_::socket_client_get_host_info");
         
         ///////// if in raw mode 
             // arg0: socket handle 
-            @_socket_get_pending_byte_count = getExternalFunction("__matte_::socket_client_get_pending_byte_count");
+            @_socket_get_pending_byte_count = getExternalFunction(name:"__matte_::socket_client_get_pending_byte_count");
     
             // returns:
             // a MemoryBuffer object of the given number of bytes OR throws an error 
             // if cant.
-            <@>_socket_client_read_bytes = getExternalFunction("__matte_::socket_client_read_bytes");
+            <@>_socket_client_read_bytes = getExternalFunction(name:"__matte_::socket_client_read_bytes");
             
-            <@>_socket_client_write_bytes = getExternalFunction("__matte_::socket_client_write_bytes");
+            <@>_socket_client_write_bytes = getExternalFunction(name:"__matte_::socket_client_write_bytes");
 
                 
                 
-        return class({
+        return class(definition:{
             name : 'Matte.System.SocketIO.Client',
             inherits : [EventSystem],
-            define::(this, args, thisclass) {
+            instantiate::(this, thisClass) {
                 @socket;
                 
                 this.events = {
-                    'onConnectSuccess': ::{},
-                    'onConnectFail': ::{},
-                    'onDisconnect': ::{},
+                    'onConnectSuccess': ::(detail){},
+                    'onConnectFail': ::(detail){},
+                    'onDisconnect': ::(detail){},
                     
-                    'onIncomingData': ::{},
-                    'onNewMessage': ::{}
+                    'onIncomingData': ::(detail){},
+                    'onNewMessage': ::(detail){}
                 };
                 @state = 0;                
                 @update; 
@@ -385,35 +393,35 @@
                         when(socket == empty) empty;
                         // raw mode
                         @err;
-                        listen(::{
-                            _socket_client_update(socket);
-                        }, ::(er) {
+                        listen(to:::{
+                            _socket_client_update(a:socket);
+                        }, onMessage:::(er) {
                             err = er;
                         });
 
                         @oldstate = state;
-                        @newstate = _socket_client_get_state(socket);
+                        @newstate = _socket_client_get_state(a:socket);
                         state = newstate;
                         
                         match(true) {
-                            (oldstate == 2 && newstate == 0): this.emitEvent('onDisconnect'),
+                            (oldstate == 2 && newstate == 0): this.emit(event:'onDisconnect'),
                             (oldstate == 1 && newstate == 0): ::<={
-                                this.emitEvent('onConnectFail', err);
-                                _socket_client_delete(socket);
+                                this.emit(event:'onConnectFail', detail:err);
+                                _socket_client_delete(a:socket);
                                 socket = empty;
                             },
-                            (oldstate != 2 && newstate == 2): this.emitEvent('onConnectSuccess')
+                            (oldstate != 2 && newstate == 2): this.emit(name:'onConnectSuccess')
                         };
                         
                         when(state != 2) empty;
                         
                         
-                        @count = _socket_get_pending_byte_count(socket);                        
+                        @count = _socket_get_pending_byte_count(a:socket);                        
                         if (count > 0) ::<={
-                            <@> bytes = MemoryBuffer.new(_socket_client_read_bytes(socket, count));
-                            this.emitEvent(
-                                'onIncomingData',
-                                bytes
+                            <@> bytes = MemoryBuffer.new(handle:_socket_client_read_bytes(a:socket, b:count));
+                            this.emit(
+                                name:'onIncomingData',
+                                detail:bytes
                             );             
                             bytes.release();
                         };
@@ -421,33 +429,33 @@
 
                     sendData = ::(m => MemoryBuffer.type) {
                         when(socket == empty) empty;
-                        _socket_client_write_bytes(socket, m.handle);
+                        _socket_client_write_bytes(a:socket, b:m.handle);
                     };
 
                 } else ::<={
-                    error('TODO');                
+                    error(message:'TODO');                
                 };
                 
                 
                 
                 
-                this.interface({
+                this.interface = {
                     connect::(addr => String, port => Number, mode) {
-                        when (socket != empty) error('Socket is already connected.');
+                        when (socket != empty) error(message:'Socket is already connected.');
                         if (mode == empty) ::<={
                             mode = 0;
                         };
                         
-                        listen(::{
-                            socket = _socket_client_create(addr, port, 0, mode);
-                        }, ::(e){
-                            this.emitEvent('onConnectFail', e);
+                        listen(to:::{
+                            socket = _socket_client_create(a:addr, b:port, c:0, d:mode);
+                        }, onMessage:::(message){
+                            this.emit(event:'onConnectFail', detail:message);
                         });
                     },
                     
                     disconnect::{
                         when(socket == empty) empty;
-                        _socket_client_delete(socket);
+                        _socket_client_delete(a:socket);
                         socket = empty;              
                     },
                     
@@ -457,10 +465,10 @@
                     host : {
                         get :: {
                             when(socket == empty) '';
-                            return _socket_client_get_host_info(socket);
+                            return _socket_client_get_host_info(a:socket);
                         }
                     }              
-                });
+                };
             }        
         });            
     

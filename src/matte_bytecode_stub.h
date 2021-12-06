@@ -32,6 +32,8 @@ DEALINGS IN THE SOFTWARE.
 #define H_MATTE__BYTECODE_STUB__INCLUDED
 
 #include <stdint.h>
+#include "matte_heap.h"
+
 typedef struct matteArray_t matteArray_t;
 typedef struct matteString_t matteString_t;
 

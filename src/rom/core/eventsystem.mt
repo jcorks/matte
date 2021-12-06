@@ -1,19 +1,19 @@
-@class = import('Matte.Core.Class');
-@Array = import('Matte.Core.Array');
-@EventSystem = class({
+@class = import(module:'Matte.Core.Class');
+@Array = import(module:'Matte.Core.Array');
+@EventSystem = class(definition:{
     name : 'Matte.Core.EventSystem',
-    define::(this, args, thisclass) {
+    instantiate::(this, thisClass) {
         <@> events = [];
                
         
         
-        this.interface({
+        this.interface = {
             events : {
-                set ::(evs) {
-                    when (introspect.keycount(events) != 0) error('Interface is already defined.');
+                set ::(value) {
+                    when (introspect.keycount(of:events) != 0) error(data:'Interface is already defined.');
                     
                     // filter to ensure types of key/val pairs
-                    foreach(evs, ::(key => String, val => Function) {
+                    foreach(in:value, do:::(key => String, val => Function) {
                         events[key] = {
                             mainHandler : val,
                             handlers : [],
@@ -26,15 +26,15 @@
             },
         
             // emits a specific event.
-            emitEvent ::(ev => String, data) {
-                <@> event = events[ev];
-                when(event == empty) error("Cannot emit event for non-existent event "+ev);
+            emit::(event => String, detail) {
+                <@> ev = events[event];
+                when(ev == empty) error(message:"Cannot emit event for non-existent event "+ev);
                 
-                @continue = listen(::{
-                    when(event.handlerCount == 0) true;
-                    for([event.handlerCount-1, 0], ::(i) {
+                @continue = listen(to:::{
+                    when(ev.handlerCount == 0) true;
+                    for(in:[ev.handlerCount-1, 0], do:::(i) {
                         // when handlers return false, we no longer propogate.           
-                        when(!((event.handlers[i])(this, data))) send(false);
+                        when(!((ev.handlers[i])(detail:detail))) send(message:false);
                     });
                     
                     return true;
@@ -43,9 +43,9 @@
                 // cancelled event. Don't call main handler or hooks.
                 when(continue == false) false;
                 
-                return (if (event.mainHandler(this, data) != false) ::<= {
-                    for([0, event.hookCount], ::(i) {
-                        (event.hooks[i])(this, data);
+                return (if (ev.mainHandler(detail:detail) != false) ::<= {
+                    for(in:[0, ev.hookCount], do:::(i) {
+                        (ev.hooks[i])(detail:detail);
                     });
                     return true;
                 } else ::<= {                
@@ -60,55 +60,55 @@
             // installed handler. The last handler is always the 
             // main handler, which is installed at creation of the 
             // event system.
-            installHandler ::(ev => String, fn => Function) {
-                <@> event = events[ev];
-                when(event == empty) error("Cannot install handler for non-existent event "+ev);
+            installHandler ::(event => String, handler => Function) {
+                <@> ev = events[ev];
+                when(ev == empty) error(message:"Cannot install handler for non-existent event "+event);
                 
-                event.handlers[event.handlerCount] = fn;
-                event.handlerCount += 1;
+                ev.handlers[ev.handlerCount] = handler;
+                ev.handlerCount += 1;
             },
             
 
 
-            installHook ::(ev => String, fn => Function) {
-                <@> event = events[ev];
-                when(event == empty) error("Cannot install hook for non-existent event "+ev);
+            installHook ::(event => String, hook => Function) {
+                <@> ev = events[event];
+                when(ev == empty) error(message:"Cannot install hook for non-existent event "+event);
                 
-                event.hooks[event.hookCount] = fn;
-                event.hookCount += 1;
+                ev.hooks[ev.hookCount] = hook;
+                ev.hookCount += 1;
             },
             
             getKnownEvents ::{
                 @arr = Array.new();
-                foreach(events, ::(k, v) {
-                    arr.push(k);
+                foreach(in:events, do:::(k, v) {
+                    arr.push(value:k);
                 });
                 return arr;                
             },
             
             
-            uninstallHook::(ev => String, fn) {
-                <@> event = events[ev];
-                when(event == empty) error("Cannot uninstall hook for non-existent event "+ev);
-                listen(::{
-                    for([0, event.hookCount], ::(i) {
-                        if (event.hooks[i] == fn) ::<= { 
-                            removeKey(event.hooks, i);
-                            event.hookCount-=1;
+            uninstallHook::(event => String, hook) {
+                <@> ev = events[event];
+                when(ev == empty) error(message:"Cannot uninstall hook for non-existent event "+ev);
+                listen(to:::{
+                    for(in:[0, ev.hookCount], do:::(i) {
+                        if (ev.hooks[i] == hook) ::<= { 
+                            removeKey(from:ev.hooks, key:i);
+                            ev.hookCount-=1;
                             send();
                         };
                     });
                 });
             },
             
-            uninstallHandler::(ev => String, fn) {
-                <@> event = events[ev];
-                when(event == empty) error("Cannot uninstall handler for non-existent event "+ev);
-                listen(::{
-                    for([0, event.handlerCount], ::(i) {
-                        if (event.handlers[i] == fn) ::<= { 
-                            removeKey(event.handlers, i);
-                            event.handlerCount-=1;
+            uninstallHandler::(event => String, handler) {
+                <@> ev = events[event];
+                when(ev == empty) error(data:"Cannot uninstall handler for non-existent event "+ev);
+                listen(to:::{
+                    for(in:[0, ev.handlerCount], do:::(i) {
+                        if (ev.handlers[i] == handler) ::<= { 
+                            removeKey(from:ev.handlers, key:i);
+                            ev.handlerCount-=1;
                             send();
                         };
                     });
@@ -117,7 +117,7 @@
             
             
             
-        });
+        };
     }
 });
 

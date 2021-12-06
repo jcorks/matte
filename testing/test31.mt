@@ -1,5 +1,5 @@
 //// Test 31
 //
 // introspection testing 
-return (introspect.charAt(of:'abcde', at:3));
+return (introspect.charAt(string:'abcde', index:3));
 

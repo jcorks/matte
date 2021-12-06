@@ -73,12 +73,12 @@ typedef struct {
 
 MATTE_EXT_FN(matte_socket__server_create) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    const matteString_t * addr = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 0)));
-    int port = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
-    int type = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 2));
-    int maxClients = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 3));
-    double timeout = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 4));
-    int mode = matte_value_as_boolean(heap, matte_array_at(args, matteValue_t, 5));
+    const matteString_t * addr = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, args[0]));
+    int port = matte_value_as_number(heap, args[1]);
+    int type = matte_value_as_number(heap, args[2]);
+    int maxClients = matte_value_as_number(heap, args[3]);
+    double timeout = matte_value_as_number(heap, args[4]);
+    int mode = matte_value_as_boolean(heap, args[5]);
     // error in args
     if (matte_vm_pending_message(vm)) {
         return matte_heap_new_value(heap);
@@ -278,7 +278,7 @@ MATTE_EXT_FN(matte_socket__server_create) {
 
 MATTE_EXT_FN(matte_socket__server_update) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t v = matte_array_at(args, matteValue_t, 0);
+    matteValue_t v = args[0];
     MatteSocketServer * s = matte_value_object_get_userdata(heap, v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
@@ -399,14 +399,14 @@ MATTE_EXT_FN(matte_socket__server_update) {
 
 MATTE_EXT_FN(matte_socket__server_client_index_to_id) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t v = matte_array_at(args, matteValue_t, 0);
+    matteValue_t v = args[0];
     MatteSocketServer * s = matte_value_object_get_userdata(heap, v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
         return matte_heap_new_value(heap);
     }
 
-    uint32_t index = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
+    uint32_t index = matte_value_as_number(heap, args[1]);
     uint32_t size = matte_array_get_size(s->clients);
     if (index >= size) {
         return matte_heap_new_value(heap);    
@@ -422,7 +422,7 @@ MATTE_EXT_FN(matte_socket__server_client_index_to_id) {
 
 MATTE_EXT_FN(matte_socket__server_get_client_count) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t v = matte_array_at(args, matteValue_t, 0);
+    matteValue_t v = args[0];
     MatteSocketServer * s = matte_value_object_get_userdata(heap, v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
@@ -434,7 +434,7 @@ MATTE_EXT_FN(matte_socket__server_get_client_count) {
 }
 
 
-MatteSocketServer_Client * id_to_client(matteVM_t * vm, matteValue_t * args, MatteSocketServer ** sout) {
+MatteSocketServer_Client * id_to_client(matteVM_t * vm, const matteValue_t * args, MatteSocketServer ** sout) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     *sout = NULL;
     matteValue_t v = args[0];
@@ -462,7 +462,7 @@ MatteSocketServer_Client * id_to_client(matteVM_t * vm, matteValue_t * args, Mat
 
 MATTE_EXT_FN(matte_socket__server_client_update) {
     MatteSocketServer * s;
-    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer_Client * client = id_to_client(vm, args, &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -602,7 +602,7 @@ MATTE_EXT_FN(matte_socket__server_client_update) {
 
 MATTE_EXT_FN(matte_socket__server_client_address) {
     MatteSocketServer * s;
-    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer_Client * client = id_to_client(vm, (args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -616,7 +616,7 @@ MATTE_EXT_FN(matte_socket__server_client_address) {
 
 MATTE_EXT_FN(matte_socket__server_client_infostring) {
     MatteSocketServer * s;
-    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer_Client * client = id_to_client(vm, (args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -629,7 +629,7 @@ MATTE_EXT_FN(matte_socket__server_client_infostring) {
 
 MATTE_EXT_FN(matte_socket__server_client_terminate) {
     MatteSocketServer * s;
-    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer_Client * client = id_to_client(vm, (args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -647,7 +647,7 @@ MATTE_EXT_FN(matte_socket__server_client_terminate) {
 
 MATTE_EXT_FN(matte_socket__server_client_get_pending_byte_count) {
     MatteSocketServer * s;
-    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer_Client * client = id_to_client(vm, (args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -660,7 +660,7 @@ MATTE_EXT_FN(matte_socket__server_client_get_pending_byte_count) {
 
 MATTE_EXT_FN(matte_socket__server_client_read_bytes) {
     MatteSocketServer * s;
-    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer_Client * client = id_to_client(vm, (args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -677,7 +677,7 @@ MATTE_EXT_FN(matte_socket__server_client_read_bytes) {
 
 MATTE_EXT_FN(matte_socket__server_client_write_bytes) {
     MatteSocketServer * s;
-    MatteSocketServer_Client * client = id_to_client(vm, matte_array_get_data(args), &s);        
+    MatteSocketServer_Client * client = id_to_client(vm, (args), &s);        
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
     if (!s || !client) {
@@ -687,7 +687,7 @@ MATTE_EXT_FN(matte_socket__server_client_write_bytes) {
     uint32_t bufsize;
     const uint8_t * buf = matte_system_shared__get_raw_from_memory_buffer(
         vm,
-        matte_array_at(args, matteValue_t, 2),
+        args[2],
         &bufsize
     );
     if (!buf) {
@@ -736,10 +736,10 @@ typedef struct {
 
 MATTE_EXT_FN(matte_socket__client_create) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    const matteString_t * addr = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_array_at(args, matteValue_t, 0)));
-    int port = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1));
-    int type = matte_value_as_number(heap, matte_array_at(args, matteValue_t, 2));
-    int mode = matte_value_as_boolean(heap, matte_array_at(args, matteValue_t, 3));
+    const matteString_t * addr = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, args[0]));
+    int port = matte_value_as_number(heap, args[1]);
+    int type = matte_value_as_number(heap, args[2]);
+    int mode = matte_value_as_boolean(heap, args[3]);
     // error in args
     if (matte_vm_pending_message(vm)) {
         return matte_heap_new_value(heap);
@@ -923,7 +923,7 @@ MATTE_EXT_FN(matte_socket__client_create) {
 
 MATTE_EXT_FN(matte_socket__client_delete) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(heap, matte_array_at(args, matteValue_t, 0));
+    MatteSocketClient * cl = matte_value_object_get_userdata(heap, args[0]);
     
     if (cl->socketfd) close(cl->socketfd);
     matte_array_destroy(cl->indata);
@@ -936,7 +936,7 @@ MATTE_EXT_FN(matte_socket__client_delete) {
 
 MATTE_EXT_FN(matte_socket__client_update) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(heap, matte_array_at(args, matteValue_t, 0));
+    MatteSocketClient * cl = matte_value_object_get_userdata(heap, args[0]);
     
 
     // pending connection... check its status! note: it could fail.
@@ -1157,7 +1157,7 @@ MATTE_EXT_FN(matte_socket__client_update) {
 
 MATTE_EXT_FN(matte_socket__client_get_state) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(heap, matte_array_at(args, matteValue_t, 0));
+    MatteSocketClient * cl = matte_value_object_get_userdata(heap, args[0]);
 
 
 
@@ -1168,7 +1168,7 @@ MATTE_EXT_FN(matte_socket__client_get_state) {
 
 MATTE_EXT_FN(matte_socket__client_get_host_info) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(heap, matte_array_at(args, matteValue_t, 0));
+    MatteSocketClient * cl = matte_value_object_get_userdata(heap, args[0]);
 
     matteValue_t v = matte_heap_new_value(heap);    
     matte_value_into_string(heap, &v, MATTE_VM_STR_CAST(vm, ""));
@@ -1178,7 +1178,7 @@ MATTE_EXT_FN(matte_socket__client_get_host_info) {
 
 MATTE_EXT_FN(matte_socket__client_get_pending_byte_count) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(heap, matte_array_at(args, matteValue_t, 0));
+    MatteSocketClient * cl = matte_value_object_get_userdata(heap, args[0]);
 
     matteValue_t v = matte_heap_new_value(heap);    
     matte_value_into_number(heap, &v, matte_array_get_size(cl->indata));
@@ -1187,7 +1187,7 @@ MATTE_EXT_FN(matte_socket__client_get_pending_byte_count) {
 
 MATTE_EXT_FN(matte_socket__client_read_bytes) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(heap, matte_array_at(args, matteValue_t, 0));
+    MatteSocketClient * cl = matte_value_object_get_userdata(heap, args[0]);
 
     matteValue_t m = matte_system_shared__create_memory_buffer_from_raw(
         vm,
@@ -1201,12 +1201,12 @@ MATTE_EXT_FN(matte_socket__client_read_bytes) {
 
 MATTE_EXT_FN(matte_socket__client_write_bytes) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(heap, matte_array_at(args, matteValue_t, 0));
+    MatteSocketClient * cl = matte_value_object_get_userdata(heap, args[0]);
 
     uint32_t bufsize;
     const uint8_t * buf = matte_system_shared__get_raw_from_memory_buffer(
         vm,
-        matte_array_at(args, matteValue_t, 1),
+        args[1],
         &bufsize
     );
     if (!buf) {
@@ -1223,32 +1223,32 @@ MATTE_EXT_FN(matte_socket__client_write_bytes) {
 
 
 void matte_system__socketio(matteVM_t * vm) {
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_create"),             6, matte_socket__server_create,     NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_update"),             1, matte_socket__server_update,     NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_index_to_id"), 2, matte_socket__server_client_index_to_id,     NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_get_client_count"),   1, matte_socket__server_get_client_count,     NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_update"),      2, matte_socket__server_client_update,     NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_address"),     2, matte_socket__server_client_address,     NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_infostring"),  2, matte_socket__server_client_infostring,     NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_terminate"),   2, matte_socket__server_client_terminate,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_create"),             6, matte_socket__server_create,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_update"),             1, matte_socket__server_update,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_index_to_id"), 2, matte_socket__server_client_index_to_id,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_get_client_count"),   1, matte_socket__server_get_client_count,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_update"),      2, matte_socket__server_client_update,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_address"),     2, matte_socket__server_client_address,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_infostring"),  2, matte_socket__server_client_infostring,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_terminate"),   2, matte_socket__server_client_terminate,     NULL);
 
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_get_pending_byte_count"),   2, matte_socket__server_client_get_pending_byte_count,     NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_read_bytes"),   2, matte_socket__server_client_read_bytes,     NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_write_bytes"),   3, matte_socket__server_client_write_bytes,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_get_pending_byte_count"),   2, matte_socket__server_client_get_pending_byte_count,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_read_bytes"),   2, matte_socket__server_client_read_bytes,     NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_write_bytes"),   3, matte_socket__server_client_write_bytes,     NULL);
 
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_send_message"),   3, matte_socket__server_client_send_message, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_get_next_message"),   2, matte_socket__server_client_get_next_message, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_get_pending_message_count"),   2, matte_socket__server_client_get_pending_message_count, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_send_message"),   3, matte_socket__server_client_send_message, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_get_next_message"),   2, matte_socket__server_client_get_next_message, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_get_pending_message_count"),   2, matte_socket__server_client_get_pending_message_count, NULL);
 
 
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_create"),  4, matte_socket__client_create, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_delete"),  1, matte_socket__client_delete, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_update"),  1, matte_socket__client_update, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_state"),  1, matte_socket__client_get_state, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_host_info"),  1, matte_socket__client_get_host_info, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_pending_byte_count"),  1, matte_socket__client_get_pending_byte_count, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_read_bytes"),  1, matte_socket__client_read_bytes, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_write_bytes"),  2, matte_socket__client_write_bytes, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_create"),  4, matte_socket__client_create, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_delete"),  1, matte_socket__client_delete, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_update"),  1, matte_socket__client_update, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_state"),  1, matte_socket__client_get_state, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_host_info"),  1, matte_socket__client_get_host_info, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_pending_byte_count"),  1, matte_socket__client_get_pending_byte_count, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_read_bytes"),  1, matte_socket__client_read_bytes, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_write_bytes"),  2, matte_socket__client_write_bytes, NULL);
 
 }
 

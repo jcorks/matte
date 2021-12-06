@@ -1,36 +1,36 @@
-@MatteString = import("Matte.Core.String");
-@class = import("Matte.Core.Class");
-@_print = getExternalFunction("__matte_::consoleio_print");
+@MatteString = import(module:"Matte.Core.String");
+@class = import(module:"Matte.Core.Class");
+@_print = getExternalFunction(module:"__matte_::consoleio_print");
 
-return class({
+return class(definition:{
     name : 'Matte.System.ConsoleIO',
-    define::(this) {
-        this.interface({
+    instantiate::(this) {
+        this.interface = {
             // Prints a simple string with a newline afterwards.
-            println ::(a => String) {
-                _print(a + '\n');
+            println ::(message => String) {
+                _print(a:message + '\n');
             },
 
 
             // Prints a formatted string
             // The first argument must be a string.
-            printf ::(fmt => String, arr) {
-                when (introspect.type(arr) != Object)::<={
-                    _print(''+fmt);
+            printf ::(format => String, args) {
+                when (introspect.type(of:args) != Object)::<={
+                    _print(a:''+format);
                 };
 
 
-                <@>o = MatteString.new(fmt);
-                foreach(arr, ::(k, v){
+                <@>o = MatteString.new(from:format);
+                foreach(in:args, do:::(k, v){
                     <@>key = '$('+k+')';
-                    o.replace(key, ''+v);
+                    o.replace(key:key, with:''+v);
                 });
-                _print(o);
+                _print(a:o);
             },
 
-            getln : getExternalFunction("__matte_::consoleio_getline"),
+            getln : getExternalFunction(name:"__matte_::consoleio_getline"),
 
-            clear : getExternalFunction("__matte_::consoleio_clear")
-        });
+            clear : getExternalFunction(name:"__matte_::consoleio_clear")
+        };
     }
 }).new();

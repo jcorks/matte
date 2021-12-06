@@ -11,13 +11,13 @@
         errMessage = errMessage + i;        
         when(i == 50) ::{
             iterCheck = i;
-            error(100*80);
+            error(detail:100*80);
         }();
     });
 
     return 100;
-}, onMessage: ::(i){
-    errMessage = i.data;
+}, onMessage: ::(message){
+    errMessage = message.detail;
 });
 return ''+n100 + errMessage + iterCheck;
 

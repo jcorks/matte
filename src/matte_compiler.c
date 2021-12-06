@@ -1512,10 +1512,40 @@ static void matte_syntax_graph_print_error(
       }
 
       case MATTE_SYNTAX_GRAPH_NODE__SPLIT: {
+        uint32_t lenn = node->split.count;
+        uint32_t n;
+        for(n = 0; n < lenn; ++n) {
+            uint32_t i;
+            matteSyntaxGraphNode_t * nodeSub = node->split.nodes[n];
+            uint32_t len = nodeSub->split.count;
+
+            if (len == 1) {
+                matte_string_concat(message, matte_syntax_graph_get_token_name(GRAPHSRC, nodeSub->token.refs[0]));
+            } else {
+                for(i = 0; i < len; ++i) {
+                    if (i == 0 && n == 0) {
+                    } else if (n != lenn-1 && i != len - 1) {
+                        matte_string_concat_printf(message, ", ");
+                    } else {
+                        matte_string_concat_printf(message, ", or ");
+                    }             
+                    matte_string_concat(message, matte_syntax_graph_get_token_name(GRAPHSRC, nodeSub->token.refs[i]));
+                }
+            }
+            if (n == lenn-2)
+                matte_string_concat_printf(message, "; or ");
+            else if (n != lenn-1)
+                matte_string_concat_printf(message, "; ");
+            
+
+        }
+        break;
+
       }
 
 
       default:
+        
         matte_string_concat_printf(message, "[a series of tokens i was too lazy to write the logic to print yet]");
       
     }
@@ -2904,7 +2934,7 @@ static matteArray_t * compile_function_call(
     while(iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
         // parse out the parameters
         uint32_t i = function_intern_string(block, iter->text);
-        uint32_t nameLineNum = iter->lineNumber;
+        uint32_t nameLineNum = iter->line;
         iter = iter->next->next; // skip :    
         matteArray_t * exp = compile_expression(g, block, functions, &iter);
         if (!exp) {

@@ -1,19 +1,24 @@
-<@>class = import('Matte.Core.Class');
+<@>class = import(module:'Matte.Core.Class');
 
 
 // Arrays contain a number-indexed collection of values.
-@Array = class({
+@Array = class(definition:{
     name : 'Matte.Core.Array',
-    define ::(this, args, classinst) {
+    instantiate::(this, thisClass) {
         @data;
         @len;
 
         <@>initialize = ::(args){
-            data = if(Boolean(args) && introspect.type(args) == Object) args else [];
-            len = introspect.keycount(data);
+            data = if(Boolean(from:args) && introspect.type(of:args) == Object) args else [];
+            len = introspect.keycount(of:data);
         };
-        initialize(args);
-        this.interface({
+
+        this.constructor = ::(from) {
+            initialize(args:from);
+        };
+
+
+        this.interface = {
             onRevive : initialize,
 
             // Read/write variable.
@@ -23,8 +28,8 @@
                     return len;
                 },
                 
-                set ::(newV) {
-                    len = newV;
+                set ::(value) {
+                    len = value;
                     @o = data[len-1];
                     data[len-1] = o;
                 }
@@ -42,16 +47,16 @@
             pop :: {
                 when(len == 0) empty;
                 @out = data[len-1];
-                removeKey(data, len-1);
+                removeKey(from:data, key:len-1);
                 len -= 1;
                 return out;
             },
             
             insert ::(i, v) {
-                when (i >= len) error('No such index to insert at.');
-                when (i == len-1) this.push(v);
+                when (i >= len) error(data:'No such index to insert at.');
+                when (i == len-1) this.push(value:v);
                 
-                for([i, len], ::(i) {
+                for(in:[i, len], do:::(i) {
                     data[i+1] = data[i];
                 });
                 data[i] = v;
@@ -63,10 +68,10 @@
             // Removes the element at the specified index and returns it.
             // Like all array operations, the specified index is 
             // 0-indexed.
-            remove ::(nm => Number) {
-                when(nm < 0 || nm >= len) empty;
-                @out = data[nm];
-                removeKey(data, nm);
+            remove ::(index => Number) {
+                when(index < 0 || index >= len) empty;
+                @out = data[index];
+                removeKey(from:data, key:index);
                 len -= 1;
                 return out;
             },
@@ -74,13 +79,13 @@
             // Function, 1 argument 
             // No return value 
             // Removes the first element that equals the given value.
-            removeValue ::(v) {
-                listen(::{
-                    for([0, len], ::(i) {
-                        if (data[i] == v) ::<={
-                            removeKey(data, i);
+            removeValue ::(value) {
+                listen(to:::{
+                    for(in:[0, len], do:::(i) {
+                        if (data[i] == value) ::<={
+                            removeKey(from:data, key:i);
                             len -= 1;
-                            send(empty);
+                            send();
                         };
                     });
                 });
@@ -91,9 +96,9 @@
             // Returns.
             // Creates a new array object that is a shallow copy of this one.
             clone :: {
-                @out = classinst.new();
-                for([0, len], ::(i){
-                    out.push(data[i]);
+                @out = thisClass.new();
+                for(in:[0, len], do:::(i){
+                    out.push(value:data[i]);
                 });
                 return out;
             },
@@ -106,7 +111,7 @@
             // "<" operator is used instead.
             sort ::(cmp) {
                 // ensures a comparator exists if there isnt one.
-                cmp = if(Boolean(cmp)) cmp else ::(a, b) {
+                cmp = if(Boolean(from:cmp)) cmp else ::(a, b) {
                     when(a < b) -1;
                     when(a > b)  1;
                     return 0;
@@ -114,7 +119,7 @@
 
                 // casts to an integer
                 @INT :: (n){
-                    return introspect.floor(n);
+                    return introspect.floor(of:n);
                 };
 
                 // swaps 2 members of the data array
@@ -133,38 +138,38 @@
                     @pivot = data[right];
                     @i = left-1;
                     
-                    for([left, right], ::(j) {
-                        when(cmp(data[j], pivot) < 0)::{
+                    for(in:[left, right], do:::(j) {
+                        when(cmp(a:data[j], b:pivot) < 0)::{
                             i = i + 1;
-                            swap(i, j);
+                            swap(ai:i, bi:j);
                         }();
                     });
-                    swap(i+1, right);             
+                    swap(ai:i+1, bi:right);             
                     return i + 1;
                 };
 
                 @subsort :: (cmp, left, right) {
                     when(right <= left) empty;
 
-                    @pi = partition(left, right);
+                    @pi = partition(left:left, right:right);
                     
-                    context(cmp, left, pi-1);
-                    context(cmp, pi+1, right);
+                    context(cmp:cmp, left:left, right:pi-1);
+                    context(cmp:cmp, left:pi+1, right:right);
                 };
 
-                subsort(cmp, left, right);
+                subsort(cmp:cmp, left:left, right:right);
             },
 
             // returns a new array thats a subset of
             subset ::(from, to) {
-                @out = classinst.new();
+                @out = thisClass.new();
                 when(from >= to) out;
                 
                 from = if(from <  0)   0     else from;                
                 to   = if(to   >= len) len-1 else from;                
                 
-                for([from, to+1], ::(i){
-                    out.push(data[i]);
+                for(in:[from, to+1], do:::(i){
+                    out.push(value:data[i]);
                 });
                 return out;
             },
@@ -175,9 +180,9 @@
             // given. "cond" should be an array that accepts at least one argument.
             // The first argument is the value.
             filter ::(cond) {
-                @out = classinst.new();
-                foreach(data, ::(v){
-                    when(cond(v)) out.push(v);
+                @out = thisClass.new();
+                foreach(in:data, do:::(v, k){
+                    when(cond(item:v)) out.push(value:v);
                 });            
                 return out;
             },
@@ -185,10 +190,10 @@
             
             // linear search
             find ::(inval) {
-                return listen(::{
-                    for([0, len], ::(i){
+                return listen(to:::{
+                    for(in:[0, len], do:::(i){
                         if (data[i] == inval) ::<={
-                            send(i);  
+                            send(message:i);  
                         };
                     });                
                     return -1;
@@ -196,7 +201,7 @@
             },
             
             binarySearch::(val, cmp) {
-                error("not done yet");
+                error(data:"not done yet");
             },
 
             at::(i => Number) {
@@ -205,16 +210,16 @@
 
 
             
-        });
+        };
         
-        this.attributes({
+        this.attributes = {
             '[]' : {
                 get :: (key => Number){
                     return data[key];
                 },
                 
-                set :: (key => Number, val) {
-                    data[key] = val;
+                set :: (key => Number, value) {
+                    data[key] = value;
                 }
             },
 
@@ -224,13 +229,10 @@
 
             (String) ::{
                 @str = '[';
-                for([0, len], ::(i){
-                    <@> strRep = ::{
-                        context.catch = ::{};
-                        return (String(data[i]));
-                    }();
+                for(in:[0, len], do:::(i){
+                    <@> strRep = (String(from:data[i]));
 
-                    str = str + if (strRep) strRep else ('<' + introspect.type(data[i]) + '>');
+                    str = str + if (strRep) strRep else ('<' + introspect.type(of:data[i]) + '>');
 
                     when(i != len-1)::{
                         str = str + ', ';
@@ -238,7 +240,7 @@
                 });
                 return str + ']';
             }
-        });
+        };
     }
 });
 return Array;

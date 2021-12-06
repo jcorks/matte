@@ -1,43 +1,46 @@
-<@>class = import('Matte.Core.Class');
-<@>Array = import('Matte.Core.Array');
+<@>class = import(module:'Matte.Core.Class');
+<@>Array = import(module:'Matte.Core.Array');
 
-<@>_string_create     = getExternalFunction("__matte_::string_create");
-<@>_string_get_length = getExternalFunction("__matte_::string_get_length");
-<@>_string_set_length = getExternalFunction("__matte_::string_set_length");
-<@>_string_search     = getExternalFunction("__matte_::string_search");
-<@>_string_replace    = getExternalFunction("__matte_::string_replace");
-<@>_string_count      = getExternalFunction("__matte_::string_count");
-<@>_string_charcodeat = getExternalFunction("__matte_::string_charcodeat");
-<@>_string_charat     = getExternalFunction("__matte_::string_charat");
-<@>_string_setcharat  = getExternalFunction("__matte_::string_setcharat");
-<@>_string_setcharcodeat= getExternalFunction("__matte_::string_setcharcodeat");
-<@>_string_append     = getExternalFunction("__matte_::string_append");
-<@>_string_removechar = getExternalFunction("__matte_::string_removechar");
-<@>_string_substr     = getExternalFunction("__matte_::string_substr");
-<@>_string_split      = getExternalFunction("__matte_::string_split");
-<@>_string_get_string = getExternalFunction("__matte_::string_get_string");
-@String_ = class({
+<@>_string_create     = getExternalFunction(name:"__matte_::string_create");
+<@>_string_get_length = getExternalFunction(name:"__matte_::string_get_length");
+<@>_string_set_length = getExternalFunction(name:"__matte_::string_set_length");
+<@>_string_search     = getExternalFunction(name:"__matte_::string_search");
+<@>_string_replace    = getExternalFunction(name:"__matte_::string_replace");
+<@>_string_count      = getExternalFunction(name:"__matte_::string_count");
+<@>_string_charcodeat = getExternalFunction(name:"__matte_::string_charcodeat");
+<@>_string_charat     = getExternalFunction(name:"__matte_::string_charat");
+<@>_string_setcharat  = getExternalFunction(name:"__matte_::string_setcharat");
+<@>_string_setcharcodeat= getExternalFunction(name:"__matte_::string_setcharcodeat");
+<@>_string_append     = getExternalFunction(name:"__matte_::string_append");
+<@>_string_removechar = getExternalFunction(name:"__matte_::string_removechar");
+<@>_string_substr     = getExternalFunction(name:"__matte_::string_substr");
+<@>_string_split      = getExternalFunction(name:"__matte_::string_split");
+<@>_string_get_string = getExternalFunction(name:"__matte_::string_get_string");
+@String_ = class(definition:{
     name : 'Matte.Core.String',
-    define ::(this, args, classinst) {
-        <@>MatteString = introspect.type(this);
-        <@>handle = _string_create(if (args != empty) String(args) else empty);  
+    instantiate::(this, thisClass) {
+        <@>MatteString = introspect.type(of:this);
+
+        @handle;
+        this.constructor = ::(from) {
+            handle = _string_create(a:if (from != empty) String(from:from) else empty); 
+        };
 
         
-        
-        this.interface({
+        this.interface = {
 
             onRevive ::(reviveArgs) {
-                _string_set_length(handle, 0);
+                _string_set_length(a:handle, b:0);
             },
 
 
             length : {
                 get :: { 
-                    return _string_get_length(handle);
+                    return _string_get_length(a:handle);
                 },
                 
                 set ::(newlen => Number) {
-                    _string_set_length(handle, newlen);
+                    _string_set_length(a:handle, b:newlen);
                 }
             },
             
@@ -46,22 +49,22 @@
             // returns the index at which the 
             // substring is at. If the substring is 
             // not contained within the string, -1 is returned.
-            search::(sub){
-                return _string_search(handle, String(sub));     
+            search::(key){
+                return _string_search(a:handle, b:String(from:key));     
             },
             
-            contains::(sub) {
-                return this.search(sub) != -1;
+            contains::(key) {
+                return this.search(key:key) != -1;
             },
 
 
-            containsAny::(arr => Object) {
-                <@>vals = introspect.values(arr);
-                <@>len = introspect.keycount(vals);
-                return listen(::{
-                    for([0, len], ::(i) {
-                        if (this.contains(vals[i])) ::<={
-                            send(true);
+            containsAny::(keys => Object) {
+                <@>vals = introspect.values(of:keys);
+                <@>len = introspect.keycount(of:vals);
+                return listen(to:::{
+                    for(in:[0, len], do:::(i) {
+                        if (this.contains(key:keys[i])) ::<={
+                            send(message:true);
                         };
                     });
                     return false;                    
@@ -70,50 +73,50 @@
             },
 
 
-            replace::(sub, with) {
-                return _string_replace(handle, String(sub), String(with));
+            replace::(key, with) {
+                return _string_replace(a:handle, b:String(from:key), c:String(from:with));
             },
             
-            count::(sub) {
-                return _string_count(handle, String(sub));
+            count::(key) {
+                return _string_count(a:handle, b:String(from:key));
             },
             
-            charCodeAt::(i) {
-                return _string_charcodeat(handle, Number(i));
+            charCodeAt::(index) {
+                return _string_charcodeat(a:handle, b:Number(from:index));
             },
 
-            charAt::(i) {
-                return _string_charat(handle, Number(i));
+            charAt::(index) {
+                return _string_charat(a:handle, b:Number(from:index));
             },
                         
-            setCharAt::(index => Number, a) {
-                return _string_setcharat(handle, index, String(a));
+            setCharAt::(index => Number, value) {
+                return _string_setcharat(a:handle, b:index, c:String(from:value));
             },
 
             setCharCodeAt::(index => Number, a) {
-                return _string_setcharcodeat(handle, index, Number(a));
+                return _string_setcharcodeat(a:handle, b:index, c:Number(from:a));
             },
             
-            append::(a) {
-                _string_append(handle, String(a));
+            append::(other) {
+                _string_append(a:handle, b:String(from:other));
             },
 
 
 
-            removeChar::(i) {
-                _string_removechar(handle, Number(i));
+            removeChar::(index) {
+                _string_removechar(a:handle, b:Number(from:index));
             },
             
             
             substr::(from => Number, to => Number) {
-                return classinst.new(_string_substr(handle, from, to));
+                return thisClass.new(from:_string_substr(a:handle, b:from, c:to));
             },
 
-            split::(sub) {  
-                @a = _string_split(handle, String(sub));
+            split::(token) {  
+                @a = _string_split(a:handle, b:String(from:token));
                 @aconv = Array.new();
-                foreach(a, ::(k, v) {
-                    aconv.push(classinst.new(v));
+                foreach(in:a, do:::(k, v) {
+                    aconv.push(value:thisClass.new(from:v));
                 });
                 return aconv;
             },
@@ -132,17 +135,17 @@
             
             
             */
-            scan::(fmt) {
-                fmt = classinst.new(fmt);
-                @tokens = fmt.split('[%]');
-                @startsWith = (fmt.charAt(0) == '[' &&
-                            fmt.charAt(1) == '%' &&
-                            fmt.charAt(2) == ']');
+            scan::(format) {
+                format = thisClass.new(from:format);
+                @tokens = format.split(token:'[%]');
+                @startsWith = (format.charAt(index:0) == '[' &&
+                            format.charAt(index:1) == '%' &&
+                            format.charAt(index:2) == ']');
 
-                @len = fmt.length;
-                @endsWith = (fmt.charAt(len-3) == '[' &&
-                            fmt.charAt(len-2) == '%' &&
-                            fmt.charAt(len-1) == ']');
+                @len = format.length;
+                @endsWith = (format.charAt(index:len-3) == '[' &&
+                            format.charAt(index:len-2) == '%' &&
+                            format.charAt(index:len-1) == ']');
 
                 
                 
@@ -152,14 +155,14 @@
                 @searchIndex = 0;
                 @lastIndex;
 
-                loop(::{
-                    @searchStr = this.substr(searchIndex, this.length-1);
+                loop(func:::{
+                    @searchStr = this.substr(from:searchIndex, to:this.length-1);
                     @offset = 0;
                     @locs = [];
 
-                    return listen(::{
-                        for([0, tokens.length], ::(i) {
-                            @localAt = searchStr.search(tokens[i]);
+                    return listen(to:::{
+                        for(in:[0, tokens.length], do:::(i) {
+                            @localAt = searchStr.search(key:tokens[i]);
                             locs[i] = {
                                 at: localAt + offset,
                                 len: tokens[i].length
@@ -171,7 +174,7 @@
                             if (i == 0) ::<={
                                 // couldnt find first anchor.... will not pass
                                 if (localAt == -1) ::<={
-                                    send(false);
+                                    send(message:false);
                                 };
 
                                 // progress the initial iter
@@ -180,29 +183,29 @@
 
                             // abort
                             if (localAt == -1) ::{
-                                send(true);
+                                send(message:true);
                             };
 
                             offset = locs[i].at + locs[i].len;
                             // shortens the search path
-                            searchStr = searchStr.substr(localAt+locs[i].len, searchStr.length-1);
+                            searchStr = searchStr.substr(from:localAt+locs[i].len, to:searchStr.length-1);
                         });
                         // all anchors found. Populate find array.
                         if (startsWith) ::<={
-                            out.push(this.substr(0, locs[0].at-1));
+                            out.push(value:this.substr(from:0, to:locs[0].at-1));
                         };
 
-                        for([0, introspect.keycount(locs)-1], ::(i) {
-                            out.push(this.substr(
-                                locs[i  ].at+locs[i  ].len,
-                                locs[i+1].at-1
+                        for(in:[0, introspect.keycount(of:locs)-1], do:::(i) {
+                            out.push(value:this.substr(
+                                from: locs[i  ].at+locs[i  ].len,
+                                to:   locs[i+1].at-1
                             ));
                         });
 
 
                         if (endsWith) ::<={
-                            @loc = locs[introspect.keycount(locs)-1];
-                            out.push(this.substr(loc.at + loc.len, this.length-1));
+                            @loc = locs[introspect.keycount(of:locs)-1];
+                            out.push(value: this.substr(from:loc.at + loc.len, to: this.length-1));
                         };
 
 
@@ -215,42 +218,42 @@
             
  
 
-        });
+        };
         
-        this.attributes({
+        this.attributes = {
             (String) :: {
-                return _string_get_string(handle);
+                return _string_get_string(a:handle);
             },
 
             'foreach' :: {
                 @a = [];
-                for([0, this.length], ::(i) {
-                    a[i] = this.charAt(i);
+                for(in:[0, this.length], do:::(i) {
+                    a[i] = this.charAt(index:i);
                 });
                 return a;
             },
             
             '+' :: (other){
-                @out = classinst.new(String(this));
-                out.append(other);
+                @out = thisClass.new(from:String(from:this));
+                out.append(other:other);
                 return out;
             },
             
             '+=' ::(other) {
-                this.append(other);
+                this.append(other:other);
             },
             
             '[]' : {
                 get ::(index => Number) {   
-                    return _string_charat(handle, index);
+                    return _string_charat(a:handle, b:index);
                 },
                 
                 
                 set ::(index => Number, b) {
-                    _string_setcharat(handle, index, String(b));
+                    _string_setcharat(a:handle, b:index, c:String(from:b));
                 }
             }
-        });
+        };
     }
 });
 return String_;

@@ -18,7 +18,7 @@ static void strobj_cleanup(void * userdata, void * fndata) {
 }
 
 MATTE_EXT_FN(matte_core__string_create) {
-    matteValue_t input = matte_array_at(args, matteValue_t, 0);
+    matteValue_t input = args[0];
 
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t v = matte_heap_new_value(heap);
@@ -49,7 +49,7 @@ static MatteStringObject * get_strobj(matteVM_t * vm, matteValue_t v) {
 
 MATTE_EXT_FN(matte_core__string_get_length) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t out = matte_heap_new_value(heap);
@@ -59,10 +59,10 @@ MATTE_EXT_FN(matte_core__string_get_length) {
 
 MATTE_EXT_FN(matte_core__string_set_length) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
@@ -83,10 +83,10 @@ MATTE_EXT_FN(matte_core__string_set_length) {
 
 MATTE_EXT_FN(matte_core__string_search) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
@@ -121,17 +121,17 @@ MATTE_EXT_FN(matte_core__string_search) {
 
 MATTE_EXT_FN(matte_core__string_replace) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
     }
     const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
 
-    newlV = matte_array_at(args, matteValue_t, 2);
+    newlV = args[2];
     if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
@@ -178,10 +178,10 @@ MATTE_EXT_FN(matte_core__string_replace) {
     
 MATTE_EXT_FN(matte_core__string_count) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
@@ -213,10 +213,10 @@ MATTE_EXT_FN(matte_core__string_count) {
     
 MATTE_EXT_FN(matte_core__string_charcodeat) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
@@ -235,10 +235,10 @@ MATTE_EXT_FN(matte_core__string_charcodeat) {
 
 MATTE_EXT_FN(matte_core__string_charat) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
@@ -257,10 +257,10 @@ MATTE_EXT_FN(matte_core__string_charat) {
 
 MATTE_EXT_FN(matte_core__string_setcharcodeat) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
@@ -271,7 +271,7 @@ MATTE_EXT_FN(matte_core__string_setcharcodeat) {
         return matte_heap_new_value(heap);        
     }
     
-    newlV = matte_array_at(args, matteValue_t, 2);
+    newlV = args[2];
     if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
@@ -285,10 +285,10 @@ MATTE_EXT_FN(matte_core__string_setcharcodeat) {
 
 MATTE_EXT_FN(matte_core__string_setcharat) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
@@ -299,7 +299,7 @@ MATTE_EXT_FN(matte_core__string_setcharat) {
         return matte_heap_new_value(heap);        
     }
     
-    newlV = matte_array_at(args, matteValue_t, 2);
+    newlV = args[2];
     if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
@@ -316,10 +316,10 @@ MATTE_EXT_FN(matte_core__string_setcharat) {
 
 MATTE_EXT_FN(matte_core__string_append) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
@@ -338,11 +338,11 @@ MATTE_EXT_FN(matte_core__string_append) {
 
 MATTE_EXT_FN(matte_core__string_removechar) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
@@ -360,11 +360,11 @@ MATTE_EXT_FN(matte_core__string_removechar) {
 
 MATTE_EXT_FN(matte_core__string_substr) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
@@ -375,7 +375,7 @@ MATTE_EXT_FN(matte_core__string_substr) {
         return matte_heap_new_value(heap);        
     }
 
-    newlV = matte_array_at(args, matteValue_t, 2);
+    newlV = args[2];
     if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
@@ -396,10 +396,10 @@ MATTE_EXT_FN(matte_core__string_substr) {
 
 MATTE_EXT_FN(matte_core__string_split) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
-    matteValue_t newlV = matte_array_at(args, matteValue_t, 1);
+    matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
@@ -447,7 +447,7 @@ MATTE_EXT_FN(matte_core__string_split) {
 
 MATTE_EXT_FN(matte_core__string_get_string) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    MatteStringObject * st = get_strobj(vm, matte_array_at(args, matteValue_t, 0));     
+    MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t out = matte_heap_new_value(heap);
@@ -458,20 +458,20 @@ MATTE_EXT_FN(matte_core__string_get_string) {
 
 
 static void matte_core__string(matteVM_t * vm) {
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_create"),     1, matte_core__string_create,   NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_get_length"), 1, matte_core__string_get_length,   NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_set_length"), 2, matte_core__string_set_length,   NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_search"),     2, matte_core__string_search, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_replace"),    3, matte_core__string_replace, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_count"),      2, matte_core__string_count, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_charcodeat"), 2, matte_core__string_charcodeat, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_charat"),     2, matte_core__string_charat, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_setcharcodeat"), 3, matte_core__string_setcharcodeat, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_setcharat"),  3, matte_core__string_setcharat, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_append"),     2, matte_core__string_append, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_removechar"), 2, matte_core__string_removechar, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_substr"),     3, matte_core__string_substr, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_split"),      2, matte_core__string_split, NULL);
-    matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_get_string"), 1, matte_core__string_get_string, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_create"),     1, matte_core__string_create,   NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_get_length"), 1, matte_core__string_get_length,   NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_set_length"), 2, matte_core__string_set_length,   NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_search"),     2, matte_core__string_search, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_replace"),    3, matte_core__string_replace, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_count"),      2, matte_core__string_count, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_charcodeat"), 2, matte_core__string_charcodeat, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_charat"),     2, matte_core__string_charat, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_setcharcodeat"), 3, matte_core__string_setcharcodeat, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_setcharat"),  3, matte_core__string_setcharat, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_append"),     2, matte_core__string_append, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_removechar"), 2, matte_core__string_removechar, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_substr"),     3, matte_core__string_substr, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_split"),      2, matte_core__string_split, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::string_get_string"), 1, matte_core__string_get_string, NULL);
 
 }

@@ -12,8 +12,8 @@
         valDecimal = introspect.abs(of:value - introspect.floor(of:value) - 1);
         valInteger = introspect.floor(of:value) + 1;
     } else ::<={
-        valDecimal = value - introspect.floor(value);
-        valInteger = introspect.floor(value);
+        valDecimal = value - introspect.floor(of:value);
+        valInteger = introspect.floor(of:value);
     };
 
     @ref = {
@@ -21,26 +21,27 @@
         integer  : valInteger
     };
     
-    setAttributes(ref, {
-        '+' ::(a) {
-            return createNumber(value:value + (a.decimal + a.integer));
-        },
+    setAttributes(of:ref, 
+        attributes: {
+            '+' ::(other) {
+                return createNumber(value:value + (other.decimal + other.integer));
+            },
 
-        '-' ::(a) {
-            return createNumber(value:value - (a.decimal + a.integer));
-        },
+            '-' ::(other) {
+                return createNumber(value:value - (other.decimal + other.integer));
+            },
 
-        '/' ::(a) {
-            return createNumber(value:value / (a.decimal + a.integer));
-        },
+            '/' ::(other) {
+                return createNumber(value:value / (other.decimal + other.integer));
+            },
 
-        '*' ::(a) {
-            return createNumber(value:value * (a.decimal + a.integer));
-        },
+            '*' ::(other) {
+                return createNumber(value:value * (other.decimal + other.integer));
+            },
 
-        (String) :: {
-            return 'Integer:' + valInteger + ',Decimal:' + valDecimal; 
-        }
+            (String) :: {
+                return 'Integer:' + valInteger + ',Decimal:' + valDecimal; 
+            }
     });
     
     return ref;

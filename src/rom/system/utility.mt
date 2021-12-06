@@ -1,16 +1,16 @@
-@MatteString = import("Matte.Core.String");
-@class = import("Matte.Core.Class");
+@MatteString = import(module:"Matte.Core.String");
+@class = import(module:"Matte.Core.Class");
 
 
-@_nextRand = getExternalFunction("__matte_::utility_nextRand");
+@_nextRand = getExternalFunction(name:"__matte_::utility_nextRand");
+@_run = getExternalFunction(name:"__matte_::utility_system");
+getExternalFunction(name:"__matte_::utility_initRand")();
 
-getExternalFunction("__matte_::utility_initRand")();
 
-
-return class({
+return class(definition:{
     name : 'Matte.Core.Utility',
-    define::(this) {
-        this.interface({
+    instantiate::(this) {
+        this.interface = {
             
             // returns a random value between 0 and 1.
             random : {
@@ -21,11 +21,13 @@ return class({
 
 
             /// time 
-            exit : getExternalFunction("__matte_::utility_exit"),
+            exit : getExternalFunction(name:"__matte_::utility_exit"),
 
 
             /// Execute command in the environment shell
-            run : getExternalFunction("__matte_::utility_system")
-        });
+            run ::(command) {
+                _run(a:command);
+            }
+        };
     }
 }).new();

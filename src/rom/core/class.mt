@@ -1,25 +1,111 @@
 
-@class ::(d) {
+@class ::(definition) {
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.
     <@> arraylen ::(a){
-        return introspect.keycount(a);
+        return introspect.keycount(of:a);
     };
 
     <@> arraypush ::(a, b){
-        a[introspect.keycount(a)] = b;
+        a[introspect.keycount(of:a)] = b;
     };
 
     <@> arrayclone ::(a) {
         <@> out = {};
-        for([0, arraylen(a)], ::(i){
+        for(in:[0, arraylen(a:a)], do:::(i){
             out[i] = a[i];
         });
         return out;
     };
 
+    @type = newtype(name : defintion.name);
+    @classinst = {};
+
+    // the actual instantiate call.
+    @userInstantiate = definition.instantiate;
+    setAttributes(
+        of         : classinst,
+        attributes : {
+            '.' : {
+                get ::(key => String) => Function {
+                    if (key == 'new'){
+                        @newinst = instantiate(type:classinst.type);
+                        userInstantiate(this:newinst, thisClass:classinst);
+
+                        
+                        @interface = {};
+                        if (newinst.interface != empty) ::<={
+                            foreach(in:newinst.interface, do:::(k => String, v) {
+                                if (introspect.type(of:v) == Function) ::<= {
+                                    interface[k] = {
+                                        isFunction : true,
+                                        fn : v;
+                                    };
+                                } else ::<={
+                                    interface[k] = {
+                                        isFunction : false,
+                                        get : v.get,
+                                        set : v.set
+                                    };                                    
+                                };
+                            });
+                        }
 
 
+
+                        @attribs;
+                        if (newinst.attributes == empty) ::<={
+                            attribs = {};
+                        } else ::<= {
+                            attribs = newinst.attributes;
+                        }
+
+                        attribs['.'] = {
+                            get:: (key) {
+                                @result = interface[key];
+                                when(result == empty) 
+                                    error('' +key+ " does not exist within this instance's class.");
+                                
+                                when(result.isFunction) result.fn;
+                                @get = result.get;
+                                when(get == empty) error('The attribute is not readable.');
+                                return get();
+                            },
+
+
+                            set:: (key, value) {
+                                @result = interface[key];
+                                when(result == empty) 
+                                    error('' +key+ " does not exist within this instance's class.");
+                                
+                                when(result.isFunction) error('Interface functions cannot be overwritten.');
+                                @set = result.set;
+                                when(set == empty) error('The attribute is not writable.');
+                                return set(value:value);
+                            }
+                        };
+                            
+
+                        setAttributes(
+                            of: newinst,
+                            attributes : attribs
+                        );
+
+
+                        when(newinst.constructor != empty) return newinst.constructor;
+                        return ::{return newinst};
+                    }
+                }
+            }
+        }
+    );
+
+    return classinst;
+
+
+
+
+    /*
 
     <@> classinst = {};
     <@> define = d.define;
@@ -29,37 +115,37 @@
     <@> inherits = if(d.inherits)::{
         <@> types = [];
         <@> addbase ::(other){
-            for([0, arraylen(other)], ::(n){
+            for(in:[0, arraylen(a:other)], ::(n){
                 <@>g = other[n];
 
-                if(listen(::{
-                    for([0, arraylen(allclass)], ::(i) {
+                if(listen(to:::{
+                    for([0, arraylen(a:allclass)], ::(i) {
                         if (allclass[i] == g) ::<={
-                            send(true);                        
+                            send(message:true);                        
                         };                
                     });
                     return false;                
                 })) ::<={
-                    arraypush(allclass, g);            
+                    arraypush(a:allclass, b:g);            
                 };
             });
         };
 
-        when(arraylen(d.inherits)) ::{
-            for([0, arraylen(d.inherits)], ::(i){
-                arraypush(types, d.inherits[i].type);
+        when(arraylen(a:d.inherits)) ::{
+            for([0, arraylen(a:d.inherits)], ::(i){
+                arraypush(a:types, b:d.inherits[i].type);
                 addbase(d.inherits[i].interfaces);
             });
-            classinst.type = newtype({'name' : d.name, inherits:types});
+            classinst.type = newtype(name: d.name, inherits:types);
             return d.inherits;
         }();
-        classinst.type = newtype({'name' : d.name});
+        classinst.type = newtype(name: d.name};
         addbase(d.inherits.interfaces);
         return d.inherits;
     }() else ::{
-        classinst.type = newtype({'name' : d.name});
+        classinst.type = newtype(name: d.name});
     }();
-    arraypush(allclass, classinst);
+    arraypush(a:allclass, b:classinst);
 
     if(d.declare) d.declare();
 
@@ -70,9 +156,9 @@
         
         when(dormantCount > 0)::<={
             @out = dormant[dormantCount-1];
-            removeKey(dormant, dormantCount-1);
+            removeKey(from:dormant, key:dormantCount-1);
             dormantCount-=1;
-            for([0, arraylen(out.onRevive)], ::(i){
+            for([0, arraylen(a:out.onRevive)], ::(i){
                 out.onRevive[i](args);
             });          
 
@@ -223,7 +309,7 @@
 
         return out;
     };
-    return classinst;
+    */
 };
 
 return class;

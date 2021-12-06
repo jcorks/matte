@@ -68,20 +68,20 @@ listen(to:::{
 
 
 listen(to:::{
-    out = out + introspect.subset(20);
+    out = out + introspect.subset(set:20);
 }, onMessage:::{
     out = out + 'B';
 });
 
 listen(to:::{
-    out = out + introspect.subset([0, 1, 2], 1);
+    out = out + introspect.subset(set:[0, 1, 2], from:1);
 }, onMessage:::{
     out = out + 'C';
 });
 
 
 listen(to:::{
-    out = out + introspect.subset([0, 1, 2], '1', 2);
+    out = out + introspect.subset(set:[0, 1, 2], from:'1', to:2);
 }, onMessage:::{
     out = out + 'C';
 });

@@ -116,7 +116,7 @@ static void onErrorCatch(
     void * data
 ) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, value));
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_value_object_access_string(heap, value, MATTE_VM_STR_CAST(vm, "detail"))));
     printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
     printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
     uint32_t stacksize = matte_vm_get_stackframe_size(vm);
@@ -195,14 +195,14 @@ char * dump_string(const char * filename) {
 static matteValue_t test_external_function(
     matteVM_t * vm,
     matteValue_t fn, 
-    matteArray_t * args,
+    const matteValue_t * args,
     void * data
 ) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = matte_heap_new_value(heap);
     matte_value_into_number(heap, &a,
-        matte_value_as_number(heap, matte_array_at(args, matteValue_t, 0)) + 
-        matte_value_as_number(heap, matte_array_at(args, matteValue_t, 1))
+        matte_value_as_number(heap, args[0]) + 
+        matte_value_as_number(heap, args[1])
     );
     return a;
 }
@@ -236,7 +236,12 @@ int main() {
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
         matteHeap_t * heap = matte_vm_get_heap(vm);
-        matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "external_test!"), 2, test_external_function, NULL);
+        const matteString_t * externalNames[] = {
+            MATTE_VM_STR_CAST(vm, "a"),
+            MATTE_VM_STR_CAST(vm, "b")
+        };
+        matteArray_t temp = MATTE_ARRAY_CAST(externalNames, matteString_t *, 2);
+        matte_vm_set_external_function(vm, MATTE_VM_STR_CAST(vm, "external_test!"), &temp, test_external_function, NULL);
         matte_vm_set_unhandled_callback(vm, onErrorCatch, NULL);
 
 
@@ -262,12 +267,12 @@ int main() {
         }
         
 
-        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_new_file_id(vm, infile), outBytes, outByteLen);
+        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(heap, matte_vm_get_new_file_id(vm, infile), outBytes, outByteLen);
         matte_vm_add_stubs(vm, arr);
         matte_array_destroy(arr);
         free(outBytes);
 
-        matteValue_t v = matte_vm_run_script(vm, i+1, matte_array_empty());
+        matteValue_t v = matte_vm_run_script(vm, i+1, matte_array_empty(), matte_array_empty());
 
         char * outstr = dump_string(matte_string_get_c_str(outfile));
         if (!outstr) {

@@ -1,21 +1,21 @@
-@MString = import('Matte.Core.String');
-@Array = import('Matte.Core.Array');
+@MString = import(module:'Matte.Core.String');
+@Array = import(module:'Matte.Core.Array');
+@class = import(module:'Matte.Core.Class');
 @JSON = {
-    name : 'Matte.Core.JSON',
     encode :: (obj) {        
         @encodeValue ::(obj){
             @encodeSub = context;
-            return match(introspect.type(obj)) {
+            return match(introspect.type(of:obj)) {
                 (Number): ''+obj,
                 (String): '\"'+obj+'\"',
                 (Boolean): ''+obj,
                 (Object): ::{
                     @ostr = '{';
-                    foreach(obj, ::(k, v){
+                    foreach(in:obj, do:::(k, v){
                         if (ostr != '{')::{
                             ostr = ostr+',';
                         }();
-                        ostr = ostr + '\"'+String(k)+'\":'+encodeSub(v);
+                        ostr = ostr + '\"'+String(from:k)+'\":'+encodeSub(obj:v);
                     });
                     @ostr = ostr+'}';
                     return ostr;
@@ -23,19 +23,19 @@
             };
         };
         
-        return encodeValue(obj);
+        return encodeValue(obj:obj);
     },
     
     
     decode ::(str) {
-        str = MString.new(str);
+        str = MString.new(from:str);
         
         <@>trimSpace::(substr) {
-            loop(::{
-                return match(substr.charAt(0)) {
+            loop(function:::{
+                return match(substr.charAt(index:0)) {
                     // found whitespace. remove it and look again
                     (' ', '\r', '\n', '\t'): ::{
-                        substr.removeChar(0);
+                        substr.removeChar(index:0);
                         return true;
                     }(),
 
@@ -47,20 +47,20 @@
 
         @decodeValue::(iter){
             <@>decodeV = context;
-            trimSpace(iter);
-            return match(iter.charAt(0)){
+            trimSpace(substr:iter);
+            return match(iter.charAt(index:0)){
                 
                 // parse and consume string
                 ('\"'): ::{
                     // skip '"'
-                    iter.removeChar(0);
+                    iter.removeChar(index:0);
                     @rawstr = '';
-                    loop(::{
-                        return match(iter.charAt(0)) {
+                    loop(function:::{
+                        return match(iter.charAt(index:0)) {
                             // escape sequence
                             ('\\'): ::{
-                                iter.removeChar(0);
-                                match(iter.charAt(0)) {
+                                iter.removeChar(index:0);
+                                match(iter.charAt(index:0)) {
                                     ('n'): ::{
                                         rawstr = rawstr + '\n';
                                     }(),
@@ -77,21 +77,21 @@
                                         rawstr = rawstr + '\\';
                                     }(),
 
-                                    default: error('Unknown escape sequence.')
+                                    default: error(data:'Unknown escape sequence.')
                                 };
-                                iter.removeChar(0);
+                                iter.removeChar(index:0);
                                 return true;
                             }(),
 
                             // end of string 
                             ('"'): ::{
-                                iter.removeChar(0);
+                                iter.removeChar(index:0);
                                 return false;
                             }(),
 
                             default: ::{
-                                rawstr = rawstr + iter.charAt(0);
-                                iter.removeChar(0);
+                                rawstr = rawstr + iter.charAt(index:0);
+                                iter.removeChar(index:0);
                                 return true;
                             }()
                         };
@@ -103,46 +103,46 @@
                 
                 // true or false
                 ('t'): ::{
-                    return (if (iter.charAt(1) == 'r' &&
-                                iter.charAt(2) == 'u' &&
-                                iter.charAt(3) == 'e') ::{
-                        iter.removeChar(0);
-                        iter.removeChar(0);
-                        iter.removeChar(0);
-                        iter.removeChar(0);
+                    return (if (iter.charAt(index:1) == 'r' &&
+                                iter.charAt(index:2) == 'u' &&
+                                iter.charAt(index:3) == 'e') ::{
+                        iter.removeChar(index:0);
+                        iter.removeChar(index:0);
+                        iter.removeChar(index:0);
+                        iter.removeChar(index:0);
                         return true;
                     }() else ::{
-                        error('Unrecognized token (expected true)');
+                        error(data:'Unrecognized token (expected true)');
                     }());
                 }(),
                 
                 ('f'): ::{
-                    return (if (iter.charAt(1) == 'a' &&
-                                iter.charAt(2) == 'l' &&
-                                iter.charAt(3) == 's' &&
-                                iter.charAt(4) == 'e') ::{
-                        iter.removeChar(0);
-                        iter.removeChar(0);
-                        iter.removeChar(0);
-                        iter.removeChar(0);
-                        iter.removeChar(0);
+                    return (if (iter.charAt(index:1) == 'a' &&
+                                iter.charAt(index:2) == 'l' &&
+                                iter.charAt(index:3) == 's' &&
+                                iter.charAt(index:4) == 'e') ::{
+                        iter.removeChar(index:0);
+                        iter.removeChar(index:0);
+                        iter.removeChar(index:0);
+                        iter.removeChar(index:0);
+                        iter.removeChar(index:0);
                         return false;
                     }() else ::{
-                        error('Unrecognized token (expected true)');
+                        error(data:'Unrecognized token (expected true)');
                     }());
                 }(),
                 
                 
                 // number
                 ('.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::{
-                    @rawnumstr = iter.charAt(0);
-                    iter.removeChar(0);
+                    @rawnumstr = iter.charAt(index:0);
+                    iter.removeChar(index:0);
 
-                    loop(::{
-                        return match(iter.charAt(0)) {
+                    loop(function:::{
+                        return match(iter.charAt(index:0)) {
                             ('0', '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::<={
-                                rawnumstr = rawnumstr + iter.charAt(0);
-                                iter.removeChar(0);
+                                rawnumstr = rawnumstr + iter.charAt(index:0);
+                                iter.removeChar(index:0);
                                 return true;
                             },
 
@@ -150,52 +150,52 @@
                         };       
                     });
 
-                    return Number(rawnumstr);
+                    return Number(from:rawnumstr);
                 }(),
                     
                    
                 // object
                 ('{'): ::{
                     // skip '{'
-                    iter.removeChar(0);
-                    trimSpace(iter);
+                    iter.removeChar(index:0);
+                    trimSpace(substr:iter);
 
                     // empty object!
-                    when(iter.charAt(0) == '}'){};
+                    when(iter.charAt(index:0) == '}'){};
 
                     @out = {};
 
                     // loop over "key": value,
-                    loop(::{
+                    loop(function:::{
 
                         // get string
-                        @key = decodeV(iter);
-                        trimSpace(iter);
+                        @key = decodeV(iter:iter);
+                        trimSpace(substr:iter);
 
                         // skip ':'
-                        iter.removeChar(0);
-                        trimSpace(iter);
+                        iter.removeChar(index:0);
+                        trimSpace(substr:iter);
 
                         // get value
-                        @val = decodeV(iter);
-                        trimSpace(iter);
+                        @val = decodeV(iter:iter);
+                        trimSpace(substr:iter);
 
                         out[key] = val;
 
-                        return match(iter.charAt(0)) {
+                        return match(iter.charAt(index:0)) {
                             (','): ::{
-                                iter.removeChar(0);
+                                iter.removeChar(index:0);
                                 return true;
                             }(),
 
                             // object over
                             ('}'): ::{
-                                iter.removeChar(0);
+                                iter.removeChar(index:0);
                                 return false;
                             }(),
 
                             default: ::{
-                                error("Unknown character");
+                                error(message:"Unknown character");
                             }()
                         };
                     });
@@ -208,36 +208,36 @@
                 // array
                 ('['): ::{
                     // skip '['
-                    iter.removeChar(0);
-                    trimSpace(iter);
+                    iter.removeChar(index:0);
+                    trimSpace(substr:iter);
 
                     // empty object!
-                    when(iter.charAt(0) == ']')[];
+                    when(iter.charAt(index:0) == ']')[];
 
                     @arr = Array.new();
 
                     // loop over value,
-                    loop(::{
+                    loop(functio:::{
                         // get value
-                        @val = decodeV(iter);
-                        trimSpace(iter);
+                        @val = decodeV(iter:iter);
+                        trimSpace(substr:iter);
 
-                        arr.push(val);
+                        arr.push(value:val);
 
-                        return match(iter.charAt(0)) {
+                        return match(iter.charAt(index:0)) {
                             (','): ::{
-                                iter.removeChar(0);
+                                iter.removeChar(index:0);
                                 return true;
                             }(),
 
                             // object over
                             (']'): ::{
-                                iter.removeChar(0);
+                                iter.removeChar(index:0);
                                 return false;
                             }(),
 
                             default: ::{
-                                error("Unknown character");
+                                error(message:"Unknown character");
                             }()
                         };
                     });
@@ -246,11 +246,11 @@
                 }(),
 
 
-                default: error("Could not parse object \""+iter+'\"')
+                default: error(message:"Could not parse object \""+iter+'\"')
             };        
         };
 
-        return decodeValue(str);
+        return decodeValue(iter:str);
     }
 };
 

@@ -6,17 +6,17 @@
 @emptyOnError = listen(to:::{    
     listen(to: 
         ::{
-            error(data:'Testing');
+            error(detail:'Testing');
         },
 
         onMessage: ::(msg) {
             errMessage = 'InnerMessage';
-            error(data:'whoops');
+            error(detail:'whoops');
         }
     );
     
     return 100;
-}, ::(t){
+}, onMessage:::(message){
     errMessage = 'outerMessage';
 });
 return errMessage + emptyOnError;
