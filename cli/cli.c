@@ -177,7 +177,7 @@ int main(int argc, char ** args) {
                 printf("Couldn't open file %s\n", args[2+i]);
                 exit(1);
             }
-            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, args[2+i])), data, len);
+            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_heap(vm), matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, args[2+i])), data, len);
             if (arr) {
                 uint32_t j;
                 uint32_t jlen = matte_array_get_size(arr);
@@ -206,7 +206,7 @@ int main(int argc, char ** args) {
 
         uint32_t len = matte_array_get_size(fileID);
         for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_vm_run_script(vm, matte_array_at(fileID, uint32_t, i), arr);
+            matteValue_t v = matte_vm_run_script(vm, matte_array_at(fileID, uint32_t, i), matte_array_empty(), matte_array_empty());
             printf("> %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), v))));
             matte_heap_recycle(matte_vm_get_heap(vm), v);
         }
@@ -291,14 +291,14 @@ int main(int argc, char ** args) {
         }
         
         {
-            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(FILEIDS, outBytes, outByteLen);
+            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_heap(vm), FILEIDS, outBytes, outByteLen);
             free(outBytes);
             matte_vm_add_stubs(vm, arr);
             matte_array_destroy(arr);
         }
         matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
         for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_vm_run_script(vm, FILEIDS, arr);
+            matteValue_t v = matte_vm_run_script(vm, FILEIDS, matte_array_empty(), matte_array_empty());
             const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), v));
             if (str && v.binID != 0) {
                 printf("> %s\n", matte_string_get_c_str(str));

@@ -146,8 +146,7 @@ static int execCommand() {
                !strcmp(command, "r")) {
         if (!started) {
             started = 1;
-            matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
-            matte_vm_run_script(vm, DEBUG_FILEID, arr);
+            matte_vm_run_script(vm, DEBUG_FILEID, matte_array_empty(), matte_array_empty());
 
 
         printf("Execution complete.\n");
@@ -242,7 +241,7 @@ static int execCommand() {
                !strcmp(command, "p")) {
 
         matteString_t * src = matte_string_create();
-        matte_string_concat_printf(src, "return import('debug.mt').printObject(%s);", res);
+        matte_string_concat_printf(src, "return import(module:'debug.mt').printObject(o:%s);", res);
 
 
         matteValue_t output = matte_vm_run_scoped_debug_source(
@@ -357,7 +356,7 @@ int matte_debug(const char * input, char ** argv, int argc) {
         exit(1);
     }
     lastCommand = strdup("");
-    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(DEBUG_FILEID, outBytes, outByteLen);
+    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_heap(vm), DEBUG_FILEID, outBytes, outByteLen);
     matte_vm_add_stubs(vm, arr);
     printf("...Done! (%.2fKB to %.2fKB)\n\n", lenBytes / 1000.0, outByteLen / 1000.0);
 

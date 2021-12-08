@@ -1,4 +1,5 @@
 
+
 @class ::(definition) {
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.
@@ -18,19 +19,22 @@
         return out;
     };
 
-    @type = newtype(name : defintion.name);
+    @type = newtype(name : definition.name);
     @classinst = {};
 
     // the actual instantiate call.
-    @userInstantiate = definition.instantiate;
+    @userDefine = definition.define;
     setAttributes(
         of         : classinst,
         attributes : {
             '.' : {
                 get ::(key => String) => Function {
-                    if (key == 'new'){
-                        @newinst = instantiate(type:classinst.type);
-                        userInstantiate(this:newinst, thisClass:classinst);
+                    when(key == 'new')::<={
+                        @newinst = instantiate(type:type);
+                        newinst.class = classinst;
+                        newinst.type = type;
+                        userDefine(this:newinst);
+                        @constructor = newinst.constructor;
 
                         
                         @interface = {};
@@ -39,7 +43,7 @@
                                 if (introspect.type(of:v) == Function) ::<= {
                                     interface[k] = {
                                         isFunction : true,
-                                        fn : v;
+                                        fn : v
                                     };
                                 } else ::<={
                                     interface[k] = {
@@ -49,7 +53,7 @@
                                     };                                    
                                 };
                             });
-                        }
+                        };
 
 
 
@@ -58,17 +62,17 @@
                             attribs = {};
                         } else ::<= {
                             attribs = newinst.attributes;
-                        }
+                        };
 
                         attribs['.'] = {
                             get:: (key) {
                                 @result = interface[key];
                                 when(result == empty) 
-                                    error('' +key+ " does not exist within this instance's class.");
-                                
+                                    error(detail:'' +key+ " does not exist within this instance's class.");
+                                                                
                                 when(result.isFunction) result.fn;
                                 @get = result.get;
-                                when(get == empty) error('The attribute is not readable.');
+                                when(get == empty) error(detail:'The attribute is not readable.');
                                 return get();
                             },
 
@@ -76,15 +80,16 @@
                             set:: (key, value) {
                                 @result = interface[key];
                                 when(result == empty) 
-                                    error('' +key+ " does not exist within this instance's class.");
+                                    error(detail:'' +key+ " does not exist within this instance's class.");
                                 
-                                when(result.isFunction) error('Interface functions cannot be overwritten.');
+                                when(result.isFunction) error(detail:'Interface functions cannot be overwritten.');
                                 @set = result.set;
-                                when(set == empty) error('The attribute is not writable.');
+                                when(set == empty) error(detail:'The attribute is not writable.');
                                 return set(value:value);
                             }
                         };
                             
+                        removeKey(from:newinst, keys:['class', 'type', 'constructor', 'interfaces']);
 
                         setAttributes(
                             of: newinst,
@@ -92,9 +97,12 @@
                         );
 
 
-                        when(newinst.constructor != empty) return newinst.constructor;
-                        return ::{return newinst};
-                    }
+                        when(constructor != empty) constructor;
+                        return ::{return newinst;};
+                    };
+                    
+                    
+                    error(detail:'No such member of the class object.');
                 }
             }
         }
@@ -312,22 +320,40 @@
     */
 };
 
-return class;
-
-
-
-
-
+//return class;
 
 /*
-@test = Array.new([4, 2, 6, 3, 10, 1, 0, -40, 349, 0, 10, 43]);
-print(test);
-test.sort();
-print('' + test + '\n\n');
+@Shape = class(definition: {
+    define::(this) {
+        @len;
+        
+        
+        
+        this.constructor = ::(length) {
+            len = length;    
+            return this;    
+        };
+        
+        
+        this.interface = {
+            len : {
+                get ::{
+                    return len;
+                }
+            },
+            
+            mutate :: {
+                len += 10;
+            }
+        };
+    }
+});
 
 
-@t = String.new("Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.");
-print(t.split(' '));
-print(t.count(' '));
+@m = Shape.new(length:10);
+print(message:String(from:m.len));
+m.mutate();
+print(message:String(from:m.len));
+m.dhwadh();
 */
 

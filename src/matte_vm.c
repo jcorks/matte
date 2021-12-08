@@ -407,11 +407,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             } else {
                 matteVMStackFrame_t f = matte_vm_get_stackframe(vm, vm->namedRefIndex+1);
                 if (f.context.binID) {
-                    matteValue_t v = matte_value_frame_get_named_referrable(vm->heap, 
+                    matteValue_t v0 = matte_value_frame_get_named_referrable(vm->heap, 
                         &f, 
                         v
                     ); 
-                    STACK_PUSH(v);
+                    STACK_PUSH(v0);
                 }
             }
             break;
@@ -1086,7 +1086,8 @@ matteVM_t * matte_vm_create() {
     const matteString_t * import_name = MATTE_VM_STR_CAST(vm, "module");
     const matteString_t * removeKey_names[] = {
         MATTE_VM_STR_CAST(vm, "from"),
-        MATTE_VM_STR_CAST(vm, "key")
+        MATTE_VM_STR_CAST(vm, "key"),
+        MATTE_VM_STR_CAST(vm, "keys")
     };
     const matteString_t * type_names[] = {
         MATTE_VM_STR_CAST(vm, "name"),
@@ -1126,7 +1127,7 @@ matteVM_t * matte_vm_create() {
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_FOR,    &temp, vm_ext_call__for);
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, &temp, vm_ext_call__foreach);
     temp = MATTE_ARRAY_CAST(&import_name, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  &temp, vm_ext_call__import);
-    temp = MATTE_ARRAY_CAST(removeKey_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_REMOVE_KEY,  &temp, vm_ext_call__remove_key);
+    temp = MATTE_ARRAY_CAST(removeKey_names, matteString_t *, 3);vm_add_built_in(vm, MATTE_EXT_CALL_REMOVE_KEY,  &temp, vm_ext_call__remove_key);
     temp = MATTE_ARRAY_CAST(setAttributes_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_SET_ATTRIBUTES,  &temp, vm_ext_call__set_attributes);
     temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_GET_ATTRIBUTES,  &temp, vm_ext_call__get_attributes);
 
@@ -1380,10 +1381,17 @@ matteValue_t matte_vm_call(
             }       
             
             if (n == len) {
+                matteString_t * str;
                 // couldnt find the requested name. Throw an error.
-                matteString_t * str = matte_string_create_from_c_str(
-                    "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
-                );
+                if (len)
+                    str = matte_string_create_from_c_str(
+                        "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
+                    );
+                else {
+                    str = matte_string_create_from_c_str(
+                        "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
+                    );                
+                }
 
                 for(n = 0; n < len; ++n) {
                     matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
@@ -1453,9 +1461,17 @@ matteValue_t matte_vm_call(
             
             if (n == len) {
                 // couldnt find the requested name. Throw an error.
-                matteString_t * str = matte_string_create_from_c_str(
-                    "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
-                );
+                matteString_t * str;
+                if (len) 
+                    str = matte_string_create_from_c_str(
+                        "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
+                    );
+                else {
+                    str = matte_string_create_from_c_str(
+                        "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
+                    );                
+                }
+                
                 
                 for(n = 0; n < len; ++n) {
                     matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
@@ -1527,7 +1543,8 @@ matteValue_t matte_vm_call(
         if (callable == 2) {
             if (ok) 
                 result = vm_execution_loop(vm);
-            matte_value_object_function_post_typecheck_unsafe(vm->heap, d, result);
+            if (!vm->pendingCatchable)            
+                matte_value_object_function_post_typecheck_unsafe(vm->heap, d, result);
         } else {
             result = vm_execution_loop(vm);        
         }

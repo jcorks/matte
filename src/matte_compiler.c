@@ -1480,11 +1480,11 @@ void matte_syntax_graph_walker_destroy(matteSyntaxGraphWalker_t * t) {
 }
 
 
-static void matte_syntax_graph_print_error(
-    matteSyntaxGraphWalker_t * graph,
+static matteString_t * matte_syntax_graph_node_get_string(
+    matteSyntaxGraph_t * graph,
     matteSyntaxGraphNode_t * node
 ) {
-    matteString_t * message = matte_string_create_from_c_str("Syntax Error: Expected ");
+    matteString_t * message = matte_string_create();
     switch(node->type) {
       case MATTE_SYNTAX_GRAPH_NODE__TOKEN: {
         uint32_t i;
@@ -1519,36 +1519,27 @@ static void matte_syntax_graph_print_error(
             matteSyntaxGraphNode_t * nodeSub = node->split.nodes[n];
             uint32_t len = nodeSub->split.count;
 
-            if (len == 1) {
-                matte_string_concat(message, matte_syntax_graph_get_token_name(GRAPHSRC, nodeSub->token.refs[0]));
-            } else {
-                for(i = 0; i < len; ++i) {
-                    if (i == 0 && n == 0) {
-                    } else if (n != lenn-1 && i != len - 1) {
-                        matte_string_concat_printf(message, ", ");
-                    } else {
-                        matte_string_concat_printf(message, ", or ");
-                    }             
-                    matte_string_concat(message, matte_syntax_graph_get_token_name(GRAPHSRC, nodeSub->token.refs[i]));
-                }
-            }
+            matte_string_concat(message, matte_syntax_graph_node_get_string(GRAPHSRC, nodeSub));
             if (n == lenn-2)
                 matte_string_concat_printf(message, "; or ");
             else if (n != lenn-1)
-                matte_string_concat_printf(message, "; ");
-            
+                matte_string_concat_printf(message, "; ");            
 
         }
         break;
 
       }
-
-
-      default:
-        
-        matte_string_concat_printf(message, "[a series of tokens i was too lazy to write the logic to print yet]");
-      
     }
+    
+    return message;
+}
+
+static void matte_syntax_graph_print_error(
+    matteSyntaxGraphWalker_t * graph,
+    matteSyntaxGraphNode_t * node
+) {
+    matteString_t * message = matte_string_create_from_c_str("Syntax Error: Expected ");
+    matte_string_concat(message, matte_syntax_graph_node_get_string(GRAPHSRC, node));
 
     matte_string_concat_printf(message, " but received '");
     matte_string_append_char(message, matte_tokenizer_peek_next(graph->tokenizer));
