@@ -1,6 +1,6 @@
 
 
-@class ::(definition) {
+@class ::(info) {
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.
     <@> arraylen ::(a){
@@ -19,42 +19,124 @@
         return out;
     };
 
-    @type = newtype(name : definition.name);
-    @classinst = {};
+    @type = newtype(name : info.name);
+    @classinst = {define : info.define};
+    @classInherits = info.inherits;
+    
+    // all recycled members currently waiting
+    @recycled = [];
+    @recycledCount = 0;
+    @test = 0;
 
-    // the actual instantiate call.
-    @userDefine = definition.define;
+    
+    @makeInstance::(instSetIn, classObj) {
+        @newinst;
+        @interface;
+        @instSet;
+        @inherited = classObj.inherits;
+
+        
+        // only create a new object ONCE. This is called by 
+        // the "new" function access, and will ALWAYS be of 
+        // the child class type.
+        if (instSetIn == empty) ::<= {
+            instSet = {
+                newinst : instantiate(type:type),
+                interface : {},
+                bases : []
+            };
+            
+            newinst = instSet.newinst;
+            interface = instSet.interface;
+        } else ::<= {
+            instSet = {
+                newinst : instSetIn.newinst,
+                class : classObj,
+                bases : []
+            };
+            newinst = instSetIn.newinst;
+            interface = instSetIn.interface;
+            arraypush(a:instSetIn.bases, b:instSet);            
+        };
+        
+        @runSelf = context;
+        if (inherited != empty) ::<={
+            foreach(in:inherited, do:::(k, v) {
+                runSelf(instSetIn:instSet, classObj:v);            
+            });
+        };
+
+        newinst.class = classinst;
+        newinst.type = type;
+        newinst.constructor = empty;
+        newinst.destructor = empty;
+        classObj['define'](this:newinst);
+        
+        // constructor is what is returned from the new() function the 
+        // user calls.
+        // This means that whatever it returns is what the user code works with 
+        // It /should/ be the 
+            instSet.constructor = newinst.constructor;
+            instSet.destructor = newinst.destructor;
+
+            newinst[classObj] = {
+                constructor : newinst.constructor,
+                destructor : newinst.destructor
+            };        
+        instSet.recycle = newinst.recycle;
+        
+        
+        if (newinst.interface != empty) ::<={
+            foreach(in:newinst.interface, do:::(k => String, v) {
+                if (introspect.type(of:v) == Function) ::<= {
+                    interface[k] = {
+                        isFunction : true,
+                        fn : v
+                    };
+                } else ::<={
+                    interface[k] = {
+                        isFunction : false,
+                        get : v.get,
+                        set : v.set
+                    };                                    
+                };
+            });
+        };
+        return instSet;
+    };
+    
+
+    
     setAttributes(
         of         : classinst,
         attributes : {
             '.' : {
-                get ::(key => String) => Function {
+                get ::(key => String)  {
                     when(key == 'new')::<={
-                        @newinst = instantiate(type:type);
-                        newinst.class = classinst;
-                        newinst.type = type;
-                        userDefine(this:newinst);
-                        @constructor = newinst.constructor;
+                        when(recycledCount > 0) ::()=>Function {
+                            @out = recycled[recycledCount-1];
+                            recycledCount-=1;
+                            removeKey(from:recycled, key:recycledCount);
+                            print(message:'----Remaining: ' + introspect.keycount(of:recycled));
+                            @constructor = getAttributes(of:out).constructor;
+                            when(constructor != empty) constructor;
+                            return ::{return newinst;};
+                        }();
+                    
 
                         
-                        @interface = {};
-                        if (newinst.interface != empty) ::<={
-                            foreach(in:newinst.interface, do:::(k => String, v) {
-                                if (introspect.type(of:v) == Function) ::<= {
-                                    interface[k] = {
-                                        isFunction : true,
-                                        fn : v
-                                    };
-                                } else ::<={
-                                    interface[k] = {
-                                        isFunction : false,
-                                        get : v.get,
-                                        set : v.set
-                                    };                                    
-                                };
-                            });
+                        // populates interfaces and such with inheritance considerations if needed.
+                        @instSet = makeInstance(classObj:classinst); 
+                        @newinst = instSet.newinst;
+                        @interface = instSet.interface;
+                        @recycle = instSet.recycle;
+                        
+                        interface.class = {
+                            isFunction : false,
+                            get ::{
+                                return classinst;
+                            }
                         };
-
 
 
                         @attribs;
@@ -90,6 +172,47 @@
                         };
                             
                         removeKey(from:newinst, keys:['class', 'type', 'constructor', 'interfaces']);
+                        @preserve;
+                        @constructor = instSet.constructor;
+                        @destructor = instSet.destructor;
+
+                        if (recycle == true) ::<= {
+                            if (destructor) ::<= {
+                                attribs.preserver = ::{
+                                    destructor();
+                                    attribs.preserver = context;
+                                    setAttributes(
+                                        of: newinst,
+                                        attributes : attribs
+                                    );
+
+                                    recycled[recycledCount] = newinst;
+                                    recycledCount += 1;
+                                    attribs.constructor = constructor; // needed for recycling return val.
+                                    // TODO: need a better way to handle constructor data.
+                                };  
+                            } else ::<= {
+                                attribs.preserver = ::{
+                                    attribs.preserver = context;
+                                    setAttributes(
+                                        of: newinst,
+                                        attributes : attribs
+                                    );
+
+                                    recycled[recycledCount] = newinst;
+                                    recycledCount += 1;
+                                    attribs.constructor = constructor; // needed for recycling return val.
+                                    // TODO: need a better way to handle constructor data.
+                                };
+                            };
+                        } else ::<= {
+                            if (destructor) ::<= {
+                                attribs.preserver = ::{
+                                    destructor();
+                                };                            
+                            };
+                        };
+
 
                         setAttributes(
                             of: newinst,
@@ -101,6 +224,7 @@
                         return ::{return newinst;};
                     };
                     
+                    when(key == 'inherits') classInherits;
                     
                     error(detail:'No such member of the class object.');
                 }
@@ -109,251 +233,5 @@
     );
 
     return classinst;
-
-
-
-
-    /*
-
-    <@> classinst = {};
-    <@> define = d.define;
-
-    classinst.interfaces = [];
-    <@> allclass = classinst.interfaces;
-    <@> inherits = if(d.inherits)::{
-        <@> types = [];
-        <@> addbase ::(other){
-            for(in:[0, arraylen(a:other)], ::(n){
-                <@>g = other[n];
-
-                if(listen(to:::{
-                    for([0, arraylen(a:allclass)], ::(i) {
-                        if (allclass[i] == g) ::<={
-                            send(message:true);                        
-                        };                
-                    });
-                    return false;                
-                })) ::<={
-                    arraypush(a:allclass, b:g);            
-                };
-            });
-        };
-
-        when(arraylen(a:d.inherits)) ::{
-            for([0, arraylen(a:d.inherits)], ::(i){
-                arraypush(a:types, b:d.inherits[i].type);
-                addbase(d.inherits[i].interfaces);
-            });
-            classinst.type = newtype(name: d.name, inherits:types);
-            return d.inherits;
-        }();
-        classinst.type = newtype(name: d.name};
-        addbase(d.inherits.interfaces);
-        return d.inherits;
-    }() else ::{
-        classinst.type = newtype(name: d.name});
-    }();
-    arraypush(a:allclass, b:classinst);
-
-    if(d.declare) d.declare();
-
-
-    @dormant = [];
-    @dormantCount = 0;
-    classinst.new = ::(args, refs, outsrc) {
-        
-        when(dormantCount > 0)::<={
-            @out = dormant[dormantCount-1];
-            removeKey(from:dormant, key:dormantCount-1);
-            dormantCount-=1;
-            for([0, arraylen(a:out.onRevive)], ::(i){
-                out.onRevive[i](args);
-            });          
-
-            @bops = getAttributes(out);
-            bops.preserver = ::{
-                dormant[dormantCount] = out;
-                dormantCount += 1;
-            };     
-            setAttributes(out, bops);
-                                                      
-
-            return out;
-        };
-        
-        if (refs == empty) ::<={
-            refs = {};
-        };
-        @out = outsrc;
-        if(inherits) ::<={
-            out = if(out)out else instantiate(classinst.type);
-            if(inherits[0] != empty)::<={
-                for([0, arraylen(inherits)], ::(i){
-                    inherits[i].new(args, refs, out);
-                });
-            } else ::<={
-                inherits.new(args, refs, out);
-            };
-        };
-        out = if(out) out else instantiate(classinst.type);
-
-        @setters;
-        @getters;
-        @funcs;
-        @varnames;
-        @mthnames; 
-        @ops;
-        @onRevive;
-        if(introspect.keycount(refs))::<={
-            setters = refs.setters;
-            getters = refs.getters;
-            funcs = refs.funcs;
-            ops = refs.ops;
-            onRevive = refs.onRevive;
-            mthnames = {
-                inherited : refs.publicMethods
-            };
-
-            varnames = {
-                inherited : refs.publicVars
-            };
-            refs.publicVars = varnames;
-            refs.publicMethods = mthnames;
-        } else ::<={
-            setters = {};
-            getters = {};
-            funcs = {};
-            varnames = {};
-            mthnames = {};
-            ops = {};
-            onRevive = [];
-            refs.ops = ops;
-            refs.publicVars = varnames;
-            refs.publicMethods = mthnames;
-            refs.setters = setters;
-            refs.getters = getters;
-            refs.funcs = funcs;
-            refs.onRevive = onRevive;
-
-            getters['introspect'] = ::{
-                return {
-                    public : {
-                        variables : varnames,
-                        methods : mthnames
-                    }
-                };
-            };
-            
-            ops['.'] = {
-                get ::(key) {
-
-                    @out = getters[key];
-                    when(out) out();
-
-                    out = funcs[key];
-                    when(out) out;
-
-                    error('' +key+ " does not exist within this instances class.");
-                },
-
-                set ::(key, value){
-                    @out = setters[key];
-                    when(out) out(value);
-                    error('' +key+ " does not exist within this instances class.");
-                }
-            };
-
-            if (introspect.keycount(onRevive) > 0) ::<={
-                ops.preserver =::{
-                    dormant[dormantCount] = out;
-                    dormantCount += 1;
-                };
-            };
-            setAttributes(out, ops);
-        };
-
-
-        funcs.interface = ::(obj){
-            <@> keys = introspect.keys(obj);
-            foreach(obj, ::(key, v) {
-                //when(introspect.type(v) != Object && introspect.type(v) != Function)::<={
-                //    error("Class interfaces can only have getters/setters and methods. (has type: " + introspect.type(v) + ")");
-                //};
-                
-                if(introspect.isCallable(v))::{
-                    funcs[key] = v;
-                    mthnames[key] = 'function';
-                    //print('ADDING CLASS function: ' + key);
-                }() else ::{
-                    setters[key] = v.set;
-                    getters[key] = v.get;
-                    varnames[key] = match((if(v.set) 1 else 0)+
-                                          (if(v.get) 2 else 0)) {
-                        (1) : 'Write-only',
-                        (2) : 'Read-only',
-                        (3) : 'Read/Write'
-                    };
-                }();
-            });    
-        };
-        
-        funcs.attributes = ::(obj) {
-            foreach(obj, ::(k, v){
-                ops[k] = v;            
-            });
-        };
-
-
-        define(out, args, classinst);
-        removeKey(funcs, 'interface');
-        removeKey(funcs, 'attributes');
-
-        if (funcs['onRevive']) ::<={
-            @or = funcs['onRevive'];
-            arraypush(onRevive, or);
-            funcs['onRevive'] = onRevive;
-        };
-
-
-        return out;
-    };
-    */
 };
-
-//return class;
-
-/*
-@Shape = class(definition: {
-    define::(this) {
-        @len;
-        
-        
-        
-        this.constructor = ::(length) {
-            len = length;    
-            return this;    
-        };
-        
-        
-        this.interface = {
-            len : {
-                get ::{
-                    return len;
-                }
-            },
-            
-            mutate :: {
-                len += 10;
-            }
-        };
-    }
-});
-
-
-@m = Shape.new(length:10);
-print(message:String(from:m.len));
-m.mutate();
-print(message:String(from:m.len));
-m.dhwadh();
-*/
-
+return class;

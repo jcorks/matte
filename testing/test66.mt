@@ -2,12 +2,13 @@
 //
 // Core: Class (5)
 @Class = import(module:'Matte.Core.Class');
-@TestClass = Class(definition:{
-    instantiate::(this, thisType) {
+@TestClass = Class(info:{
+    define::(this) {
         @str;
 
         this.constructor = ::(stringInput) {
             str = stringInput;
+            return this;
         };
 
 

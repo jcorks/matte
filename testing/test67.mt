@@ -2,12 +2,13 @@
 //
 // Core: Class (6)
 @Class = import(module:'Matte.Core.Class');
-@TestClass = Class({
-    define ::(this, thisType) {
+@TestClass = Class(info:{
+    define ::(this) {
         @data;
 
         this.constructor = ::(input) {
             data = input;
+            return this;
         };
 
 
@@ -17,8 +18,8 @@
                     return data - 400;
                 },
 
-                set ::(v) {
-                    data = 1000 + v;
+                set ::(value) {
+                    data = 1000 + value;
                 }
             }
         };

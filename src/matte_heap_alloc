@@ -8,7 +8,7 @@ void matte_value_into_boolean_(matteHeap_t *, matteValue_t *, int);
 void matte_value_into_string_(matteHeap_t *, matteValue_t *, const matteString_t *);
 void matte_value_into_new_object_ref_(matteHeap_t *, matteValue_t *);
 void matte_value_into_new_object_ref_typed_(matteHeap_t *, matteValue_t *, matteValue_t type);
-void matte_value_into_new_type_(matteHeap_t *, matteValue_t *, matteValue_t opts);
+void matte_value_into_new_type_(matteHeap_t *, matteValue_t *, matteValue_t name, matteValue_t inherits);
 void matte_value_into_new_object_literal_ref_(matteHeap_t *, matteValue_t *, const matteArray_t *);
 void matte_value_into_new_object_array_ref_(matteHeap_t *, matteValue_t * v, const matteArray_t *);
 void matte_value_into_new_function_ref_(matteHeap_t *, matteValue_t *, matteBytecodeStub_t *);
@@ -39,7 +39,7 @@ void matte_heap_recycle_(matteHeap_t *, matteValue_t, const char *, int line);
 #define matte_value_into_string(__HEAP__, __VAL__, __MSTRING__) matte_value_into_string_(__HEAP__, __VAL__, __MSTRING__); matte_heap_track_in(__HEAP__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_object_ref(__HEAP__, __VAL__) matte_value_into_new_object_ref_(__HEAP__, __VAL__); matte_heap_track_in(__HEAP__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_object_ref_typed(__HEAP__, __VAL__, __MTYPE__) matte_value_into_new_object_ref_typed_(__HEAP__, __VAL__, __MTYPE__); matte_heap_track_in(__HEAP__,  *(__VAL__), __FILE__, __LINE__);
-#define matte_value_into_new_type(__HEAP__, __VAL__, __MOPTS__)  matte_value_into_new_type_(__HEAP__, __VAL__, __MOPTS__); matte_heap_track_in(__HEAP__, *(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_new_type(__HEAP__, __VAL__, __MOPTS__, __MOPTS2__)  matte_value_into_new_type_(__HEAP__, __VAL__, __MOPTS__, __MOPTS2__); matte_heap_track_in(__HEAP__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_object_literal_ref(__HEAP__, __VAL__, __MARR__) matte_value_into_new_object_literal_ref_(__HEAP__, __VAL__, __MARR__); matte_heap_track_in(__HEAP__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_object_array_ref(__HEAP__, __VAL__, __MARR__) matte_value_into_new_object_array_ref_(__HEAP__, __VAL__, __MARR__); matte_heap_track_in(__HEAP__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_function_ref(__HEAP__, __VAL__, __MSTUB__) matte_value_into_new_function_ref_(__HEAP__, __VAL__, __MSTUB__); matte_heap_track_in(__HEAP__, *(__VAL__), __FILE__, __LINE__);
@@ -59,7 +59,7 @@ void matte_heap_recycle_(matteHeap_t *, matteValue_t);
 #define matte_value_into_string(__HEAP__, __VAL__, __MSTRING__) matte_value_into_string_(__HEAP__, __VAL__, __MSTRING__)
 #define matte_value_into_new_object_ref(__HEAP__, __VAL__) matte_value_into_new_object_ref_(__HEAP__, __VAL__)
 #define matte_value_into_new_object_ref_typed(__HEAP__, __VAL__, __MTYPE__) matte_value_into_new_object_ref_typed_(__HEAP__, __VAL__, __MTYPE__)
-#define matte_value_into_new_type(__HEAP__, __VAL__, __MOPTS__) matte_value_into_new_type_(__HEAP__, __VAL__, __MOPTS__)
+#define matte_value_into_new_type(__HEAP__, __VAL__, __MOPTS__, __MOPTS2__) matte_value_into_new_type_(__HEAP__, __VAL__, __MOPTS__, __MOPTS2__)
 #define matte_value_into_new_object_literal_ref(__HEAP__, __VAL__, __MARR__) matte_value_into_new_object_literal_ref_(__HEAP__, __VAL__, __MARR__)
 #define matte_value_into_new_object_array_ref(__HEAP__, __VAL__, __MARR__) matte_value_into_new_object_array_ref_(__HEAP__, __VAL__, __MARR__)
 #define matte_value_into_new_function_ref(__HEAP__, __VAL__, __MSTUB__) matte_value_into_new_function_ref_(__HEAP__, __VAL__, __MSTUB__); 

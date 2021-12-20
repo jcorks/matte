@@ -2,9 +2,9 @@
 
 
 // Arrays contain a number-indexed collection of values.
-@Array = class(definition:{
+@Array = class(info:{
     name : 'Matte.Core.Array',
-    instantiate::(this, thisClass) {
+    define::(this) {
         @data;
         @len;
 
@@ -15,8 +15,10 @@
 
         this.constructor = ::(from) {
             initialize(args:from);
+            return this;
         };
 
+        this.recycle = true;
 
         this.interface = {
             onRevive : initialize,
@@ -39,8 +41,8 @@
             // Function, 1 argument. 
             // No return value.
             // Adds an additional element to the array.
-            push :: (nm) {
-                data[len] = nm;
+            push :: (value) {
+                data[len] = value;
                 len = len + 1;
             },
             
@@ -96,7 +98,7 @@
             // Returns.
             // Creates a new array object that is a shallow copy of this one.
             clone :: {
-                @out = thisClass.new();
+                @out = this.class.new();
                 for(in:[0, len], do:::(i){
                     out.push(value:data[i]);
                 });
@@ -162,7 +164,7 @@
 
             // returns a new array thats a subset of
             subset ::(from, to) {
-                @out = thisClass.new();
+                @out = this.class.new();
                 when(from >= to) out;
                 
                 from = if(from <  0)   0     else from;                
@@ -180,7 +182,7 @@
             // given. "cond" should be an array that accepts at least one argument.
             // The first argument is the value.
             filter ::(cond) {
-                @out = thisClass.new();
+                @out = this.class.new();
                 foreach(in:data, do:::(v, k){
                     when(cond(item:v)) out.push(value:v);
                 });            
@@ -243,4 +245,14 @@
         };
     }
 });
+
+// bootstrap reserves for speed 
+::<={
+    @a = [];
+    @acount = 0;
+    for(in:[0, 5], do:::(i) {
+        a[acount] = Array.new();    
+        acount += 1;
+    });
+};
 return Array;

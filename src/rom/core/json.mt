@@ -1,6 +1,5 @@
 @MString = import(module:'Matte.Core.String');
 @Array = import(module:'Matte.Core.Array');
-@class = import(module:'Matte.Core.Class');
 @JSON = {
     encode :: (obj) {        
         @encodeValue ::(obj){

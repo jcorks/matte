@@ -398,7 +398,6 @@ MATTE_EXT_FN(matte_core__string_split) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
-
     matteValue_t newlV = args[1];
     if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
@@ -409,7 +408,7 @@ MATTE_EXT_FN(matte_core__string_split) {
 
     matteArray_t * arr = matte_array_create(sizeof(matteValue_t));
     
-    uint32_t i, n;
+    uint32_t i, n = 0;
     uint32_t len = matte_string_get_length(st->str);
     uint32_t lenOther = matte_string_get_length(other);
     uint32_t lastStart = 0;
@@ -432,7 +431,7 @@ MATTE_EXT_FN(matte_core__string_split) {
             lastStart = i+1;
         }
     }
-    if (n != lenOther) {
+    if (n != lenOther && len) {
         const matteString_t * subgood = matte_string_get_substr(st->str, lastStart, len-1);
         matteValue_t subv = matte_heap_new_value(heap);
         matte_value_into_string(heap, &subv, subgood);            

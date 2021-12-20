@@ -1346,6 +1346,7 @@ matteValue_t matte_vm_call(
     matteValue_t d = matte_heap_new_value(vm->heap);
     matte_value_into_copy(vm->heap, &d, func);
 
+
     if (matte_bytecode_stub_get_file_id(matte_value_get_bytecode_stub(vm->heap, d)) == 0) {
         // fileid 0 is a special fileid that never refers to a real file.
         // this is used to call external c functions. stubID refers to 
@@ -1512,11 +1513,12 @@ matteValue_t matte_vm_call(
         if (prettyName) {
             matte_string_set(frame->prettyName, prettyName);
         }
-        matte_array_at(referrables, matteValue_t, 0) = frame->context;
 
         frame->context = d;
         frame->stub = stub;
         frame->referrable = matte_heap_new_value(vm->heap);
+        matte_array_at(referrables, matteValue_t, 0) = frame->context;
+
         // ref copies of values happen here.
         matte_value_into_new_object_array_ref(vm->heap, &frame->referrable, referrables);
         #ifdef MATTE_DEBUG__HEAP

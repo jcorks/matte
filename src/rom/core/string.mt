@@ -16,23 +16,27 @@
 <@>_string_substr     = getExternalFunction(name:"__matte_::string_substr");
 <@>_string_split      = getExternalFunction(name:"__matte_::string_split");
 <@>_string_get_string = getExternalFunction(name:"__matte_::string_get_string");
-@String_ = class(definition:{
+@String_ = class(info:{
     name : 'Matte.Core.String',
-    instantiate::(this, thisClass) {
+    define::(this) {
         <@>MatteString = introspect.type(of:this);
 
         @handle;
         this.constructor = ::(from) {
-            handle = _string_create(a:if (from != empty) String(from:from) else empty); 
+            if (handle == empty) ::<= {
+                handle = _string_create(a:if (from != empty) String(from:from) else empty); 
+            } else ::<={
+                _string_set_length(a:handle, b:0);
+                if (from != empty) ::<={
+                    _string_append(a:handle, b:String(from:from));
+                };
+            };
+            return this;
         };
 
+        this.recycle = true;
         
         this.interface = {
-
-            onRevive ::(reviveArgs) {
-                _string_set_length(a:handle, b:0);
-            },
-
 
             length : {
                 get :: { 
@@ -109,14 +113,14 @@
             
             
             substr::(from => Number, to => Number) {
-                return thisClass.new(from:_string_substr(a:handle, b:from, c:to));
+                return this.class.new(from:_string_substr(a:handle, b:from, c:to));
             },
 
             split::(token) {  
                 @a = _string_split(a:handle, b:String(from:token));
                 @aconv = Array.new();
                 foreach(in:a, do:::(k, v) {
-                    aconv.push(value:thisClass.new(from:v));
+                    aconv.push(value:this.class.new(from:v));
                 });
                 return aconv;
             },
@@ -136,7 +140,7 @@
             
             */
             scan::(format) {
-                format = thisClass.new(from:format);
+                format = this.class.new(from:format);
                 @tokens = format.split(token:'[%]');
                 @startsWith = (format.charAt(index:0) == '[' &&
                             format.charAt(index:1) == '%' &&
@@ -234,7 +238,7 @@
             },
             
             '+' :: (other){
-                @out = thisClass.new(from:String(from:this));
+                @out = this.class.new(from:String(from:this));
                 out.append(other:other);
                 return out;
             },
@@ -256,4 +260,14 @@
         };
     }
 });
+
+// boostrap
+::<={
+    @a = [];
+    @acount = 0;
+    for(in:[0, 5], do:::(i) {
+        a[acount] = String_.new();    
+        acount += 1;
+    });
+};
 return String_;

@@ -149,8 +149,8 @@ static int execCommand() {
             matte_vm_run_script(vm, DEBUG_FILEID, matte_array_empty(), matte_array_empty());
 
 
-        printf("Execution complete.\n");
-
+            printf("Execution complete.\n");
+            started = 0;    
 
         } else {
             printf("The script is already running.\n");            

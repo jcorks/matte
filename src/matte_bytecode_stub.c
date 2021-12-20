@@ -111,6 +111,8 @@ void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
     free(b->strings);   
     free(b->captures);
     free(b->instructions);
+    free(b->localNames);
+    free(b->argNames);
     free(b);
 }
 

@@ -1,8 +1,8 @@
 @class = import(module:'Matte.Core.Class');
 @Array = import(module:'Matte.Core.Array');
-@EventSystem = class(definition:{
+@EventSystem = class(info:{
     name : 'Matte.Core.EventSystem',
-    instantiate::(this, thisClass) {
+    define::(this) {
         <@> events = [];
                
         

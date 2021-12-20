@@ -68,7 +68,7 @@ void matte_value_into_new_object_ref_typed(matteHeap_t *, matteValue_t *, matteV
 
 // Sets the type to a Type with the given typecode. Typecode values
 // are only visible to the C / supervisor contexts.
-void matte_value_into_new_type(matteHeap_t *, matteValue_t *, matteValue_t opts);
+void matte_value_into_new_type(matteHeap_t *, matteValue_t *, matteValue_t name, matteValue_t inherits);
 
 
 void matte_value_into_new_object_literal_ref(matteHeap_t *, matteValue_t *, const matteArray_t *);

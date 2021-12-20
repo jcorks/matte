@@ -213,9 +213,6 @@ int main(int argc, char ** args) {
 
         matte_destroy(m);
 
-        #ifdef MATTE_DEBUG__HEAP
-        matte_heap_report();
-        #endif
 
         return 0;
         
@@ -308,12 +305,11 @@ int main(int argc, char ** args) {
             }
             matte_heap_recycle(matte_vm_get_heap(vm), v);
         }
+
         matte_array_destroy(arr);
         matte_destroy(m);
 
-        #ifdef MATTE_DEBUG__HEAP
-        matte_heap_report();
-        #endif
+
     }
     return 0;
 }
