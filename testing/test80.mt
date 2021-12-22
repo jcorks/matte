@@ -4,9 +4,9 @@
 @Matte = import(module:'Matte.Core');
 
 @a = Matte.String.new(from:'-=-');
-a.append(with:'[][][]');
-a.append(with:Matte.String.new('100'));
-a.append(with:69);
-a.append(with:'');
+a.append(other:'[][][]');
+a.append(other:Matte.String.new(from:'100'));
+a.append(other:69);
+a.append(other:'');
 
 return String(from:a);

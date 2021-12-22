@@ -1,14 +1,14 @@
 ////Test 57
 //
 // Core: String (5)
-<@>MatteString = import('Matte.Core.String');
+<@>MatteString = import(module:'Matte.Core.String');
 
-@str = MatteString.new("testinBdwatest");
-return ''+str.containsAny(['z', 'x', 'y'])+
-          str.containsAny(['f', 'f', 'a'])+
-          str.containsAny(['xz', '', 'ss'])+
-          str.containsAny(['tesst', 'BBda', 'estt'])+
-          str.containsAny(['test', 'Bdw', 'est'])+
-          str.containsAny(['ttt', MatteString.new('tin'), 'eee']);
+@str = MatteString.new(from:"testinBdwatest");
+return ''+str.containsAny(keys:['z', 'x', 'y'])+
+          str.containsAny(keys:['f', 'f', 'a'])+
+          str.containsAny(keys:['xz', '', 'ss'])+
+          str.containsAny(keys:['tesst', 'BBda', 'estt'])+
+          str.containsAny(keys:['test', 'Bdw', 'est'])+
+          str.containsAny(keys:['ttt', MatteString.new(from:'tin'), 'eee']);
 
 

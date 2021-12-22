@@ -2393,8 +2393,11 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
         
         
         // if referenced by preserver, keep it but you also need to check again later.
-        if (current != m && current->hasPreserver) {
+        // Also, only do this check if this object is not itself a preserver, else 
+        // circular dependency chain for preservers is possible.
+        if (current != m && current->hasPreserver && !m->hasPreserver) {
             matte_array_set_size(h->routePather, 0);
+            
 
             // mark for recycle check next cycle
             if (!m->toSweep) {
@@ -2432,10 +2435,8 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
     matteObject_t * current = m;
     if (m->hasPreserver) {
         matteValue_t preserver = matte_value_object_access(h, current->table.attribSet, h->specialString_preserver, 0);        
-
+        m->hasPreserver = 0;
         if (preserver.binID) {
-            matte_value_object_remove_key(h, current->table.attribSet, h->specialString_preserver);
-            m->hasPreserver = 0;
             m->verifiedRoot = h->verifiedCycle;
             h->preserver = 1;
 
@@ -2458,6 +2459,12 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
                 matte_array_push(h->toSweep, current);
             }            
             return 1;
+        } else {
+            // mark for recycle check next cycle
+            if (!current->toSweep) {
+                current->toSweep = 1;
+                matte_array_push(h->toSweep, current);
+            }                    
         }
     }
     return 0;
@@ -2697,7 +2704,10 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
         } 
         #ifdef MATTE_DEBUG__HEAP
             else {
-                printf("--IGNORING OBJECT %d (still reachable)\n", m->heapID);
+                if (m->isRootRef)
+                    printf("--IGNORING OBJECT %d (root object)\n", m->heapID);
+                else
+                    printf("--IGNORING OBJECT %d (still reachable)\n", m->heapID);
             }
         #endif
     }

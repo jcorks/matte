@@ -1,22 +1,22 @@
 //// Test78
 //
 // 
-@Matte = import('Matte.Core');
+@Matte = import(module:'Matte.Core');
 
-@a = Matte.String.new('abcdef!@#$ \n');
+@a = Matte.String.new(from:'abcdef!@#$ \n');
 
 
 return '' +
-    a.charCodeAt(0) + 
-    a.charCodeAt(1) + 
-    a.charCodeAt(2) + 
-    a.charCodeAt(3) + 
-    a.charCodeAt(4) + 
-    a.charCodeAt(5) + 
-    a.charCodeAt(6) + 
-    a.charCodeAt(7) +
-    a.charCodeAt(8) +
-    a.charCodeAt(9) +
-    a.charCodeAt(10) +
-    a.charCodeAt(11);
+    a.charCodeAt(index:0) + 
+    a.charCodeAt(index:1) + 
+    a.charCodeAt(index:2) + 
+    a.charCodeAt(index:3) + 
+    a.charCodeAt(index:4) + 
+    a.charCodeAt(index:5) + 
+    a.charCodeAt(index:6) + 
+    a.charCodeAt(index:7) +
+    a.charCodeAt(index:8) +
+    a.charCodeAt(index:9) +
+    a.charCodeAt(index:10) +
+    a.charCodeAt(index:11);
     

@@ -1,12 +1,12 @@
 //// Test 76
 //
 // String: length
-@Matte = import('Matte.Core');
+@Matte = import(module:'Matte.Core');
 
-@s = Matte.String.new('I am going to the store');
-s.replace('I', 'You');
-s.replace('am', 'are');
-s.replace('We', 'no one');
-s.replace('store', 'market');
-s.replace(' ', '-');
-return (String(s));
+@s = Matte.String.new(from:'I am going to the store');
+s.replace(key:'I', with:'You');
+s.replace(key:'am', with:'are');
+s.replace(key:'We', with:'no one');
+s.replace(key:'store', with:'market');
+s.replace(key:' ', with:'-');
+return (String(from:s));

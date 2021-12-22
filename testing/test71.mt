@@ -1,12 +1,12 @@
 ////Test 56
 //
 // Core: String (4)
-<@>MatteString = import('Matte.Core.String');
+<@>MatteString = import(module:'Matte.Core.String');
 
-@str = MatteString.new("testinBdwatest");
-return ''+str.contains('st')+
-          str.contains('testing')+
-          str.contains('Bdw')+
-          str.contains('') +
-          str.contains(MatteString.new('aaa')) +
-          str.contains(MatteString.new('wat'));
+@str = MatteString.new(from:"testinBdwatest");
+return ''+str.contains(key:'st')+
+          str.contains(key:'testing')+
+          str.contains(key:'Bdw')+
+          str.contains(key:'') +
+          str.contains(key:MatteString.new(from:'aaa')) +
+          str.contains(key:MatteString.new(from:'wat'));

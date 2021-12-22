@@ -9,8 +9,8 @@
 listen(to:::{
     
     // should error out, not allowed.
-    output = String(from:a.substr('a', []));    
-}, onMessage:::{
+    output = String(from:a.substr(from:'a', to:[]));    
+}, onMessage:::(message) {
     output = 'a';
 });
 

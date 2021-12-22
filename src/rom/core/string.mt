@@ -43,8 +43,8 @@
                     return _string_get_length(a:handle);
                 },
                 
-                set ::(newlen => Number) {
-                    _string_set_length(a:handle, b:newlen);
+                set ::(value => Number) {
+                    _string_set_length(a:handle, b:value);
                 }
             },
             
