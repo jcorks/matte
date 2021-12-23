@@ -41,7 +41,7 @@ MyType.Triangle = newtype(name:'Triangle', inherits:[MyType.Shape]);
 
 
 combinedArea(a:tri0, b:sq0);
-listen(::{
+listen(to:::{
     <@>combinedAreaRestricted ::(shapeA => MyType.Shape, squareB => MyType.Square) {
         out = out + shapeA.area() + squareB.area(); 
     };

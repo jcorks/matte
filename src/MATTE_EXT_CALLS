@@ -136,7 +136,7 @@ static matteValue_t vm_ext_call__for(matteVM_t * vm, matteValue_t fn, const matt
     // as their argument, as it is really common to have 
     // embedded loops, so it cannot be static. 
     matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->heap, v);
-    matteValue_t firstArgName = vm->specialString_other;
+    matteValue_t firstArgName = vm->specialString_value;
     matteArray_t arr;
     matteArray_t arrNames;
     

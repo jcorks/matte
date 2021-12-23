@@ -237,19 +237,19 @@
                 return a;
             },
             
-            '+' :: (other){
+            '+' :: (value){
                 @out = this.class.new(from:String(from:this));
-                out.append(other:other);
+                out.append(other:value);
                 return out;
             },
             
-            '+=' ::(other) {
-                this.append(other:other);
+            '+=' ::(value) {
+                this.append(other:value);
             },
             
             '[]' : {
-                get ::(index => Number) {   
-                    return _string_charat(a:handle, b:index);
+                get ::(value => Number) {   
+                    return _string_charat(a:handle, b:value);
                 },
                 
                 

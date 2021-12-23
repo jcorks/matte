@@ -108,7 +108,7 @@ struct matteVM_t {
     
     
     matteValue_t specialString_from;
-    matteValue_t specialString_other;
+    matteValue_t specialString_value;
     matteValue_t specialString_message;
 
 };
@@ -1072,8 +1072,6 @@ matteVM_t * matte_vm_create() {
     
     vm->specialString_from = matte_heap_new_value(vm->heap);
     matte_value_into_string(vm->heap, &vm->specialString_from, MATTE_VM_STR_CAST(vm, "from"));
-    vm->specialString_other = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_other, MATTE_VM_STR_CAST(vm, "other"));
     vm->specialString_message = matte_heap_new_value(vm->heap);
     matte_value_into_string(vm->heap, &vm->specialString_message, MATTE_VM_STR_CAST(vm, "message"));
     
@@ -1107,6 +1105,8 @@ matteVM_t * matte_vm_create() {
     };
     const matteString_t * name = MATTE_VM_STR_CAST(vm, "name");
     const matteString_t * value = MATTE_VM_STR_CAST(vm, "value");
+    vm->specialString_value = matte_heap_new_value(vm->heap);
+    matte_value_into_string(vm->heap, &vm->specialString_value, value);
 
     const matteString_t * charAt_names[] = {
         MATTE_VM_STR_CAST(vm, "string"),

@@ -747,6 +747,11 @@ static matteArray_t * type_array_to_isa(matteHeap_t * heap, matteValue_t val) {
     uint32_t i;
     matteArray_t * array = matte_array_create(sizeof(uint32_t));
 
+    if (count == 0) {
+        matte_vm_raise_error_cstring(heap->vm, "'inherits' attribute cannot be empty.");
+        return array;
+    }
+
     for(i = 0; i < count; ++i) {
         matteValue_t * v = matte_value_object_array_at_unsafe(heap, val, i);
         if (v->binID != MATTE_VALUE_TYPE_TYPE) {

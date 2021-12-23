@@ -12,21 +12,21 @@ out = out + Boolean(from:val == import(module:'mytestmodule.mt'));
 
 listen(to:::{
     out = out + import();   
-}, onMessage:::{
+}, onMessage:::(message){
     out = out + 'noim';
 });
 
 
 listen(to:::{
     out = out + import(module:'not a file.mt');   
-}, onMessage:::{
+}, onMessage:::(message){
     out = out + 'noen';
 });
 
 
 listen(to:::{
     out = out + import(module:'badfile.mt');   
-}, onMessage:::{
+}, onMessage:::(message){
     out = out + 'nocmp';
 });
 

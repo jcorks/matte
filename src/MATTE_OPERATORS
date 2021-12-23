@@ -23,7 +23,7 @@ static matteValue_t vm_run_object_operator_2(matteVM_t * vm, matteValue_t a, con
     if (opSrc) {
         matteValue_t op = matte_value_object_access_string(vm->heap, *opSrc, opstr);
         matteArray_t arr = MATTE_ARRAY_CAST(&b, matteValue_t, 1);
-        matteArray_t arrNames = MATTE_ARRAY_CAST(&vm->specialString_other, matteValue_t, 1);
+        matteArray_t arrNames = MATTE_ARRAY_CAST(&vm->specialString_value, matteValue_t, 1);
         result = matte_vm_call(vm, op, &arr, &arrNames, opstr);
         matte_heap_recycle(vm->heap, op);
     } else {

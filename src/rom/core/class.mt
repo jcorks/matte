@@ -19,10 +19,21 @@
         return out;
     };
 
-    @type = newtype(name : info.name);
     @classinst = {define : info.define};
     @classInherits = info.inherits;
-    
+    @type = if (classInherits != empty) ::<={
+        @inheritset = [];
+        @inheritCount = 0;
+        foreach(in:classInherits, do:::(k, v) {
+            inheritset[inheritCount] = v.type;
+            inheritCount+=1;
+        });
+        return newtype(name : info.name, inherits : inheritset);
+    } else ::<= {
+        return newtype(name : info.name);
+    };
+
+
     // all recycled members currently waiting
     @recycled = [];
     @recycledCount = 0;
@@ -225,6 +236,7 @@
                     };
                     
                     when(key == 'inherits') classInherits;
+                    when(key == 'type') type;
                     
                     error(detail:'No such member of the class object.');
                 }

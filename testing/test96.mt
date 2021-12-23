@@ -7,25 +7,25 @@
 
 listen(to:::{
     loop();
-}, onMessage:::{
+}, onMessage:::(message) {
     output = output + 'noarg';
 });
 
 
 listen(to:::{
-    loop('hi');
-}, onMessage:::{
+    loop(func:'hi');
+}, onMessage:::(message){
     output = output + 'nofn';
 });
 
 listen(to:::{
-    loop(do:::{
+    loop(func:::{
         for(in:[0, 10], do:::{
 
         });
         return false;
     });
-}, onMessage:::{
+}, onMessage:::(message){
     output = output + 'norun';
 });
 

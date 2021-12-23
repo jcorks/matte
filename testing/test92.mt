@@ -24,7 +24,7 @@
             resCount-=1;
             reviveCount += 1;
 
-            @ops = getAttributes(from:o);
+            @ops = getAttributes(of:o);
             ops.preserver = ::{
                 reserved[resCount] = o;
                 resCount+=1;        

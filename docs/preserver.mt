@@ -6,20 +6,20 @@
     // Now that the object has a preserver, 
     // this function will run exactly once.
     setAttributes(
-        preserveMe,
-        {
+        of        : preserveMe,
+        attributes: {
             'preserver' ::{
-                print("I've been preserved!");                
+                print(message:"I've been preserved!");                
             }
         }
     );
-}
+};
 
 // Since preserveMe is within an anonymous dashed function
 // and no reachable variable references it,
 // it is no longer considered active. The runtime 
 // may decide at any time to run the preserver. 
-print(2+2);
+print(message:2+2);
 
 
 // After the returning of this, and assuming that this 

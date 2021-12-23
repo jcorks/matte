@@ -7,14 +7,14 @@
 listen(to:::{
     fn = getExternalFunction();
     fn();
-}, ::{
+}, onMessage:::(message){
     out = out + 'nofn';
 });
 
 listen(to:::{
     fn = getExternalFunction(name:{});
     fn();
-}, ::{
+}, onMessage:::(message){
     out = out + 'nostr';
 });
 

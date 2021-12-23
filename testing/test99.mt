@@ -17,13 +17,13 @@
 
 listen(to:::{
     removeKey(from:100);
-}, ::{
+}, onMessage:::(message){
     out = out + 'noobj';
 });
 
 
 removeKey(from:testObj, key:'hello');
-out = out + String(testObj.hello);
+out = out + String(from:testObj.hello);
 
 removeKey(from:testObj, key:'');
 removeKey(from:testObj, key:'hello1');

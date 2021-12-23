@@ -3,17 +3,18 @@
 // Operator
 
 
-@createNumber ::(value) {
+@createNumber ::(from) {
+    @val = from;
     @valDecimal;
     @valInteger;
     // overly complex implementations are great for testing
     // ... or so i tell myself
-    if (value < 0) ::<={
-        valDecimal = introspect.abs(of:value - introspect.floor(of:value) - 1);
-        valInteger = introspect.floor(of:value) + 1;
+    if (val < 0) ::<={
+        valDecimal = introspect.abs(of:val - introspect.floor(of:val) - 1);
+        valInteger = introspect.floor(of:val) + 1;
     } else ::<={
-        valDecimal = value - introspect.floor(of:value);
-        valInteger = introspect.floor(of:value);
+        valDecimal = val - introspect.floor(of:val);
+        valInteger = introspect.floor(of:val);
     };
 
     @ref = {
@@ -23,20 +24,20 @@
     
     setAttributes(of:ref, 
         attributes: {
-            '+' ::(other) {
-                return createNumber(value:value + (other.decimal + other.integer));
+            '+' ::(value) {
+                return createNumber(from:val + (value.decimal + value.integer));
             },
 
-            '-' ::(other) {
-                return createNumber(value:value - (other.decimal + other.integer));
+            '-' ::(value) {
+                return createNumber(from:val - (value.decimal + value.integer));
             },
 
-            '/' ::(other) {
-                return createNumber(value:value / (other.decimal + other.integer));
+            '/' ::(value) {
+                return createNumber(from:val / (value.decimal + value.integer));
             },
 
-            '*' ::(other) {
-                return createNumber(value:value * (other.decimal + other.integer));
+            '*' ::(value) {
+                return createNumber(from:val * (value.decimal + value.integer));
             },
 
             (String) :: {
@@ -48,9 +49,9 @@
 };
 
 
-@a = createNumber(value:10.5);
-@b = createNumber(value:2.6);
-@c = createNumber(value:5.1);
+@a = createNumber(from:10.5);
+@b = createNumber(from:2.6);
+@c = createNumber(from:5.1);
 
 return '' + (a + b + c);
 

@@ -3,10 +3,10 @@ return 0;
 @from = getExternalFunction(name:"system_getticks")();
 
 @makeThing ::(index) {
-    print(message='' + index + '@ ' + (getExternalFunction(name:"system_getticks")() - from));
+    print(message:'' + index + '@ ' + (getExternalFunction(name:"system_getticks")() - from));
 };
 
-loop(::{
+loop(func:::{
     @b = a/100;
     a+=1;
     if (a%10 == 0) ::<={

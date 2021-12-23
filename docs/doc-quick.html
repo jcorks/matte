@@ -20,7 +20,7 @@ This guide is intended for those who are already familiar with programming conce
 Throughout the guide, code samples will be provided. If using a javascript-enabled browser, you may hover your pointer / tap the code to get fine details about the syntax used. For example:
 <pre>
     <@>myFunction = ::{
-        print("Hello, world!");
+        print(message:"Hello, world!");
     };
     myFunction();
 </pre>
@@ -72,7 +72,7 @@ You can add an inline assignment with the declaration as well:
     @another = 4 + myOtherVariable;
 
     // Displays 7
-    print(another);
+    print(message:another);
 </pre>
 
 Variable names can contain any non-symbol character (other than _, which is allowed). 
@@ -159,14 +159,14 @@ There are only a handful of basic types within Matte:
     <pre>
         // Types can be gleaned by introspecting. Introspection is covered in 
         // a later section.
-        @f = introspect.type(40);
+        @f = introspect.type(of:40);
 
         // will print "true"
         print(f == Number);
 
         // Types can be used as functions to explicitly convert between types.
         // will print 7
-        print(2 + Number('5'));
+        print(2 + Number(from:'5'));
 
     </pre>
 </ul>
@@ -183,12 +183,14 @@ Functions are defined with the function constructor "::". It can then be followe
     // declare a new variable that is a function. It takes one argument 
     // that can be referred to by "myString"
     @myFunction = ::(myString) {
-        print(myString);
+        print(message:myString);
     };
 
     // run the function with one argument.
     // Should print Hello, world!
-    myFunction('Hello, world!');
+    // When calling all functions with parameters, the parameter MUST be 
+    // specified when calling.
+    myFunction(myString:'Hello, world!');
 
 
 
@@ -202,7 +204,7 @@ Functions are defined with the function constructor "::". It can then be followe
     };
 
     // Should print 123
-    print(myOtherFunction());
+    print(message:myOtherFunction());
 
 
 </pre>
@@ -221,14 +223,14 @@ These "anonymous function" expressions are useful for more complex behaviors and
     // The function can be called immediately using the 
     // () like you would on a function reference.
     ::{
-        print("I ran immediately.");
+        print(message:"I ran immediately.");
     }();
 
     // The () behaves the same as if it 
     // were a typical variable.
     ::(argument) {
-        print('Hello, ' + argument);
-    }('World!!');
+        print(message:'Hello, ' + argument);
+    }(argument:'World!!');
 
     
     // Most commonly, it is convenient to 
@@ -238,7 +240,7 @@ These "anonymous function" expressions are useful for more complex behaviors and
     // situations. Alternatively, you can use 
     // "dash function syntax" to accomplish the same behavior:
     ::<={
-        print("I ran immediately, too!");
+        print(message:"I ran immediately, too!");
     };
 
 
@@ -252,14 +254,14 @@ These "anonymous function" expressions are useful for more complex behaviors and
         b = 34;
         
         return :: (c) {
-            print(a + b + c);
+            print(message:a + b + c);
         };
     };
 
 
 
     // should print 300
-    fancyFunction(66);
+    fancyFunction(c:66);
 
 
 </pre>
@@ -281,10 +283,10 @@ will attempt to be converted.
     };
 
     // Ok!
-    myAdder(10, 4);
+    myAdder(a:10, b:4);
 
     // Throws an error 
-    myAdder('50', 4);
+    myAdder(a:'50', b:4);
 
 </pre>
 
@@ -308,7 +310,7 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
     @fib = ::(n){
         when(n <  1) 0;
         when(n <= 2) 1;
-        return context(n-1) + context(n-2);
+        return context(n:n-1) + context(n:n-2);
     };
 
     print(fib(5));
@@ -325,7 +327,7 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
     };
 
     // should print lo
-    print(hi_low_mid(10, 40));
+    print(message:hi_low_mid(a:10, b:40));
     
 
 
@@ -344,15 +346,15 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
 
     match(statement) {
         // The syntax is (possibility) : conclusion.
-        (0) : print("It's zero"),
-        (1) : print("It's one")
+        (0) : print(message:"It's zero"),
+        (1) : print(message:"It's one")
     };
     
     
     
     // match returns an expression, so it can be used like so.
     // note that ONLY the conslusion
-    print(match(statement){
+    print(message:match(statement){
         (0)       : '0',
         (1)       : '1',
         // if multiple possibilities lead to the same conclusion, 
@@ -369,21 +371,21 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
     <@>judgeValue ::(i) {
         match(true) {
             (i > 20): ::<={
-                print('greater than 20');
+                print(message:'greater than 20');
             },
     
             (i < 20): ::<={
-                print('less than 20');
+                print(message:'less than 20');
             },
     
             default: ::<={
-                print('exactly 20');
+                print(message:'exactly 20');
             }
         };
     };
     
     // should print 'greater than 20'
-    judgeValue(50);
+    judgeValue(i:50);
 
 </pre>
 
@@ -396,7 +398,7 @@ that takes a single argument, a function, and runs it at least once until it ret
 
 <pre>
     @counter = 0;
-    loop(::{
+    loop(func:::{
         // It is common (and readable) to use the 
         // when statement as a termination condition.
         when(counter == 10) false;
@@ -421,8 +423,8 @@ In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is
     // 2
     // 3
     //
-    for([0, 4], ::(i){
-        print(i);
+    for(in:[0, 4], do:::(i){
+        print(message:i);
     });
 
     // The 3rd number in the list is the increment for the iterator.
@@ -435,8 +437,8 @@ In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is
     // 4
     // 6
     // 8
-    for([0, 10, 2], ::(i){
-        print(i);
+    for(in:[0, 10, 2], do:::(i){
+        print(message:i);
     });
 </pre>
 
@@ -454,8 +456,8 @@ Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iter
     // 1 -> b 
     // 2 -> c
     //
-    foreach(object, ::(key, value){
-        print('' + key + '->' + value);
+    foreach(in:object, do:::(key, value){
+        print(message:'' + key + '->' + value);
     });
 </pre>
  
@@ -472,10 +474,10 @@ The if expression in matte can be used to control or avoid computation of anothe
     // expression within parentheses computes to true.
 
     // should print false
-    if (myVal == false) print("myVal is false");
+    if (myVal == false) print(message:"myVal is false");
 
     // should not print
-    if (myVal == true) print("myVal is true");
+    if (myVal == true) print(message:"myVal is true");
 
 
     // if an "if" statement requires multiple statements, 
@@ -487,10 +489,10 @@ The if expression in matte can be used to control or avoid computation of anothe
     // should print 42
     if (myVal == false) ::<={
         @val = 4 * 8 + 10;
-        print(val);
+        print(message:val);
     };
 
-    print('myVal is ' + (if (myVal) 'true' else 'false'));
+    print(message:'myVal is ' + (if (myVal) 'true' else 'false'));
 
 </pre>
 
@@ -505,26 +507,26 @@ Often, it is useful to get more information about a particular value, or work wi
 work with basic values. It is invoked by using the built-in constant "introspect" and calling one of its recognized functions:
 
 <ul>
-    <li><b>introspect.type(<i>value</i>):</b> Returns the type of the value.</li>
-    <li><b>introspect.keys(<i>value</i>):</b> For an object, returns a list of all of the object's keys to stored values.</li>
-    <li><b>introspect.values(<i>value</i>):</b> For an object, returns a list of all of the object's stored values.</li>
-    <li><b>introspect.keycount(<i>value</i>):</b> For an object, returns the number of stored values that the object has.</li>
+    <li><b>introspect.type(<i>of</i>):</b> Returns the type of the value.</li>
+    <li><b>introspect.keys(<i>of</i>):</b> For an object, returns a list of all of the object's keys to stored values.</li>
+    <li><b>introspect.values(<i>of</i>):</b> For an object, returns a list of all of the object's stored values.</li>
+    <li><b>introspect.keycount(<i>of/i>):</b> For an object, returns the number of stored values that the object has.</li>
     <li><b>introspect.isCallable(<i>value</i>):</b> For an object, returns whether the object is a function.</li>
-    <li><b>introspect.arrayToString(<i>value</i>):</b> For an object, gathers all values key'd by number, interprets those values as number UTF8 codepoints, and returns a new string from those codepoints.</li>
-    <li><b>introspect.length(<i>value</i>):</b> For a string, returns now many codepoints are within the string.</li>
-    <li><b>introspect.charAt(<i>value, index</i>):</b> For a string, returns a single-character string at the index within the string.</li>
-    <li><b>introspect.charCodeAt(<i>value, index</i>):</b> For a string, returns the number value of the character at the given index.</li>
-    <li><b>introspect.subset(<i>value, from, to</i>):</b> For a string or list object, returns a new string or object with only the values between and including the indices "from" and "to".</li>
-    <li><b>introspect.floor(<i>value</i>):</b> For a number, returns the value's integer component.</li>
-    <li><b>introspect.ceil(<i>value</i>):</b> For a number, returns the value's integer component + 1.</li>
-    <li><b>introspect.round(<i>value</i>):</b> For a number, returns the value rounded.</li>
+    <li><b>introspect.arrayToString(<i>of</i>):</b> For an object, gathers all values key'd by number, interprets those values as number UTF8 codepoints, and returns a new string from those codepoints.</li>
+    <li><b>introspect.length(<i>of</i>):</b> For a string, returns now many codepoints are within the string.</li>
+    <li><b>introspect.charAt(<i>string, index</i>):</b> For a string, returns a single-character string at the index within the string.</li>
+    <li><b>introspect.charCodeAt(<i>string, index</i>):</b> For a string, returns the number value of the character at the given index.</li>
+    <li><b>introspect.subset(<i>set, from, to</i>):</b> For a string or list object, returns a new string or object with only the values between and including the indices "from" and "to".</li>
+    <li><b>introspect.floor(<i>of</i>):</b> For a number, returns the value's integer component.</li>
+    <li><b>introspect.ceil(<i>of</i>):</b> For a number, returns the value's integer component + 1.</li>
+    <li><b>introspect.round(<i>of</i>):</b> For a number, returns the value rounded.</li>
     <li><b>introspect.toRadians(<i>value</i>):</b> For a number, interprets the value as a degree value and returns the corresponding radians.</li>
     <li><b>introspect.toDegrees(<i>value</i>):</b> For a number, interprets the value as a radian value and returns the corresponding degrees.</li>
-    <li><b>introspect.sin(<i>value</i>):</b> For a number, returns sin(value).</li>
-    <li><b>introspect.cos(<i>value</i>):</b> For a number, returns cos(value).</li>
-    <li><b>introspect.tan(<i>value</i>):</b> For a number, returns tan(value).</li>
-    <li><b>introspect.abs(<i>value</i>):</b> For a number, returns its absolute value.</li>
-    <li><b>introspect.sqrt(<i>value</i>):</b> For a number, returns its square root.</li>
+    <li><b>introspect.sin(<i>of</i>):</b> For a number, returns sin(value).</li>
+    <li><b>introspect.cos(<i>of</i>):</b> For a number, returns cos(value).</li>
+    <li><b>introspect.tan(<i>of</i>):</b> For a number, returns tan(value).</li>
+    <li><b>introspect.abs(<i>of</i>):</b> For a number, returns its absolute value.</li>
+    <li><b>introspect.sqrt(<i>of</i>):</b> For a number, returns its square root.</li>
     <li><b>introspect.isNaN(<i>value</i>):</b> For a number, returns whether its value is "not a number".</li>
 </ul>
 
@@ -532,13 +534,13 @@ work with basic values. It is invoked by using the built-in constant "introspect
     @str = 'Hello, world!';
 
     // Should print 'o'
-    print(introspect.charAt(str, 4));
+    print(message:introspect.charAt(string:str, index:4));
 
     // Should print '13'
-    print(introspect.length(str));
+    print(message:introspect.length(of:str));
 
     // Should print '42'
-    print(introspect.abs(-42));
+    print(message:introspect.abs(of:-42));
 
 </pre>
 
@@ -554,8 +556,8 @@ your own errors with the built-in <i>error</i> function:
     error();
 
     // The error function can take an argument of any type.
-    error('An error occurred');
-    error({
+    error(detail:'An error occurred');
+    error(detail:{
         message : 'An error occurred!',
         id : 10
     });
@@ -572,16 +574,19 @@ not interrupted.
 
 <pre>
     @errorExample :: {
-        context.catch = ::(err) {
-            print("The following error was caught: " + err);
-        };
-    
-    
-        print("1");
-        print("2");
-        error('Uh oh!');
-        print("3");
-        print("4");
+        listen(
+            to:::{
+                print(message:"1");
+                print(message:"2");
+                error(message:'Uh oh!');
+                print(message:"3");
+                print(message:"4");    
+            },
+
+            onMessage:::(message) {
+                print(message:"The following error was caught: " + message.data);
+            }
+        );
     };
     
     // should print:
@@ -606,21 +611,25 @@ not interrupted.
     //
     // 
     @dangerousFunction ::{
-        print('a');
-        print('b');
-        error('Uh oh again!');
-        print('c');
-        print('d');
+        print(message:'a');
+        print(message:'b');
+        error(detail:'Uh oh again!');
+        print(message:'c');
+        print(message:'d');
     };
     
     @mySafeFunction ::{
-        context.catch = ::{
-            print('Caught external error');
-        };
-    
-        print(1);
-        dangerousFunction();
-        print(2);
+        listen(
+            to:::{
+                print(message:1);
+                dangerousFunction();
+                print(message:2);
+            },
+
+            onMessage:::(message) {
+                print(message:'Caught external error');
+            }
+        );    
     };
     
     // Should, in total, print:
@@ -632,9 +641,9 @@ not interrupted.
     // Caught external error 
     // Ending safe operation..
     //
-    print('Starting safe operation..');
+    print(message:'Starting safe operation..');
     mySafeFunction();
-    print('Ending safe operation..');
+    print(message:'Ending safe operation..');
 
 </pre>
 
@@ -666,10 +675,10 @@ In a file called module.mt:
     
 In another file which is run in the VM:
 <pre>
-    @module = import('module.mt');
+    @module = import(module:'module.mt');
 
     // prints 'Hello, World!'
-    print(module.getData());
+    print(message:module.getData());
 
 </pre>
 
@@ -687,7 +696,6 @@ default VM import.
     <li><b>Matte.String:</b> Imports a class that can be used for everyday string manipulation.</li>
     <li><b>Matte.Array:</b> Imports a class that can be used for creating, managing, and sorting sets.</li>
     <li><b>Matte.JSON:</b> Imports a set of functions that can be used for workign with JSON files.</li>
-    <li><b>Matte.Enum:</b> Imports a function that can be used to create strictly typed enums.</li>
     <li><b>Matte.Core:</b> Imports an object that contains all of the built-in matte features separately available.</li>
 </ul>
 
@@ -718,9 +726,11 @@ specified.
     // setAttributes takes the object to modify 
     // and an attronites object, keyed with strings of the 
     // operator to specify overloading with.
-    setAttributes(special, {
-        '<<' ::(other) {
-            special.data = special.data + other;
+    setAttributes(
+        of:special, 
+        attributes:{
+        '<<' ::(value) {
+            special.data = special.data + value;
         }
     });
 
@@ -729,7 +739,7 @@ specified.
     special << 'b';
 
     // prints 'ab'
-    print(special.data);
+    print(message:special.data);
 
 </pre>
 
@@ -796,8 +806,8 @@ Along with typical operator overloading, there exist a few special features that
     };
 
     setAttributes(
-        secret, 
-        {
+        of: secret, 
+        attributes: {
             '[]' : {
                 get ::(key) {
                     return 'Bracket access with: ' + key;
@@ -829,13 +839,13 @@ Along with typical operator overloading, there exist a few special features that
 
     
     // will print 'Bracket access with: test'
-    print(secret['test']);
+    print(message:secret['test']);
 
     // will print 'Bracket set with: A = 400'
     secret['A'] = 400;
 
     // will print 'Bracket access with: something'
-    print(secret.something);
+    print(message:secret.something);
 
     // will print 'Bracket set with: otherThing = 600'
     secret.otherThing = 600;
@@ -843,8 +853,8 @@ Along with typical operator overloading, there exist a few special features that
     // will print:
     // a -> 100 
     // b -> 1000
-    foreach(secret, ::(key, value) {
-        print('' + key +' -> ' + value);
+    foreach(in:secret, do:::(key, value) {
+        print(message:'' + key +' -> ' + value);
     });
 </pre>
 
@@ -862,8 +872,8 @@ it is not defined how objects can be converted to other types by default.
     };
 
     setAttributes(
-        cool,
-        {
+        of: cool,
+        attributes: {
             (String) :: {
                 return cool.asString;
             },
@@ -876,10 +886,10 @@ it is not defined how objects can be converted to other types by default.
 
 
     // prints 52
-    print(10 + cool);
+    print(message:10 + cool);
 
     // prints 'The number is: Forty-two'
-    print('The number is: ' + cool);
+    print(message:'The number is: ' + cool);
 </pre>
 
 <br>
@@ -897,19 +907,19 @@ completely unique. New objects of this type can be created using the <i>instanti
     @MyBasicType = newtype();
 
     // Same as newtype(), except errors will report the name of the type.
-    @MyType = newtype({name: 'MyType'});
+    @MyType = newtype(name: 'MyType');
 
     // You can use this to control inheritance
-    @MyInheritedType = newtype({inherits: MyType});
+    @MyInheritedType = newtype(inherits: MyType);
 
 
     // Creates a new object with the give type. The type cannot be changed.
-    @myInstance = instantiate(MyType);
+    @myInstance = instantiate(type: MyType);
     myInstance.data = 'Hello!';
 
     // You can use MyType anywhere you would a built-in Type
     @myFunction ::(a => MyType) {
-        print(a.data);
+        print(message:a.data);
     };
 
 
@@ -917,16 +927,16 @@ completely unique. New objects of this type can be created using the <i>instanti
 
 
     // Throws an error because the argument 
-    // is an object that is not of type "MyType"
-    myFunction({data: 'Hi!'});
+    // is an objec0t that is not of type "MyType"
+    myFunction(a:{data: 'Hi!'});
 
     // prints 'Hello!', since myInstance is of type MyType
-    myFunction(myInstance);
+    myFunction(a:myInstance);
 
     // prints 'Hi!', since myInheritedInstance inherits from MyType
-    @myInheritedInstance = instantiate(MyInheritedType);
+    @myInheritedInstance = instantiate(type:MyInheritedType);
     myInheritedInstance.data = 'Hi!';
-    myFunction(myInheritedInstance);
+    myFunction(a:myInheritedInstance);
 
 </pre>
 
@@ -943,12 +953,12 @@ provided contextually in code comments.
     // Retrieves the class module.
     // Afterwards 'class' is set to the class function, a special 
     // function that can be used to create classes.
-    @class = import('Matte.Class');
+    @class = import(module:'Matte.Class');
 
 
     // the class function takes one argument: an object with a variety of 
     // members describing the class.
-    @Creature = class({
+    @Creature = class(info:{
         // The name is an optional member. Internally, the class creates a new 
         // Type for all instances of the class, so this name can be provided 
         // to make uses of the class more straightforward if errors occur. 
@@ -959,22 +969,39 @@ provided contextually in code comments.
         // This is where the implementation of your class goes.
         // 'this' refers to the new instance of the class that is being created. 
         // It is the instance that will be worked with in user code.
-        // 'arguments' refers to an argument object, if any, provided when the user 
-        // created a new instance of the class. 'thisclass' refers to the 
-        // output of the class function, in our case, MyClass. 
-        define ::(this, arguments, thisclass) {
+        define ::(this) {
 
             // because these are variabels that are local to the define function, it 
             // is common to use these variables as typical "private variables" for 
             // the class.
-            @selfWeight = arguments.weight;
-            @selfHeight = arguments.height;
-            @realname = if (arguments.name != empty) arguments.name else 'No Name';
+            @selfWeight;
+            @selfHeight;
+            @realname; 
 
 
+            // If specified, the constructor allows for arguments from 
+            // user code. This is the actual function thats called 
+            // when a user calls "new". As such, the return value of 
+            // the constructor is what a user works with. 
+            // Most of the time, returning "this" is most appropriate.
+            //
+            // It is also useful to use type restrictions on the constructor to 
+            // ensure quality, error-free code.  
+            this.constructor = ::(
+                weight => Number,
+                height => Number,
+                name
+            ) {
+                selfHeight = height;
+                selfWeight = weight;
+                realname = if (arguments.name != empty) arguments.name else 'No Name';
 
-            // In the define function only, the output object contains 
-            // a special function called 'interface'. The interface function 
+                return this;
+            };
+
+
+            // In the define function only, the output object can contain 
+            // a special member called 'interface'. The interface function 
             // defines the public members of the instance as members of an object. 
             // For most readability, this interface object is usually just an 
             // object literal.
@@ -990,11 +1017,11 @@ provided contextually in code comments.
             // specified with 'get' and 'set'. The return value of 'get' is returned to the user 
             // when accessing the property. the 'set' argument is given to the function when 
             // the user requests to modify the property.
-            this.interface({
+            this.interface = {
                 // Example of an interface member function.
                 printReport ::{
-                    print(realname + ' weighs ' + selfWeight + 
-                          'kg and is ' + selfHeight + 'cm tall.');
+                    print(message: realname + ' weighs ' + selfWeight + 
+                                   'kg and is ' + selfHeight + 'cm tall.');
                 },
 
 
@@ -1010,8 +1037,8 @@ provided contextually in code comments.
                         return realname;
                     },
 
-                    set ::{
-                        error('This animal has already been named!');
+                    set ::(value) {
+                        error(detail:'This animal has already been named!');
                     }
                 },
 
@@ -1031,27 +1058,27 @@ provided contextually in code comments.
     // once the class is created. instances can be made.
     // This is done by taking the class and calling the 
     // new() function of the newly-created class.
-    @hoover = Creature.new({
+    @hoover = Creature.new(
         name : 'Hoover',
         weight : 24,
         height : 80
-    });
+    );
 
-    @billy = Creature.new({
+    @billy = Creature.new(
         name : 'Billy',
         weight : 10,
         height : 30
-    });
+    );
 
 
     // should print 'Hoover weighs 24kg and is 80cm tall.'
     hoover.printReport();
 
     // should print 'Hoover'
-    print(hoover.name);
+    print(message:hoover.name);
 
     // should print 'Hoover weights 30kg and is 88cm tall'
-    hoover.eat(8);
+    hoover.eat(foundAmount:8);
     hoover.printReport();
 
 
@@ -1063,7 +1090,7 @@ provided contextually in code comments.
     hoover.weight = 1000000;
 
     // should throw an error, since the argument isn't a Number.
-    hoover.eat('something');
+    hoover.eat(foodAmount:'something');
 
     // should throw an error, what is not part of public interface 
     hoover.what();
