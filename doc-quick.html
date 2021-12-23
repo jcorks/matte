@@ -20,7 +20,7 @@ This guide is intended for those who are already familiar with programming conce
 Throughout the guide, code samples will be provided. If using a javascript-enabled browser, you may hover your pointer / tap the code to get fine details about the syntax used. For example:
 <pre>
     <@>myFunction = ::{
-        print("Hello, world!");
+        print(message:"Hello, world!");
     };
     myFunction();
 </pre>
@@ -72,7 +72,7 @@ You can add an inline assignment with the declaration as well:
     @another = 4 + myOtherVariable;
 
     // Displays 7
-    print(another);
+    print(message:another);
 </pre>
 
 Variable names can contain any non-symbol character (other than _, which is allowed). 
@@ -159,14 +159,14 @@ There are only a handful of basic types within Matte:
     <pre>
         // Types can be gleaned by introspecting. Introspection is covered in 
         // a later section.
-        @f = introspect.type(40);
+        @f = introspect.type(of:40);
 
         // will print "true"
-        print(f == Number);
+        print(message:f == Number);
 
         // Types can be used as functions to explicitly convert between types.
         // will print 7
-        print(2 + Number('5'));
+        print(message:2 + Number('5'));
 
     </pre>
 </ul>
@@ -178,17 +178,19 @@ There are only a handful of basic types within Matte:
 <h2> 4. Functions</h2>
 In Matte functions are a special type of value. They can accept arguments, but they can also implicitly use variables using lexical "reference capture", also known as lexical closures.
 Functions are defined with the function constructor "::". It can then be followed by parantheses "()" to declare any number of argument names, then statement scope blocks "{}" to define its behavior.
+When called, functions that have arguments have values bound by name to arguments.
 <pre>
 
     // declare a new variable that is a function. It takes one argument 
     // that can be referred to by "myString"
     @myFunction = ::(myString) {
-        print(myString);
+        print(message:myString);
     };
 
     // run the function with one argument.
     // Should print Hello, world!
-    myFunction('Hello, world!');
+    // Remember: arguments are bound when called, so they must be named.
+    myFunction(myString:'Hello, world!');
 
 
 
@@ -202,7 +204,7 @@ Functions are defined with the function constructor "::". It can then be followe
     };
 
     // Should print 123
-    print(myOtherFunction());
+    print(message:myOtherFunction());
 
 
 </pre>
@@ -221,14 +223,14 @@ These "anonymous function" expressions are useful for more complex behaviors and
     // The function can be called immediately using the 
     // () like you would on a function reference.
     ::{
-        print("I ran immediately.");
+        print(message:"I ran immediately.");
     }();
 
     // The () behaves the same as if it 
     // were a typical variable.
     ::(argument) {
-        print('Hello, ' + argument);
-    }('World!!');
+        print(message:'Hello, ' + argument);
+    }(argument:'World!!');
 
     
     // Most commonly, it is convenient to 
@@ -238,7 +240,7 @@ These "anonymous function" expressions are useful for more complex behaviors and
     // situations. Alternatively, you can use 
     // "dash function syntax" to accomplish the same behavior:
     ::<={
-        print("I ran immediately, too!");
+        print(message:"I ran immediately, too!");
     };
 
 
@@ -259,7 +261,7 @@ These "anonymous function" expressions are useful for more complex behaviors and
 
 
     // should print 300
-    fancyFunction(66);
+    fancyFunction(c:66);
 
 
 </pre>
@@ -281,10 +283,10 @@ will attempt to be converted.
     };
 
     // Ok!
-    myAdder(10, 4);
+    myAdder(a:10, b:4);
 
     // Throws an error 
-    myAdder('50', 4);
+    myAdder(a:'50', b:4);
 
 </pre>
 
@@ -311,7 +313,7 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
         return context(n-1) + context(n-2);
     };
 
-    print(fib(5));
+    print(message:fib(a:5));
 
 
     // When assigning a function, the '=' can be ommitted optionally
@@ -325,7 +327,7 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
     };
 
     // should print lo
-    print(hi_low_mid(10, 40));
+    print(message:hi_low_mid(a:10, b:40));
     
 
 
@@ -344,15 +346,15 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
 
     match(statement) {
         // The syntax is (possibility) : conclusion.
-        (0) : print("It's zero"),
-        (1) : print("It's one")
+        (0) : print(message:"It's zero"),
+        (1) : print(message:"It's one")
     };
     
     
     
     // match returns an expression, so it can be used like so.
     // note that ONLY the conslusion
-    print(match(statement){
+    print(message:match(statement){
         (0)       : '0',
         (1)       : '1',
         // if multiple possibilities lead to the same conclusion, 
@@ -369,21 +371,21 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
     <@>judgeValue ::(i) {
         match(true) {
             (i > 20): ::<={
-                print('greater than 20');
+                print(message:'greater than 20');
             },
     
             (i < 20): ::<={
-                print('less than 20');
+                print(message:'less than 20');
             },
     
             default: ::<={
-                print('exactly 20');
+                print(message:'exactly 20');
             }
         };
     };
     
     // should print 'greater than 20'
-    judgeValue(50);
+    judgeValue(i:50);
 
 </pre>
 
@@ -396,7 +398,7 @@ that takes a single argument, a function, and runs it at least once until it ret
 
 <pre>
     @counter = 0;
-    loop(::{
+    loop(func:::{
         // It is common (and readable) to use the 
         // when statement as a termination condition.
         when(counter == 10) false;
@@ -421,8 +423,8 @@ In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is
     // 2
     // 3
     //
-    for([0, 4], ::(i){
-        print(i);
+    for(in:[0, 4], do:::(i){
+        print(message:i);
     });
 
     // The 3rd number in the list is the increment for the iterator.
@@ -435,8 +437,8 @@ In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is
     // 4
     // 6
     // 8
-    for([0, 10, 2], ::(i){
-        print(i);
+    for(in:[0, 10, 2], do:::(i){
+        print(message:i);
     });
 </pre>
 
@@ -454,8 +456,8 @@ Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iter
     // 1 -> b 
     // 2 -> c
     //
-    foreach(object, ::(key, value){
-        print('' + key + '->' + value);
+    foreach(in:object, do:::(key, value){
+        print(message:'' + key + '->' + value);
     });
 </pre>
  
@@ -472,10 +474,10 @@ The if expression in matte can be used to control or avoid computation of anothe
     // expression within parentheses computes to true.
 
     // should print false
-    if (myVal == false) print("myVal is false");
+    if (myVal == false) print(message:"myVal is false");
 
     // should not print
-    if (myVal == true) print("myVal is true");
+    if (myVal == true) print(message:"myVal is true");
 
 
     // if an "if" statement requires multiple statements, 
@@ -487,10 +489,10 @@ The if expression in matte can be used to control or avoid computation of anothe
     // should print 42
     if (myVal == false) ::<={
         @val = 4 * 8 + 10;
-        print(val);
+        print(message:val);
     };
 
-    print('myVal is ' + (if (myVal) 'true' else 'false'));
+    print(message:'myVal is ' + (if (myVal) 'true' else 'false'));
 
 </pre>
 
@@ -505,26 +507,26 @@ Often, it is useful to get more information about a particular value, or work wi
 work with basic values. It is invoked by using the built-in constant "introspect" and calling one of its recognized functions:
 
 <ul>
-    <li><b>introspect.type(<i>value</i>):</b> Returns the type of the value.</li>
-    <li><b>introspect.keys(<i>value</i>):</b> For an object, returns a list of all of the object's keys to stored values.</li>
-    <li><b>introspect.values(<i>value</i>):</b> For an object, returns a list of all of the object's stored values.</li>
-    <li><b>introspect.keycount(<i>value</i>):</b> For an object, returns the number of stored values that the object has.</li>
+    <li><b>introspect.type(<i>of</i>):</b> Returns the type of the value.</li>
+    <li><b>introspect.keys(<i>of</i>):</b> For an object, returns a list of all of the object's keys to stored values.</li>
+    <li><b>introspect.values(<i>of</i>):</b> For an object, returns a list of all of the object's stored values.</li>
+    <li><b>introspect.keycount(<i>of</i>):</b> For an object, returns the number of stored values that the object has.</li>
     <li><b>introspect.isCallable(<i>value</i>):</b> For an object, returns whether the object is a function.</li>
-    <li><b>introspect.arrayToString(<i>value</i>):</b> For an object, gathers all values key'd by number, interprets those values as number UTF8 codepoints, and returns a new string from those codepoints.</li>
-    <li><b>introspect.length(<i>value</i>):</b> For a string, returns now many codepoints are within the string.</li>
-    <li><b>introspect.charAt(<i>value, index</i>):</b> For a string, returns a single-character string at the index within the string.</li>
-    <li><b>introspect.charCodeAt(<i>value, index</i>):</b> For a string, returns the number value of the character at the given index.</li>
-    <li><b>introspect.subset(<i>value, from, to</i>):</b> For a string or list object, returns a new string or object with only the values between and including the indices "from" and "to".</li>
-    <li><b>introspect.floor(<i>value</i>):</b> For a number, returns the value's integer component.</li>
-    <li><b>introspect.ceil(<i>value</i>):</b> For a number, returns the value's integer component + 1.</li>
-    <li><b>introspect.round(<i>value</i>):</b> For a number, returns the value rounded.</li>
+    <li><b>introspect.arrayToString(<i>of</i>):</b> For an object, gathers all values key'd by number, interprets those values as number UTF8 codepoints, and returns a new string from those codepoints.</li>
+    <li><b>introspect.length(<i>of</i>):</b> For a string, returns now many codepoints are within the string.</li>
+    <li><b>introspect.charAt(<i>string, index</i>):</b> For a string, returns a single-character string at the index within the string.</li>
+    <li><b>introspect.charCodeAt(<i>string, index</i>):</b> For a string, returns the number value of the character at the given index.</li>
+    <li><b>introspect.subset(<i>set, from, to</i>):</b> For a string or list object, returns a new string or object with only the values between and including the indices "from" and "to".</li>
+    <li><b>introspect.floor(<i>of</i>):</b> For a number, returns the value's integer component.</li>
+    <li><b>introspect.ceil(<i>of</i>):</b> For a number, returns the value's integer component + 1.</li>
+    <li><b>introspect.round(<i>of</i>):</b> For a number, returns the value rounded.</li>
     <li><b>introspect.toRadians(<i>value</i>):</b> For a number, interprets the value as a degree value and returns the corresponding radians.</li>
     <li><b>introspect.toDegrees(<i>value</i>):</b> For a number, interprets the value as a radian value and returns the corresponding degrees.</li>
-    <li><b>introspect.sin(<i>value</i>):</b> For a number, returns sin(value).</li>
-    <li><b>introspect.cos(<i>value</i>):</b> For a number, returns cos(value).</li>
-    <li><b>introspect.tan(<i>value</i>):</b> For a number, returns tan(value).</li>
-    <li><b>introspect.abs(<i>value</i>):</b> For a number, returns its absolute value.</li>
-    <li><b>introspect.sqrt(<i>value</i>):</b> For a number, returns its square root.</li>
+    <li><b>introspect.sin(<i>of</i>):</b> For a number, returns sin(value).</li>
+    <li><b>introspect.cos(<i>of</i>):</b> For a number, returns cos(value).</li>
+    <li><b>introspect.tan(<i>of</i>):</b> For a number, returns tan(value).</li>
+    <li><b>introspect.abs(<i>of</i>):</b> For a number, returns its absolute value.</li>
+    <li><b>introspect.sqrt(<i>of</i>):</b> For a number, returns its square root.</li>
     <li><b>introspect.isNaN(<i>value</i>):</b> For a number, returns whether its value is "not a number".</li>
 </ul>
 
@@ -532,13 +534,13 @@ work with basic values. It is invoked by using the built-in constant "introspect
     @str = 'Hello, world!';
 
     // Should print 'o'
-    print(introspect.charAt(str, 4));
+    print(message:introspect.charAt(string:str, index:4));
 
     // Should print '13'
-    print(introspect.length(str));
+    print(message:introspect.length(of:str));
 
     // Should print '42'
-    print(introspect.abs(-42));
+    print(message:introspect.abs(of:-42));
 
 </pre>
 
@@ -566,13 +568,13 @@ a <i>send()</i> call. For example:
 
     
     // listen takes the function and runs it immediately.
-    @result = listen(::{
-        for([0, 100], ::(y) {
-            for([0, 100], ::(x) {
+    @result = listen(func:::{
+        for(in:[0, 100], do:::(y) {
+            for(in:[0, 100], do:::(x) {
                 // If a true cell is found, all functions are stopped 
                 // up until the nearest listen(), carrying the expression 
                 // 'Found!' with it.
-                when(my2DArray[x][y] == true) send('Found!');
+                when(my2DArray[x][y] == true) send(message:'Found!');
             });    
         });
         
@@ -590,17 +592,17 @@ adding a second argument to the <i>listen</i>. When present and is a function, t
 second function will ONLY be called when a message is received.
 <br>
 <pre>
-    listen(::{
-        for([0, 100], ::(y) {
-            for([0, 100], ::(x) {
+    listen(func:::{
+        for(in:[0, 100], do:::(y) {
+            for(in:[0, 100], do:::(x) {
                 // If a true cell is found, all functions are stopped 
                 // up until the nearest listen(), carrying the expression 
                 // 'Found!' with it.
-                when(my2DArray[x][y] == true) send('Found!');
+                when(my2DArray[x][y] == true) send(message:'Found!');
             });    
         });
-    }, ::(message) {
-        print('A message was received: ' + message);
+    }, onMessage:::(message) {
+        print(message:'A message was received: ' + message);
     });
 </pre>
 
@@ -620,8 +622,8 @@ your own errors with the built-in <i>error</i> function:
     error();
 
     // The error function can take an argument of any type, like send()
-    error('An error occurred');
-    error({
+    error(detail:'An error occurred');
+    error(detail:{
         message : 'An error occurred!',
         id : 10
     });
@@ -633,14 +635,14 @@ Error catching is equivalent to catching regular messages with <i>send</i>:
 
 <pre>
     @errorExample :: {
-        listen(::{
-            print("1");
-            print("2");
-            error('Uh oh!');
-            print("3");
-            print("4");
-        }, ::(err) {        
-            print("The following error was caught: " + err);
+        listen(func:::{
+            print(message:"1");
+            print(message:"2");
+            error(detail:'Uh oh!');
+            print(message:"3");
+            print(message:"4");
+        }, onMessage:::(message) {        
+            print(message:"The following error was caught: " + message.data);
         });
     };
     
@@ -666,22 +668,23 @@ Error catching is equivalent to catching regular messages with <i>send</i>:
     //
     // 
     @dangerousFunction ::{
-        print('a');
-        print('b');
-        error('Uh oh again!');
-        print('c');
-        print('d');
+        print(message:'a');
+        print(message:'b');
+        error(detail:'Uh oh again!');
+        print(message:'c');
+        print(message:'d');
     };
     
     @mySafeFunction ::{
-        listen(::{    
+        listen(func:::{    
             print(1);
             dangerousFunction();
             print(2);
-        }, ::{        
+        }, onMessage:::(message){        
             print('Caught external error');
         });
     };
+
     
     // Should, in total, print:
     //
@@ -692,9 +695,9 @@ Error catching is equivalent to catching regular messages with <i>send</i>:
     // Caught external error 
     // Ending safe operation..
     //
-    print('Starting safe operation..');
+    print(message:'Starting safe operation..');
     mySafeFunction();
-    print('Ending safe operation..');
+    print(message:'Ending safe operation..');
 
 </pre>
 
@@ -726,10 +729,10 @@ In a file called module.mt:
     
 In another file which is run in the VM:
 <pre>
-    @module = import('module.mt');
+    @module = import(module:'module.mt');
 
     // prints 'Hello, World!'
-    print(module.getData());
+    print(message:module.getData());
 
 </pre>
 
@@ -747,7 +750,6 @@ default VM import.
     <li><b>Matte.String:</b> Imports a class that can be used for everyday string manipulation.</li>
     <li><b>Matte.Array:</b> Imports a class that can be used for creating, managing, and sorting sets.</li>
     <li><b>Matte.JSON:</b> Imports a set of functions that can be used for workign with JSON files.</li>
-    <li><b>Matte.Enum:</b> Imports a function that can be used to create strictly typed enums.</li>
     <li><b>Matte.Core:</b> Imports an object that contains all of the built-in matte features separately available.</li>
 </ul>
 
@@ -779,8 +781,8 @@ specified.
     // and an attronites object, keyed with strings of the 
     // operator to specify overloading with.
     setAttributes(special, {
-        '<<' ::(other) {
-            special.data = special.data + other;
+        '<<' ::(value) {
+            special.data = special.data + value;
         }
     });
 
@@ -789,7 +791,7 @@ specified.
     special << 'b';
 
     // prints 'ab'
-    print(special.data);
+    print(message:special.data);
 
 </pre>
 
