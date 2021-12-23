@@ -858,8 +858,8 @@ Along with typical operator overloading, there exist a few special features that
     };
 
     setAttributes(
-        secret, 
-        {
+        of: secret, 
+        attributes: {
             '[]' : {
                 get ::(key) {
                     return 'Bracket access with: ' + key;
@@ -891,13 +891,13 @@ Along with typical operator overloading, there exist a few special features that
 
     
     // will print 'Bracket access with: test'
-    print(secret['test']);
+    print(message:secret['test']);
 
     // will print 'Bracket set with: A = 400'
     secret['A'] = 400;
 
     // will print 'Bracket access with: something'
-    print(secret.something);
+    print(message:secret.something);
 
     // will print 'Bracket set with: otherThing = 600'
     secret.otherThing = 600;
@@ -905,8 +905,8 @@ Along with typical operator overloading, there exist a few special features that
     // will print:
     // a -> 100 
     // b -> 1000
-    foreach(secret, ::(key, value) {
-        print('' + key +' -> ' + value);
+    foreach(in:secret, do:::(key, value) {
+        print(message:'' + key +' -> ' + value);
     });
 </pre>
 
@@ -924,8 +924,8 @@ it is not defined how objects can be converted to other types by default.
     };
 
     setAttributes(
-        cool,
-        {
+        of: cool,
+        attributes: {
             (String) :: {
                 return cool.asString;
             },
@@ -938,10 +938,10 @@ it is not defined how objects can be converted to other types by default.
 
 
     // prints 52
-    print(10 + cool);
+    print(message:10 + cool);
 
     // prints 'The number is: Forty-two'
-    print('The number is: ' + cool);
+    print(message:'The number is: ' + cool);
 </pre>
 
 <br>
@@ -959,19 +959,19 @@ completely unique. New objects of this type can be created using the <i>instanti
     @MyBasicType = newtype();
 
     // Same as newtype(), except errors will report the name of the type.
-    @MyType = newtype({name: 'MyType'});
+    @MyType = newtype(name: 'MyType');
 
     // You can use this to control inheritance
-    @MyInheritedType = newtype({inherits: MyType});
+    @MyInheritedType = newtype(inherits: MyType);
 
 
     // Creates a new object with the give type. The type cannot be changed.
-    @myInstance = instantiate(MyType);
+    @myInstance = instantiate(type: MyType);
     myInstance.data = 'Hello!';
 
     // You can use MyType anywhere you would a built-in Type
     @myFunction ::(a => MyType) {
-        print(a.data);
+        print(message:a.data);
     };
 
 
@@ -979,16 +979,16 @@ completely unique. New objects of this type can be created using the <i>instanti
 
 
     // Throws an error because the argument 
-    // is an object that is not of type "MyType"
-    myFunction({data: 'Hi!'});
+    // is an objec0t that is not of type "MyType"
+    myFunction(a:{data: 'Hi!'});
 
     // prints 'Hello!', since myInstance is of type MyType
-    myFunction(myInstance);
+    myFunction(a:myInstance);
 
     // prints 'Hi!', since myInheritedInstance inherits from MyType
-    @myInheritedInstance = instantiate(MyInheritedType);
+    @myInheritedInstance = instantiate(type:MyInheritedType);
     myInheritedInstance.data = 'Hi!';
-    myFunction(myInheritedInstance);
+    myFunction(a:myInheritedInstance);
 
 </pre>
 
@@ -1005,12 +1005,12 @@ provided contextually in code comments.
     // Retrieves the class module.
     // Afterwards 'class' is set to the class function, a special 
     // function that can be used to create classes.
-    @class = import('Matte.Class');
+    @class = import(module:'Matte.Class');
 
 
     // the class function takes one argument: an object with a variety of 
     // members describing the class.
-    @Creature = class({
+    @Creature = class(info:{
         // The name is an optional member. Internally, the class creates a new 
         // Type for all instances of the class, so this name can be provided 
         // to make uses of the class more straightforward if errors occur. 
@@ -1021,22 +1021,39 @@ provided contextually in code comments.
         // This is where the implementation of your class goes.
         // 'this' refers to the new instance of the class that is being created. 
         // It is the instance that will be worked with in user code.
-        // 'arguments' refers to an argument object, if any, provided when the user 
-        // created a new instance of the class. 'thisclass' refers to the 
-        // output of the class function, in our case, MyClass. 
-        define ::(this, arguments, thisclass) {
+        define ::(this) {
 
             // because these are variabels that are local to the define function, it 
             // is common to use these variables as typical "private variables" for 
             // the class.
-            @selfWeight = arguments.weight;
-            @selfHeight = arguments.height;
-            @realname = if (arguments.name != empty) arguments.name else 'No Name';
+            @selfWeight;
+            @selfHeight;
+            @realname; 
 
 
+            // If specified, the constructor allows for arguments from 
+            // user code. This is the actual function thats called 
+            // when a user calls "new". As such, the return value of 
+            // the constructor is what a user works with. 
+            // Most of the time, returning "this" is most appropriate.
+            //
+            // It is also useful to use type restrictions on the constructor to 
+            // ensure quality, error-free code.  
+            this.constructor = ::(
+                weight => Number,
+                height => Number,
+                name
+            ) {
+                selfHeight = height;
+                selfWeight = weight;
+                realname = if (arguments.name != empty) arguments.name else 'No Name';
 
-            // In the define function only, the output object contains 
-            // a special function called 'interface'. The interface function 
+                return this;
+            };
+
+
+            // In the define function only, the output object can contain 
+            // a special member called 'interface'. The interface function 
             // defines the public members of the instance as members of an object. 
             // For most readability, this interface object is usually just an 
             // object literal.
@@ -1052,11 +1069,11 @@ provided contextually in code comments.
             // specified with 'get' and 'set'. The return value of 'get' is returned to the user 
             // when accessing the property. the 'set' argument is given to the function when 
             // the user requests to modify the property.
-            this.interface({
+            this.interface = {
                 // Example of an interface member function.
                 printReport ::{
-                    print(realname + ' weighs ' + selfWeight + 
-                          'kg and is ' + selfHeight + 'cm tall.');
+                    print(message: realname + ' weighs ' + selfWeight + 
+                                   'kg and is ' + selfHeight + 'cm tall.');
                 },
 
 
@@ -1072,8 +1089,8 @@ provided contextually in code comments.
                         return realname;
                     },
 
-                    set ::{
-                        error('This animal has already been named!');
+                    set ::(value) {
+                        error(detail:'This animal has already been named!');
                     }
                 },
 
@@ -1093,27 +1110,27 @@ provided contextually in code comments.
     // once the class is created. instances can be made.
     // This is done by taking the class and calling the 
     // new() function of the newly-created class.
-    @hoover = Creature.new({
+    @hoover = Creature.new(
         name : 'Hoover',
         weight : 24,
         height : 80
-    });
+    );
 
-    @billy = Creature.new({
+    @billy = Creature.new(
         name : 'Billy',
         weight : 10,
         height : 30
-    });
+    );
 
 
     // should print 'Hoover weighs 24kg and is 80cm tall.'
     hoover.printReport();
 
     // should print 'Hoover'
-    print(hoover.name);
+    print(message:hoover.name);
 
     // should print 'Hoover weights 30kg and is 88cm tall'
-    hoover.eat(8);
+    hoover.eat(foundAmount:8);
     hoover.printReport();
 
 
@@ -1125,7 +1142,7 @@ provided contextually in code comments.
     hoover.weight = 1000000;
 
     // should throw an error, since the argument isn't a Number.
-    hoover.eat('something');
+    hoover.eat(foodAmount:'something');
 
     // should throw an error, what is not part of public interface 
     hoover.what();
