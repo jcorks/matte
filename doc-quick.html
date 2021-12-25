@@ -1007,7 +1007,7 @@ provided contextually in code comments.
     // Retrieves the class module.
     // Afterwards 'class' is set to the class function, a special 
     // function that can be used to create classes.
-    @class = import(module:'Matte.Class');
+    @class = import(module:'Matte.Core.Class');
 
 
     // the class function takes one argument: an object with a variety of 
@@ -1048,7 +1048,7 @@ provided contextually in code comments.
             ) {
                 selfHeight = height;
                 selfWeight = weight;
-                realname = if (arguments.name != empty) arguments.name else 'No Name';
+                realname = if (name != empty) name else 'No Name';
 
                 return this;
             };
@@ -1105,7 +1105,7 @@ provided contextually in code comments.
                         return selfHeight;
                     }
                 }
-            });
+            };
         }
     });
 
@@ -1132,7 +1132,7 @@ provided contextually in code comments.
     print(message:hoover.name);
 
     // should print 'Hoover weights 30kg and is 88cm tall'
-    hoover.eat(foundAmount:8);
+    hoover.eat(foodAmount:8);
     hoover.printReport();
 
 
@@ -1151,7 +1151,7 @@ provided contextually in code comments.
 
 
 
-    @Biter = class({
+    @Biter = class(info:{
         name : 'Biter',
 
         // Inheritance is also possible using the inherits property.
@@ -1162,12 +1162,19 @@ provided contextually in code comments.
         inherits : [Creature],
 
         define ::(this) {
+            // Since we want to initialize these instances using the same 
+            // creature constructor, 
+            // We can pull the existing constructor and use it as is.
+            //
+            //
+            this.constructor = this[Creature].constructor;
+
             this.interface = {
 
                 // All classes have a type member that is the Type value for that 
                 // class' instances.
                 bite ::(other => Creature.type) {
-                    print(this.name + ' has bitten ' + other.name + '. Ouch!!');                    
+                    print(message:this.name + ' has bitten ' + other.name + '. Ouch!!');                    
                 }
             };
         }
@@ -1175,8 +1182,8 @@ provided contextually in code comments.
 
     @george = Biter.new(
         name : 'George',
-        weight : '10',
-        height : '30'
+        weight : 10,
+        height : 30
     );
 
     // Because Biter inherits from Creature, it has all of 
