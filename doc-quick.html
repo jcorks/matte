@@ -166,7 +166,7 @@ There are only a handful of basic types within Matte:
 
         // Types can be used as functions to explicitly convert between types.
         // will print 7
-        print(message:2 + Number('5'));
+        print(message:2 + Number(from:'5'));
 
     </pre>
 </ul>
@@ -254,7 +254,7 @@ These "anonymous function" expressions are useful for more complex behaviors and
         b = 34;
         
         return :: (c) {
-            print(a + b + c);
+            print(message:a + b + c);
         };
     };
 
@@ -310,7 +310,7 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
     @fib = ::(n){
         when(n <  1) 0;
         when(n <= 2) 1;
-        return context(n-1) + context(n-2);
+        return context(n:n-1) + context(n:n-2);
     };
 
     print(message:fib(a:5));
@@ -635,7 +635,7 @@ Error catching is equivalent to catching regular messages with <i>send</i>:
 
 <pre>
     @errorExample :: {
-        listen(func:::{
+        listen(to:::{
             print(message:"1");
             print(message:"2");
             error(detail:'Uh oh!');
@@ -677,11 +677,11 @@ Error catching is equivalent to catching regular messages with <i>send</i>:
     
     @mySafeFunction ::{
         listen(func:::{    
-            print(1);
+            print(message:1);
             dangerousFunction();
-            print(2);
+            print(message:2);
         }, onMessage:::(message){        
-            print('Caught external error');
+            print(message:'Caught external error');
         });
     };
 
@@ -780,7 +780,9 @@ specified.
     // setAttributes takes the object to modify 
     // and an attronites object, keyed with strings of the 
     // operator to specify overloading with.
-    setAttributes(special, {
+    setAttributes(
+        of: special, 
+        attributes: {
         '<<' ::(value) {
             special.data = special.data + value;
         }
@@ -866,7 +868,7 @@ Along with typical operator overloading, there exist a few special features that
                 },
 
                 set ::(key, value) {
-                    print('Bracket set with: ' + key + ' = ' + value);                    
+                    print(message:'Bracket set with: ' + key + ' = ' + value);                    
                 }
             },
 
@@ -1159,30 +1161,30 @@ provided contextually in code comments.
         // inherited types' define function before this one's in order.
         inherits : [Creature],
 
-        define ::(this, arguments, thisclass) {
-            this.interface({
+        define ::(this) {
+            this.interface = {
 
                 // All classes have a type member that is the Type value for that 
                 // class' instances.
                 bite ::(other => Creature.type) {
                     print(this.name + ' has bitten ' + other.name + '. Ouch!!');                    
                 }
-            });
+            };
         }
     });
 
-    @george = Biter.new({
+    @george = Biter.new(
         name : 'George',
         weight : '10',
         height : '30'
-    });
+    );
 
     // Because Biter inherits from Creature, it has all of 
     // Creature's members.
     george.printReport();
 
     // Should print 'George has bitten Billy. Ouch!!'
-    george.bite(billy);
+    george.bite(other:billy);
 
 </pre>
 
