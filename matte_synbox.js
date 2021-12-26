@@ -12,21 +12,37 @@ try {
     var color_symbol  = "#38a675";
     var color_method  = "#b58900";
     var color_comment = "#839496";
+    var color_name    = "#8083e1";
 
     var type2desc = function(type) {
         switch(type) {
           case 'Numer Literal': return 'A simple number. Can be any valid floating point number.';
           case 'Boolean Literal': return 'A simple boolean. Can be either true or false';
           case 'Local Constant Declarator \'<@>\'': return 'Declares that a new constant variable is to be named. The token following this symbol is the name of the new variable';
+          case 'Local Variable Declarator \'@\'': return 'For variables that aren\'t function parameters, this lets you create new variables within the function context. The name after this symbol is the name of variable.';
           case 'Variable Name': return 'A variable name. When after a declarator, this is the name of a new variable. Variables can be numbers, strings, objects, function objects, or booleans.';
           case 'Function Constructor \'::\'': return 'Specifies that a new function should be created. Optionally can be followed by an argument list for when the function is called.';
-          case 'Assignment Operator \'=\'': return 'Assigns a new value to the variable.';
+          case 'Function Constructor Dash\'<=\'': return 'When specified, the new function being created is run immediately (with no parameter bindings) and is evaluated to its return value.';
+          case 'Assignment Operator \'=\'': return 'Assigns a new value to the variable or writable expression.';
+          case 'Variable Name Label': return 'The label to refer to a variable. This is most commonly for variables within functions or parameter bindings for calling functions.';
+          case 'Function Content Block \'{\'': return 'The start of a function definition. Until an end } is detected, all statements past here make up the function being defined.';
+          case 'Function Content Block \'}\'': return 'The end of a function definition. All statements since the first previous \'{\' define this function\'s behavior';
+          case 'String Literal': return 'A series of characters that are defined in code directly. String literals are not changeable, but can be used to build larger strings and to refer to members within Objects.';
+          case 'Function Argument List \'(\'': return 'When calling or defining a function, () symbols encase the arguments to the function, if present.';
+          case 'Function Argument List \')\'': return 'When calling or defining a function, () symbols encase the arguments to the function, if present.';
+          case 'Print built-in': return 'Built-in function provided by the Matte language to display Strings. Has one argument: message';
+          case '\'return\' Statement': return 'When the return statement is reached in a function, the function halts and "sends" its the return expression to the calling context.';
+          case '\'when\' Statement': return 'In the case that expression proceeding the \'when\' token evaluates to true, the function halts and "sends" its the final expression to the calling context.';
+          case 'Function Parameter Specifier \':\'': return 'When calling functions, every parameter must be bound to the name of the arguments specified by the function definition. The name before this symbol is the binding name.';
+          case 'Statement End \';\'': return 'Functions consist of separate statements, run one-at-a time. This symbol always marks the end of a single statement.';
+          case 'Introspect built-in': return 'Introspect is a built-in value that gives a variety of functions to examine values further.';
         }
+
 
         return '';
     }
 
-    var type2color = function(type) {
+    var type2color = function(type, next) {
         switch(type) {
             case 'Number Literal': 
             case 'Boolean Literal': 
@@ -63,9 +79,14 @@ try {
                 return color_symbol;
                 break;
 
-            case 'Variable Name':
+            case 'Variable Name Label':
+                if (next == 'Function Parameter Specifier \':\'') {
+                    return color_name;
+                }
                 return color_varname;
                 break;
+            case 'Function Parameter Specifier \':\'':
+                return color_name;
 
                 
             case 'String Literal': 
@@ -88,6 +109,9 @@ try {
         out.style.borderStyle = 'solid';
         out.style.borderColor = 'rgba(0, 0, 0, 0)';
         out.style.fontFamily = 'Consolas';
+        if (fgColor == color_name)
+            out.style.fontStyle = 'italic';
+            
         out.style.paddingBottom = '2px';
 
         out.addEventListener('mouseenter', function(event) {
@@ -145,6 +169,12 @@ try {
     }
 
     var parseLine = function(aline) {
+        if (!aline) return {
+            line : 0,
+            char : 0,
+            comment : '',
+            str : ''
+        };
         var elts = aline.split('\t');
         if (elts.length != 4) return {
             line : 0,
@@ -197,7 +227,7 @@ try {
 
             var lineIter = 0;
             var parsed = parseLine(analysisLines[n]);
-
+            var parsedNext = parseLine(analysisLines[n+1]);
 
 
             while(parsed.line-1 == i) {
@@ -209,12 +239,13 @@ try {
                     console.log(parsed);
 
                     var subunitText = lines[i].substr(from, length);
-                    var subel = createSubElement(subunitText, parsed.comment, type2color(parsed.comment), type2desc(parsed.comment));
+                    var subel = createSubElement(subunitText, parsed.comment, type2color(parsed.comment, parsedNext.comment), type2desc(parsed.comment));
                     el.appendChild(subel);
                 }
                 lineIter +=length;
                 n++;
-                parsed = parseLine(analysisLines[n]);
+                parsed = parsedNext;
+                parsedNext = parseLine(analysisLines[n+1]);
 
             }
 

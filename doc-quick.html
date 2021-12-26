@@ -15,7 +15,7 @@
 <br>
 <h2>1. Introduction</h2>
 
-This guide is intended for those who are already familiar with programming concepts from popular imperative languages, like Python, C/C++, C#, and Java. Matte uses a lot of the same conventions and features, with some key differences.
+This guide is intended for those who are already familiar with programming concepts from popular imperative languages like Python, C/C++, C#, and Java. Matte uses a lot of the same conventions and features, with some key differences.
 <p>
 Throughout the guide, code samples will be provided. If using a javascript-enabled browser, you may hover your pointer / tap the code to get fine details about the syntax used. For example:
 <pre>
@@ -39,7 +39,8 @@ For example, C-line single and multiline comments are readily available:
 
 As such, every line that isnt a comment is part of a statement. Statements may span multiple lines, but <b>statements must always end in a semicolon ";"</b>
 This will generate a compilation error if missing.
-
+<br>
+<br>
 Remember that <b>every statement is part of some function's scope. There is only one kind of scope: function scope. This is the core of Matte as a language: everything is or a statement within a function.</b> This includes statements written "nakedly" outside a user-defined function. This is referred to as the toplevel or script function. 
 <b>There is no such thing as global scope.</b> Values declared at the toplevel of a script are not visible outside the script without explicit exporting.
 
@@ -80,7 +81,7 @@ Variable names can contain any non-symbol character (other than _, which is allo
 <br>
 <h3>3.1 Types</h3>
 
-Variables can be any type, but in most cases, they retain the type of the last assignment.
+Variables can be any type, but in most cases, they retain the type of its last assignment.
 There are only a handful of basic types within Matte:
 <ul>
     <li><b>Empty:</b> represents a value without value. </li>
@@ -89,7 +90,9 @@ There are only a handful of basic types within Matte:
         @e = empty;
 
         // Values that are declared but NOT set are 
-        // given the empty value.
+        // given the empty value. This includes 
+        // function parameters that were not bound 
+        // by callers.
         @f;
     </pre>
     <li><b>Number:</b> A simple number value. Follows the semantics of double-precision IEEE 754 floating point numbers. In the standard implementation, this is accomplished with C "double" types.</li> 
@@ -107,7 +110,6 @@ There are only a handful of basic types within Matte:
         a = '10';
         b = "10";
         c = "A String!";
-        d = 'Escape\ncharacters\nsupported';    
     </pre>
     <li><b>Boolean:</b> Either true or false.</li>
     <pre>
@@ -117,7 +119,7 @@ There are only a handful of basic types within Matte:
         c = (1 == 2); // should be false 
         d = (10 == 10); // should be true
     </pre>
-    <li><b>Object:</b> a value that contains other values like a table.</li>
+    <li><b>Object:</b> a value that contains other values like a table. An object consists of 'keys' and 'values'.</li>
     <pre>
         // objects. They follow javascript style syntax.
         a = {}; 
@@ -134,9 +136,10 @@ There are only a handful of basic types within Matte:
         // Functions can be made and assigned.
         a = ::{};
         
-        // They can also be run immediately as part of an expression
+        // They can also be run immediately as part of an expression.
+        // Result would be "4" 
         result = ::<={
-            2 + 2;
+            return 2 + 2;
         };
 
         // functions can also capture values that persist beyond 
@@ -155,7 +158,7 @@ There are only a handful of basic types within Matte:
         counter();
 
     </pre>    
-    <li><b>Type:</b> a value that denotes a type of a value. In Matte, types are explicit values. There are built-in constants for types: Empty, Boolean, Number, String, Object, and Type. You can create your own types as well.</li>
+    <li><b>Type:</b> a value that denotes a type of a value. In Matte, types are explicit values. There are built-in constants for types: Empty, Boolean, Number, String, Object, Function, and Type. You can create your own types as well.</li>
     <pre>
         // Types can be gleaned by introspecting. Introspection is covered in 
         // a later section.
@@ -268,7 +271,7 @@ These "anonymous function" expressions are useful for more complex behaviors and
 
 <br>
 <h3> 4.1 Type-strict Functions</h3>
-In Matte it is possible to place type restrictions on functions. This can help produce more quality code, ensuring guarantees that incoming variables 
+In Matte it is possible to place type restrictions on functions. This can help produce more quality code, ensuring that incoming variables 
 are of an expected type. When functions place any of these restrictions, the functions are referred to as "type-strict" functions.
 
 Functions can have any argument or its return value be of a specified type. If type is violated, an error is thrown.
@@ -307,13 +310,13 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
 <pre>
     // Fibonacci sequence using "when"
     // "context" always refers to the currently running function.
-    @fib = ::(n){
+    @fib ::(n){
         when(n <  1) 0;
         when(n <= 2) 1;
         return context(n:n-1) + context(n:n-2);
     };
 
-    print(message:fib(a:5));
+    print(message:fib(n:5));
 
 
     // When assigning a function, the '=' can be ommitted optionally
@@ -343,6 +346,8 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
 <pre>
     @statement = 1;
 
+
+    // The following would print "It's one"
 
     match(statement) {
         // The syntax is (possibility) : conclusion.
@@ -392,7 +397,7 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
 <br>
 <h3> 5.3 loop</h3>
 <i>loop</i> is similar to "while" in C-like languages in concept, but the behavior is different. <i>loop</i> is a function 
-that takes a single argument, a function, and runs it at least once until it returns <i>false</i>. If the function returns 
+that takes a single argument, a function 'func', and runs it at least once until it returns <i>false</i>. If the function returns 
 <i>true</i>, the function is immediately called again.
 
 
@@ -411,7 +416,7 @@ that takes a single argument, a function, and runs it at least once until it ret
 </br>
 <h3> 5.4 for</h3>
 
-In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is a list of numbers, denoting the start value, end value, and optional iteration value. The second argument is a function to be called for each iteration. The function receives one value, which is the value of the for loop's iterator as a Number.
+In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is a list of numbers (the 'in' parameter), denoting the start value, end value, and optional iteration value. The second argument ('do') is a function to be called for each iteration. The function receives one value, which is the value of the for loop's iterator as a Number. <b>The argument for the 'do' parameter function can be any name of your choosing.</b>
 
 <pre>
     // Basic for loop, iterates 10 times in a C-style manner using 0-based indices.
@@ -445,7 +450,7 @@ In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is
 </br>
 <h3> 5.5 foreach</h3>
 
-Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iteration. <i>foreach</i> iterates over an Object's keys and values.
+Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iteration. <i>foreach</i> iterates over an Object's keys and values. <b>The key and value arguments for the 'do' parameter function can be any names of your choosing. The first is always the key, and the second is always the value.</b>
 
 <pre>
     @object = ['a', 'b', 'c'];
@@ -567,8 +572,8 @@ a <i>send()</i> call. For example:
     @my2DArray = make100by100();
 
     
-    // listen takes the function and runs it immediately.
-    @result = listen(func:::{
+    // listen takes the function (parameter: 'to') and runs it immediately.
+    @result = listen(to:::{
         for(in:[0, 100], do:::(y) {
             for(in:[0, 100], do:::(x) {
                 // If a true cell is found, all functions are stopped 
@@ -592,7 +597,7 @@ adding a second argument to the <i>listen</i>. When present and is a function, t
 second function will ONLY be called when a message is received.
 <br>
 <pre>
-    listen(func:::{
+    listen(to:::{
         for(in:[0, 100], do:::(y) {
             for(in:[0, 100], do:::(x) {
                 // If a true cell is found, all functions are stopped 
@@ -736,7 +741,7 @@ In another file which is run in the VM:
 
 </pre>
 
-Note: <b>importing the same module for than once, by default, will just return the same computed result from the first import. Take care if you are using a custom import implementation.</b>
+Note: <b>importing the same module more than once, by default, will just return the same computed result from the first import. Take care if you are using a custom import implementation.</b>
 
 
 <br>
@@ -749,7 +754,7 @@ default VM import.
     <li><b>Matte.Class:</b> Imports an function that can be used to create classes with a proper interface, setters/getters, inheritance, and more.</li>
     <li><b>Matte.String:</b> Imports a class that can be used for everyday string manipulation.</li>
     <li><b>Matte.Array:</b> Imports a class that can be used for creating, managing, and sorting sets.</li>
-    <li><b>Matte.JSON:</b> Imports a set of functions that can be used for workign with JSON files.</li>
+    <li><b>Matte.JSON:</b> Imports a set of functions that can be used for working with JSON data.</li>
     <li><b>Matte.Core:</b> Imports an object that contains all of the built-in matte features separately available.</li>
 </ul>
 
@@ -999,8 +1004,8 @@ completely unique. New objects of this type can be created using the <i>instanti
 <br>
 <h3> 9.5 Classes</h3>
 
-Classes take into account all these features to be implemented as a feature on top of the language. It is standardly
-provided as a core module under the name 'Matte.Class'. Further explanation will be 
+Classes take into account all these features as a Module on top of the language. It is standardly
+provided as a core module under the name 'Matte.Core.Class'. Further explanation will be 
 provided contextually in code comments.
 
 <pre>
@@ -1010,7 +1015,7 @@ provided contextually in code comments.
     @class = import(module:'Matte.Core.Class');
 
 
-    // the class function takes one argument: an object with a variety of 
+    // the class function takes one argument: 'info', an object with a variety of 
     // members describing the class.
     @Creature = class(info:{
         // The name is an optional member. Internally, the class creates a new 
