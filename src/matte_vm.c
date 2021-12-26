@@ -1163,6 +1163,7 @@ matteVM_t * matte_vm_create() {
     temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS, &temp, vm_ext_call__introspect_abs);    
     temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT, &temp, vm_ext_call__introspect_sqrt);    
     temp = MATTE_ARRAY_CAST(&value, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN, &temp, vm_ext_call__introspect_isnan);    
+    temp = MATTE_ARRAY_CAST(&value, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_PARSE, &temp, vm_ext_call__introspect_parse);    
 
     //vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
     matte_bind_native_functions(vm);
@@ -1575,12 +1576,10 @@ matteValue_t matte_vm_call(
                     vm->unhandledData                   
                 );                
             }     
-            #ifdef MATTE_DEBUG
-                printf("VM Error: UNHANDLED CATCHABLE: %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, vm->catchable))));
-            #endif
             matte_value_object_pop_lock(vm->heap, vm->catchable);
             vm->catchable.binID = 0;
             vm->pendingCatchable = 0;
+            return matte_heap_new_value(vm->heap);
         }
         return result; // ok, vm_execution_loop returns new
     } 
@@ -1787,13 +1786,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
 
 void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     if (vm->pendingCatchable) {
-        #ifdef MATTE_DEBUG
-            printf("Previous error: \n%s\n", 
-                matte_string_get_c_str(
-                matte_value_string_get_string_unsafe(vm->heap, 
-                matte_value_object_access_string(vm->heap, vm->catchable, MATTE_VM_STR_CAST(vm, "summary")))));
-            assert(!"VM has a new error generated before previous error could be captured. This is not allowed and is /probably/ indicative of internal VM error.");
-        #endif
+        return;
     }
 
     matteValue_t info = vm_info_new_object(vm, val);

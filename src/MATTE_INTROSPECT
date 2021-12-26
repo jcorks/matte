@@ -24,6 +24,7 @@ enum {
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT,
     MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN,
+    MATTE_EXT_CALL_INTERNAL__INTROSPECT_PARSE,
 
     //MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE,
     // the last one
@@ -81,7 +82,8 @@ static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, con
         "tan",
         "abs",
         "sqrt",
-        "isNaN"
+        "isNaN",
+        "parse"
 
 
     };
@@ -107,7 +109,8 @@ static matteValue_t vm_ext_call__introspect(matteVM_t * vm, matteValue_t fn, con
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_TAN),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ABS),
         matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_SQRT),
-        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN)
+        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_ISNAN),
+        matte_array_at(vm->extStubs, matteBytecodeStub_t *, MATTE_EXT_CALL_INTERNAL__INTROSPECT_PARSE)
 
     };
 
@@ -448,6 +451,29 @@ static matteValue_t vm_ext_call__introspect_isnan(matteVM_t * vm, matteValue_t f
     matte_value_into_boolean(vm->heap, &out, isnan(matte_value_as_number(vm->heap, a)));
     return out;
 }
+
+
+static matteValue_t vm_ext_call__introspect_parse(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
+
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    matteValue_t aconv = matte_value_as_string(vm->heap, a);
+    if (aconv.binID != MATTE_VALUE_TYPE_STRING) {
+        matte_vm_raise_error_cstring(vm, "'introspect.parse' requires a String as its argument.");                
+        matte_heap_recycle(vm->heap, aconv);
+        return out;
+    }
+
+
+    const matteString_t * m = matte_value_string_get_string_unsafe(vm->heap, aconv);
+    double fout;
+    if (sscanf(matte_string_get_c_str(m), "%f", &fout) == 1) {
+        matte_value_into_number(vm->heap, &out, fout);
+    }
+    return out;
+}
+
+
 /*
 static matteValue_t vm_ext_call__introspect_nowrite(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t out = matte_heap_new_value(vm->heap);

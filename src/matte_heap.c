@@ -1306,8 +1306,8 @@ double matte_value_as_number(matteHeap_t * heap, matteValue_t v) {
         return v.value.boolean;
       }
       case MATTE_VALUE_TYPE_STRING: {
-        const matteString_t * m = matte_string_heap_find(heap->stringHeap, v.value.id);
-        return strtod(matte_string_get_c_str(m), NULL);
+        matte_vm_raise_error_cstring(heap->vm, "Cannot convert string value into a number.");
+        return 0;
       }
        case MATTE_VALUE_TYPE_FUNCTION: 
         matte_vm_raise_error_cstring(heap->vm, "Cannot convert function value into a number.");
