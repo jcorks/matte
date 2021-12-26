@@ -137,10 +137,10 @@
 
 
         // actual client that a user interacts with.
-        <@>Client = class(definition:{
+        <@>Client = class(info:{
             name: 'Matte.System.SocketIO.Server.Client',
             inherits:[EventSystem],
-            instantiate::(this, thisClass) {
+            define::(this) {
                 @id_number;
                 @pendingMessages = {};
                 @socket;
@@ -234,10 +234,10 @@
             }
         });
 
-        <@>Server = class(definition:{
+        <@>Server = class(info:{
             name: 'Matte.System.SocketIO.Server',
             inherits:[EventSystem],
-            instantiate::(this, thisClass) {
+            define::(this) {
 
                 // initialize socket right away.
                 @socket;
@@ -370,10 +370,10 @@
 
                 
                 
-        return class(definition:{
+        return class(info:{
             name : 'Matte.System.SocketIO.Client',
             inherits : [EventSystem],
-            instantiate::(this, thisClass) {
+            define::(this) {
                 @socket;
                 
                 this.events = {

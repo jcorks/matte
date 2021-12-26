@@ -20,6 +20,7 @@
     };
 
     @classinst = {define : info.define};
+    when(introspect.type(of:classinst.define) != Function) error(detail:'class must include a "define" function within its "info" specification');
     @classInherits = info.inherits;
     @type = if (classInherits != empty) ::<={
         @inheritset = [];

@@ -14,10 +14,10 @@
 <@>_mbuffer_set_index = getExternalFunction(name:"__matte_::mbuffer_set_index");
 
 <@>class = import(module:'Matte.Core.Class');
-@MemoryBuffer = class(definition:{
+@MemoryBuffer = class(info:{
     name: 'Matte.System.MemoryBuffer',
-    instantiate::(this, thisClass) {
-        <@>MBuffer = thisClass.type;
+    define::(this) {
+        <@>MBuffer = this.class.type;
         @length = 0;
         @buffer;
 
@@ -31,6 +31,7 @@
                     return handle;
                 }
             );
+            return this;
         };
             
         
@@ -85,7 +86,7 @@
                 to   => Number
             ) => MBuffer {
                 checkReleased(t:this);
-                return thisClass.new(handle:
+                return this.class.new(handle:
                     _mbuffer_subset(a:buffer, b:from, c:to)
                 );
             },

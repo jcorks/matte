@@ -1,10 +1,10 @@
 @MatteString = import(module:"Matte.Core.String");
 @class = import(module:"Matte.Core.Class");
-@_print = getExternalFunction(module:"__matte_::consoleio_print");
+@_print = getExternalFunction(name:"__matte_::consoleio_print");
 
-return class(definition:{
+return class(info:{
     name : 'Matte.System.ConsoleIO',
-    instantiate::(this) {
+    define::(this) {
         this.interface = {
             // Prints a simple string with a newline afterwards.
             println ::(message => String) {

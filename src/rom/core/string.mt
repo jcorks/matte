@@ -238,8 +238,8 @@
             },
             
             '+' :: (value){
-                @out = this.class.new(from:String(from:this));
-                out.append(other:value);
+                @out = this.class.new();
+                out.append(other:String(from:this));
                 return out;
             },
             
@@ -253,8 +253,8 @@
                 },
                 
                 
-                set ::(index => Number, b) {
-                    _string_setcharat(a:handle, b:index, c:String(from:b));
+                set ::(key => Number, value) {
+                    _string_setcharat(a:handle, b:key, c:String(from:value));
                 }
             }
         };

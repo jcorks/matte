@@ -997,7 +997,7 @@ void matte_value_into_new_typed_function_ref_(matteHeap_t * heap, matteValue_t *
             if (i == len-1) {
                 str = matte_string_create_from_c_str("Function constructor with type specifiers requires those specifications to be Types. The return value specifier is not a Type.");
             } else {
-                str = matte_string_create_from_c_str("Function constructor with type specifiers requires those specifications to be Types. The type specifier for Argument %d is not a Type.\n", i+1);
+                str = matte_string_create_from_c_str("Function constructor with type specifiers requires those specifications to be Types. The type specifier for Argument '%s' is not a Type.\n",                 matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_bytecode_stub_get_arg_name(stub, i))));
             }
             
             matte_vm_raise_error_string(heap->vm, str);
@@ -1507,8 +1507,8 @@ int matte_value_object_function_pre_typecheck_unsafe(matteHeap_t * heap, matteVa
             matte_array_at(m->function.types, matteValue_t, i)
         )) {
             matteString_t * err = matte_string_create_from_c_str(
-                "Argument %d (type: %s) is not of required type %s",
-                i+1,
+                "Argument '%s' (type: %s) is not of required type %s",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_bytecode_stub_get_arg_name(m->function.stub, i))),
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_value_type_name(heap, matte_value_get_type(heap, matte_array_at(arr, matteValue_t, i))))),
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_value_type_name(heap, matte_array_at(m->function.types, matteValue_t, i))))
             );

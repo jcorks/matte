@@ -53,10 +53,10 @@
 
 @workers = Array.new();
 @Async;
-return class(definition:{
+return class(info:{
     name : 'Matte.System.Async',
     inherits:[EventSystem],
-    instantiate::(this) {
+    define::(this) {
 
         this.events = {
             onNewParentMessage::{}
@@ -107,11 +107,11 @@ return class(definition:{
         };
 
 
-        @Worker = class(definition:{
+        @Worker = class(info:{
             name : 'Matte.System.Async.Worker',
             inherits : [EventSystem],
-            instantiate::(this, thisClass) {
-                <@>State = thisClass.State;
+            define::(this) {
+                <@>State = this.class.State;
                 @id;
                 @curstate = State.Unknown;
                 when(id == empty) error(message:'The worker failed to start with the given args');

@@ -1,7 +1,7 @@
-@MemoryBuffer = import('Matte.System.MemoryBuffer');
-@ConsoleIO    = import('Matte.System.ConsoleIO');
-@MatteString  = import('Matte.Core.String');
-@class        = import('Matte.Core.Class');
+@MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
+@ConsoleIO    = import(module:'Matte.System.ConsoleIO');
+@MatteString  = import(module:'Matte.Core.String');
+@class        = import(module:'Matte.Core.Class');
 
 
 @hextable = {
@@ -25,8 +25,8 @@
 
 // assumes 0-255
 <@> numberToHex::(n => Number) {
-    return hextable[n / 16] + // number lookups are always floored.
-           hextable[n % 16];
+    return {first :hextable[n / 16], // number lookups are always floored.
+     second:hextable[n % 16]};
 };
 
 @asciitable = {
@@ -138,8 +138,14 @@
 
 <@> numberToAscii::(n => Number) {
     <@> res = asciitable[n];
-    when(res == empty) '__';
-    return res + ' ';
+    when(res == empty) {
+        first: '_',
+        second: '_'
+    };
+    return {
+        first: res,
+        second: ' '
+    };
 };
 
 <@>line = MatteString.new();
@@ -150,7 +156,7 @@
 
 <@> dumphex ::(data => MemoryBuffer.type){
     line.length = BYTES_PER_LINE*2+BYTES_PER_LINE;
-    for([0, BYTES_PER_LINE], ::(i) {
+    for(in:[0, BYTES_PER_LINE], do:::(i) {
         line[i+2] = ' ';
     });
 
@@ -161,7 +167,7 @@
     @lineAsTextIter = 0;
     @charAt = introspect.charAt;
     @out = MatteString.new();
-    for([0, data.size], ::(i) {
+    for(in:[0, data.size], do:::(i) {
         if (i%BYTES_PER_LINE == 0) ::<={
             out += line + "      " + lineAsText + '\n';
             iter = 0;
@@ -169,21 +175,21 @@
             lineIter = 0;
         };
 
-        @n = numberToHex(data[i]);
-        line[lineIter] = charAt(n, 0); lineIter+= 1;
-        line[lineIter] = charAt(n, 1); lineIter+= 1;
+        @n = numberToHex(n:data[i]);
+        line[lineIter] = n.first; lineIter+= 1;
+        line[lineIter] = n.second; lineIter+= 1;
         lineIter+= 1;
 
-        n = numberToAscii(data[i]);
-        lineAsText[lineAsTextIter] = charAt(n, 0); lineAsTextIter += 1;            
-        lineAsText[lineAsTextIter] = charAt(n, 1); lineAsTextIter += 1;            
+        n = numberToAscii(n:data[i]);
+        lineAsText[lineAsTextIter] = n.first; lineAsTextIter += 1;            
+        lineAsText[lineAsTextIter] = n.second; lineAsTextIter += 1;            
 
 
         iter += 1;
     });
     
     if (iter != 0) ::<= {
-        for([iter, BYTES_PER_LINE], ::{
+        for(in:[iter, BYTES_PER_LINE], do:::{
             line[lineIter] = ' '; lineIter+= 1;
             line[lineIter] = ' '; lineIter+= 1;
             lineIter+= 1;
@@ -197,30 +203,30 @@
 };
 
 
-return class({
+return class(info:{
     name : 'DumpHex',
     define::(this) {
 
-        this.interface({
+        this.interface = {
             bytesPerLine : {
                 get :: {
                     return BYTES_PER_LINE;
                 },
                 
-                set ::(v) {
-                    BYTES_PER_LINE = v;
+                set ::(value) {
+                    BYTES_PER_LINE = value;
                 }
             },
             
             
-            'print' ::(m => MemoryBuffer.type) {
-                ConsoleIO.println(String(dumphex(m)));                      
+            'print' ::(buffer => MemoryBuffer.type) {
+                ConsoleIO.println(message:String(from:dumphex(data:buffer)));                      
             },
             
-            toString ::(m => MemoryBuffer.type) => String {
-                return String(dumphex(m));
+            toString ::(buffer => MemoryBuffer.type) => String {
+                return String(from:dumphex(data:buffer));
             }
-        });    
+        };    
     }
 }).new();
 

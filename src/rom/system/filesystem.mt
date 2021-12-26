@@ -16,9 +16,9 @@
 @_writeString = getExternalFunction(name:"__matte_::filesystem_writestring");
 @_writeBytes = getExternalFunction(name:"__matte_::filesystem_writebytes");
 
-return class(definition:{
+return class(info:{
     name : 'Matte.System.Filesystem',
-    instantiate::(this) {
+    define::(this) {
         this.interface = {
             // Directory / Files 
             cwd : {
@@ -68,8 +68,8 @@ return class(definition:{
             // reads the contents of a file and returns MemoryBuffer of its contents.
             // Expects one argument: a path to the file
             // On failure, throws an error.
-            readBytes : ::(p){            
-                return MemoryBuffer.new(handle:_readBytes(a:p));  
+            readBytes : ::(path){            
+                return MemoryBuffer.new(handle:_readBytes(a:path));  
             },
 
             // Given a path and a string, writes the given file.

@@ -1,7 +1,7 @@
 @class = import(module:'Matte.Core.Class');
-return class(definition:{
+return class(info:{
     name : 'Matte.System',
-    instantiate::(this) {
+    define::(this) {
         this.interface = {
             ConsoleIO    : import(module:'Matte.System.ConsoleIO'),
             Filesystem   : import(module:'Matte.System.Filesystem'),

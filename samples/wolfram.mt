@@ -1,10 +1,10 @@
 //// Implementation of Stephen Wolfram's 
 //// cellular automata
 
-@Time    = import('Matte.System.Time');
-@Console = import('Matte.System.ConsoleIO');
-@Utility = import('Matte.System.Utility');
-@MString = import('Matte.Core.String');
+@Time    = import(module:'Matte.System.Time');
+@Console = import(module:'Matte.System.ConsoleIO');
+@Utility = import(module:'Matte.System.Utility');
+@MString = import(module:'Matte.Core.String');
 
 <@>SWCA_WIDTH = 80;
 <@>SWCA_SPEED = 120;
@@ -15,9 +15,9 @@
     b1 => Boolean,
     b2 => Boolean
 ) {
-    return Number(b0)  + 
-           Number(b1)*2 + 
-           Number(b2)*4;
+    return Number(from:b0)  + 
+           Number(from:b1)*2 + 
+           Number(from:b2)*4;
 };
 
 // Populate the next state
@@ -28,9 +28,9 @@
 
     // Implements "rule 90" 
     return match(bit3toNumber(
-        state[before], 
-        state[index], 
-        state[after]
+        b0:state[before], 
+        b1:state[index], 
+        b2:state[after]
     )) {
         (0, 2, 7, 5): false,
         default:      true
@@ -53,8 +53,8 @@
         generation => Number
     ) {
         @generationStr = gentable[generation%16];
-        for([0, SWCA_WIDTH], ::(i){
-            str.setCharAt(i, (if(arr[i]) generationStr else ' '));
+        for(in:[0, SWCA_WIDTH], do:::(i){
+            str.setCharAt(index:i, value:(if(arr[i]) generationStr else ' '));
         });    
         return str;
     };
@@ -65,7 +65,7 @@
 
 
 // initialize state
-for([0, SWCA_WIDTH], ::(i) {
+for(in:[0, SWCA_WIDTH], do:::(i) {
     state[i] = false;
 });
 
@@ -78,14 +78,14 @@ state[SWCA_WIDTH/2] = true;
  
 
 
-loop(::{
+loop(func:::{
     // get the full state every line.
     if (progress == SWCA_WIDTH) ::<= {
-        for([0, SWCA_WIDTH], ::(i) {
-            @next = getNextState(state, i);
+        for(in:[0, SWCA_WIDTH], do:::(i) {
+            @next = getNextState(state:state, index:i);
             stateNext[i] = next;
         }); 
-        str = printState(state, generation);
+        str = printState(arr:state, generation:generation);
         generation += 1;
         
         @temp = state;
@@ -93,12 +93,12 @@ loop(::{
         stateNext = temp;
 
         progress = 0;
-        Console.printf('\n');
+        Console.printf(format:'\n');
     };
-    @nextChar = String(str.charAt(progress));
+    @nextChar = String(from:str.charAt(index:progress));
     @wait = (if (nextChar == ' ') SWCA_SPEED/7 else SWCA_SPEED);
-    Time.sleep(Utility.random*wait);
-    Console.printf(nextChar);
+    Time.sleep(milliseconds:Utility.random*wait);
+    Console.printf(format:nextChar);
     progress += 1;
     return true;
 });

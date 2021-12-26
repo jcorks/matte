@@ -7,9 +7,9 @@
 getExternalFunction(name:"__matte_::utility_initRand")();
 
 
-return class(definition:{
+return class(info:{
     name : 'Matte.Core.Utility',
-    instantiate::(this) {
+    define::(this) {
         this.interface = {
             
             // returns a random value between 0 and 1.
