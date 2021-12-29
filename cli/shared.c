@@ -26,6 +26,49 @@ void * dump_bytes(const char * filename, uint32_t * len) {
 }
 
 
-void matte_vm_add_system_symbols(matteVM_t * cm, char ** argv, int argc) {
 
+
+matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteValue_t v = matte_heap_new_value(heap);
+    matte_value_into_new_object_ref(heap, &v);
+
+    uint32_t i = 0;
+    matteString_t * allargs = matte_string_create();
+    for(i = 0; i < count; ++i) {
+        matte_string_concat_printf(allargs, "%s ", args[i]);        
+    }
+
+    uint32_t len = matte_string_get_length(allargs);
+    matteString_t * iter = matte_string_create();
+    matteString_t * key = NULL;
+    for(i = 0; i < len; ++i) {
+        switch(matte_string_get_char(allargs, i)) {
+          case ' ':
+          case '\t':
+          case '\n':
+          case ':':
+            if (matte_string_get_length(iter)) {
+                if (!key) {
+                    key = iter;
+                    iter = matte_string_create();                    
+                } else {
+                    matteValue_t heapKey = matte_heap_new_value(heap);
+                    matteValue_t heapVal = matte_heap_new_value(heap);
+
+                    matte_value_into_string(heap, &heapKey, key);
+                    matte_value_into_string(heap, &heapVal, iter);
+
+                    matte_value_object_set(heap, v, heapKey, heapVal, 1);
+                    matte_string_destroy(key);
+                    matte_string_clear(iter);
+                    key = NULL;
+                }
+            }
+            break;
+          default:
+            matte_string_append_char(iter, matte_string_get_char(allargs, i));
+        }
+    }
+    return v;
 }

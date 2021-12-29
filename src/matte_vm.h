@@ -78,6 +78,17 @@ void matte_vm_set_import(
     )
 );
 
+// Performs an import, which evaluates the source at the given path 
+// and returns its value, as if calling import() within 
+// source.
+matteValue_t matte_vm_import(
+    matteVM_t *, 
+    const matteString_t * path, 
+    matteValue_t parameters
+);
+
+
+
 // Runs the root functional stub of the file
 // The value result of stub is returned. Empty if no result.
 //
@@ -86,11 +97,10 @@ void matte_vm_set_import(
 //
 // This is equivalent to pushing the args onto the stack and 
 // inserting a CAL instruction.
-matteValue_t matte_vm_run_script(
+matteValue_t matte_vm_run_fileid(
     matteVM_t *, 
     uint32_t fileid, 
-    const matteArray_t * args,
-    const matteArray_t * argNames
+    matteValue_t parameters
 );
 
 

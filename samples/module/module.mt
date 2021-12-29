@@ -1,4 +1,5 @@
 <@>class = import(module:'Matte.Core.Class');
+<@>offset = Number(from:parameters.offset);
 
 return class(info:{
     define :: (this) {
@@ -33,7 +34,7 @@ return class(info:{
             
             // public function, adds both variables
             add :: {
-                return value0 + value1 + constant;
+                return value0 + value1 + constant + offset;
             }
         };
     }

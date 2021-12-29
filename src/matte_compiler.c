@@ -3929,7 +3929,7 @@ static matteFunctionBlock_t * compile_function_block(
                 // no return value type, but we're in strict mode. So enter an "any" type.
                 write_instruction__pto(b->typestrict_types, iter->line, 7);             
             }
-        } 
+        }
         if (b->typestrict_types) {
             b->typestrict = matte_array_get_size(b->args) + 1;
         }
@@ -3943,7 +3943,10 @@ static matteFunctionBlock_t * compile_function_block(
         iter = iter->next;
     }
 
-
+    if (parent == NULL) { // toplevel script always contains one argument: parameters
+        matteString_t * arg = matte_string_create_from_c_str("parameters");
+        matte_array_push(b->args, arg);
+    }
     // next find all locals and static strings
     matteToken_t * funcStart = iter;
     while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {

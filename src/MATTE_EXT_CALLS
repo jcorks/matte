@@ -371,18 +371,153 @@ static void import_compile_error(
     VMImportCompilerData * vmdata = data;
     matteVM_t * vm = vmdata->vm;
     matteString_t * strM = matte_string_create();
-    matte_string_concat_printf(strM, "Error while compiling imported file %s line %d:%d : %s", matte_string_get_c_str(vmdata->filename), line, ch, matte_string_get_c_str(str));
+    matte_string_concat_printf(strM, "Error while compiling imported file:\n%s,line %d:%d:\n%s", matte_string_get_c_str(vmdata->filename), line, ch, matte_string_get_c_str(str));
     matte_vm_raise_error_string(vm, strM);    
     matte_string_destroy(strM);
     
 }
 
-static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];
-    const matteString_t * str = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
+
+
+#ifdef MATTE_USE_SYSTEM_EXTENSIONS
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#include <unistd.h>
+#include <limits.h>
+static matteString_t * import__getcwd_generic() {
+    char * path = malloc(PATH_MAX+1);
+    path[0] = 0;
+    getcwd(path, PATH_MAX);
+    matteString_t * st = matte_string_create_from_c_str(path);
+    free(path);
+    return st;
+}
+
+static void import__path_append(matteString_t * path, const matteString_t * item) {
+    matte_string_concat_printf(path, "/");
+    matte_string_concat(path, item);
+}
+
+static matteString_t * import__get_directory(const matteString_t * path) {
+    int i;
+    for(i = matte_string_get_length(path)-1; i >= 0; i--) {
+        if (matte_string_get_char(path, i) == '/') {
+            return matte_string_clone(matte_string_get_substr(path, 0, i));
+        }
+    }
+    return matte_string_create();
+}
+
+static int import__is_canonical(const matteString_t * path) {
+    char * pathc = strdup(matte_string_get_c_str(path));
+    char * pathc_real = malloc(PATH_MAX+1);
+    pathc_real[0] = 0;
+    realpath(pathc, pathc_real);
+
+    int result = !strcmp(pathc, pathc_real);
+    free(pathc_real);
+    free(pathc);
+    return result;
+}
+
+static int import__path_canonicalize(matteString_t * path) {
+    char * pathc = strdup(matte_string_get_c_str(path));
+    char * pathc_real = malloc(PATH_MAX+1);
+    pathc_real[0] = 0;
+    int result;
+    if (realpath(pathc, pathc_real)) {
+        matte_string_clear(path);
+        matte_string_concat_printf(path, pathc_real);
+        result = 1;
+    } else {
+        result = 0;
+    }
+
+    free(pathc_real);
+    free(pathc);
+    return result;
+}
+
+#elif defined __WIN32__
+
+#endif
+#else
+static matteString_t * import__getcwd_generic() {
+    return matte_string_create();
+}
+
+static void import__path_append(matteString_t * path, const matteString_t * item) {
+    
+}
+
+static matteString_t * import__get_directory(const matteString_t * path) {
+    return matte_string_clone(path);
+}
+
+static int import__is_canonical(const matteString_t * path) {
+    return 1;
+
+}
+
+static int import__path_canonicalize(matteString_t * path) {
+    return 1;
+}
+
+#endif
+
+// has multiple features:
+// - It will always return a "canonical" (full) path based on the top of the path stack + loc.
+//   If loc is already a canonical path that points to an item, this function returns a 
+//   copy of that string 
+//
+// - If a canonical path cannot be made, NULL is returned.
+// - If a canonical path can by made, its returned and paths has a new path pushed representing the 
+//   directory portion of the 
+static matteString_t * import__push_path(matteArray_t * paths, const matteString_t * loc) {
+    // first, check if loc is a full (canonical) path
+    if (import__is_canonical(loc)) {
+        matteString_t * base = import__get_directory(loc);
+        matte_array_push(paths, base);
+        return matte_string_clone(loc);
+    }
+
+
+    matteString_t * base;
+    if (matte_array_get_size(paths) == 0) {
+        base = import__getcwd_generic();
+    } else {
+        base = matte_array_at(paths, matteString_t *, matte_array_get_size(paths)-1);
+    }
+
+    matteString_t * out = matte_string_clone(base);
+    import__path_append(out, loc);
+
+    // returns true if actually refers to something
+    if (import__path_canonicalize(out)) {
+        matteString_t * base = import__get_directory(out);
+        matte_array_push(paths, base);
+    } else {
+        matte_string_set(out, loc);
+    }
+
+    return out;
+}
+
+
+static void import__pop_path(matteArray_t * paths) {
+    if (!matte_array_get_size(paths)) return;
+
+    matte_string_destroy(matte_array_at(paths, matteString_t *, matte_array_get_size(paths)-1));
+    matte_array_set_size(paths, matte_array_get_size(paths)-1);
+}
+
+
+static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t fn, const matteString_t * str, matteValue_t a, matteValue_t params) {
+
     if (vm->pendingCatchable) {
         return matte_heap_new_value(vm->heap);
     }
+
+
 
     // first, see if the requested script has been preloaded
     uint32_t * fileidPtr = matte_table_find(vm->importPath2ID, str);
@@ -508,11 +643,10 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
 
 
 
-        matteValue_t cached = matte_vm_run_script(
+        matteValue_t cached = matte_vm_run_fileid(
             vm,
             fileid,
-            matte_array_empty(),
-            matte_array_empty()
+            params
         );
         matte_value_into_copy(vm->heap, ref, cached);
         matte_value_object_push_lock(vm->heap, *ref);
@@ -523,5 +657,18 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
     // already would have raised an error, no need for another.
     return matte_heap_new_value(vm->heap);    
 
+}
+
+static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];
+    matteValue_t params = args[1];
+    const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
+    matteString_t * locationExpanded = import__push_path(vm->importPaths, strSrc);
+
+    matteValue_t out = vm_ext_call__import_path_boxed(vm, fn, locationExpanded, a, params);
+
+    matte_string_destroy(locationExpanded);
+    import__pop_path(vm->importPaths);
+    return out;
 }
 

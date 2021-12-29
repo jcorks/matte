@@ -164,7 +164,6 @@ int main(int argc, char ** args) {
         matteVM_t * vm = matte_get_vm(m);
         matte_vm_set_print_callback(vm, onDebugPrint, NULL);
         matte_vm_set_unhandled_callback(vm, unhandledError, NULL);
-        matte_vm_add_system_symbols(vm, args, 0);
 
 
         matteArray_t * fileID = matte_array_create(sizeof(uint32_t));
@@ -206,7 +205,7 @@ int main(int argc, char ** args) {
 
         uint32_t len = matte_array_get_size(fileID);
         for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_vm_run_script(vm, matte_array_at(fileID, uint32_t, i), matte_array_empty(), matte_array_empty());
+            matteValue_t v = matte_vm_run_fileid(vm, matte_array_at(fileID, uint32_t, i), matte_heap_new_value(matte_vm_get_heap(vm)));
             printf("> %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), v))));
             matte_heap_recycle(matte_vm_get_heap(vm), v);
         }
@@ -258,55 +257,17 @@ int main(int argc, char ** args) {
         matteVM_t * vm = matte_get_vm(m);
         matte_vm_set_print_callback(vm, onDebugPrint, NULL);
         matte_vm_set_unhandled_callback(vm, unhandledError, NULL);
-        matte_vm_add_system_symbols(vm, args+2, argc-2);
 
-        int FILEIDS;
-
-
-        // first compile all and add them 
-        FILEIDS = matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, args[i+1]));
-        uint32_t lenBytes;
-        uint8_t * src = dump_bytes(args[i+1], &lenBytes);
-        if (!src || !lenBytes) {
-            printf("Couldn't open source %s\n", args[i+1]);
-            exit(1);
+        matteValue_t params = parse_parameters(vm, args+2, argc-2);
+        matteValue_t v = matte_vm_import(vm, MATTE_VM_STR_CAST(vm, args[i+1]), params);
+        const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), v));
+        if (str && v.binID != 0) {
+            printf("> %s\n", matte_string_get_c_str(str));
+            
+        } else {
+            // output object was not string coercible.
         }
-
-        uint32_t outByteLen;
-        uint8_t * outBytes = matte_compiler_run(
-            src,
-            lenBytes,
-            &outByteLen,
-            onError,
-            NULL
-        );
-
-        free(src);
-        if (!outByteLen || !outBytes) {
-            printf("Couldn't compile source %s\n", args[i+1]);
-            exit(1);
-        }
-        
-        {
-            matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_heap(vm), FILEIDS, outBytes, outByteLen);
-            free(outBytes);
-            matte_vm_add_stubs(vm, arr);
-            matte_array_destroy(arr);
-        }
-        matteArray_t * arr = matte_array_create(sizeof(matteValue_t));        
-        for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_vm_run_script(vm, FILEIDS, matte_array_empty(), matte_array_empty());
-            const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), v));
-            if (str && v.binID != 0) {
-                printf("> %s\n", matte_string_get_c_str(str));
-                
-            } else {
-                // output object was not string coercible.
-            }
-            matte_heap_recycle(matte_vm_get_heap(vm), v);
-        }
-
-        matte_array_destroy(arr);
+        matte_heap_recycle(matte_vm_get_heap(vm), v);
         matte_destroy(m);
 
 

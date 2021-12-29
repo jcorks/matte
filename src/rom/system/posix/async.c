@@ -221,7 +221,7 @@ static void * matte_thread(void * userData) {
 
   
     *startData->stateRef = MWAS_RUNNING;
-    matteValue_t v = matte_vm_run_script(vm, FILEIDS, matte_array_empty(), matte_array_empty());
+    matteValue_t v = matte_vm_run_fileid(vm, FILEIDS, matte_heap_new_value(matte_vm_get_heap(vm)));
 
     
 
