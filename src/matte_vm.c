@@ -1602,6 +1602,10 @@ matteValue_t matte_vm_run_fileid(
     uint32_t fileid, 
     matteValue_t parameters
 ) {
+    if (fileid != MATTE_VM_DEBUG_FILE) {
+        matteValue_t * precomp = matte_table_find_by_uint(vm->imported, fileid);
+        if (precomp) return *precomp;
+    }
     matteValue_t func = matte_heap_new_value(vm->heap);
     matteBytecodeStub_t * stub = vm_find_stub(vm, fileid, 0);
     if (!stub) {
@@ -1616,6 +1620,11 @@ matteValue_t matte_vm_run_fileid(
     matteArray_t args = MATTE_ARRAY_CAST(&parameters, matteValue_t, 1);
 
     matteValue_t result = matte_vm_call(vm, func, &args, &argNames, matte_vm_get_script_name_by_id(vm, fileid));
+
+    matteValue_t * ref = malloc(sizeof(matteValue_t));
+    *ref = result;
+    matte_table_insert_by_uint(vm->imported, fileid, ref);
+    matte_value_object_push_lock(vm->heap, *ref);
 
     matte_value_object_pop_lock(vm->heap, func);
     matte_heap_recycle(vm->heap, func);
@@ -2023,6 +2032,7 @@ void matte_vm_set_external_function(
         argNames, 
         userFunction
     );
+    matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, *id).userData = userData;
 
 
 }

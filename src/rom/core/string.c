@@ -63,7 +63,7 @@ MATTE_EXT_FN(matte_core__string_set_length) {
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
+    if (newlV.binID != MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
     }
@@ -87,7 +87,7 @@ MATTE_EXT_FN(matte_core__string_search) {
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
     }
@@ -125,14 +125,14 @@ MATTE_EXT_FN(matte_core__string_replace) {
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
     }
     const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
 
     newlV = args[2];
-    if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
     }
@@ -182,7 +182,7 @@ MATTE_EXT_FN(matte_core__string_count) {
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
     }
@@ -217,7 +217,7 @@ MATTE_EXT_FN(matte_core__string_charcodeat) {
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
+    if (newlV.binID != MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
     }
@@ -239,7 +239,7 @@ MATTE_EXT_FN(matte_core__string_charat) {
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
+    if (newlV.binID != MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
     }
@@ -261,7 +261,7 @@ MATTE_EXT_FN(matte_core__string_setcharcodeat) {
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
+    if (newlV.binID != MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
     }
@@ -272,7 +272,7 @@ MATTE_EXT_FN(matte_core__string_setcharcodeat) {
     }
     
     newlV = args[2];
-    if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
+    if (newlV.binID != MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
     }
@@ -289,7 +289,7 @@ MATTE_EXT_FN(matte_core__string_setcharat) {
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
+    if (newlV.binID != MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
     }
@@ -300,7 +300,7 @@ MATTE_EXT_FN(matte_core__string_setcharat) {
     }
     
     newlV = args[2];
-    if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
     }
@@ -320,7 +320,7 @@ MATTE_EXT_FN(matte_core__string_append) {
     if (!st) return matte_heap_new_value(heap);
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
     }
@@ -343,7 +343,7 @@ MATTE_EXT_FN(matte_core__string_removechar) {
 
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
+    if (newlV.binID != MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
     }
@@ -365,7 +365,7 @@ MATTE_EXT_FN(matte_core__string_substr) {
 
 
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
+    if (newlV.binID != MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
     }
@@ -376,7 +376,7 @@ MATTE_EXT_FN(matte_core__string_substr) {
     }
 
     newlV = args[2];
-    if (!newlV.binID == MATTE_VALUE_TYPE_NUMBER) {
+    if (newlV.binID != MATTE_VALUE_TYPE_NUMBER) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a number"));
         return matte_heap_new_value(heap);
     }
@@ -399,7 +399,7 @@ MATTE_EXT_FN(matte_core__string_split) {
     MatteStringObject * st = get_strobj(vm, args[0]);     
     if (!st) return matte_heap_new_value(heap);
     matteValue_t newlV = args[1];
-    if (!newlV.binID == MATTE_VALUE_TYPE_STRING) {
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument is not a string"));
         return matte_heap_new_value(heap);
     }

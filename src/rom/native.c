@@ -75,7 +75,7 @@ void matte_bind_native_functions(matteVM_t * vm) {
 
 
 #else 
-void matte_bind_native_functions() {
+void matte_bind_native_functions(matteVM_t * vm) {
     matte_core__string(vm);        
 }
 #endif
