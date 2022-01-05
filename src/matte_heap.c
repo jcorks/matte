@@ -149,6 +149,9 @@ typedef struct {
     // id within sorted heap.
     uint32_t heapID;
     uint8_t hasPreserver;
+    void (*nativeFinalizer)(void * objectUserdata, void * functionUserdata);
+    void * nativeFinalizerData;
+
     
     union {
         struct {
@@ -162,8 +165,6 @@ typedef struct {
 
             matteValue_t attribSet;
             
-            void (*nativeFinalizer)(void * objectUserdata, void * functionUserdata);
-            void * nativeFinalizerData;
 
             
             // custom typecode.
@@ -1263,13 +1264,13 @@ void matte_value_print_from_id(matteHeap_t * heap, uint32_t bin, uint32_t v) {
 #endif
 
 void matte_value_object_set_native_finalizer(matteHeap_t * heap, matteValue_t v, void (*fb)(void * objectUserdata, void * functionUserdata), void * functionUserdata) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_cstring(heap->vm, "Tried to set native finalizer on a non-object value.");
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT && v.binID != MATTE_VALUE_TYPE_FUNCTION) {
+        matte_vm_raise_error_cstring(heap->vm, "Tried to set native finalizer on a non-object/non-function value.");
         return;
     }
     matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
-    m->table.nativeFinalizer = fb;
-    m->table.nativeFinalizerData = functionUserdata;        
+    m->nativeFinalizer = fb;
+    m->nativeFinalizerData = functionUserdata;        
 }
 
 
@@ -2644,11 +2645,11 @@ static void object_cleanup(matteHeap_t * h) {
                 matte_table_clear(m->table.keyvalues_object);
             }
             matte_bin_recycle(h->sortedHeap, m->heapID);
-            if (m->table.nativeFinalizer) {
-                m->table.nativeFinalizer(m->userdata, m->table.nativeFinalizerData);
-                m->table.nativeFinalizer = NULL;
-                m->table.nativeFinalizerData = NULL;
-            }
+        }
+        if (m->nativeFinalizer) {
+            m->nativeFinalizer(m->userdata, m->nativeFinalizerData);
+            m->nativeFinalizer = NULL;
+            m->nativeFinalizerData = NULL;
         }
         // clean up object;
         m->userdata = NULL;

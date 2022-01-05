@@ -60,12 +60,93 @@
             
             newinst = instSet.newinst;
             interface = instSet.interface;
-        } else ::<= {
-            instSet = {
-                newinst : instSetIn.newinst,
-                class : classObj,
-                bases : []
+            
+            @attribs = {};
+            
+            attribs['.'] = {
+                get:: (key) {
+                    @result = interface[key];
+                    when(result == empty) 
+                        error(detail:'' +key+ " does not exist within this instance's class.");
+                                                    
+                    when(result.isFunction) result.fn;
+                    @get = result.get;
+                    when(get == empty) error(detail:'The attribute is not readable.');
+                    return get();
+                },
+
+
+                set:: (key, value) {
+                    @result = interface[key];
+                    when(result == empty) 
+                        error(detail:'' +key+ " does not exist within this instance's class.");
+                    
+                    when(result.isFunction) error(detail:'Interface functions cannot be overwritten.');
+                    @set = result.set;
+                    when(set == empty) error(detail:'The attribute is not writable.');
+                    return set(value:value);
+                }
             };
+               
+
+            
+            interface.interface = {
+                isFunction : false,
+                set ::(value) {
+                    foreach(in:value, do:::(k => String, v) {
+                        if (introspect.type(of:v) == Function) ::<= {
+                            interface[k] = {
+                                isFunction : true,
+                                fn : v
+                            };
+                        } else ::<={
+                            interface[k] = {
+                                isFunction : false,
+                                get : v.get,
+                                set : v.set
+                            };                                    
+                        };
+                    });
+                }
+            };
+
+            setAttributes(of:newinst, attributes:attribs);
+            
+            // default / building interface
+            newinst.interface = {
+                class : {
+                    get ::{
+                        return classinst;
+                    }
+                },
+                
+                type : {
+                    get ::{
+                        return type;
+                    }
+                },  
+                
+                constructor : {
+                    set ::(value) {
+                        instSet.constructor = value;
+                    }
+                },
+                
+                destructor : {
+                    set ::(value) {
+                        instSet.destructor = value;
+                    }
+                }, 
+                
+                recycle : {
+                    set ::(value) {
+                        instSet.recycle = value;
+                    }
+                }
+            };
+
+        } else ::<= {
+            instSet = instSetIn;
             newinst = instSetIn.newinst;
             interface = instSetIn.interface;
             arraypush(a:instSetIn.bases, b:instSet);            
@@ -78,42 +159,18 @@
             });
         };
 
-        newinst.class = classinst;
-        newinst.type = type;
-        newinst.constructor = empty;
-        newinst.destructor = empty;
         classObj['define'](this:newinst);
         
         // constructor is what is returned from the new() function the 
         // user calls.
         // This means that whatever it returns is what the user code works with 
         // It /should/ be the 
-            instSet.constructor = newinst.constructor;
-            instSet.destructor = newinst.destructor;
-
             newinst[classObj] = {
-                constructor : newinst.constructor,
-                destructor : newinst.destructor
+                constructor : instSet.constructor,
+                destructor : instSet.destructor
             };        
-        instSet.recycle = newinst.recycle;
+
         
-        
-        if (newinst.interface != empty) ::<={
-            foreach(in:newinst.interface, do:::(k => String, v) {
-                if (introspect.type(of:v) == Function) ::<= {
-                    interface[k] = {
-                        isFunction : true,
-                        fn : v
-                    };
-                } else ::<={
-                    interface[k] = {
-                        isFunction : false,
-                        get : v.get,
-                        set : v.set
-                    };                                    
-                };
-            });
-        };
         return instSet;
     };
     
@@ -151,39 +208,10 @@
                         };
 
 
-                        @attribs;
-                        if (newinst.attributes == empty) ::<={
-                            attribs = {};
-                        } else ::<= {
-                            attribs = newinst.attributes;
-                        };
+                        @attribs = getAttributes(of:newinst);
 
-                        attribs['.'] = {
-                            get:: (key) {
-                                @result = interface[key];
-                                when(result == empty) 
-                                    error(detail:'' +key+ " does not exist within this instance's class.");
-                                                                
-                                when(result.isFunction) result.fn;
-                                @get = result.get;
-                                when(get == empty) error(detail:'The attribute is not readable.');
-                                return get();
-                            },
-
-
-                            set:: (key, value) {
-                                @result = interface[key];
-                                when(result == empty) 
-                                    error(detail:'' +key+ " does not exist within this instance's class.");
-                                
-                                when(result.isFunction) error(detail:'Interface functions cannot be overwritten.');
-                                @set = result.set;
-                                when(set == empty) error(detail:'The attribute is not writable.');
-                                return set(value:value);
-                            }
-                        };
-                            
-                        removeKey(from:newinst, keys:['class', 'type', 'constructor', 'interfaces']);
+ 
+                        removeKey(from:newinst, keys:['constructor', 'destructor', 'interfaces']);
                         @preserve;
                         @constructor = instSet.constructor;
                         @destructor = instSet.destructor;
