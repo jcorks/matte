@@ -1,7 +1,7 @@
-<@>class = import(module:'Matte.Core.Class');
+@:class = import(module:'Matte.Core.Class');
 
 
-<@>Shape = class(info:{
+@:Shape = class(info:{
     name : 'Shape',
     define::(this, thisType) {
         this.interface = {
@@ -15,7 +15,7 @@
 
 
 
-<@>Square = class(info:{
+@:Square = class(info:{
     name : 'Square',
     inherits : [Shape],
     define ::(this, thisType) {
@@ -36,7 +36,7 @@
 });
 
 
-<@>Triangle = class(info:{
+@:Triangle = class(info:{
     name : 'Triangle',
     inherits : [Shape],
     define::(this, thisType) {
@@ -66,14 +66,14 @@
 
 
 @out = '';
-<@>combinedArea ::(a => Shape.type, b => Shape.type) {
+@:combinedArea ::(a => Shape.type, b => Shape.type) {
     out = out + a.area() + b.area(); 
 };
 
 
 combinedArea(a:tri0, b:sq0);
 listen(to:::{
-    <@>combinedAreaRestricted ::(a => Shape.type, b => Square.type) {
+    @:combinedAreaRestricted ::(a => Shape.type, b => Square.type) {
         out = out + a.area() + b.area(); 
     };
 

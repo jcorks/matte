@@ -111,7 +111,7 @@ return class(info:{
             name : 'Matte.System.Async.Worker',
             inherits : [EventSystem],
             define::(this) {
-                <@>State = this.class.State;
+                @:State = this.class.State;
                 @id;
                 @curstate = State.Unknown;
                 when(id == empty) error(message:'The worker failed to start with the given args');
@@ -161,7 +161,7 @@ return class(info:{
                     },
 
                     updateState:: {
-                        <@>newState = queryState();
+                        @:newState = queryState();
                         if (newState != curstate) ::<= {       
                             this.emit(event:'onStateChange', detail:newState);
                             curstate = newState;

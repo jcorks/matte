@@ -1,4 +1,4 @@
-<@>class = import(module:'Matte.Core.Class');
+@:class = import(module:'Matte.Core.Class');
 
 
 // Arrays contain a number-indexed collection of values.
@@ -8,7 +8,7 @@
         @data;
         @len;
 
-        <@>initialize = ::(args){
+        @:initialize = ::(args){
             data = if(Boolean(from:args) && introspect.type(of:args) == Object) args else [];
             len = introspect.keycount(of:data);
         };
@@ -18,7 +18,7 @@
             return this;
         };
 
-        this.recycle = true;
+        this.recyclable = true;
 
         this.interface = {
             onRevive : initialize,
@@ -232,7 +232,7 @@
             (String) ::{
                 @str = '[';
                 for(in:[0, len], do:::(i){
-                    <@> strRep = (String(from:data[i]));
+                    @: strRep = (String(from:data[i]));
 
                     str = str + if (strRep) strRep else ('<' + introspect.type(of:data[i]) + '>');
 

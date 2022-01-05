@@ -1281,7 +1281,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
       case MATTE_TOKEN_DECLARE_CONST: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<@>");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "@:");
         break;          
       }
 

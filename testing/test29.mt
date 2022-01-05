@@ -1,7 +1,7 @@
 //// Test 28
 //
 // object test: literal
-<@>Point = ::{
+@:Point = ::{
     @x = 0;
     @y = 0;
 

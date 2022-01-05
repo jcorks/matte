@@ -64,7 +64,7 @@
             timeLeft : {
                 get ::{
                     when(paused) (pausedAt - started);
-                    <@>left = period - (_getTicks() - started);
+                    @:left = period - (_getTicks() - started);
                     when(left < 0) 0;
                     return left;
                 }

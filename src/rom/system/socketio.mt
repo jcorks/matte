@@ -19,7 +19,7 @@
         // socket server object.
         //
         // CAN THROW AN ERROR if the socket could not be created
-        <@>_socket_server_create = getExternalFunction(name:"__matte_::socket_server_create");
+        @:_socket_server_create = getExternalFunction(name:"__matte_::socket_server_create");
 
 
         // updates the socket server state. This is just:
@@ -31,7 +31,7 @@
         // returns:
         // None
         //
-        <@>_socket_server_update = getExternalFunction(name:"__matte_::socket_server_update");
+        @:_socket_server_update = getExternalFunction(name:"__matte_::socket_server_update");
 
 
         // Given a client 0-index, returns an ID referring to the client.
@@ -41,7 +41,7 @@
         // 
         // returns:
         // client id (Number) or empty if not a valid index.
-        <@>_socket_server_client_index_to_id = getExternalFunction(name:"__matte_::socket_server_client_index_to_id");
+        @:_socket_server_client_index_to_id = getExternalFunction(name:"__matte_::socket_server_client_index_to_id");
 
 
 
@@ -51,14 +51,14 @@
         // 
         // returns:
         // number of clients (Number)
-        <@>_socket_server_get_client_count  = getExternalFunction(name:"__matte_::socket_server_get_client_count");      
+        @:_socket_server_get_client_count  = getExternalFunction(name:"__matte_::socket_server_get_client_count");      
         
         
         // Updates the state
         // - Get any additional pending data 
         // - Send out pending data
         // - updates the states of clients
-        <@>_socket_server_client_update = getExternalFunction(name:"__matte_::socket_server_client_update");
+        @:_socket_server_client_update = getExternalFunction(name:"__matte_::socket_server_client_update");
 
         // Gets a string containing the address of the client
         //
@@ -68,7 +68,7 @@
         //
         // returns:
         // address of the client (string)
-        <@>_socket_server_client_address = getExternalFunction(name:"__matte_::socket_server_client_address");
+        @:_socket_server_client_address = getExternalFunction(name:"__matte_::socket_server_client_address");
 
         // Gets a string containing info on the client.
         //
@@ -78,7 +78,7 @@
         //
         // returns:
         // info on the client (string)
-        <@>_socket_server_client_infostring = getExternalFunction(name:"__matte_::socket_server_client_infostring");
+        @:_socket_server_client_infostring = getExternalFunction(name:"__matte_::socket_server_client_infostring");
 
 
 
@@ -91,7 +91,7 @@
             //
             // returns:
             // string if pending message exists, empty if none.
-            <@>_socket_server_client_get_next_message = getExternalFunction(name:"__matte_::socket_server_client_get_next_message");
+            @:_socket_server_client_get_next_message = getExternalFunction(name:"__matte_::socket_server_client_get_next_message");
             
             // Sends a new string message. The string 
             // has an upper limit of 16777216 characters
@@ -102,11 +102,11 @@
             // arg1: clientID
             // arg2: message (string)
             // 
-            <@>_socket_server_client_send_message = getExternalFunction(name:"__matte_::socket_server_client_send_message");
+            @:_socket_server_client_send_message = getExternalFunction(name:"__matte_::socket_server_client_send_message");
             
             // Gets the number of pending messages that have yet to 
             // be retrieved.
-            <@>_socket_server_client_get_pending_message_count = getExternalFunction(name:"__matte_::socket_server_client_get_pending_message_count");
+            @:_socket_server_client_get_pending_message_count = getExternalFunction(name:"__matte_::socket_server_client_get_pending_message_count");
         
         
         ///////// if in raw mode 
@@ -114,15 +114,15 @@
             // arg0: server 
             // arg1: client 
             // returns: number of bytes waiting to be read.
-            <@>_socket_server_client_get_pending_byte_count = getExternalFunction(name:"__matte_::socket_server_client_get_pending_byte_count");
+            @:_socket_server_client_get_pending_byte_count = getExternalFunction(name:"__matte_::socket_server_client_get_pending_byte_count");
 
 
             // returns:
             // a MemoryBuffer object of the given number of bytes OR throws an error 
             // if cant.
-            <@>_socket_server_client_read_bytes = getExternalFunction(name:"__matte_::socket_server_client_read_bytes");
+            @:_socket_server_client_read_bytes = getExternalFunction(name:"__matte_::socket_server_client_read_bytes");
             
-            <@>_socket_server_client_write_bytes = getExternalFunction(name:"__matte_::socket_server_client_write_bytes");
+            @:_socket_server_client_write_bytes = getExternalFunction(name:"__matte_::socket_server_client_write_bytes");
 
 
             
@@ -132,12 +132,12 @@
         
         // Request termination. If its successful, the client will be taken off the 
         // managed client list next update.
-        <@>_socket_server_client_terminate = getExternalFunction(name:"__matte_::socket_server_client_terminate");
+        @:_socket_server_client_terminate = getExternalFunction(name:"__matte_::socket_server_client_terminate");
         
 
 
         // actual client that a user interacts with.
-        <@>Client = class(info:{
+        @:Client = class(info:{
             name: 'Matte.System.SocketIO.Server.Client',
             inherits:[EventSystem],
             define::(this) {
@@ -186,7 +186,7 @@
                         @count = _socket_server_client_get_pending_byte_count(a:socket, b:id_number);
 
                         if (count > 0) ::<={
-                            <@> bytes = MemoryBuffer.new(handle:_socket_server_client_read_bytes(a:socket, b:id_number, c:count));
+                            @: bytes = MemoryBuffer.new(handle:_socket_server_client_read_bytes(a:socket, b:id_number, c:count));
                             this.emit(
                                 event:'onIncomingData',
                                 detail:bytes
@@ -234,7 +234,7 @@
             }
         });
 
-        <@>Server = class(info:{
+        @:Server = class(info:{
             name: 'Matte.System.SocketIO.Server',
             inherits:[EventSystem],
             define::(this) {
@@ -263,10 +263,10 @@
                 };
 
                 
-                <@>clients = Array.new();
+                @:clients = Array.new();
 
                 // string id to 
-                <@>clientIndex = [];
+                @:clientIndex = [];
                                 
                 this.events = {
                     onNewClient ::{}
@@ -278,8 +278,8 @@
                         _socket_server_update(a:socket);  
                         
                         // current client list against prev list.
-                        <@>newlen = _socket_server_get_client_count(a:socket);
-                        <@> found = {};
+                        @:newlen = _socket_server_get_client_count(a:socket);
+                        @: found = {};
                         for(in:[0, newlen], do:::(i){
                             @id = String(from:_socket_server_client_index_to_id(a:socket, b:i));
                             found[id] = true;
@@ -364,9 +364,9 @@
             // returns:
             // a MemoryBuffer object of the given number of bytes OR throws an error 
             // if cant.
-            <@>_socket_client_read_bytes = getExternalFunction(name:"__matte_::socket_client_read_bytes");
+            @:_socket_client_read_bytes = getExternalFunction(name:"__matte_::socket_client_read_bytes");
             
-            <@>_socket_client_write_bytes = getExternalFunction(name:"__matte_::socket_client_write_bytes");
+            @:_socket_client_write_bytes = getExternalFunction(name:"__matte_::socket_client_write_bytes");
 
                 
                 
@@ -418,7 +418,7 @@
                         
                         @count = _socket_get_pending_byte_count(a:socket);                        
                         if (count > 0) ::<={
-                            <@> bytes = MemoryBuffer.new(handle:_socket_client_read_bytes(a:socket, b:count));
+                            @: bytes = MemoryBuffer.new(handle:_socket_client_read_bytes(a:socket, b:count));
                             this.emit(
                                 name:'onIncomingData',
                                 detail:bytes
@@ -489,7 +489,7 @@ return SocketIO;
 @ConsoleIO = import("Matte.System.ConsoleIO");
 
 /// hexdump style printing of a memory buffer
-<@> dumphex = ::<={
+@: dumphex = ::<={
     @hextable = {
         0: '0',
         1: '1',
@@ -510,7 +510,7 @@ return SocketIO;
     };
 
     // assumes 0-255
-    <@> numberToHex::(n => Number) {
+    @: numberToHex::(n => Number) {
         return hextable[n / 16] + // number lookups are always floored.
                hextable[n % 16];
     };
@@ -612,8 +612,8 @@ return SocketIO;
         126: '~'
     };
 
-    <@> numberToAscii::(n => Number) {
-        <@> res = asciitable[n];
+    @: numberToAscii::(n => Number) {
+        @: res = asciitable[n];
         when(res == empty) '__';
         return res + ' ';
     };
@@ -641,7 +641,7 @@ return SocketIO;
 
 @sendDataString::(client, str => String) {
     @m = MemoryBuffer.new();
-    <@>len = introspect.length(str); 
+    @:len = introspect.length(str); 
     m.size = len;
     for([0, len], ::(i){
         m[i] = introspect.charCodeAt(str, i);

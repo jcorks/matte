@@ -40,8 +40,8 @@ return class(info:{
             directoryContents : {
                 get :: {
                     _directoryEnumerate();
-                    <@>ct = _directoryObjectCount();
-                    <@>files = Array.new();
+                    @:ct = _directoryObjectCount();
+                    @:files = Array.new();
                     files.length = ct;
                     for(in:[0, ct], do:::(i){
                         files[i] = {

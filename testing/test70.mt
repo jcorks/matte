@@ -1,7 +1,7 @@
 ////Test 55
 //
 // Core: String (3)
-<@>MatteString = import(module:'Matte.Core.String');
+@:MatteString = import(module:'Matte.Core.String');
 
 @str = MatteString.new(from:"testing");
 return ''+str.search(key:'st')+

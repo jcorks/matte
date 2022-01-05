@@ -172,7 +172,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_OBJECT_ARRAY_SEPARATOR, "Array Element Separator ','",
 
         MATTE_TOKEN_DECLARE, "Local Variable Declarator '@'",
-        MATTE_TOKEN_DECLARE_CONST, "Local Constant Declarator '<@>'",
+        MATTE_TOKEN_DECLARE_CONST, "Local Constant Declarator '@:'",
 
         MATTE_TOKEN_FUNCTION_BEGIN, "Function Content Block '{'",
         MATTE_TOKEN_FUNCTION_END,   "Function Content Block '}'",
@@ -859,8 +859,8 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 
     matte_syntax_graph_add_construct_path(g, "Declaration + Assignment", MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
         matte_syntax_graph_node_token_group(
-            MATTE_TOKEN_DECLARE,
             MATTE_TOKEN_DECLARE_CONST,
+            MATTE_TOKEN_DECLARE,
             0
         ),
         matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),

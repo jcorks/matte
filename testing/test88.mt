@@ -2,14 +2,14 @@
 //
 // Custom typing 
 
-<@>MyType = {};
+@:MyType = {};
 MyType.Shape = newtype(name:'Shape');
 MyType.Square = newtype(name:'Square', inherits:[MyType.Shape]);
 MyType.Triangle = newtype(name:'Triangle', inherits:[MyType.Shape]);
 
 
-<@>makeSquare ::(length){
-    <@>out = instantiate(type:MyType.Square);
+@:makeSquare ::(length){
+    @:out = instantiate(type:MyType.Square);
     out.length = length;
     out.area = ::{
         return out.length**2;
@@ -17,8 +17,8 @@ MyType.Triangle = newtype(name:'Triangle', inherits:[MyType.Shape]);
     return out;
 };
 
-<@>makeTriangle ::(base, height){
-    <@>out = instantiate(type:MyType.Triangle);
+@:makeTriangle ::(base, height){
+    @:out = instantiate(type:MyType.Triangle);
     out.base = base;
     out.height = height;
     out.area = ::{
@@ -35,14 +35,14 @@ MyType.Triangle = newtype(name:'Triangle', inherits:[MyType.Shape]);
 
 
 @out = '';
-<@>combinedArea ::(a => MyType.Shape, b => MyType.Shape) {
+@:combinedArea ::(a => MyType.Shape, b => MyType.Shape) {
     out = out + a.area() + b.area(); 
 };
 
 
 combinedArea(a:tri0, b:sq0);
 listen(to:::{
-    <@>combinedAreaRestricted ::(shapeA => MyType.Shape, squareB => MyType.Square) {
+    @:combinedAreaRestricted ::(shapeA => MyType.Shape, squareB => MyType.Square) {
         out = out + shapeA.area() + squareB.area(); 
     };
 

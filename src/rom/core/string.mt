@@ -1,25 +1,25 @@
-<@>class = import(module:'Matte.Core.Class');
-<@>Array = import(module:'Matte.Core.Array');
+@:class = import(module:'Matte.Core.Class');
+@:Array = import(module:'Matte.Core.Array');
 
-<@>_string_create     = getExternalFunction(name:"__matte_::string_create");
-<@>_string_get_length = getExternalFunction(name:"__matte_::string_get_length");
-<@>_string_set_length = getExternalFunction(name:"__matte_::string_set_length");
-<@>_string_search     = getExternalFunction(name:"__matte_::string_search");
-<@>_string_replace    = getExternalFunction(name:"__matte_::string_replace");
-<@>_string_count      = getExternalFunction(name:"__matte_::string_count");
-<@>_string_charcodeat = getExternalFunction(name:"__matte_::string_charcodeat");
-<@>_string_charat     = getExternalFunction(name:"__matte_::string_charat");
-<@>_string_setcharat  = getExternalFunction(name:"__matte_::string_setcharat");
-<@>_string_setcharcodeat= getExternalFunction(name:"__matte_::string_setcharcodeat");
-<@>_string_append     = getExternalFunction(name:"__matte_::string_append");
-<@>_string_removechar = getExternalFunction(name:"__matte_::string_removechar");
-<@>_string_substr     = getExternalFunction(name:"__matte_::string_substr");
-<@>_string_split      = getExternalFunction(name:"__matte_::string_split");
-<@>_string_get_string = getExternalFunction(name:"__matte_::string_get_string");
+@:_string_create     = getExternalFunction(name:"__matte_::string_create");
+@:_string_get_length = getExternalFunction(name:"__matte_::string_get_length");
+@:_string_set_length = getExternalFunction(name:"__matte_::string_set_length");
+@:_string_search     = getExternalFunction(name:"__matte_::string_search");
+@:_string_replace    = getExternalFunction(name:"__matte_::string_replace");
+@:_string_count      = getExternalFunction(name:"__matte_::string_count");
+@:_string_charcodeat = getExternalFunction(name:"__matte_::string_charcodeat");
+@:_string_charat     = getExternalFunction(name:"__matte_::string_charat");
+@:_string_setcharat  = getExternalFunction(name:"__matte_::string_setcharat");
+@:_string_setcharcodeat= getExternalFunction(name:"__matte_::string_setcharcodeat");
+@:_string_append     = getExternalFunction(name:"__matte_::string_append");
+@:_string_removechar = getExternalFunction(name:"__matte_::string_removechar");
+@:_string_substr     = getExternalFunction(name:"__matte_::string_substr");
+@:_string_split      = getExternalFunction(name:"__matte_::string_split");
+@:_string_get_string = getExternalFunction(name:"__matte_::string_get_string");
 @String_ = class(info:{
     name : 'Matte.Core.String',
     define::(this) {
-        <@>MatteString = introspect.type(of:this);
+        @:MatteString = introspect.type(of:this);
 
         @handle;
         this.constructor = ::(from) {
@@ -34,7 +34,7 @@
             return this;
         };
 
-        this.recycle = true;
+        this.recyclable = true;
         
         this.interface = {
 
@@ -63,8 +63,8 @@
 
 
             containsAny::(keys => Object) {
-                <@>vals = introspect.values(of:keys);
-                <@>len = introspect.keycount(of:vals);
+                @:vals = introspect.values(of:keys);
+                @:len = introspect.keycount(of:vals);
                 return listen(to:::{
                     for(in:[0, len], do:::(i) {
                         if (this.contains(key:keys[i])) ::<={
@@ -261,13 +261,5 @@
     }
 });
 
-// boostrap
-::<={
-    @a = [];
-    @acount = 0;
-    for(in:[0, 5], do:::(i) {
-        a[acount] = String_.new();    
-        acount += 1;
-    });
-};
+
 return String_;

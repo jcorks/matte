@@ -29,7 +29,7 @@
     decode ::(str) {
         str = MString.new(from:str);
         
-        <@>trimSpace::(substr) {
+        @:trimSpace::(substr) {
             loop(function:::{
                 return match(substr.charAt(index:0)) {
                     // found whitespace. remove it and look again
@@ -45,7 +45,7 @@
         };
 
         @decodeValue::(iter){
-            <@>decodeV = context;
+            @:decodeV = context;
             trimSpace(substr:iter);
             return match(iter.charAt(index:0)){
                 

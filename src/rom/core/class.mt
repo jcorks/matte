@@ -3,16 +3,16 @@
 @class ::(info) {
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.
-    <@> arraylen ::(a){
+    @: arraylen ::(a){
         return introspect.keycount(of:a);
     };
 
-    <@> arraypush ::(a, b){
+    @: arraypush ::(a, b){
         a[introspect.keycount(of:a)] = b;
     };
 
-    <@> arrayclone ::(a) {
-        <@> out = {};
+    @: arrayclone ::(a) {
+        @: out = {};
         for(in:[0, arraylen(a:a)], do:::(i){
             out[i] = a[i];
         });
@@ -22,6 +22,8 @@
     @classinst = {define : info.define};
     when(introspect.type(of:classinst.define) != Function) error(detail:'class must include a "define" function within its "info" specification');
     @classInherits = info.inherits;
+    @pool = [];
+    @poolCount = 0;
     @type = if (classInherits != empty) ::<={
         @inheritset = [];
         @inheritCount = 0;
@@ -36,8 +38,6 @@
 
 
     // all recycled members currently waiting
-    @recycled = [];
-    @recycledCount = 0;
     @test = 0;
 
     
@@ -53,9 +53,12 @@
         // the child class type.
         if (instSetIn == empty) ::<= {
             instSet = {
+                pooled : false,
                 newinst : instantiate(type:type),
                 interface : {},
-                bases : []
+                bases : [],
+                constructors : {}, // keyed with object type
+                onRecycles : {}
             };
             
             newinst = instSet.newinst;
@@ -111,7 +114,6 @@
             };
 
             setAttributes(of:newinst, attributes:attribs);
-            
             // default / building interface
             newinst.interface = {
                 class : {
@@ -129,20 +131,41 @@
                 constructor : {
                     set ::(value) {
                         instSet.constructor = value;
+                    },
+                    
+                    get ::{
+                        return instSet.constructors;                    
                     }
                 },
                 
-                destructor : {
-                    set ::(value) {
-                        instSet.destructor = value;
-                    }
-                }, 
-                
-                recycle : {
-                    set ::(value) {
+                recyclable : {
+                    set ::(value => Boolean) {
                         instSet.recycle = value;
                     }
+                },
+
+                
+                onRecycle : {
+                    set ::(value) {
+                        instSet.onRecycle = value;
+                    },
+
+                    get ::{
+                        return instSet.onRecycles;
+                    }
+
+                },
+                
+                attributes : {
+                    set ::(value) {
+                        foreach(in:value, do:::(k, v) {
+                            when(introspect.type(of:k) == String && k == '.') empty; // skip 
+                            attribs[k] = v;
+                        }); 
+                        setAttributes(of:newinst, attributes:attribs);
+                    }  
                 }
+                
             };
 
         } else ::<= {
@@ -159,16 +182,15 @@
             });
         };
 
+        instSet.recycle = false;
         classObj['define'](this:newinst);
         
         // constructor is what is returned from the new() function the 
         // user calls.
         // This means that whatever it returns is what the user code works with 
         // It /should/ be the 
-            newinst[classObj] = {
-                constructor : instSet.constructor,
-                destructor : instSet.destructor
-            };        
+        instSet.constructors[classObj] = instSet.constructor;
+        instSet.onRecycles[classObj] = instSet.onRecycle;
 
         
         return instSet;
@@ -182,15 +204,15 @@
             '.' : {
                 get ::(key => String)  {
                     when(key == 'new')::<={
-                        when(recycledCount > 0) ::()=>Function {
-                            @out = recycled[recycledCount-1];
-                            recycledCount-=1;
-                            removeKey(from:recycled, key:recycledCount);
-                            print(message:'----Remaining: ' + introspect.keycount(of:recycled));
-                            @constructor = getAttributes(of:out).constructor;
+                        when(poolCount > 0) ::<={
+                            @out = pool[poolCount-1];
+                            removeKey(from:pool, key:poolCount-1);
+                            poolCount -= 1;
+                            
+                            @constructor = out.constructor;
                             when(constructor != empty) constructor;
                             return ::{return newinst;};
-                        }();
+                        };
                     
 
                         
@@ -208,56 +230,22 @@
                         };
 
 
-                        @attribs = getAttributes(of:newinst);
 
  
-                        removeKey(from:newinst, keys:['constructor', 'destructor', 'interfaces']);
-                        @preserve;
                         @constructor = instSet.constructor;
-                        @destructor = instSet.destructor;
 
                         if (recycle == true) ::<= {
-                            if (destructor) ::<= {
-                                attribs.preserver = ::{
-                                    destructor();
-                                    attribs.preserver = context;
-                                    setAttributes(
-                                        of: newinst,
-                                        attributes : attribs
-                                    );
-
-                                    recycled[recycledCount] = newinst;
-                                    recycledCount += 1;
-                                    attribs.constructor = constructor; // needed for recycling return val.
-                                    // TODO: need a better way to handle constructor data.
-                                };  
-                            } else ::<= {
-                                attribs.preserver = ::{
-                                    attribs.preserver = context;
-                                    setAttributes(
-                                        of: newinst,
-                                        attributes : attribs
-                                    );
-
-                                    recycled[recycledCount] = newinst;
-                                    recycledCount += 1;
-                                    attribs.constructor = constructor; // needed for recycling return val.
-                                    // TODO: need a better way to handle constructor data.
-                                };
-                            };
-                        } else ::<= {
-                            if (destructor) ::<= {
-                                attribs.preserver = ::{
-                                    destructor();
-                                };                            
+                            newinst.interface = {
+                                recycle::{
+                                    if (instSet.pooled) error(detail:'Object double-recycled.');
+                                    instSet.pooled = true;
+                                    if (instSet.onRecycle != empty) instSet.onRecycle();
+                                    pool[poolCount] = instSet;
+                                }
                             };
                         };
 
-
-                        setAttributes(
-                            of: newinst,
-                            attributes : attribs
-                        );
+                        removeKey(from:newinst, keys:['constructor', 'onRecycle', 'interface']);
 
 
                         when(constructor != empty) constructor;

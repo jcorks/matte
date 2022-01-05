@@ -20,9 +20,9 @@ return class(info:{
                 };
 
 
-                <@>o = MatteString.new(from:format);
+                @:o = MatteString.new(from:format);
                 foreach(in:args, do:::(k, v){
-                    <@>key = '$('+k+')';
+                    @:key = '$('+k+')';
                     o.replace(key:key, with:''+v);
                 });
                 _print(a:o);

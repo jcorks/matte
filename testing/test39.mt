@@ -1,7 +1,7 @@
 //// Test 39
 //
 // basic matching
-<@>m :: (value){
+@:m :: (value){
     return match(value) {
         (0)           : 'none',
         (1)           : 'one',

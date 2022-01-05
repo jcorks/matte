@@ -6,8 +6,8 @@
 @Utility = import(module:'Matte.System.Utility');
 @MString = import(module:'Matte.Core.String');
 
-<@>SWCA_WIDTH = 80;
-<@>SWCA_SPEED = 120;
+@:SWCA_WIDTH = 80;
+@:SWCA_SPEED = 120;
 
 // Convert the 3 booleans into a number state
 @bit3toNumber::(

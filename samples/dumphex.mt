@@ -24,7 +24,7 @@
 };
 
 // assumes 0-255
-<@> numberToHex::(n => Number) {
+@: numberToHex::(n => Number) {
     return {first :hextable[n / 16], // number lookups are always floored.
      second:hextable[n % 16]};
 };
@@ -136,8 +136,8 @@
 
 
 
-<@> numberToAscii::(n => Number) {
-    <@> res = asciitable[n];
+@: numberToAscii::(n => Number) {
+    @: res = asciitable[n];
     when(res == empty) {
         first: '_',
         second: '_'
@@ -148,13 +148,13 @@
     };
 };
 
-<@>line = MatteString.new();
-<@>lineAsText = MatteString.new();
+@:line = MatteString.new();
+@:lineAsText = MatteString.new();
 
 
 
 
-<@> dumphex ::(data => MemoryBuffer.type){
+@: dumphex ::(data => MemoryBuffer.type){
     line.length = BYTES_PER_LINE*2+BYTES_PER_LINE;
     for(in:[0, BYTES_PER_LINE], do:::(i) {
         line[i+2] = ' ';

@@ -43,7 +43,6 @@ struct matteHeap_t {
     
     uint16_t gcLocked;
     uint8_t pathCheckedPool;
-    uint8_t preserver;
 
     // pool for value types.
     uint32_t typepool;
@@ -97,7 +96,6 @@ struct matteHeap_t {
     matteValue_t specialString_set;
     matteValue_t specialString_bracketAccess;
     matteValue_t specialString_dotAccess;
-    matteValue_t specialString_preserver;
     matteValue_t specialString_foreach;
     matteValue_t specialString_name;
     matteValue_t specialString_inherits;
@@ -148,7 +146,6 @@ typedef struct {
     uint8_t routeChecked;
     // id within sorted heap.
     uint32_t heapID;
-    uint8_t hasPreserver;
     void (*nativeFinalizer)(void * objectUserdata, void * functionUserdata);
     void * nativeFinalizerData;
 
@@ -653,8 +650,6 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->specialString_bracketAccess.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_dotAccess.value.id = matte_string_heap_internalize_cstring(out->stringHeap, ".");
     out->specialString_dotAccess.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_preserver.value.id = matte_string_heap_internalize_cstring(out->stringHeap, "preserver");
-    out->specialString_preserver.binID = MATTE_VALUE_TYPE_STRING;
 
 
     out->specialString_foreach.value.id = matte_string_heap_internalize_cstring(out->stringHeap, "foreach");
@@ -2139,12 +2134,6 @@ void matte_value_object_set_attributes(matteHeap_t * heap, matteValue_t v, matte
         matte_heap_recycle(heap, m->table.attribSet);
     }
 
-    // can only use the preserver flag if we are NOT in the shutdown state
-    if (matte_value_object_access_direct(heap, opObject, heap->specialString_preserver, 1) && !heap->shutdown) {   
-        m->hasPreserver = 1;    
-    } else {
-        m->hasPreserver = 0;    
-    }
     
     matte_value_into_copy(heap, &m->table.attribSet, opObject);
     object_link_parent_value(heap, m, &m->table.attribSet);
@@ -2388,9 +2377,7 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
     while(size) {
         matteObject_t * current = matte_array_at(h->routePather, matteObject_t *, --size);
         
-        // NOTE: preserver objects should ONLY accept true roots 
-        // since a preserver's child will have its verifiedRoot by checked.
-        // 
+
         if (current->isRootRef || (current->verifiedRoot == h->verifiedCycle)) {
             m->verifiedRoot = h->verifiedCycle;
             matte_array_set_size(h->routePather, 0);
@@ -2398,26 +2385,7 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
         }
         
         
-        // if referenced by preserver, keep it but you also need to check again later.
-        // Also, only do this check if this object is not itself a preserver, else 
-        // circular dependency chain for preservers is possible.
-        if (current != m && current->hasPreserver && !m->hasPreserver) {
-            matte_array_set_size(h->routePather, 0);
-            
-
-            // mark for recycle check next cycle
-            if (!m->toSweep) {
-                m->toSweep = 1;
-                matte_array_push(h->toSweep, m);
-            }   
-            
-            if (!current->toSweep) {
-                current->toSweep = 1;
-                matte_array_push(h->toSweep, current);            
-            }
-            return 1;
-        }
-
+ 
 
         len = matte_array_get_size(current->refParents);
         iter = matte_array_get_data(current->refParents);
@@ -2439,40 +2407,6 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
 
     matte_array_set_size(h->routePather, 0);
     matteObject_t * current = m;
-    if (m->hasPreserver) {
-        matteValue_t preserver = matte_value_object_access(h, current->table.attribSet, h->specialString_preserver, 0);        
-        m->hasPreserver = 0;
-        if (preserver.binID) {
-            m->verifiedRoot = h->verifiedCycle;
-            h->preserver = 1;
-
-            // you'll want to mark here, as the preserver can add/remove 
-            // children / mess with child refs when the children may have already been 
-            // marked for deletion
-            #ifdef MATTE_DEBUG__HEAP
-                printf("----Preserver called for %d. Reachable objects have been temporarily halted\n", current->heapID);
-            #endif
-            matteValue_t v = matte_vm_call(h->vm, preserver, matte_array_empty(), matte_array_empty(), NULL);
-
-
-            matte_heap_recycle(h, preserver);
-            matte_heap_recycle(h, v);
-
-
-            // mark for recycle check next cycle
-            if (!current->toSweep) {
-                current->toSweep = 1;
-                matte_array_push(h->toSweep, current);
-            }            
-            return 1;
-        } else {
-            // mark for recycle check next cycle
-            if (!current->toSweep) {
-                current->toSweep = 1;
-                matte_array_push(h->toSweep, current);
-            }                    
-        }
-    }
     return 0;
 }
 
@@ -2492,7 +2426,6 @@ static void object_cleanup(matteHeap_t * h) {
     matteTableIter_t * iter = matte_table_iter_create();
     uint32_t o;
     uint32_t olen = matte_array_get_size(h->toSweep_rootless);
-    // might have been saved by finalizer
     for(o = 0; o < olen; ++o) {
         matteObject_t * m = matte_array_at(h->toSweep_rootless, matteObject_t *, o);
         if (m->dormant) continue;
@@ -2726,18 +2659,15 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
     len = matte_array_get_size(h->toSweep_rootless);
     if (len) {
         //if (len > ROOTLESS_SWEEP_LIMIT_COUNT) len = ROOTLESS_SWEEP_LIMIT_COUNT;
-        do {
-            h->preserver = 0;
-            for(i = 0; i < len; ++i) {
-                matteObject_t * m = matte_array_at(h->toSweep_rootless, matteObject_t *, i);
-                if (matte_object_check_ref_path_root(h, m)) {
-                    matte_array_remove(h->toSweep_rootless, i);
-                    len--;
-                    m->isRootless = 0;                
+        for(i = 0; i < len; ++i) {
+            matteObject_t * m = matte_array_at(h->toSweep_rootless, matteObject_t *, i);
+            //if (matte_object_check_ref_path_root(h, m)) {
+                matte_array_remove(h->toSweep_rootless, i);
+                len--;
+                m->isRootless = 0;                
 
-                }
-            }
-        } while (h->preserver);
+            //}
+        }
 
         object_cleanup(h);
         matte_array_set_size(
@@ -2837,6 +2767,18 @@ static void matte_heap_report_val(matteHeap_t * heap, matteTable_t * t) {
     }
 }
 
+matteValue_t matte_heap_track_in_lock(matteHeap_t * heap, matteValue_t val, const char * file, int line) {
+    matteString_t * st = matte_string_create_from_c_str("%s (LOCK PUSHED)", file);
+    matteValue_t out = matte_heap_track_in(heap, val, matte_string_get_c_str(st), line);
+    matte_string_destroy(st);
+    return out;
+}
+
+void matte_heap_track_out_lock(matteHeap_t * heap, matteValue_t val, const char * file, int line) {
+    matteString_t * st = matte_string_create_from_c_str("%s (LOCK POPPED)", file);
+    matte_heap_track_out(heap, val, matte_string_get_c_str(st), line);
+    matte_string_destroy(st);
+}
 
 
 matteValue_t matte_heap_track_in(matteHeap_t * heap, matteValue_t val, const char * file, int line) {

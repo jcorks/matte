@@ -3,7 +3,7 @@
 @EventSystem = class(info:{
     name : 'Matte.Core.EventSystem',
     define::(this) {
-        <@> events = [];
+        @: events = [];
                
         
         
@@ -27,7 +27,7 @@
         
             // emits a specific event.
             emit::(event => String, detail) {
-                <@> ev = events[event];
+                @: ev = events[event];
                 when(ev == empty) error(message:"Cannot emit event for non-existent event "+ev);
                 
                 @continue = listen(to:::{
@@ -61,7 +61,7 @@
             // main handler, which is installed at creation of the 
             // event system.
             installHandler ::(event => String, handler => Function) {
-                <@> ev = events[ev];
+                @: ev = events[ev];
                 when(ev == empty) error(message:"Cannot install handler for non-existent event "+event);
                 
                 ev.handlers[ev.handlerCount] = handler;
@@ -71,7 +71,7 @@
 
 
             installHook ::(event => String, hook => Function) {
-                <@> ev = events[event];
+                @: ev = events[event];
                 when(ev == empty) error(message:"Cannot install hook for non-existent event "+event);
                 
                 ev.hooks[ev.hookCount] = hook;
@@ -88,7 +88,7 @@
             
             
             uninstallHook::(event => String, hook) {
-                <@> ev = events[event];
+                @: ev = events[event];
                 when(ev == empty) error(message:"Cannot uninstall hook for non-existent event "+ev);
                 listen(to:::{
                     for(in:[0, ev.hookCount], do:::(i) {
@@ -102,7 +102,7 @@
             },
             
             uninstallHandler::(event => String, handler) {
-                <@> ev = events[event];
+                @: ev = events[event];
                 when(ev == empty) error(data:"Cannot uninstall handler for non-existent event "+ev);
                 listen(to:::{
                     for(in:[0, ev.handlerCount], do:::(i) {

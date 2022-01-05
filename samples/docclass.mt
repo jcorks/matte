@@ -73,7 +73,7 @@
 
 @docAll ::(instr) {
     print('Splitting lines..');
-    <@>lines = MatteString.new(instr).split('\n');
+    @:lines = MatteString.new(instr).split('\n');
     for([0, lines.length], ::(i){
         @l = lines[i];
         l.replace('\r', '');

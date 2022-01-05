@@ -1,23 +1,23 @@
-<@>_mbuffer_create = getExternalFunction(name:"__matte_::mbuffer_create");
-<@>_mbuffer_release = getExternalFunction(name:"__matte_::mbuffer_release");
-<@>_mbuffer_set_size = getExternalFunction(name:"__matte_::mbuffer_set_size");
-<@>_mbuffer_copy = getExternalFunction(name:"__matte_::mbuffer_copy");
-<@>_mbuffer_set = getExternalFunction(name:"__matte_::mbuffer_set");
-<@>_mbuffer_subset = getExternalFunction(name:"__matte_::mbuffer_subset");
-<@>_mbuffer_append_byte = getExternalFunction(name:"__matte_::mbuffer_append_byte");
-<@>_mbuffer_append = getExternalFunction(name:"__matte_::mbuffer_append");
-<@>_mbuffer_remove = getExternalFunction(name:"__matte_::mbuffer_remove");
-<@>_mbuffer_get_size = getExternalFunction(name:"__matte_::mbuffer_get_size");
+@:_mbuffer_create = getExternalFunction(name:"__matte_::mbuffer_create");
+@:_mbuffer_release = getExternalFunction(name:"__matte_::mbuffer_release");
+@:_mbuffer_set_size = getExternalFunction(name:"__matte_::mbuffer_set_size");
+@:_mbuffer_copy = getExternalFunction(name:"__matte_::mbuffer_copy");
+@:_mbuffer_set = getExternalFunction(name:"__matte_::mbuffer_set");
+@:_mbuffer_subset = getExternalFunction(name:"__matte_::mbuffer_subset");
+@:_mbuffer_append_byte = getExternalFunction(name:"__matte_::mbuffer_append_byte");
+@:_mbuffer_append = getExternalFunction(name:"__matte_::mbuffer_append");
+@:_mbuffer_remove = getExternalFunction(name:"__matte_::mbuffer_remove");
+@:_mbuffer_get_size = getExternalFunction(name:"__matte_::mbuffer_get_size");
 
 
-<@>_mbuffer_get_index = getExternalFunction(name:"__matte_::mbuffer_get_index");
-<@>_mbuffer_set_index = getExternalFunction(name:"__matte_::mbuffer_set_index");
+@:_mbuffer_get_index = getExternalFunction(name:"__matte_::mbuffer_get_index");
+@:_mbuffer_set_index = getExternalFunction(name:"__matte_::mbuffer_set_index");
 
-<@>class = import(module:'Matte.Core.Class');
+@:class = import(module:'Matte.Core.Class');
 @MemoryBuffer = class(info:{
     name: 'Matte.System.MemoryBuffer',
     define::(this) {
-        <@>MBuffer = this.class.type;
+        @:MBuffer = this.class.type;
         @length = 0;
         @buffer;
 
@@ -37,7 +37,7 @@
         
         
         
-        <@> checkReleased::(t){
+        @: checkReleased::(t){
             when(t.handle == empty) error(message:"Buffer was released. This buffer should not be used any more.");
         };
         
