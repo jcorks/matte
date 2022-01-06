@@ -4,8 +4,8 @@
 
 @ApproximateNumber ::<={
     // bound with every call.
-    <@>type    = newtype({name:'ApproximateNumber'});
-    <@>epsilon = 0.00001;
+    @:type    = newtype({name:'ApproximateNumber'});
+    @:epsilon = 0.00001;
 
     // the internals of the function 
     // access the constants above.

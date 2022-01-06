@@ -325,41 +325,6 @@ These key types have special behavior:
 \subsubsection{Operator Overloading}\label{Operator Overloading}
 \subsubsection{Access Overloading}\label{Access Overloading}
 \subsubsection{Type Conversion}\label{Type Conversion}
-\subsubsection{Object Preservation}\label{Object Preservation}
-
-When a value is in use within a function context, is stored within an object that is itself 
-reachable, has special reachable status by the runtime,
-or is within a stackframe that has yet to be resolved, a value is said to be active. 
-When this is no longer the case, the runtime may decide to clean up a value, releasing it back 
-to the runtime's available resources. Because values that aren't objects are constant, this 
-does not affect Matte's operation. However, for object values, this does affect their usage.
-
-The runtime may or may not decide to cleanup the object and remove it during runtime ONLY when 
-this condition is active met. When this occurs, normally this has no bearing on a running Matte program 
-since nothing refers to it any longer. However, if the attributes of an object contain a 
-\textit{preserver} property, the lifetime of an object may be elongated.
-
-The \textit{preserver} property, if it is a function and is set to the object's attributes, 
-upon the object no longer being active, may be invoked. If the function assigns the inactive object 
-to another, reachable object, the object will be considered active once more, and the removal 
-of the object by the runtime will be delayed.
-
-After the calling of the \textit{preserver} property, the property will be removed from the 
-attributes object. This means that a preserver will only run once per setting. (However: after this removal, another 
-\textit{preserver} (or the same one) may be set to the attributes object for the next time 
-the object is considered inactive).
-
-The Matte language does not guarantee any timings or events for when the preserver may be invoked other 
-then: 
-
-\begin{itemize}
-  \item The preserver can only be invoked when the object is no longer considered active under the criteria listed above.
-  \item The preserver of any object that is active must have its preserver called upon the termination of the runtime with sucessful completion of a Matte program. In this case, the lifetime of the object is not guaranteed since the activeness of the runtime is not defined after a Matte program finishes.
-  \item The preserver of any object is not guaranteed to run if the runtime encounters an unhandled \textit{error()}.
-\end{itemize}
-
-
-\lstinputlisting[language=Matte,firstnumber=1]{preserver.mt}
 
 
 
