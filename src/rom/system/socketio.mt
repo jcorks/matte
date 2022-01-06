@@ -137,10 +137,10 @@
 
 
         // actual client that a user interacts with.
-        @:Client = class(info:{
+        @:Client = class(
             name: 'Matte.System.SocketIO.Server.Client',
             inherits:[EventSystem],
-            define::(this) {
+            define:::(this) {
                 @id_number;
                 @pendingMessages = {};
                 @socket;
@@ -232,7 +232,7 @@
                 };
 
             }
-        });
+        );
 
         @:Server = class(info:{
             name: 'Matte.System.SocketIO.Server',

@@ -16,9 +16,9 @@
 @:_string_substr     = getExternalFunction(name:"__matte_::string_substr");
 @:_string_split      = getExternalFunction(name:"__matte_::string_split");
 @:_string_get_string = getExternalFunction(name:"__matte_::string_get_string");
-@String_ = class(info:{
+@String_ = class(
     name : 'Matte.Core.String',
-    define::(this) {
+    define:::(this) {
         @:MatteString = introspect.type(of:this);
 
         @handle;
@@ -259,7 +259,7 @@
             }
         };
     }
-});
+);
 
 
 return String_;

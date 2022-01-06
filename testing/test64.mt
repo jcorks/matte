@@ -2,8 +2,8 @@
 //
 // Core: Class (3)
 @Class = import(module:'Matte.Core.Class');
-@TestClass = Class(info:{
-    define::(this) {
+@TestClass = Class(
+    define:::(this) {
         @args;
 
         this.constructor = ::(myArg) {
@@ -17,7 +17,7 @@
             }
         };
     }
-});
+);
 
 @instance  = TestClass.new(myArg:'hello!'+2);
 @instance2 = TestClass.new(myArg:'ddd!'+5);

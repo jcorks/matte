@@ -4,6 +4,19 @@
 @class        = import(module:'Matte.Core.Class');
 
 
+when(parameters == empty || parameters.file == empty) ::<={
+    print(message:'DumpHex usage:');
+    print(message:'');
+    print(message:'matte DumpHex.mt file:[filename]');
+
+};
+
+
+// config
+@:BYTES_PER_LINE = if (introspect.type(of:parameters.wordsize) == String) introspect.parse(value:parameters.wordsize) else 8;
+@:BYTES_PER_PAGE = BYTES_PER_LINE*8;
+    
+
 @hextable = {
     0: '0',
     1: '1',
@@ -128,8 +141,6 @@
 
 
 
-// config
-@ BYTES_PER_LINE = 8;
 
 
 
@@ -154,7 +165,8 @@
 
 
 
-@: dumphex ::(data => MemoryBuffer.type){
+@: dumphex ::(data => MemoryBuffer.type, onPageFinish => Function){
+
     line.length = BYTES_PER_LINE*2+BYTES_PER_LINE;
     for(in:[0, BYTES_PER_LINE], do:::(i) {
         line[i+2] = ' ';
@@ -162,71 +174,86 @@
 
     lineAsText.length = BYTES_PER_LINE*2;
 
-    @iter = 0;
-    @lineIter = 0;
-    @lineAsTextIter = 0;
-    @charAt = introspect.charAt;
-    @out = MatteString.new();
-    for(in:[0, data.size], do:::(i) {
-        if (i%BYTES_PER_LINE == 0) ::<={
-            out += line + "      " + lineAsText + '\n';
-            iter = 0;
-            lineAsTextIter = 0;
-            lineIter = 0;
-        };
-
-        @n = numberToHex(n:data[i]);
-        line[lineIter] = n.first; lineIter+= 1;
-        line[lineIter] = n.second; lineIter+= 1;
-        lineIter+= 1;
-
-        n = numberToAscii(n:data[i]);
-        lineAsText[lineAsTextIter] = n.first; lineAsTextIter += 1;            
-        lineAsText[lineAsTextIter] = n.second; lineAsTextIter += 1;            
-
-
-        iter += 1;
-    });
+    @iterBytes = 0;
     
-    if (iter != 0) ::<= {
-        for(in:[iter, BYTES_PER_LINE], do:::{
-            line[lineIter] = ' '; lineIter+= 1;
-            line[lineIter] = ' '; lineIter+= 1;
+    @:endPoint :: {
+        when(iterBytes+BYTES_PER_PAGE >= data.size) data.size;
+        return iterBytes+BYTES_PER_PAGE;
+    };
+    @charAt = introspect.charAt;
+
+    loop(func:::{
+        @iter = 0;
+        @lineIter = 0;
+        @lineAsTextIter = 0;
+        @out = MatteString.new();
+
+    
+        for(in:[iterBytes, endPoint()], do:::(i) {
+            if (i%BYTES_PER_LINE == 0) ::<={
+                out += '' + line + "      " + lineAsText + '\n';
+                iter = 0;
+                lineAsTextIter = 0;
+                lineIter = 0;
+            };
+
+            @n = numberToHex(n:data[i]);
+            line[lineIter] = n.first; lineIter+= 1;
+            line[lineIter] = n.second; lineIter+= 1;
             lineIter+= 1;
 
-            lineAsText[lineAsTextIter] = ' '; lineAsTextIter+= 1;
-            lineAsText[lineAsTextIter] = ' '; lineAsTextIter+= 1;
+            n = numberToAscii(n:data[i]);
+            lineAsText[lineAsTextIter] = n.first; lineAsTextIter += 1;            
+            lineAsText[lineAsTextIter] = n.second; lineAsTextIter += 1;            
+
+
+            iter += 1;
         });
-        out += line + "      " + lineAsText + '\n';
-    };
-    return out;
+        
+        if (iter%BYTES_PER_LINE) ::<= {
+            for(in:[iter, BYTES_PER_LINE], do:::{
+                line[lineIter] = ' '; lineIter+= 1;
+                line[lineIter] = ' '; lineIter+= 1;
+                lineIter+= 1;
+
+                lineAsText[lineAsTextIter] = ' '; lineAsTextIter+= 1;
+                lineAsText[lineAsTextIter] = ' '; lineAsTextIter+= 1;
+            });
+            out += line + "      " + lineAsText + '\n';
+        };
+
+
+
+        iterBytes = endPoint();
+        
+        onPageFinish(page:String(from:out));
+        
+        return iterBytes < data.size;
+    });
+
 };
 
 
-return class(info:{
+@:DumpHex = class(
     name : 'DumpHex',
-    define::(this) {
+    define:::(this) {
 
         this.interface = {
-            bytesPerLine : {
-                get :: {
-                    return BYTES_PER_LINE;
-                },
-                
-                set ::(value) {
-                    BYTES_PER_LINE = value;
-                }
-            },
+
             
             
-            'print' ::(buffer => MemoryBuffer.type) {
-                ConsoleIO.println(message:String(from:dumphex(data:buffer)));                      
-            },
-            
-            toString ::(buffer => MemoryBuffer.type) => String {
-                return String(from:dumphex(data:buffer));
+            dump::(buffer => MemoryBuffer.type, onPageFinish) {
+                onPageFinish = if(onPageFinish == empty) ::(page) {ConsoleIO.printf(format:page);} else onPageFinish;
+                dumphex(data:buffer, onPageFinish:onPageFinish); 
             }
+            
         };    
     }
-}).new();
+).new();
+
+
+
+@:Filesystem = import(module:'Matte.System.Filesystem');
+@:buf = Filesystem.readBytes(path:parameters.file);
+DumpHex.dump(buffer:buf);
 

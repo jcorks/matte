@@ -1,6 +1,6 @@
 
 
-@class ::(info) {
+@class ::(define, name, inherits) {
     // unfortunately, have to stick with these fake array things since we
     // are bootstrapping classes, which will be used to implement real Arrays.
     @: arraylen ::(a){
@@ -19,9 +19,9 @@
         return out;
     };
 
-    @classinst = {define : info.define};
+    @classinst = {define : define};
     when(introspect.type(of:classinst.define) != Function) error(detail:'class must include a "define" function within its "info" specification');
-    @classInherits = info.inherits;
+    @classInherits = inherits;
     @pool = [];
     @poolCount = 0;
     @type = if (classInherits != empty) ::<={
@@ -31,9 +31,9 @@
             inheritset[inheritCount] = v.type;
             inheritCount+=1;
         });
-        return newtype(name : info.name, inherits : inheritset);
+        return newtype(name : name, inherits : inheritset);
     } else ::<= {
-        return newtype(name : info.name);
+        return newtype(name : name);
     };
 
 

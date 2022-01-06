@@ -17,4 +17,5 @@ void matte_disassemble(char ** assemblyFiles, uint32_t n, const char * output);
 int matte_debug(const char * input, char **, int);
 void * dump_bytes(const char * filename, uint32_t * len);
 matteValue_t parse_parameters(matteVM_t *, char ** args, uint32_t count);
+matteValue_t parse_parameter_line(matteVM_t * vm, const char * line);
 #endif

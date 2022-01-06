@@ -1,9 +1,9 @@
 @:class = import(module:'Matte.Core.Class');
 
 
-@:Shape = class(info:{
-    name : 'Shape',
-    define::(this, thisType) {
+@:Shape = class(
+    name:   'Shape',
+    define: ::(this, thisType) {
         this.interface = {
             // a shape on its own is abstract
             area :: {
@@ -11,14 +11,14 @@
             }
         };
     }
-});
+);
 
 
 
-@:Square = class(info:{
-    name : 'Square',
+@:Square = class(
+    name     : 'Square',
     inherits : [Shape],
-    define ::(this, thisType) {
+    define   : ::(this, thisType) {
         @l;
 
         this.constructor = ::(length) {
@@ -33,13 +33,13 @@
             }
         };
     }
-});
+);
 
 
-@:Triangle = class(info:{
-    name : 'Triangle',
+@:Triangle = class(
+    name     : 'Triangle',
     inherits : [Shape],
-    define::(this, thisType) {
+    define   :::(this, thisType) {
 
         @b;
         @h;
@@ -56,7 +56,7 @@
             }
         };
     }
-});
+);
 
 
 @tri0 = Triangle.new(base:1, height:3);

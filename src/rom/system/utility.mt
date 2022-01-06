@@ -1,15 +1,15 @@
-@MatteString = import(module:"Matte.Core.String");
-@class = import(module:"Matte.Core.Class");
+@:MatteString = import(module:"Matte.Core.String");
+@:class = import(module:"Matte.Core.Class");
 
 
-@_nextRand = getExternalFunction(name:"__matte_::utility_nextRand");
-@_run = getExternalFunction(name:"__matte_::utility_system");
+@:_nextRand = getExternalFunction(name:"__matte_::utility_nextRand");
+@:_run = getExternalFunction(name:"__matte_::utility_system");
 getExternalFunction(name:"__matte_::utility_initRand")();
 
 
-return class(info:{
+return class(
     name : 'Matte.Core.Utility',
-    define::(this) {
+    define:::(this) {
         this.interface = {
             
             // returns a random value between 0 and 1.
@@ -30,4 +30,4 @@ return class(info:{
             }
         };
     }
-}).new();
+).new();

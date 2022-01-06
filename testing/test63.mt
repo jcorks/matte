@@ -2,9 +2,9 @@
 //
 // Core: Class (2)
 @Class = import(module:'Matte.Core.Class');
-@TestClass = Class(info:{
-    define ::(this) {
+@TestClass = Class(
+    define: ::(this) {
         
     }
-});
+);
 return ''+introspect.type(of:TestClass);

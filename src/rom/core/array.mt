@@ -2,9 +2,9 @@
 
 
 // Arrays contain a number-indexed collection of values.
-@Array = class(info:{
+@Array = class(
     name : 'Matte.Core.Array',
-    define::(this) {
+    define:::(this) {
         @data;
         @len;
 
@@ -244,7 +244,7 @@
             }
         };
     }
-});
+);
 
 // bootstrap reserves for speed 
 ::<={

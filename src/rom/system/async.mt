@@ -53,10 +53,10 @@
 
 @workers = Array.new();
 @Async;
-return class(info:{
+return class(
     name : 'Matte.System.Async',
     inherits:[EventSystem],
-    define::(this) {
+    define:::(this) {
 
         this.events = {
             onNewParentMessage::{}
@@ -202,7 +202,7 @@ return class(info:{
         };
     }
 
-}).new();
+).new();
 
 
 

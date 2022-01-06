@@ -1,8 +1,8 @@
 @class = import(module:'Matte.Core.Class');
 @Array = import(module:'Matte.Core.Array');
-@EventSystem = class(info:{
+@EventSystem = class(
     name : 'Matte.Core.EventSystem',
-    define::(this) {
+    define:::(this) {
         @: events = [];
                
         
@@ -119,7 +119,7 @@
             
         };
     }
-});
+);
 
 
 return EventSystem;

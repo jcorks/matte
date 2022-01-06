@@ -16,9 +16,9 @@
 @_writeString = getExternalFunction(name:"__matte_::filesystem_writestring");
 @_writeBytes = getExternalFunction(name:"__matte_::filesystem_writebytes");
 
-return class(info:{
+return class(
     name : 'Matte.System.Filesystem',
-    define::(this) {
+    define:::(this) {
         this.interface = {
             // Directory / Files 
             cwd : {
@@ -87,4 +87,4 @@ return class(info:{
         };
     }
 
-}).new();
+).new();

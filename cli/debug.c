@@ -112,7 +112,7 @@ static void printArea() {
     fflush(stdout);
 }
 
-static int execCommand() {
+static int execCommand(matteVM_t * vm) {
     static char command[MESSAGE_LEN_MAX+1];
     char * res = prompt();
     if (res[0] == '\n') {
@@ -146,7 +146,7 @@ static int execCommand() {
                !strcmp(command, "r")) {
         if (!started) {
             started = 1;
-            matte_vm_run_fileid(vm, DEBUG_FILEID, matte_heap_new_value(matte_vm_get_heap(vm)));
+            matte_vm_run_fileid(vm, DEBUG_FILEID, parse_parameter_line(vm, res + strlen(command)));
 
 
             printf("Execution complete.\n");
@@ -284,7 +284,7 @@ static void onDebugEvent(
         printArea();
         const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), val));
         printf("ERROR RAISED FROM VIRTUAL MACHINE: %s\n", str ? matte_string_get_c_str(str) : "<no string info given>");
-        while(execCommand());
+        while(execCommand(vm));
         return;    
     }
      
@@ -295,7 +295,7 @@ static void onDebugEvent(
         stackframe = 0;
         stepinto = 0;
         printArea();
-        while(execCommand());
+        while(execCommand(vm));
         return;
     }
     uint32_t i;
@@ -306,7 +306,7 @@ static void onDebugEvent(
             stackframe = 0;
             printf("Breakpoint %d reached.\n", i);
             printArea();
-            while(execCommand());
+            while(execCommand(vm));
         }
     }
 }
@@ -366,7 +366,7 @@ int matte_debug(const char * input, char ** argv, int argc) {
 
 
     breakpoints = matte_array_create(sizeof(breakpoint));
-    while(keepgoing) execCommand();
+    while(keepgoing) execCommand(vm);
     printf("Exiting.\n");
     fflush(stdout);
     return 0;

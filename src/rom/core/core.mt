@@ -4,8 +4,8 @@
 @json        = import(module:"Matte.Core.JSON");
 @eventSystem = import(module:'Matte.Core.EventSystem');
 
-return class(info:{
-    define::(this) {
+return class(
+    define:::(this) {
         this.interface = {
             Class       :{get::{return class;}},
             Array       :{get::{return array;}},
@@ -14,4 +14,4 @@ return class(info:{
             EventSystem :{get::{return eventSystem;}}
         };
     }
-}).new();
+).new();

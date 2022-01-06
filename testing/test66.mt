@@ -2,8 +2,8 @@
 //
 // Core: Class (5)
 @Class = import(module:'Matte.Core.Class');
-@TestClass = Class(info:{
-    define::(this) {
+@TestClass = Class(
+    define:::(this) {
         @str;
 
         this.constructor = ::(stringInput) {
@@ -24,7 +24,7 @@
             }
         };
     }
-});
+);
 
 @instance  = TestClass.new(stringInput : 'isitworking');
 instance.mutate();

@@ -14,9 +14,9 @@
 @:_mbuffer_set_index = getExternalFunction(name:"__matte_::mbuffer_set_index");
 
 @:class = import(module:'Matte.Core.Class');
-@MemoryBuffer = class(info:{
+@MemoryBuffer = class(
     name: 'Matte.System.MemoryBuffer',
-    define::(this) {
+    define:::(this) {
         @:MBuffer = this.class.type;
         @length = 0;
         @buffer;
@@ -140,7 +140,7 @@
             }
         };
     }
-});
+);
 
 return MemoryBuffer;
 //@MemoryBuffer = import('Matte.System.MemoryBuffer');

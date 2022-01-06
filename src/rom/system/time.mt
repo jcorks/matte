@@ -8,11 +8,11 @@
 @_getTicks = getExternalFunction(name:"__matte_::time_getticks");
 @initTime = _getTicks();
 
-@Clock = class(info:{
+@Clock = class(
     inherits:[EventSystem],
     name : 'Matte.System.Time.Clock',
     
-    define::(this) {
+    define:::(this) {
         @paused = false;
         @pausedAt;
         @started;
@@ -84,12 +84,12 @@
         };
     }
 
-});
+);
 
 
-return class(info:{
+return class(
     name : 'Matte.System.Time',
-    define::(this) {
+    define:::(this) {
         this.interface = {
 
             // sleeps approximately the given number of milliseconds
@@ -114,4 +114,4 @@ return class(info:{
             }
         };
     }
-}).new();
+).new();

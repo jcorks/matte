@@ -2,9 +2,9 @@
 @class = import(module:"Matte.Core.Class");
 @_print = getExternalFunction(name:"__matte_::consoleio_print");
 
-return class(info:{
+return class(
     name : 'Matte.System.ConsoleIO',
-    define::(this) {
+    define:::(this) {
         this.interface = {
             // Prints a simple string with a newline afterwards.
             println ::(message => String) {
@@ -33,4 +33,4 @@ return class(info:{
             clear : getExternalFunction(name:"__matte_::consoleio_clear")
         };
     }
-}).new();
+).new();

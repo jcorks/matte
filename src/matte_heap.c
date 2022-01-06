@@ -42,7 +42,7 @@ struct matteHeap_t {
     matteArray_t * toSweep_rootless;
     
     uint16_t gcLocked;
-    uint8_t pathCheckedPool;
+    int pathCheckedPool;
 
     // pool for value types.
     uint32_t typepool;
@@ -379,7 +379,6 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
     if (val.binID == MATTE_VALUE_TYPE_OBJECT || val.binID == MATTE_VALUE_TYPE_FUNCTION) {    
         object_link_parent_value(heap, m, &val);
     }
-
 
     switch(key.binID) {
       case MATTE_VALUE_TYPE_EMPTY: return NULL; // SHOULD NEVER ENTER. if it would, memory leak.
@@ -2136,6 +2135,7 @@ void matte_value_object_set_attributes(matteHeap_t * heap, matteValue_t v, matte
         matte_vm_raise_error_cstring(heap->vm, "Cannot assign attributes set as its own object.");
         return;    
     }
+    
     matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
     if (m->table.attribSet.binID) {
         object_unlink_parent_value(heap, m, &m->table.attribSet);

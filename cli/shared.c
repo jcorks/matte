@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 void * dump_bytes(const char * filename, uint32_t * len) {
     FILE * f = fopen(filename, "rb");
     if (!f) {
@@ -26,7 +27,42 @@ void * dump_bytes(const char * filename, uint32_t * len) {
 }
 
 
-
+matteValue_t parse_parameter_line(matteVM_t * vm, const char * line) {
+    uint32_t maxlen = strlen(line)+1;
+    char ** args = malloc(maxlen * sizeof(char*));
+    uint32_t ct = 0;
+    const char * iter = line;
+    const char * iterstart = line;
+    while(*iter) {
+        if (isspace(*iter)) {
+            if (iter != iterstart) {
+                char * str = malloc(maxlen);
+                memcpy(str, iterstart, iter - iterstart);
+                str[iter - iterstart] = 0;
+                args[ct++] = str;
+            }
+            while(*iter && isspace(*iter)) iter++;
+            iterstart = iter;
+        } else {
+            iter++;
+        }
+    }
+    if (iter != iterstart) {
+        char * str = malloc(maxlen);
+        memcpy(str, iterstart, iter - iterstart);
+        str[iter - iterstart] = 0;
+        args[ct++] = str;
+    }    
+    
+    matteValue_t out = parse_parameters(vm, args, ct);
+    
+    uint32_t i;
+    for(i = 0; i < ct; ++i) {
+        free(args[i]);
+    }
+    free(args);
+    return out;
+}
 
 matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
