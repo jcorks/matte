@@ -19,7 +19,7 @@ This guide is intended for those who are already familiar with programming conce
 <p>
 Throughout the guide, code samples will be provided. If using a javascript-enabled browser, you may hover your pointer / tap the code to get fine details about the syntax used. For example:
 <pre>
-    <@>myFunction = ::{
+    @:myFunction = ::{
         print(message:"Hello, world!");
     };
     myFunction();
@@ -61,7 +61,7 @@ Variables are declared with the @ symbol:
 
     // Wrapping the @ in <> will make the variable immutable.
     // Immutable values that are modified will fail to compile.
-    <@>immutableVariable = 42;    
+    @:immutableVariable = 42;    
 
 </pre>
 
@@ -281,7 +281,7 @@ will attempt to be converted.
 <pre>
     // Specifies that both a and b must be 
     // of type Number.
-    <@>myAdder::(a => Number, b => Number) {
+    @:myAdder::(a => Number, b => Number) {
         return a + b;
     };
 
@@ -373,7 +373,7 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
     // in conjunction with anonymous function expressions 
     // to easily create this structure.
     
-    <@>judgeValue ::(i) {
+    @:judgeValue ::(i) {
         match(true) {
             (i > 20): ::<={
                 print(message:'greater than 20');
@@ -1172,7 +1172,7 @@ provided contextually in code comments.
             // We can pull the existing constructor and use it as is.
             //
             //
-            this.constructor = this[Creature].constructor;
+            this.constructor = this.constructor[Creature];
 
             this.interface = {
 

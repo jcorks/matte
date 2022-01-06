@@ -18,7 +18,7 @@ try {
         switch(type) {
           case 'Numer Literal': return 'A simple number. Can be any valid floating point number.';
           case 'Boolean Literal': return 'A simple boolean. Can be either true or false';
-          case 'Local Constant Declarator \'<@>\'': return 'Declares that a new constant variable is to be named. The token following this symbol is the name of the new variable';
+          case 'Local Constant Declarator \'@:\'': return 'Declares that a new constant variable is to be named. The token following this symbol is the name of the new variable';
           case 'Local Variable Declarator \'@\'': return 'For variables that aren\'t function parameters, this lets you create new variables within the function context. The name after this symbol is the name of variable.';
           case 'Variable Name': return 'A variable name. When after a declarator, this is the name of a new variable. Variables can be numbers, strings, objects, function objects, or booleans.';
           case 'Function Constructor \'::\'': return 'Specifies that a new function should be created. Optionally can be followed by an argument list for when the function is called.';
