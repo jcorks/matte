@@ -122,6 +122,27 @@ typedef struct {
 } MatteCleanupFunctionSet;
 
 
+#ifdef MATTE_DEBUG
+
+void matte_vm_find_in_stack(matteVM_t * vm, uint32_t id) {
+    uint32_t i;
+    for(i = 0; i < vm->stacksize; ++i) {
+        matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t *, i);
+        
+        uint32_t n = 0;
+        for(n = 0; n < matte_array_get_size(frame->valueStack); ++n) {
+            matteValue_t v = matte_array_at(frame->valueStack, matteValue_t, n);
+            if (v.binID == MATTE_VALUE_TYPE_FUNCTION || v.binID == MATTE_VALUE_TYPE_OBJECT && v.value.id == id) {
+                printf("@ stackframe %d, valuestack %d: %s\n", i, n, v.binID == MATTE_VALUE_TYPE_FUNCTION ? "(function)" : "(object)");
+            }
+        }
+    }
+}
+
+#endif
+
+
+
 const matteString_t * matte_vm_cstring_to_string_temporary(matteVM_t * vm, const char * s) {
     if (vm->string_tempIter >= matte_string_temp_max_calls) 
         vm->string_tempIter = 0;
