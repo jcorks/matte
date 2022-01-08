@@ -30,7 +30,7 @@ Throughout the guide, code samples will be provided. If using a javascript-enabl
 <h2>2. Overview</h2>
 
 Matte is a dynamically typed, imperative language with C-like features. You will find many concepts familiar to existing languages that match this profile.
-For example, C-line single and multiline comments are readily available:
+For example, C-like single and multiline comments are readily available:
 <pre>
     // A comment.
     /* A multi-line comment. */
@@ -41,8 +41,11 @@ As such, every line that isnt a comment is part of a statement. Statements may s
 This will generate a compilation error if missing.
 <br>
 <br>
-Remember that <b>every statement is part of some function's scope. There is only one kind of scope: function scope. This is the core of Matte as a language: everything is or a statement within a function.</b> This includes statements written "nakedly" outside a user-defined function. This is referred to as the toplevel or script function. 
+Remember that <b>every statement is part of some function's scope. There is only one kind of scope: function scope. This is the core of Matte as a language: everything is part of a statement within a function.</b> This includes statements written "nakedly" outside a user-defined function: even here statements are part of a special function. This is referred to as the toplevel or script function.  
 <b>There is no such thing as global scope.</b> Values declared at the toplevel of a script are not visible outside the script without explicit exporting.
+<br>
+You can think of an entire source file in Matte as one large function.
+
 
 
 
@@ -59,7 +62,8 @@ Variables are declared with the @ symbol:
     // Normal variable.
     @myVariable;
 
-    // Wrapping the @ in <> will make the variable immutable.
+    // Adding a colon ':' between the @ and the variable name 
+    // will make the variable immutable.
     // Immutable values that are modified will fail to compile.
     @:immutableVariable = 42;    
 
@@ -137,9 +141,11 @@ There are only a handful of basic types within Matte:
         a = ::{};
         
         // They can also be run immediately as part of an expression.
-        // Result would be "4" 
+        // Result would be "5" 
         result = ::<={
-            return 2 + 2;
+            @a = 2;
+            @b = 3;
+            return a + b;
         };
 
         // functions can also capture values that persist beyond 
@@ -168,8 +174,8 @@ There are only a handful of basic types within Matte:
         print(message:f == Number);
 
         // Types can be used as functions to explicitly convert between types.
-        // will print 7
-        print(message:2 + Number(from:'5'));
+        // will print 3
+        print(message:2 + Number(from:true));
 
     </pre>
 </ul>
@@ -186,7 +192,7 @@ When called, functions that have arguments have values bound by name to argument
 
     // declare a new variable that is a function. It takes one argument 
     // that can be referred to by "myString"
-    @myFunction = ::(myString) {
+    @:myFunction = ::(myString) {
         print(message:myString);
     };
 
@@ -202,7 +208,7 @@ When called, functions that have arguments have values bound by name to argument
     //
     // When assigning a function, you may also optionally 
     // omit the '='
-    @myOtherFunction :: {
+    @:myOtherFunction :: {
         return '123';
     };
 
@@ -251,20 +257,28 @@ These "anonymous function" expressions are useful for more complex behaviors and
     // Using anonymous functions in conjunction with 
     // normal ones allows for convenient methods to 
     // store information.
-    @fancyFunction = ::<={
-        // assign the properties "a" and "b" a new value
-        a = 200;
-        b = 34;
+    @:average = ::<={
+
+        @sum   = 0;
+        @count = 0;
         
-        return :: (c) {
-            print(message:a + b + c);
+        // This new function returned then becomes 
+        // "average". Because it references "sum" 
+        // and "count", those variables persist 
+        // within the average function.
+        return :: (next) {
+            sum   += next;
+            count += 1;
+            print(message:total / count);
         };
     };
 
 
 
-    // should print 300
-    fancyFunction(c:66);
+    // should print 1
+    average(next:1);
+    // should print 2
+    average(next:3);
 
 
 </pre>
@@ -310,7 +324,7 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
 <pre>
     // Fibonacci sequence using "when"
     // "context" always refers to the currently running function.
-    @fib ::(n){
+    @:fib ::(n){
         when(n <  1) 0;
         when(n <= 2) 1;
         return context(n:n-1) + context(n:n-2);
@@ -320,7 +334,7 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
 
 
     // When assigning a function, the '=' can be ommitted optionally
-    @hi_low_mid ::(a, b) {
+    @:hi_low_mid ::(a, b) {
         when(a < b) "lo";
         when(a > b) "hi";
     
