@@ -1,5 +1,4 @@
 @class = import(module:"Matte.Core.Class");
-@Array = import(module:'Matte.Core.Array');
 @MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
 
 @_getcwd = getExternalFunction(name:"__matte_::filesystem_getcwd");
@@ -41,8 +40,7 @@ return class(
                 get :: {
                     _directoryEnumerate();
                     @:ct = _directoryObjectCount();
-                    @:files = Array.new();
-                    files.length = ct;
+                    @:files = [];
                     for(in:[0, ct], do:::(i){
                         files[i] = {
                             name : _directoryObjectName(a:i),

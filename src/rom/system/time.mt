@@ -1,5 +1,3 @@
-@MatteString = import(module:"Matte.Core.String");
-@Array = import(module:'Matte.Core.Array');
 @class = import(module:"Matte.Core.Class");
 @EventSystem = import(module:'Matte.Core.EventSystem');
 

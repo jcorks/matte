@@ -4,7 +4,6 @@
 @Time    = import(module:'Matte.System.Time');
 @Console = import(module:'Matte.System.ConsoleIO');
 @Utility = import(module:'Matte.System.Utility');
-@MString = import(module:'Matte.Core.String');
 
 @:SWCA_WIDTH = 80;
 @:SWCA_SPEED = 120;
@@ -40,8 +39,7 @@
 // print the state using 
 // different characters per generation
 @printState::<={
-    @str = MString.new();
-    str.length = SWCA_WIDTH;
+    @str = '';
     
     @gentable = ['.', ',', '-', ':',
                  ';', 'u', 'o', '%',
@@ -52,9 +50,10 @@
         arr => Object,
         generation => Number
     ) {
+        str = '';
         @generationStr = gentable[generation%16];
         for(in:[0, SWCA_WIDTH], do:::(i){
-            str.setCharAt(index:i, value:(if(arr[i]) generationStr else ' '));
+            str = str + (if(arr[i]) generationStr else ' ');
         });    
         return str;
     };
@@ -95,7 +94,7 @@ loop(func:::{
         progress = 0;
         Console.printf(format:'\n');
     };
-    @nextChar = String(from:str.charAt(index:progress));
+    @nextChar = String.charAt(string:str, index:progress);
     @wait = (if (nextChar == ' ') SWCA_SPEED/7 else SWCA_SPEED);
     Time.sleep(milliseconds:Utility.random*wait);
     Console.printf(format:nextChar);

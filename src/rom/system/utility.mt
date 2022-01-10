@@ -1,4 +1,3 @@
-@:MatteString = import(module:"Matte.Core.String");
 @:class = import(module:"Matte.Core.Class");
 
 

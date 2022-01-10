@@ -232,6 +232,11 @@ static uint8_t * matte_compiler_run_base(
 
     // finally emit code for groups.
     matteArray_t * arr = matte_syntax_graph_compile(st);
+    if (!arr) {
+        *size = 0;
+        matte_syntax_graph_walker_destroy(st);
+        return NULL;
+    }
 
     void * bytecode = matte_function_block_array_to_bytecode(arr, size);
     matte_syntax_graph_walker_destroy(st);
@@ -3239,7 +3244,7 @@ static matteArray_t * compile_expression(
 
             // true bit is always there
             iftrue = compile_expression(g, block, functions, &iter);
-            if (!inst) {
+            if (!iftrue) {
                 goto L_FAIL;
             }
 
@@ -3249,7 +3254,7 @@ static matteArray_t * compile_expression(
                 iter = iter->next; // skip ":"
 
                 iffalse = compile_expression(g, block, functions, &iter);
-                if (!inst) {
+                if (!iffalse) {
                     goto L_FAIL;
                 }
             } else {

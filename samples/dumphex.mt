@@ -1,6 +1,5 @@
 @MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
 @ConsoleIO    = import(module:'Matte.System.ConsoleIO');
-@MatteString  = import(module:'Matte.Core.String');
 @class        = import(module:'Matte.Core.Class');
 
 
@@ -13,7 +12,7 @@ when(parameters == empty || parameters.file == empty) ::<={
 
 
 // config
-@:BYTES_PER_LINE = if (introspect.type(of:parameters.wordsize) == String) introspect.parse(value:parameters.wordsize) else 8;
+@:BYTES_PER_LINE = if (type(of:parameters.wordsize) == String) Number.parse(string:parameters.wordsize) else 8;
 @:BYTES_PER_PAGE = BYTES_PER_LINE*8;
     
 
@@ -159,20 +158,23 @@ when(parameters == empty || parameters.file == empty) ::<={
     };
 };
 
-@:line = MatteString.new();
-@:lineAsText = MatteString.new();
+@line;
+@lineAsText = '';
 
 
 
 
 @: dumphex ::(data => MemoryBuffer.type, onPageFinish => Function){
+    line = '';
+    for(in:[0, BYTES_PER_LINE*2+BYTES_PER_LINE], do:::(i) {
+        line = line + ' ';
+    });    
+    lineAsText = '';
+    for(in:[0, BYTES_PER_LINE*2], do:::(i) {
+        lineAsText = lineAsText + ' ';
+    });    
 
-    line.length = BYTES_PER_LINE*2+BYTES_PER_LINE;
-    for(in:[0, BYTES_PER_LINE], do:::(i) {
-        line[i+2] = ' ';
-    });
 
-    lineAsText.length = BYTES_PER_LINE*2;
 
     @iterBytes = 0;
     
@@ -180,52 +182,49 @@ when(parameters == empty || parameters.file == empty) ::<={
         when(iterBytes+BYTES_PER_PAGE >= data.size) data.size;
         return iterBytes+BYTES_PER_PAGE;
     };
-    @charAt = introspect.charAt;
 
     loop(func:::{
         @iter = 0;
         @lineIter = 0;
         @lineAsTextIter = 0;
-        @out = MatteString.new();
+        @out = '';
+        @lines = [];
 
     
         for(in:[iterBytes, endPoint()], do:::(i) {
             if (i%BYTES_PER_LINE == 0) ::<={
-                out += '' + line + "      " + lineAsText + '\n';
+                Object.push(object:lines, value: '' + line + "      " + lineAsText + '\n');
                 iter = 0;
-                lineAsTextIter = 0;
-                lineIter = 0;
+                line = '';
+                lineAsText = '';
             };
 
             @n = numberToHex(n:data[i]);
-            line[lineIter] = n.first; lineIter+= 1;
-            line[lineIter] = n.second; lineIter+= 1;
-            lineIter+= 1;
+            line = String.combine(strings:[line, n.first, n.second, ' ']);
 
             n = numberToAscii(n:data[i]);
-            lineAsText[lineAsTextIter] = n.first; lineAsTextIter += 1;            
-            lineAsText[lineAsTextIter] = n.second; lineAsTextIter += 1;            
-
+            lineAsText = String.combine(strings:[lineAsText, n.first, n.second]);  
 
             iter += 1;
         });
         
         if (iter%BYTES_PER_LINE) ::<= {
-            for(in:[iter, BYTES_PER_LINE], do:::{
-                line[lineIter] = ' '; lineIter+= 1;
-                line[lineIter] = ' '; lineIter+= 1;
-                lineIter+= 1;
+            for(in:[iter, BYTES_PER_LINE], do:::(i){
+                @n = numberToHex(n:data[i]);
+                line = String.combine(strings:[line, '   ']);
 
-                lineAsText[lineAsTextIter] = ' '; lineAsTextIter+= 1;
-                lineAsText[lineAsTextIter] = ' '; lineAsTextIter+= 1;
+                n = numberToAscii(n:data[i]);
+                lineAsText = String.combine(strings:[lineAsText, '   ']);  
             });
-            out += line + "      " + lineAsText + '\n';
+            Object.push(object:lines, value: line + "      " + lineAsText + '\n');
+            line = '';
+            lineAsText = '';
         };
 
 
 
         iterBytes = endPoint();
-        
+        out = String.combine(strings:lines);
         onPageFinish(page:String(from:out));
         
         return iterBytes < data.size;
