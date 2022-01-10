@@ -4,7 +4,7 @@
     encode :: (obj) {        
         @encodeValue ::(obj){
             @encodeSub = context;
-            return match(type(of:obj)) {
+            return match(getType(of:obj)) {
                 (Number): ''+obj,
                 (String): '\"'+obj+'\"',
                 (Boolean): ''+obj,

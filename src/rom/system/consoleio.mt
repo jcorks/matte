@@ -14,7 +14,7 @@ return class(
             // Prints a formatted string
             // The first argument must be a string.
             printf ::(format => String, args) {
-                when (type(of:args) != Object)::<={
+                when (getType(of:args) != Object)::<={
                     _print(a:''+format);
                 };
 

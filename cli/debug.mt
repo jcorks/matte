@@ -11,19 +11,16 @@
         @helper ::(obj, level) {
             @poself = context;
 
-            return match(type(of:obj)) {
+            return match(getType(of:obj)) {
                 (String) : '(type => String): \'' + obj + '\'',
                 (Number) : '(type => Number): '+obj,
                 (Boolean): '(type => Boolean): '+obj,
                 (Empty)  : '<empty>',
-                (Object, Function) : ::{
+                (Object) : ::{
                     when(already[obj] == true) '(type => Object): [already printed]';
                     already[obj] = true;
 
-                    @output = if (type(of:obj) == Function) 
-                                '(type => Function): {'
-                            else 
-                                '(type => Object): {';
+                    @output = '(type => Object): {';
 
                     @multi = false;
                     foreach(in:obj, do:::(key, val) {                        
@@ -35,7 +32,7 @@
                     return output;                
                 }(),
                 (Type): '(type => Type): ' + obj,
-                default: '(type => ' + type(of:obj) + '): {...}'
+                default: '(type => ' + getType(of:obj) + '): {...}'
 
             };
         };

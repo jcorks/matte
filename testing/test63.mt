@@ -7,4 +7,4 @@
         
     }
 );
-return ''+type(of:TestClass);
+return ''+getType(of:TestClass);

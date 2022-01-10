@@ -840,7 +840,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPE: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "type");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "getType");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPEFUNCTION: {

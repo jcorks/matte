@@ -12,7 +12,7 @@ when(parameters == empty || parameters.file == empty) ::<={
 
 
 // config
-@:BYTES_PER_LINE = if (type(of:parameters.wordsize) == String) Number.parse(string:parameters.wordsize) else 8;
+@:BYTES_PER_LINE = if (getType(of:parameters.wordsize) == String) Number.parse(string:parameters.wordsize) else 8;
 @:BYTES_PER_PAGE = BYTES_PER_LINE*8;
     
 

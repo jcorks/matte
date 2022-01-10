@@ -4,7 +4,7 @@
 
 
     @classinst = {define : define};
-    when(type(of:classinst.define) != Function) error(detail:'class must include a "define" function within its "info" specification');
+    when(getType(of:classinst.define) != Function) error(detail:'class must include a "define" function within its "info" specification');
     @classInherits = inherits;
     @pool = [];
     @poolCount = 0;
@@ -81,7 +81,7 @@
                 isFunction : false,
                 set ::(value) {
                     foreach(in:value, do:::(k => String, v) {
-                        if (type(of:v) == Function) ::<= {
+                        if (getType(of:v) == Function) ::<= {
                             interface[k] = {
                                 isFunction : true,
                                 fn : v
@@ -143,7 +143,7 @@
                 attributes : {
                     set ::(value) {
                         foreach(in:value, do:::(k, v) {
-                            when(type(of:k) == String && k == '.') empty; // skip 
+                            when(getType(of:k) == String && k == '.') empty; // skip 
                             attribs[k] = v;
                         }); 
                         Object.setAttributes(of:newinst, attributes:attribs);
