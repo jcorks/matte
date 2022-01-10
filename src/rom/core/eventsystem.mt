@@ -1,5 +1,4 @@
 @class = import(module:'Matte.Core.Class');
-@Array = import(module:'Matte.Core.Array');
 @EventSystem = class(
     name : 'Matte.Core.EventSystem',
     define:::(this) {
@@ -10,7 +9,7 @@
         this.interface = {
             events : {
                 set ::(value) {
-                    when (introspect.keycount(of:events) != 0) error(data:'Interface is already defined.');
+                    when (Object.keycount(of:events) != 0) error(data:'Interface is already defined.');
                     
                     // filter to ensure types of key/val pairs
                     foreach(in:value, do:::(key => String, val => Function) {
@@ -79,9 +78,9 @@
             },
             
             getKnownEvents ::{
-                @arr = Array.new();
+                @arr = [];
                 foreach(in:events, do:::(k, v) {
-                    arr.push(value:k);
+                    Object.push(object:arr, value:k);
                 });
                 return arr;                
             },
@@ -93,7 +92,7 @@
                 listen(to:::{
                     for(in:[0, ev.hookCount], do:::(i) {
                         if (ev.hooks[i] == hook) ::<= { 
-                            removeKey(from:ev.hooks, key:i);
+                            Object.removeKey(from:ev.hooks, key:i);
                             ev.hookCount-=1;
                             send();
                         };
@@ -107,7 +106,7 @@
                 listen(to:::{
                     for(in:[0, ev.handlerCount], do:::(i) {
                         if (ev.handlers[i] == handler) ::<= { 
-                            removeKey(from:ev.handlers, key:i);
+                            Object.removeKey(from:ev.handlers, key:i);
                             ev.handlerCount-=1;
                             send();
                         };

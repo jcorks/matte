@@ -1,0 +1,363 @@
+static int ensure_arg_string(matteVM_t * vm, const matteValue_t * args) {
+    if (args[0].binID != MATTE_VALUE_TYPE_STRING) {
+        matte_vm_raise_error_cstring(vm, "Built-in String function expects a value of type String to work with.");
+        return 0;                
+    }
+    return 1;
+}
+
+
+static matteValue_t vm_ext_call__string__length(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+    matteValue_t len = matte_heap_new_value(vm->heap);
+    const matteString_t * strVal = matte_value_string_get_string_unsafe(vm->heap, args[0]);
+    matte_value_into_number(vm->heap, &len, matte_string_get_length(strVal));   
+    return len;     
+}
+
+static matteValue_t vm_ext_call__string__search(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+    matteHeap_t * heap = vm->heap;
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, args[0]);
+    
+    matteValue_t newlV = matte_value_as_string(heap, args[1]);
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) { // already error
+        return matte_heap_new_value(heap);
+    }
+    const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
+    matteValue_t out = matte_heap_new_value(heap);    
+    
+    uint32_t i, n;
+    uint32_t len = matte_string_get_length(str);
+    uint32_t lenOther = matte_string_get_length(other);
+    if (!lenOther || lenOther > len) {
+        matte_value_into_number(heap, &out, -1);
+        return out;      
+    }
+    for(i = 0; i < len - (lenOther-1); ++i) {
+        for(n = 0; n < lenOther && i+n < len; ++n) {
+            if (matte_string_get_char(str, i+n) !=
+                matte_string_get_char(other, n)) {
+                break;
+            }
+        }
+        
+        if (n == lenOther) {
+            matte_value_into_number(heap, &out, i);
+            return out;
+        }
+    }
+        
+    matte_value_into_number(heap, &out, -1);
+    return out;      
+}
+
+static matteValue_t vm_ext_call__string__contains(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+    matteHeap_t * heap = vm->heap;
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, args[0]);
+
+    matteValue_t newlV = matte_value_as_string(heap, args[1]);
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) { // already error
+        return matte_heap_new_value(heap);
+    }
+    const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
+    matteValue_t out = matte_heap_new_value(heap);    
+
+
+    matte_value_into_boolean(heap, &out, matte_string_test_contains(str, other));
+    return out;    
+}
+
+static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteString_t * str = matte_string_clone(matte_value_string_get_string_unsafe(heap, args[0]));
+    matteValue_t newlV = matte_value_as_string(heap, args[1]);
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+        return matte_heap_new_value(heap);
+    }
+    const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
+
+    newlV = matte_value_as_string(heap, args[2]);
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+        return matte_heap_new_value(heap);
+    }
+    const matteString_t * newst = matte_value_string_get_string_unsafe(heap, newlV);
+
+
+    matteValue_t out = matte_heap_new_value(heap);    
+    
+    uint32_t i, n;
+    uint32_t len = matte_string_get_length(str);
+    uint32_t lenOther = matte_string_get_length(other);
+    uint32_t lenNew = matte_string_get_length(newst);
+
+    uint32_t * newstBuffer = malloc(sizeof(uint32_t) * lenNew);
+    for(n = 0; n < lenNew; ++n) {
+        newstBuffer[n] = matte_string_get_char(newst, n);
+    }
+
+
+    for(i = 0; i < len - (lenOther-1); ++i) {
+        for(n = 0; n < lenOther && i+n < len; ++n) {
+            if (matte_string_get_char(str, i+n) !=
+                matte_string_get_char(other, n)) {
+                break;
+            }
+        }
+        
+        if (n == lenOther) { // found:
+            matte_string_remove_n_chars(str, i, lenOther);
+            if (i >= len - lenOther) {
+                matte_string_concat(str, newst); 
+            } else {
+                matte_string_insert_n_chars(str, i, newstBuffer, lenNew); 
+            }
+            len = matte_string_get_length(str);
+        }
+    }
+    free(newstBuffer);
+    matte_value_into_string(heap, &out, str);
+    matte_string_destroy(str);
+    return out;  
+}
+
+static matteValue_t vm_ext_call__string__count(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, args[0]);
+
+    matteValue_t newlV = matte_value_as_string(vm->heap, args[1]);
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+        return matte_heap_new_value(heap);
+    }
+    const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
+    matteValue_t out = matte_heap_new_value(heap);    
+    
+    uint32_t i, n;
+    uint32_t len = matte_string_get_length(str);
+    uint32_t lenOther = matte_string_get_length(other);
+    uint32_t count = 0;
+    for(i = 0; i < len - (lenOther-1); ++i) {
+        for(n = 0; n < lenOther && i+n < len; ++n) {
+            if (matte_string_get_char(str, i+n) !=
+                matte_string_get_char(other, n)) {
+                break;
+            }
+        }
+        
+        if (n == lenOther) {
+            count++;
+        }
+    }
+        
+    matte_value_into_number(heap, &out, count);
+    return out;  
+}
+
+static matteValue_t vm_ext_call__string__charcodeat(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+
+    uint32_t key = matte_value_as_number(vm->heap, args[1]);
+    matteValue_t strV = matte_heap_new_value(vm->heap);
+    const matteString_t * str = matte_value_string_get_string_unsafe(vm->heap, args[0]);
+    if (key >= matte_string_get_length(str)) {
+        matte_vm_raise_error_cstring(vm, "Index out of bounds.");
+        return matte_heap_new_value(vm->heap);
+    } 
+    matte_value_into_number(vm->heap, &strV, matte_string_get_char(str, key));    
+    return strV;
+    
+}
+
+
+
+
+static matteValue_t vm_ext_call__string__charat(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+
+    uint32_t key = matte_value_as_number(vm->heap, args[1]);
+    matteValue_t strV = matte_heap_new_value(vm->heap);
+    const matteString_t * str = matte_value_string_get_string_unsafe(vm->heap, args[0]);
+    if (key >= matte_string_get_length(str)) {
+        matte_vm_raise_error_cstring(vm, "Index out of bounds.");
+        return matte_heap_new_value(vm->heap);
+    } 
+    matte_value_into_string(vm->heap, &strV, matte_string_get_substr(str, key, key));        
+    return strV;
+}
+
+static matteValue_t vm_ext_call__string__setcharcodeat(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+
+    uint32_t key = matte_value_as_number(vm->heap, args[1]);
+    uint32_t r = (uint32_t)matte_value_as_number(vm->heap, args[2]);
+
+    matteValue_t strV = matte_heap_new_value(vm->heap);
+    matteString_t * str = matte_string_clone(matte_value_string_get_string_unsafe(vm->heap, args[0]));
+    if (key >= matte_string_get_length(str)) {
+        matte_vm_raise_error_cstring(vm, "Index out of bounds.");
+        matte_string_destroy(str);
+        return matte_heap_new_value(vm->heap);
+    } 
+
+    matte_string_set_char(str, key, r);
+    matte_value_into_string(vm->heap, &strV, str);
+    matte_string_destroy(str);
+    return strV;
+    
+}
+
+
+
+
+
+static matteValue_t vm_ext_call__string__setcharat(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+
+    uint32_t key = matte_value_as_number(vm->heap, args[1]);
+    matteValue_t rs = matte_value_as_string(vm->heap, args[2]);
+    if (rs.binID != MATTE_VALUE_TYPE_STRING) {
+        return matte_heap_new_value(vm->heap);
+    }
+    const matteString_t * r = matte_value_string_get_string_unsafe(vm->heap, rs);
+    
+    if (!matte_string_get_length(r)) {
+        matte_vm_raise_error_cstring(vm, "Given string argument is empty");
+        return matte_heap_new_value(vm->heap);
+    }
+    matteValue_t strV = matte_heap_new_value(vm->heap);
+    matteString_t * str = matte_string_clone(matte_value_string_get_string_unsafe(vm->heap, args[0]));
+    if (key >= matte_string_get_length(str)) {
+        matte_vm_raise_error_cstring(vm, "Index out of bounds.");
+        matte_string_destroy(str);
+        return matte_heap_new_value(vm->heap);
+    } 
+
+
+    matte_string_set_char(str, key, matte_string_get_char(r, 0));
+    matte_value_into_string(vm->heap, &strV, str);
+    matte_string_destroy(str);
+    return strV;
+}
+
+static matteValue_t vm_ext_call__string__combine(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+
+    if (args[0].binID != MATTE_VALUE_TYPE_OBJECT) {
+        matte_vm_raise_error_cstring(vm, "Expected Object as parameter for string combination. (The object should contain string values to combine).");
+        return matte_heap_new_value(vm->heap);        
+    }
+    
+    matteString_t * str = matte_string_create();
+    matteValue_t out = {};   
+    matte_value_into_number(vm->heap, &out, -1);
+    uint32_t len = matte_value_object_get_number_key_count(vm->heap, args[0]);
+    uint32_t i;
+    uint32_t ctout = 0;
+    for(i = 0; i < len; ++i) {
+        if (vm->pendingCatchable) break;
+        matteValue_t v = matte_value_as_string(vm->heap, matte_value_object_access_index(vm->heap, args[0], i));
+        matte_string_concat(str, matte_value_string_get_string_unsafe(vm->heap, v));
+    }
+    
+    matteValue_t outstr = {};
+    matte_value_into_string(vm->heap, &outstr, str);
+    matte_string_destroy(str);
+    return outstr;
+}
+
+static matteValue_t vm_ext_call__string__removechar(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+    matteString_t * str = matte_string_clone(matte_value_string_get_string_unsafe(vm->heap, args[0]));
+
+    uint32_t index = matte_value_as_number(vm->heap, args[1]);
+    if (index >= matte_string_get_length(str)) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "String index is out of bounds"));
+        return matte_heap_new_value(vm->heap);        
+    }
+
+    matte_string_remove_n_chars(str, index, 1);
+
+    matteValue_t strV = matte_heap_new_value(vm->heap);
+    matte_value_into_string(vm->heap, &strV, str);
+    matte_string_destroy(str);
+    return strV;
+}
+
+
+static matteValue_t vm_ext_call__string__substr(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+    uint32_t from = matte_value_as_number(vm->heap, args[1]);
+    uint32_t to = matte_value_as_number(vm->heap, args[2]);
+    return matte_value_subset(vm->heap, args[0], from, to);
+}
+
+static matteValue_t vm_ext_call__string__split(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+
+    matteValue_t newlV = matte_value_as_string(vm->heap, args[1]);
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+        return matte_heap_new_value(heap);
+    }
+    const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
+    matteValue_t out = matte_heap_new_value(heap);    
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, args[0]);
+    matteArray_t * arr = matte_array_create(sizeof(matteValue_t));
+    
+    uint32_t i, n = 0;
+    uint32_t len = matte_string_get_length(str);
+    uint32_t lenOther = matte_string_get_length(other);
+    uint32_t lastStart = 0;
+    for(i = 0; i < len; ++i) {
+        for(n = 0; n < lenOther && i+n < len; ++n) {
+            if (matte_string_get_char(str, i+n) !=
+                matte_string_get_char(other, n)) {
+                break;
+            }
+        }
+        
+        if (n == lenOther) {
+            if (i) {
+                const matteString_t * subgood = matte_string_get_substr(str, lastStart, i-1);
+                matteValue_t subv = matte_heap_new_value(heap);
+                matte_value_into_string(heap, &subv, subgood);            
+                matte_array_push(arr, subv);
+            }
+            i += lenOther-1;
+            lastStart = i+1;
+        }
+    }
+    if (n != lenOther && len) {
+        const matteString_t * subgood = matte_string_get_substr(str, lastStart, len-1);
+        matteValue_t subv = matte_heap_new_value(heap);
+        matte_value_into_string(heap, &subv, subgood);            
+        matte_array_push(arr, subv);
+    }
+
+    matte_value_into_new_object_array_ref(heap, &out, arr);
+    matte_array_destroy(arr);
+    return out;  
+}
+
+
+static matteValue_t vm_ext_call__string__scan(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+    assert(!"TODO");
+    return matte_heap_new_value(vm->heap);   
+}
+
+
+

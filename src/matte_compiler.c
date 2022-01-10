@@ -807,19 +807,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "import");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_REMOVE_KEY: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "removeKey");
-        break;
-      }
 
-      case MATTE_TOKEN_EXTERNAL_SET_ATTRIBUTES: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "setAttributes");
-        break;
-      }
-      case MATTE_TOKEN_EXTERNAL_GET_ATTRIBUTES: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "getAttributes");
-        break;
-      }
 
 
       case MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN: {
@@ -846,24 +834,16 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Type");
         break;
       }
+      case MATTE_TOKEN_EXTERNAL_TYPE: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "type");
+        break;
+      }
       case MATTE_TOKEN_EXTERNAL_TYPEFUNCTION: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Function");
         break;
       }
 
 
-      case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "introspect");
-        break;
-      }
-      case MATTE_TOKEN_EXTERNAL_TYPE: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "newtype");
-        break;
-      }
-      case MATTE_TOKEN_EXTERNAL_INSTANTIATE: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "instantiate");
-        break;
-      }
 
       case MATTE_TOKEN_EXTERNAL_PRINT: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "print");
@@ -2586,23 +2566,6 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
-      case MATTE_TOKEN_EXTERNAL_REMOVE_KEY: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_REMOVE_KEY);
-        *src = iter->next;
-        return inst;
-      }
-
-      case MATTE_TOKEN_EXTERNAL_SET_ATTRIBUTES: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_SET_ATTRIBUTES);
-        *src = iter->next;
-        return inst;
-      }
-
-      case MATTE_TOKEN_EXTERNAL_GET_ATTRIBUTES: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_GET_ATTRIBUTES);
-        *src = iter->next;
-        return inst;
-      }
 
       
       case MATTE_TOKEN_EXTERNAL_TYPEEMPTY: {
@@ -2642,20 +2605,9 @@ static matteArray_t * compile_base_value(
       } 
 
 
-           
-      case MATTE_TOKEN_EXTERNAL_INTROSPECT: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_INTROSPECT);
-        write_instruction__cal(inst, iter->line, 0);
-        *src = iter->next;
-        return inst;
-      }
+
       case MATTE_TOKEN_EXTERNAL_TYPE: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_TYPE);
-        *src = iter->next;
-        return inst;
-      }
-      case MATTE_TOKEN_EXTERNAL_INSTANTIATE: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_INSTANTIATE);
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_GETTYPE);
         *src = iter->next;
         return inst;
       }

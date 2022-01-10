@@ -7,8 +7,6 @@
 #include "native.h"
 
 
-// core native implementations
-#include "./core/string.c"
 
 #ifdef MATTE_USE_SYSTEM_EXTENSIONS
 
@@ -68,7 +66,6 @@ void matte_bind_native_functions(matteVM_t * vm) {
     matte_system__utility(vm);
     matte_system__async(vm);
     
-    matte_core__string(vm);
 }
 
 
@@ -76,7 +73,6 @@ void matte_bind_native_functions(matteVM_t * vm) {
 
 #else 
 void matte_bind_native_functions(matteVM_t * vm) {
-    matte_core__string(vm);        
 }
 #endif
 

@@ -180,68 +180,8 @@ static matteValue_t vm_ext_call__foreach(matteVM_t * vm, matteValue_t fn, const 
     return matte_heap_new_value(vm->heap);
 }
 
-static matteValue_t vm_ext_call__remove_key(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];
-    if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'removeKey' requires first argument to be an Object."));
-        return matte_heap_new_value(vm->heap);
-    }
-    if (args[1].binID) {
-        matte_value_object_remove_key(vm->heap, 
-            a,
-            args[1]
-        );
-    } else if (args[2].binID && args[2].binID == MATTE_VALUE_TYPE_OBJECT) {
-        uint32_t i;
-        uint32_t len = matte_value_object_get_key_count(vm->heap, args[2]);
-        for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_value_object_access_index(vm->heap, args[2], i);        
-            matte_value_object_remove_key(vm->heap, 
-                a,
-                v
-            );
-            matte_heap_recycle(vm->heap, v);
-        }
-    }
-    return matte_heap_new_value(vm->heap);
-}
-
-static matteValue_t vm_ext_call__set_attributes(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];
-    if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'setAttributes' requires first argument to be an Object."));
-        return matte_heap_new_value(vm->heap);
-    }
-
-    matteValue_t b = args[1];
-    if (b.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'setAttributes' requires second argument to be an Object."));
-        return matte_heap_new_value(vm->heap);
-    }
-
-    matte_value_object_set_attributes(vm->heap, 
-        a,
-        b
-    );
-    return matte_heap_new_value(vm->heap);
-}
-
-static matteValue_t vm_ext_call__get_attributes(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];
-    if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'getAttributes' requires first argument to be an object."));
-        return matte_heap_new_value(vm->heap);
-    }
 
 
-    matteValue_t out = matte_heap_new_value(vm->heap);
-
-    const matteValue_t * op = matte_value_object_get_attributes_unsafe(vm->heap, a);
-    if (op)
-        matte_value_into_copy(vm->heap, &out, *op);
-
-    return out;
-}
 
 
 
@@ -341,17 +281,7 @@ static matteValue_t vm_ext_call__listen(matteVM_t * vm, matteValue_t fn, const m
 
 
 
-static matteValue_t vm_ext_call__newtype(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_new_type(vm->heap, &out, args[0], args[1]);
-    return out;
-}
 
-static matteValue_t vm_ext_call__instantiate(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_new_object_ref_typed(vm->heap, &out, args[0]);
-    return out;
-}
 
 
 
@@ -669,4 +599,15 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
     import__pop_path(vm->importPaths);
     return out;
 }
+
+
+
+
+static matteValue_t vm_ext_call__type(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];
+    matteValue_t out = matte_value_get_type(vm->heap, a);
+    return out;
+}
+
+
 

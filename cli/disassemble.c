@@ -200,25 +200,32 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                     case MATTE_EXT_CALL_FOREACH:
                         fprintf(fout, "foreach\n");
                         break;
-                    case MATTE_EXT_CALL_GETEXTERNALFUNCTION:
-                        fprintf(fout, "getExternalFunction\n");
-                        break;
                     case MATTE_EXT_CALL_IMPORT:
                         fprintf(fout, "import\n");
-                        break;
-                    case MATTE_EXT_CALL_TYPE:
-                        fprintf(fout, "newtype\n");
-                        break;
-                    case MATTE_EXT_CALL_INSTANTIATE:
-                        fprintf(fout, "instantiate\n");
-                        break;
-                        break;
-                    case MATTE_EXT_CALL_INTROSPECT:
-                        fprintf(fout, "introspect\n");
                         break;
                     case MATTE_EXT_CALL_PRINT:
                         fprintf(fout, "print\n");
                         break;
+
+                    case MATTE_EXT_CALL_SEND:
+                        fprintf(fout, "send\n");
+                        break;
+                    case MATTE_EXT_CALL_LISTEN:
+                        fprintf(fout, "print\n");
+                        break;
+                    case MATTE_EXT_CALL_ERROR:
+                        fprintf(fout, "error\n");
+                        break;
+                    case MATTE_EXT_CALL_GETTYPE:
+                        fprintf(fout, "gettype\n");
+                        break;
+
+                    case MATTE_EXT_CALL_GETEXTERNALFUNCTION:
+                        fprintf(fout, "getExternalFunction\n");
+                        break;
+                        
+                    default:
+                        fprintf(fout, "???\n");
 
                 }
                 break;

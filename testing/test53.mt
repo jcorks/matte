@@ -10,11 +10,11 @@
     // overly complex implementations are great for testing
     // ... or so i tell myself
     if (val < 0) ::<={
-        valDecimal = introspect.abs(of:val - introspect.floor(of:val) - 1);
-        valInteger = introspect.floor(of:val) + 1;
+        valDecimal = Number.abs(of:val - Number.floor(of:val) - 1);
+        valInteger = Number.floor(of:val) + 1;
     } else ::<={
-        valDecimal = val - introspect.floor(of:val);
-        valInteger = introspect.floor(of:val);
+        valDecimal = val - Number.floor(of:val);
+        valInteger = Number.floor(of:val);
     };
 
     @ref = {
@@ -22,7 +22,7 @@
         integer  : valInteger
     };
     
-    setAttributes(of:ref, 
+    Object.setAttributes(of:ref, 
         attributes: {
             '+' ::(value) {
                 return createNumber(from:val + (value.decimal + value.integer));

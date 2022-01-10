@@ -1,22 +1,21 @@
 //// Test79
 //
 // 
-@Matte = import(module:'Matte.Core');
 
-@a = Matte.String.new(from:'abcdef!@#$_-');
+@a = 'abcdef!@#$_-';
 
 
 return '' +
-    a.charAt(index:0) + 
-    a.charAt(index:1) + 
-    a.charAt(index:2) + 
-    a.charAt(index:3) + 
-    a.charAt(index:4) + 
-    a.charAt(index:5) + 
-    a.charAt(index:6) + 
-    a.charAt(index:7) +
-    a.charAt(index:8) +
-    a.charAt(index:9) +
-    a.charAt(index:10) +
-    a.charAt(index:11);
+    String.charAt(string:a, index:0) + 
+    String.charAt(string:a, index:1) + 
+    String.charAt(string:a, index:2) + 
+    String.charAt(string:a, index:3) + 
+    String.charAt(string:a, index:4) + 
+    String.charAt(string:a, index:5) + 
+    String.charAt(string:a, index:6) + 
+    String.charAt(string:a, index:7) +
+    String.charAt(string:a, index:8) +
+    String.charAt(string:a, index:9) +
+    String.charAt(string:a, index:10) +
+    String.charAt(string:a, index:11);
     

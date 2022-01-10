@@ -5,61 +5,56 @@
 @out = '';
 
 listen(to:::{
-    out = out + introspect.keys(of:2423);
+    out = out + Object.keys(of:2423);
 }, onMessage:::(message){
     out = out + 1;
 });
 
 
 listen(to:::{
-    out = out + introspect.values(of:String);
+    out = out + Object.values(of:String);
 }, onMessage:::(message){
     out = out + 2;
 });
 
 listen(to:::{
-    out = out + introspect.keycount(of:String);
+    out = out + Object.keycount(of:String);
 }, onMessage:::(message){
     out = out + 3;
 });
 
 
 listen(to:::{
-    out = out + introspect.length(of:[0, 1, 2]);
+    out = out + Object.length(of:'[0, 1, 2]');
 }, onMessage:::(message){
-    out = out + 4;
+    out = out + 4 + 5;
 });
 
 
-listen(to:::{
-    out = out + introspect.arrayToString(of:'aaaaaaa');
-}, onMessage:::(message){
-    out = out + 5;
-});
 
 
 listen(to:::{
-    out = out + introspect.charAt(string:'123456', index:5);
-    out = out + introspect.charAt(string:1321, index:2);
+    out = out + String.charAt(string:'123456', index:5);
+    out = out + String.charAt(string:1321, index:2);
 }, onMessage:::(message){
     out = out + 7;
 });
 
 
 listen(to:::{
-    out = out + introspect.charAt(string:'222222', index:'2');
+    out = out + String.charAt(string:'222222', index:'2');
 }, onMessage:::(message){
     out = out + 8;
 });
 
 listen(to:::{
-    out = out + introspect.charCodeAt(string:1321, index:1);
+    out = out + String.charCodeAt(string:1321, index:1);
 }, onMessage:::(message){
     out = out + 9;
 });
 
 listen(to:::{
-    out = out + introspect.charCodeAt(string:'222222', index:'2');
+    out = out + String.charCodeAt(string:'222222', index:'2');
 }, onMessage:::(message){
     out = out + 'A';
 });
@@ -68,20 +63,20 @@ listen(to:::{
 
 
 listen(to:::{
-    out = out + introspect.subset(set:20);
+    out = out + Object.subset(set:20);
 }, onMessage:::(message){
     out = out + 'B';
 });
 
 listen(to:::{
-    out = out + introspect.subset(set:[0, 1, 2], from:1);
+    out = out + Object.subset(set:[0, 1, 2], from:1);
 }, onMessage:::(message){
     out = out + 'C';
 });
 
 
 listen(to:::{
-    out = out + introspect.subset(set:[0, 1, 2], from:'1', to:2);
+    out = out + Object.subset(set:[0, 1, 2], from:'1', to:2);
 }, onMessage:::(message){
     out = out + 'C';
 });

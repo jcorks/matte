@@ -2,7 +2,7 @@
 //
 // empty object
 @r = {};
-setAttributes(
+Object.setAttributes(
     of:r, 
     attributes:{
         (String) ::{

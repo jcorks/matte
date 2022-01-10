@@ -1,5 +1,5 @@
 //// Test 30
 //
-// introspection testing 
-return (introspect.length(of:'aaa'));
+// Built-in testing 
+return (String.length(of:'aaa'));
 

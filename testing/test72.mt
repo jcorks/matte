@@ -1,14 +1,21 @@
 ////Test 57
 //
 // Core: String (5)
-@:MatteString = import(module:'Matte.Core.String');
+@:containsAny::(in, keys) {
+    return listen(to:::{
+        foreach(in:keys, do:::(k, v) {
+            when(String.contains(string:in, key:v)) send(message:true);
+        });
+        return false;        
+    });
+};
 
-@str = MatteString.new(from:"testinBdwatest");
-return ''+str.containsAny(keys:['z', 'x', 'y'])+
-          str.containsAny(keys:['f', 'f', 'a'])+
-          str.containsAny(keys:['xz', '', 'ss'])+
-          str.containsAny(keys:['tesst', 'BBda', 'estt'])+
-          str.containsAny(keys:['test', 'Bdw', 'est'])+
-          str.containsAny(keys:['ttt', MatteString.new(from:'tin'), 'eee']);
+@str = "testinBdwatest";
+return ''+containsAny(in:str, keys:['z', 'x', 'y'])+
+          containsAny(in:str, keys:['f', 'f', 'a'])+
+          containsAny(in:str, keys:['xz', '', 'ss'])+
+          containsAny(in:str, keys:['tesst', 'BBda', 'estt'])+
+          containsAny(in:str, keys:['test', 'Bdw', 'est'])+
+          containsAny(in:str, keys:['ttt', 'tin', 'eee']);
 
 

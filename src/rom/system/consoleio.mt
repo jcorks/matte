@@ -1,4 +1,3 @@
-@MatteString = import(module:"Matte.Core.String");
 @class = import(module:"Matte.Core.Class");
 @_print = getExternalFunction(name:"__matte_::consoleio_print");
 
@@ -15,15 +14,15 @@ return class(
             // Prints a formatted string
             // The first argument must be a string.
             printf ::(format => String, args) {
-                when (introspect.type(of:args) != Object)::<={
+                when (type(of:args) != Object)::<={
                     _print(a:''+format);
                 };
 
 
-                @:o = MatteString.new(from:format);
+                @:o = format;
                 foreach(in:args, do:::(k, v){
                     @:key = '$('+k+')';
-                    o.replace(key:key, with:''+v);
+                    String.replace(string:o, key:key, with:''+v);
                 });
                 _print(a:o);
             },

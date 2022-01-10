@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 #ifdef MATTE_DEBUG 
     #include <assert.h>
 #endif
@@ -20,7 +21,7 @@ typedef struct {
     
     // All the typecodes that this type can validly be used as in an 
     // isa comparison
-    matteArray_t * isa;
+    matteArray_t * isa;    
 } MatteTypeData;
 
 struct matteHeap_t {    
@@ -56,6 +57,11 @@ struct matteHeap_t {
     matteValue_t type_function;
     matteValue_t type_type;
     matteValue_t type_any;
+    
+    
+    matteTable_t * type_number_methods;
+    matteTable_t * type_string_methods;
+    matteTable_t * type_object_methods;
     
     // names for all types, on-demand
     // MatteTypeData
@@ -575,6 +581,141 @@ static void destroy_object(void * d) {
 }
 
 
+static char * BUILTIN_NUMBER__NAMES[] = {
+    "floor",
+    "ceil",
+    "round",
+    "toRadians",
+    "toDegrees",
+    "PI",
+    "cos",
+    "sin",
+    "tan",
+    "abs",
+    "isNaN",
+    "parse",
+    "random",
+    NULL
+};
+
+static int BUILTIN_NUMBER__IDS[] = {
+    MATTE_EXT_CALL__NUMBER__FLOOR,
+    MATTE_EXT_CALL__NUMBER__CEIL,
+    MATTE_EXT_CALL__NUMBER__ROUND,
+    MATTE_EXT_CALL__NUMBER__TORADIANS,
+    MATTE_EXT_CALL__NUMBER__TODEGREES,
+    MATTE_EXT_CALL__NUMBER__PI,
+    MATTE_EXT_CALL__NUMBER__COS,
+    MATTE_EXT_CALL__NUMBER__SIN,
+    MATTE_EXT_CALL__NUMBER__TAN,
+    MATTE_EXT_CALL__NUMBER__ABS,
+    MATTE_EXT_CALL__NUMBER__ISNAN,
+    MATTE_EXT_CALL__NUMBER__PARSE,
+    MATTE_EXT_CALL__NUMBER__RANDOM
+};
+
+static char * BUILTIN_STRING__NAMES[] = {
+    "length",
+    "search",
+    "contains",
+    "replace",
+    "count",
+    "charCodeAt",
+    "charAt",
+    "setCharCodeAt",
+    "setCharAt",
+    "combine",
+    "removeChar",
+    "substr",
+    "split",
+    "scan",
+    NULL
+};
+
+static int BUILTIN_STRING__IDS[] = {
+    MATTE_EXT_CALL__STRING__LENGTH,
+    MATTE_EXT_CALL__STRING__SEARCH,
+    MATTE_EXT_CALL__STRING__CONTAINS,
+    MATTE_EXT_CALL__STRING__REPLACE,
+    MATTE_EXT_CALL__STRING__COUNT,
+    MATTE_EXT_CALL__STRING__CHARCODEAT,
+    MATTE_EXT_CALL__STRING__CHARAT,
+    MATTE_EXT_CALL__STRING__SETCHARCODEAT,
+    MATTE_EXT_CALL__STRING__SETCHARAT,
+    MATTE_EXT_CALL__STRING__COMBINE,
+    MATTE_EXT_CALL__STRING__REMOVECHAR,
+    MATTE_EXT_CALL__STRING__SUBSTR,
+    MATTE_EXT_CALL__STRING__SPLIT,
+    MATTE_EXT_CALL__STRING__SCAN
+};
+
+
+static char * BUILTIN_OBJECT__NAMES[] = {
+    "keycount",
+    "keys",
+    "values",
+    "length",
+    "push",
+    "pop",
+    "insert",
+    "removeKey",
+    "setAttributes",
+    "getAttributes",
+    "sort",
+    "subset",
+    "filter",
+    "findIndex",
+    "newType",
+    "instantiate",
+    "is",
+    "map",
+    "reduce",
+    NULL
+};
+
+
+static int BUILTIN_OBJECT__IDS[] = {
+    MATTE_EXT_CALL__OBJECT__KEYCOUNT,
+    MATTE_EXT_CALL__OBJECT__KEYS,
+    MATTE_EXT_CALL__OBJECT__VALUES,
+    MATTE_EXT_CALL__OBJECT__LENGTH,
+    MATTE_EXT_CALL__OBJECT__PUSH,
+    MATTE_EXT_CALL__OBJECT__POP,
+    MATTE_EXT_CALL__OBJECT__INSERT,
+    MATTE_EXT_CALL__OBJECT__REMOVE,
+    MATTE_EXT_CALL__OBJECT__SETATTRIBUTES,
+    MATTE_EXT_CALL__OBJECT__GETATTRIBUTES,
+    MATTE_EXT_CALL__OBJECT__SORT,
+    MATTE_EXT_CALL__OBJECT__SUBSET,
+    MATTE_EXT_CALL__OBJECT__FILTER,
+    MATTE_EXT_CALL__OBJECT__FINDINDEX,
+    MATTE_EXT_CALL__OBJECT__NEWTYPE,
+    MATTE_EXT_CALL__OBJECT__INSTANTIATE,
+    MATTE_EXT_CALL__OBJECT__IS,
+    MATTE_EXT_CALL__OBJECT__MAP,
+    MATTE_EXT_CALL__OBJECT__REDUCE
+};
+
+
+static void add_table_refs(
+    matteTable_t * table,
+    matteStringHeap_t * stringHeap,
+    char ** names,
+    int * ids
+) {
+    while(*names) {
+
+
+        int * out = malloc(sizeof(int));
+        *out = *ids;
+        
+        matte_table_insert_by_uint(table, matte_string_heap_internalize_cstring(stringHeap, *names), out);
+    
+        names++;
+        ids++;
+    }
+}
+
 
 
 
@@ -602,6 +743,10 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->type_function = matte_heap_new_value(out);
     out->type_type = matte_heap_new_value(out);
     out->type_any = matte_heap_new_value(out);
+    srand(time(NULL));
+    out->type_number_methods = matte_table_create_hash_pointer();
+    out->type_object_methods = matte_table_create_hash_pointer();
+    out->type_string_methods = matte_table_create_hash_pointer();
 
     matteValue_t dummy = {};
     matte_value_into_new_type(out, &out->type_empty, dummy, dummy);
@@ -662,7 +807,10 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->specialString_key.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_value.value.id = matte_string_heap_internalize_cstring(out->stringHeap, "value");
     out->specialString_value.binID = MATTE_VALUE_TYPE_STRING;
-
+    
+    add_table_refs(out->type_number_methods, out->stringHeap, BUILTIN_NUMBER__NAMES, BUILTIN_NUMBER__IDS);
+    add_table_refs(out->type_object_methods, out->stringHeap, BUILTIN_OBJECT__NAMES, BUILTIN_OBJECT__IDS);
+    add_table_refs(out->type_string_methods, out->stringHeap, BUILTIN_STRING__NAMES, BUILTIN_STRING__IDS);
 
     return out;
     
@@ -1542,55 +1690,123 @@ void matte_value_object_function_post_typecheck_unsafe(matteHeap_t * heap, matte
 // If the value points to an object, returns the value associated with the 
 // key. This will invoke the accessor if present.
 matteValue_t matte_value_object_access(matteHeap_t * heap, matteValue_t v, matteValue_t key, int isBracketAccess) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    switch(v.binID) {
+      case MATTE_VALUE_TYPE_TYPE: {// built-in functions
+        matteValue_t * b = matte_value_object_access_direct(heap, v, key, isBracketAccess);
+        if (b) return *b;
+        return matte_heap_new_value(heap);        
+      }
+      case MATTE_VALUE_TYPE_OBJECT: {
+        matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
+        matteValue_t accessor = object_get_access_operator(heap, m, isBracketAccess, 1);
+        if (accessor.binID) {
+            matteValue_t args[1] = {
+                key
+            };
+            matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 1);
+            matteArray_t arrName = MATTE_ARRAY_CAST(&heap->specialString_key, matteValue_t, 1);
+
+            matteValue_t a = matte_vm_call(heap->vm, accessor, &arr, &arrName, NULL);
+            matte_heap_recycle(heap, accessor);
+            return a;
+        } else {
+            matteValue_t vv = matte_heap_new_value(heap);
+            matteValue_t * vvp = object_lookup(heap, m, key);
+            if (vvp) {
+                matte_value_into_copy(heap, &vv, *vvp);
+            }
+            return vv;
+        }
+      
+      }
+      
+      default: {
         matteString_t * err = matte_string_create_from_c_str(
             "Cannot access member of a non-object type. (Given value is of type: %s)",
             matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_value_type_name(heap, matte_value_get_type(heap, v))))
         );
         matte_vm_raise_error_string(heap->vm, err);
         return matte_heap_new_value(heap);
+      }
+      
     }
-    matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
-    matteValue_t accessor = object_get_access_operator(heap, m, isBracketAccess, 1);
-    if (accessor.binID) {
-        matteValue_t args[1] = {
-            key
-        };
-        matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 1);
-        matteArray_t arrName = MATTE_ARRAY_CAST(&heap->specialString_key, matteValue_t, 1);
 
-        matteValue_t a = matte_vm_call(heap->vm, accessor, &arr, &arrName, NULL);
-        matte_heap_recycle(heap, accessor);
-        return a;
-    } else {
-        matteValue_t vv = matte_heap_new_value(heap);
-        matteValue_t * vvp = object_lookup(heap, m, key);
-        if (vvp) {
-            matte_value_into_copy(heap, &vv, *vvp);
-        }
-        return vv;
-    }
+
 }
 
 
 // If the value points to an object, returns the value associated with the 
 // key. This will invoke the accessor if present.
 matteValue_t * matte_value_object_access_direct(matteHeap_t * heap, matteValue_t v, matteValue_t key, int isBracketAccess) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    switch(v.binID) {
+      case MATTE_VALUE_TYPE_TYPE: {
+        if (isBracketAccess) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Types can only yield access to built-in functions through the dot '.' accessor."
+            );
+            matte_vm_raise_error_string(heap->vm, err);
+            return NULL;
+        }
+        if (key.binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Types can only yield access to built-in functions through the string keys."
+            );
+            matte_vm_raise_error_string(heap->vm, err);
+            return NULL;
+        }
+        
+        matteTable_t * base = NULL;
+        switch(v.value.id) {
+          case 3: base = heap->type_number_methods; break;            
+          case 4: base = heap->type_string_methods; break;
+          case 5: base = heap->type_object_methods; break;
+          default:;
+        };
+        
+        if (!base) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "The given type has no built-in functions. (Given value is of type: %s)",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_value_type_name(heap, matte_value_get_type(heap, v))))
+            );
+            matte_vm_raise_error_string(heap->vm, err);
+            return NULL;
+        }
+        
+        int * out =  matte_table_find_by_uint(base, key.value.id);
+        // for Types, its an error if no function is found.
+        if (!out) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "The given type has no built-in function by the name '%s'",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, key))
+            );
+            matte_vm_raise_error_string(heap->vm, err);
+            return NULL;
+        }
+        return matte_vm_get_external_builtin_function_as_value(heap->vm, *out);
+      }
+      case MATTE_VALUE_TYPE_OBJECT: {
+        matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
+        matteValue_t accessor = object_get_access_operator(heap, m, isBracketAccess, 1);
+        if (accessor.binID) {
+            return NULL;
+        } else {
+            return object_lookup(heap, m, key);
+        }      
+      }
+
+      default: {
         matteString_t * err = matte_string_create_from_c_str(
             "Cannot access member of a non-object type. (Given value is of type: %s)",
             matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_value_type_name(heap, matte_value_get_type(heap, v))))
         );
         matte_vm_raise_error_string(heap->vm, err);
         return NULL; //matte_heap_new_value(heap);
+      
+      
+      }
+        
     }
-    matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
-    matteValue_t accessor = object_get_access_operator(heap, m, isBracketAccess, 1);
-    if (accessor.binID) {
-        return NULL;
-    } else {
-        return object_lookup(heap, m, key);
-    }
+
 }
 
 
@@ -1792,6 +2008,15 @@ matteValue_t matte_value_object_values(matteHeap_t * heap, matteValue_t v) {
     }
     matte_array_destroy(vals);
     return val;
+}
+
+// Returns the number of number keys within the object, ignoring keys of other types.
+uint32_t matte_value_object_get_number_key_count(matteHeap_t * heap, matteValue_t v) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+        return 0;
+    }
+    matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
+    return matte_array_get_size(m->table.keyvalues_number);
 }
 
 
@@ -2153,6 +2378,101 @@ const matteValue_t * matte_value_object_get_attributes_unsafe(matteHeap_t * heap
     return NULL;
 }
 
+
+
+typedef struct {
+    matteValue_t fn;
+    matteArray_t names;
+    matteHeap_t * heap;
+} matteParams_Sort_t;
+
+typedef struct {
+    matteValue_t value;
+    matteParams_Sort_t * sort;
+} matteValue_Sort_t;  
+
+static int matte_value_object_sort__cmp(
+    const void * asrc,
+    const void * bsrc
+) {
+    matteValue_Sort_t * a = (*(matteValue_Sort_t **)asrc);
+    matteValue_Sort_t * b = (*(matteValue_Sort_t **)bsrc);
+
+    matteValue_t args[] = {
+        (*(matteValue_Sort_t **)a)->value,
+        b->value
+    };
+    matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
+    return matte_value_as_number(a->sort->heap, matte_vm_call(a->sort->heap->vm, a->sort->fn, &arr, &a->sort->names, NULL));    
+}
+
+
+void matte_value_object_sort_unsafe(matteHeap_t * heap, matteValue_t v, matteValue_t less) {
+
+
+    matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
+
+    uint32_t len = matte_array_get_size(m->table.keyvalues_number);
+    if (len < 1) return;
+
+    matteParams_Sort_t params;
+    params.fn = less;
+    params.heap = heap;
+    
+    matte_value_object_push_lock(heap, v);
+    matte_value_object_push_lock(heap, less);
+
+    matteValue_t names[2];
+    names[0].binID = MATTE_VALUE_TYPE_STRING;
+    names[1].binID = MATTE_VALUE_TYPE_STRING;
+    names[0].value.id = matte_string_heap_internalize_cstring(heap->stringHeap, "a");
+    names[1].value.id = matte_string_heap_internalize_cstring(heap->stringHeap, "b");
+    params.names = MATTE_ARRAY_CAST(names, matteValue_t, 2);
+    
+    matteValue_Sort_t * sortArray = malloc(sizeof(matteValue_Sort_t)*len);
+    uint32_t i;
+    for(i = 0; i < len; ++i) {
+        sortArray[i].value = matte_array_at(m->table.keyvalues_number, matteValue_t, i);
+        sortArray[i].sort = &params;
+    }
+    
+    qsort(sortArray, len, sizeof(matteValue_Sort_t), matte_value_object_sort__cmp);
+    
+    for(i = 0; i < len; ++i) {
+        matte_array_at(m->table.keyvalues_number, matteValue_t, i) = sortArray[i].value;
+    }
+    free(sortArray);
+    
+    matte_value_object_pop_lock(heap, v);
+    matte_value_object_pop_lock(heap, less);
+
+   
+}
+
+
+
+void matte_value_object_insert(
+    matteHeap_t * heap, 
+    matteValue_t v, 
+    uint32_t index, 
+    matteValue_t val
+) {
+    matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
+
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+        return;
+    }
+
+    if (val.binID == MATTE_VALUE_TYPE_OBJECT || val.binID == MATTE_VALUE_TYPE_FUNCTION) {    
+        object_link_parent_value(heap, m, &val);
+    }
+    
+    matte_array_insert(
+        m->table.keyvalues_number,
+        index,
+        val
+    );
+}
 
 const matteValue_t * matte_value_object_set(matteHeap_t * heap, matteValue_t v, matteValue_t key, matteValue_t value, int isBracket) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {

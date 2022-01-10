@@ -11,16 +11,16 @@
         @helper ::(obj, level) {
             @poself = context;
 
-            return match(introspect.type(of:obj)) {
+            return match(type(of:obj)) {
                 (String) : '(type => String): \'' + obj + '\'',
                 (Number) : '(type => Number): '+obj,
                 (Boolean): '(type => Boolean): '+obj,
                 (Empty)  : '<empty>',
-                (Object) : ::{
+                (Object, Function) : ::{
                     when(already[obj] == true) '(type => Object): [already printed]';
                     already[obj] = true;
 
-                    @output = if (introspect.isCallable(value:obj)) 
+                    @output = if (type(of:obj) == Function) 
                                 '(type => Function): {'
                             else 
                                 '(type => Object): {';
@@ -35,7 +35,7 @@
                     return output;                
                 }(),
                 (Type): '(type => Type): ' + obj,
-                default: '(type => ' + introspect.type(of:obj) + '): {...}'
+                default: '(type => ' + type(of:obj) + '): {...}'
 
             };
         };

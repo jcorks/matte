@@ -513,16 +513,20 @@ static void function_to_stub(FILE * f, uint32_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR;
                 } else if (!strcmp("foreach", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOREACH;
-                } else if (!strcmp("newtype", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_TYPE;
-                } else if (!strcmp("instantiate", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_INSTANTIATE;
-                } else if (!strcmp("introspect", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_INTROSPECT;
-                } else if (!strcmp("getExternalFunction", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_GETEXTERNALFUNCTION;
+                } else if (!strcmp("import", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_IMPORT;
                 } else if (!strcmp("print", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_PRINT;
+                } else if (!strcmp("send", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_SEND;
+                } else if (!strcmp("listen", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_LISTEN;
+                } else if (!strcmp("error", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_ERROR;
+                } else if (!strcmp("gettype", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_GETTYPE;
+                } else if (!strcmp("getExternalFunction", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_GETEXTERNALFUNCTION;
                 } else {
                     printf("ERROR on line %d: unrecognized external opcode\n", lineN);
                     exit(1);

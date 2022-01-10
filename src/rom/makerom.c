@@ -52,8 +52,6 @@ int main() {
 
     char * files[] = {
         "core/class.mt",      "Matte.Core.Class",
-        "core/array.mt",      "Matte.Core.Array",
-        "core/string.mt",     "Matte.Core.String",
         "core/json.mt",       "Matte.Core.JSON",
         "core/eventsystem.mt","Matte.Core.EventSystem",
         "core/core.mt",       "Matte.Core",

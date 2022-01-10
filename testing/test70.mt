@@ -1,11 +1,10 @@
 ////Test 55
 //
 // Core: String (3)
-@:MatteString = import(module:'Matte.Core.String');
 
-@str = MatteString.new(from:"testing");
-return ''+str.search(key:'st')+
-          str.search(key:'testing')+
-          str.search(key:'aaa')+
-          str.search(key:'') +
-          str.search(key:MatteString.new(from:'in'));
+@str = "testing";
+return ''+String.search(string:str, key:'st')+
+          String.search(string:str, key:'testing')+
+          String.search(string:str, key:'aaa')+
+          String.search(string:str, key:'') +
+          String.search(string:str, key:'in');

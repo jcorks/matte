@@ -3,13 +3,13 @@
 // Custom typing 
 
 @:MyType = {};
-MyType.Shape = newtype(name:'Shape');
-MyType.Square = newtype(name:'Square', inherits:[MyType.Shape]);
-MyType.Triangle = newtype(name:'Triangle', inherits:[MyType.Shape]);
+MyType.Shape = Object.newType(name:'Shape');
+MyType.Square = Object.newType(name:'Square', inherits:[MyType.Shape]);
+MyType.Triangle = Object.newType(name:'Triangle', inherits:[MyType.Shape]);
 
 
 @:makeSquare ::(length){
-    @:out = instantiate(type:MyType.Square);
+    @:out = Object.instantiate(type:MyType.Square);
     out.length = length;
     out.area = ::{
         return out.length**2;
@@ -18,7 +18,7 @@ MyType.Triangle = newtype(name:'Triangle', inherits:[MyType.Shape]);
 };
 
 @:makeTriangle ::(base, height){
-    @:out = instantiate(type:MyType.Triangle);
+    @:out = Object.instantiate(type:MyType.Triangle);
     out.base = base;
     out.height = height;
     out.area = ::{

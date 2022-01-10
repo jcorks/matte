@@ -35,6 +35,7 @@ typedef struct matteArray_t matteArray_t;
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 typedef struct matteVMStackFrame_t matteVMStackFrame_t;
 #include "matte_heap.h"
+#include "matte_opcode.h"
 
 
 
@@ -67,6 +68,7 @@ matteHeap_t * matte_vm_get_heap(matteVM_t *);
 // Ownership of the stubs is transferred.
 void matte_vm_add_stubs(matteVM_t *, const matteArray_t *);
 
+// Sets the implementation for the import function.
 void matte_vm_set_import(
     matteVM_t * vm,
     uint8_t * (*)(
@@ -75,7 +77,8 @@ void matte_vm_set_import(
         uint32_t * preexistingFileID,
         uint32_t * dataLength,
         void * usrdata
-    )
+    ),
+    void * userData
 );
 
 // Performs an import, which evaluates the source at the given path 
@@ -272,6 +275,12 @@ void matte_vm_set_external_function_autoname(
 matteValue_t matte_vm_get_external_function_as_value(
     matteVM_t * vm,
     const matteString_t * identifier
+);
+
+// Functions for a built-in references. These are locked into the heap 
+matteValue_t * matte_vm_get_external_builtin_function_as_value(
+    matteVM_t * vm,
+    matteExtCall_t ext
 );
 
 

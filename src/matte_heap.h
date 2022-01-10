@@ -215,6 +215,15 @@ matteValue_t matte_value_object_values(matteHeap_t *, matteValue_t);
 // If not an object, 0 is returned.
 uint32_t matte_value_object_get_key_count(matteHeap_t *, matteValue_t);
 
+// Returns the number of number keys within the object, ignoring keys of other types.
+uint32_t matte_value_object_get_number_key_count(matteHeap_t *, matteValue_t);
+
+// Inserts a numbered key into the object. If there are any number-keyed values 
+// whose keys are above the given index, those key-values are pushed up.
+void matte_value_object_insert(matteHeap_t *, matteValue_t, uint32_t key, matteValue_t val);
+
+// Sorts the number key contents of the 
+void matte_value_object_sort_unsafe(matteHeap_t *, matteValue_t, matteValue_t less);
 // attempts to run a VM call for each key-value pair within the object.
 // If object is not an object, no action is taken (and no error is raised.)
 void matte_value_object_foreach(matteHeap_t *, matteValue_t object, matteValue_t function);
@@ -258,7 +267,6 @@ matteValue_t matte_value_object_array_to_string_unsafe(matteHeap_t *, matteValue
 
 // uniquely identifies the type (nonzero). Returns 0 if bad.
 uint32_t matte_value_type_get_typecode(matteValue_t);
-
 
 
 // Returns whether the value is of the type given by the typeobject typeobj.

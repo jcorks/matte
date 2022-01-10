@@ -1,12 +1,16 @@
 //// Test80
 //
 // 
-@Matte = import(module:'Matte.Core');
 
-@a = Matte.String.new(from:'-=-');
-a.append(other:'[][][]');
-a.append(other:Matte.String.new(from:'100'));
-a.append(other:69);
-a.append(other:'');
+@a = '-=-';
+a = String.combine(strings:
+    [
+        a,
+        '[][][]',
+        '100',
+        String(from:69),
+        ''
+    ]
+);
 
 return String(from:a);

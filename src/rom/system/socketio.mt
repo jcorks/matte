@@ -1,5 +1,4 @@
 @class = import(module:'Matte.Core.Class');
-@Array = import(module:'Matte.Core.Array');
 @EventSystem = import(module:'Matte.Core.EventSystem');
 @MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
 @SocketIO = {
@@ -263,7 +262,7 @@
                 };
 
                 
-                @:clients = Array.new();
+                @:clients = [];
 
                 // string id to 
                 @:clientIndex = [];
@@ -287,7 +286,7 @@
                             // new client
                             if (clientIndex[id] == empty) ::<={
                                 @client = Client.new(id:id, handle:socket);
-                                clients.push(value:client);
+                                Object.push(object:clients, value:client);
                                 clientIndex[id] = true;
                                 found[id] = true;
 
@@ -298,15 +297,15 @@
                         // emit update disconnects or update.
                         @i = 0;
                         loop(function:::{
-                            when(i == clients.length) false;
+                            when(i == Object.length(of:clients)) false;
                             @idKey = String(from:clients[i].id);
                             if (found[idKey]) ::<= {
                                 clients[i].update();
                                 i+=1;
                             } else ::<={
                                 clients[i].emit(name:'onDisconnect', detail:clients[i]);
-                                clients.remove(index:i);
-                                removeKey(from:clientIndex, key:idKey);                                
+                                Object.removeKey(from:clients, index:i);
+                                Object.removeKey(from:clientIndex, key:idKey);                                
                             };
                             return true;
                         });                  
