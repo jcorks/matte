@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Matte Language: Quick Guide</title>
     <style>@font-face { font-family: Consolas; src: url('Consolas.ttf');}</style>
-    <script src="matte_synbox_c.js"></script>
-    <script src="matte_synbox.js"></script>
+    <script src="matte_synbox_c.js"></script><!--/>-->
+    <script src="matte_synbox.js"></script><!--/>-->
 
 </head>
 <body>
@@ -166,9 +166,8 @@ There are only a handful of basic types within Matte:
     </pre>    
     <li><b>Type:</b> a value that denotes a type of a value. In Matte, types are explicit values. There are built-in constants for types: Empty, Boolean, Number, String, Object, Function, and Type. You can create your own types as well.</li>
     <pre>
-        // Types can be gleaned by introspecting. Introspection is covered in 
-        // a later section.
-        @f = introspect.type(of:40);
+        // Types can be gleaned by calling the type() function
+        @f = type(of:40);
 
         // will print "true"
         print(message:f == Number);
@@ -521,45 +520,77 @@ This makes <i>if</i> equivalent to the ternary <i>?:</i> seen in some C-like lan
 
 <hr>
 <br>
-<h2> 6. Introspection</h2>
-Often, it is useful to get more information about a particular value, or work with it in a more in-depth way. introspection provides language-standard functions that 
-work with basic values. It is invoked by using the built-in constant "introspect" and calling one of its recognized functions:
-
+<h2> 6. Type Utilities</h2>
+Often, using strings and numbers requires more than just concatenation and arithmetic. The Type 
+values for Number, String, and Object have functions attached to them that extend the 
+basic functionality of those respective types.
 <ul>
-    <li><b>introspect.type(<i>of</i>):</b> Returns the type of the value.</li>
-    <li><b>introspect.keys(<i>of</i>):</b> For an object, returns a list of all of the object's keys to stored values.</li>
-    <li><b>introspect.values(<i>of</i>):</b> For an object, returns a list of all of the object's stored values.</li>
-    <li><b>introspect.keycount(<i>of</i>):</b> For an object, returns the number of stored values that the object has.</li>
-    <li><b>introspect.isCallable(<i>value</i>):</b> For an object, returns whether the object is a function.</li>
-    <li><b>introspect.arrayToString(<i>of</i>):</b> For an object, gathers all values key'd by number, interprets those values as number UTF8 codepoints, and returns a new string from those codepoints.</li>
-    <li><b>introspect.length(<i>of</i>):</b> For a string, returns now many codepoints are within the string.</li>
-    <li><b>introspect.charAt(<i>string, index</i>):</b> For a string, returns a single-character string at the index within the string.</li>
-    <li><b>introspect.charCodeAt(<i>string, index</i>):</b> For a string, returns the number value of the character at the given index.</li>
-    <li><b>introspect.subset(<i>set, from, to</i>):</b> For a string or list object, returns a new string or object with only the values between and including the indices "from" and "to".</li>
-    <li><b>introspect.floor(<i>of</i>):</b> For a number, returns the value's integer component.</li>
-    <li><b>introspect.ceil(<i>of</i>):</b> For a number, returns the value's integer component + 1.</li>
-    <li><b>introspect.round(<i>of</i>):</b> For a number, returns the value rounded.</li>
-    <li><b>introspect.toRadians(<i>value</i>):</b> For a number, interprets the value as a degree value and returns the corresponding radians.</li>
-    <li><b>introspect.toDegrees(<i>value</i>):</b> For a number, interprets the value as a radian value and returns the corresponding degrees.</li>
-    <li><b>introspect.sin(<i>of</i>):</b> For a number, returns sin(value).</li>
-    <li><b>introspect.cos(<i>of</i>):</b> For a number, returns cos(value).</li>
-    <li><b>introspect.tan(<i>of</i>):</b> For a number, returns tan(value).</li>
-    <li><b>introspect.abs(<i>of</i>):</b> For a number, returns its absolute value.</li>
-    <li><b>introspect.sqrt(<i>of</i>):</b> For a number, returns its square root.</li>
-    <li><b>introspect.isNaN(<i>value</i>):</b> For a number, returns whether its value is "not a number".</li>
+    <li><b>Number.floor(<i>of</i>):</b> Returns the number, floored.</li>
+    <li><b>Number.ceil(<i>of</i>):</b> Returns the number, ceiling'd.</li>
+    <li><b>Number.round(<i>value</i>):</b> Returns the number rounded</li>
+    <li><b>Number.toRadians(<i>value</i>):</b> Returns a radian value, assuming the given value is in degrees.</li>
+    <li><b>Number.toDegrees(<i>value</i>):</b> Returns a degree value, assuming the given value is in radians. </li>
+    <li><b>Number.PI():</b> Returns a standard value of pi. </li>
+    <li><b>Number.cos(<i>of</i>):</b> Returns the cosine of the value (radians).</li>
+    <li><b>Number.sin(<i>of</i>):</b> Returns the sine of the value (radians).</li>
+    <li><b>Number.tan(<i>of</i>):</b> Returns the tangent of the value (radians).</li>
+    <li><b>Number.abs(<i>of</i>):</b> Returns the absolute value of the value.</li>
+    <li><b>Number.isNaN(<i>of</i>):</b> Returns a boolean for whether the value is a number.</li>
+    <li><b>Number.parse(<i>of</i>):</b> Returns a number representation of a string. Throws an error if not possible.</li>
+    <li><b>Number.random():</b> Returns a random number between 0 and 1. </li>
+    <br>
+    <br>
+    <li><b>String.length(<i>of</i>):</b> Returns the length of the string in characters.</li>
+    <li><b>String.search(<i>string</i>, <i>key</i>):</b> Returns the index where the keys tring can be found within "string". If not present, -1 is returned.</li>
+    <li><b>String.contains(<i>string</i>, <i>key</i>):</b> Returns a boolean on whether key is contained within string. </li>
+    <li><b>String.replace(<i>string</i>, <i>key</i>, <i>with</i>):</b> Returns a new string representing the replacement of "key" with "with" within "string".</li>
+    <li><b>String.count(<i>string</i>, <i>key</i>):</b> Returns the number of times "key" is within "string".</li>
+    <li><b>String.charCodeAt(<i>string</i>, <i>index</i>):</b> Returns a number code for one character at the given index within "string".</li>
+    <li><b>String.charAt(<i>string</i>, <i>index</i>):</b> Returns a string of one character at the given index within "string".</li>
+    <li><b>String.setCharCodeAt(<i>string</i>, <i>index</i>, <i>value</i>):</b> Returns a new string with one character altered  at the given index within "string". </li>
+    <li><b>String.setCharAt(<i>string</i>, <i>index</i>, <i>value</i>):</b> Returns a new string with one character altered via character code at the given index within "string".</li>
+    <li><b>String.combine(<i>strings</i>):</b> Returns the a concatenation of an array of strings. Quicker than adding the strings individually. </li>
+    <li><b>String.removeChar(<i>string</i>, <i>index</i>):</b> Returns "string" with the character at "index" removed. </li>
+    <li><b>String.substr(<i>string</i>, <i>from</i>, <i>to</i>):</b> Returns a substring of the given string. </li>
+    <li><b>String.split(<i>string</i>, <i>token</i>):</b> Returns an array of strings in between the given token. </li>
+    <li><b>String.scan(<i>format</i>):</b> Returns a set of strings that meet the given criteria. </li>
+    <br>
+    <br>
+    <li><b>Object.keycount(<i>of</i>):</b> Returns the number of keys of all kinds within the object.</li>
+    <li><b>Object.keys(<i>of</i>):</b> Returns an array of all the object's keys.</li>
+    <li><b>Object.values(<i>of</i>):</b> Returns an array of all the object's values.</li>
+    <li><b>Object.length(<i>of</i>):</b> Returns the number of keys that are number-typed. This lets you treat object as an array.</li>
+    <li><b>Object.push(<i>object</i>, <i>value</i>):</b> Adds an additional value with a number key equal to Object.length. This lets you treat object as an array.</li>
+    <li><b>Object.pop(<i>object</i>):</b> Removes and returns the value with a number key equal to Object.length-1 (the last array member).</li>
+    <li><b>Object.insert(<i>object</i>, <i>index</i>, <i>value</i>):</b> Inserts an additional value at the given number key, push all values with greater number keys above. </li>
+    <li><b>Object.remove(<i>from</i>, <i>key</i>):</b> Removes a value with the give key. If the key is a number, all values with greater number keys are shifted down one, as if an array.</li>
+    <li><b>Object.setAttributes(<i>of</i>, <i>attributes</i>):</b> Sets the attributes for this object.</li>
+    <li><b>Object.getAttributes(<i>of</i>):</b> Returns the attributes for this object.</li>
+    <li><b>Object.sort(<i>object</i>, <i>func</i>):</b> Sorts the object's values with number keys according to a comparator. The comparator is given each value.</li>
+    <li><b>Object.subset(<i>set</i>, <i>from</i>, <i>to</i>):</b> Returns a slice of the object's number-keyed values.</li>
+    <li><b>Object.findIndex(<i>object</i>, <i>value</i>):</b> Returns the index within the object's numbered keys whose value matches the one given. Returns -1 if not found.</li>
+    <li><b>Object.newType(<i>name</i>, <i>inherits</i>):</b> Returns a Type value representing a new type with the given parameters. </li>
+    <li><b>Object.instantiate(<i>type</i>):</b> Returns a new Object of the given type.</li>
+    <li><b>Object.is(<i>object</i>, <i>type</i>):</b> Returns whether the obejct is the given Type, taking into account inheritance. </li>
+    <li><b>Object.map(<i>object</i>, <i>func</i>):</b> Applies a function to all members of an object, altering them.</li>
+    <li><b>Object.reduce(<i>object</i>, <i>func</i>):</b> Returns a reduction of the given set.</li>
+    <li><b>Object.filter(<i>object</i>, <i>func</i>):</b> Returns a new array of items that meet the filter function criteria. </li>
+        
+
+    
 </ul>
 
 <pre>
     @str = 'Hello, world!';
 
     // Should print 'o'
-    print(message:introspect.charAt(string:str, index:4));
+    print(message:String.charAt(string:str, index:4));
 
     // Should print '13'
-    print(message:introspect.length(of:str));
+    print(message:String.length(of:str));
 
     // Should print '42'
-    print(message:introspect.abs(of:-42));
+    print(message:Number.abs(of:-42));
 
 </pre>
 
@@ -766,8 +797,6 @@ default VM import.
 
 <ul>
     <li><b>Matte.Class:</b> Imports an function that can be used to create classes with a proper interface, setters/getters, inheritance, and more.</li>
-    <li><b>Matte.String:</b> Imports a class that can be used for everyday string manipulation.</li>
-    <li><b>Matte.Array:</b> Imports a class that can be used for creating, managing, and sorting sets.</li>
     <li><b>Matte.JSON:</b> Imports a set of functions that can be used for working with JSON data.</li>
     <li><b>Matte.Core:</b> Imports an object that contains all of the built-in matte features separately available.</li>
 </ul>
@@ -784,7 +813,7 @@ These features are still considered core parts of the language, but they take in
 Any object has the potential to react with special behavior to a number of operators. By default, 
 using most operators when the object has not specified now to react to them will throw an error.
 
-Using the <i>setAttributes</i> built-in function, reaction to these operators can be 
+Using the <i>Object.setAttributes</i> built-in function, reaction to these operators can be 
 specified.
 
 <pre>
@@ -799,7 +828,7 @@ specified.
     // setAttributes takes the object to modify 
     // and an attronites object, keyed with strings of the 
     // operator to specify overloading with.
-    setAttributes(
+    Object.setAttributes(
         of: special, 
         attributes: {
         '<<' ::(value) {
@@ -971,29 +1000,30 @@ it is not defined how objects can be converted to other types by default.
 Along with the basic types, Matte lets you create additional, custom types. This allows for more advanced behavior 
 for type-strict functions in controlling how data should flow.
 
-New type values are created with the <i>newtype</i> built-in function. This creates a new Type value that is 
-completely unique. New objects of this type can be created using the <i>instantiate</i> built-in function.
+New type values are created with the <i>Object.newType</i> built-in function. This creates a new Type value that is 
+completely unique. New objects of this type can be created using the <i>Object.instantiate</i> built-in function.
 
 <pre>
     // Creates the new Type. The newtype function can take 
     // a special setup argument.
-    @MyBasicType = newtype();
+    @MyBasicType = Object.newType();
 
     // Same as newtype(), except errors will report the name of the type.
-    @MyType = newtype(name: 'MyType');
+    @MyType = Object.newType(name: 'MyType');
 
     // You can use this to control inheritance
-    @MyInheritedType = newtype(inherits: MyType);
+    @MyInheritedType = Object.newType(inherits: MyType);
 
 
     // Creates a new object with the give type. The type cannot be changed.
-    @myInstance = instantiate(type: MyType);
+    @myInstance = Object.instantiate(type: MyType);
     myInstance.data = 'Hello!';
 
     // You can use MyType anywhere you would a built-in Type
     @myFunction ::(a => MyType) {
         print(message:a.data);
     };
+    
 
 
 
@@ -1007,9 +1037,17 @@ completely unique. New objects of this type can be created using the <i>instanti
     myFunction(a:myInstance);
 
     // prints 'Hi!', since myInheritedInstance inherits from MyType
-    @myInheritedInstance = instantiate(type:MyInheritedType);
+    @myInheritedInstance = Object.instantiate(type:MyInheritedType);
     myInheritedInstance.data = 'Hi!';
     myFunction(a:myInheritedInstance);
+    
+    // should print 'true' since it is inherited.
+    print(message:Object.is(object:myInheritedInstance, type:MyType));
+    
+    // should print 'false' since the original instance 
+    // is not of the inherited type.
+    print(message:Object.is(object:myInstance,          type:MyInheritedType));
+
 
 </pre>
 
@@ -1029,9 +1067,8 @@ provided contextually in code comments.
     @class = import(module:'Matte.Core.Class');
 
 
-    // the class function takes one argument: 'info', an object with a variety of 
-    // members describing the class.
-    @Creature = class(info:{
+    // the class function takes arguments describing the class.
+    @Creature = class(
         // The name is an optional member. Internally, the class creates a new 
         // Type for all instances of the class, so this name can be provided 
         // to make uses of the class more straightforward if errors occur. 
