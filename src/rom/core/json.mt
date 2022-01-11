@@ -148,7 +148,7 @@
                         };       
                     });
 
-                    return Number(from:rawnumstr);
+                    return Number.parse(string:rawnumstr);
                 }(),
                     
                    
