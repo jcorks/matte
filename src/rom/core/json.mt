@@ -1,7 +1,5 @@
-@MString = import(module:'Matte.Core.String');
-@Array = import(module:'Matte.Core.Array');
 @JSON = {
-    encode :: (obj) {        
+    encode :: (object) {        
         @encodeValue ::(obj){
             @encodeSub = context;
             return match(getType(of:obj)) {
@@ -22,18 +20,18 @@
             };
         };
         
-        return encodeValue(obj:obj);
+        return encodeValue(obj:object);
     },
     
     
-    decode ::(str) {
+    decode ::(string) {
         
         @:trimSpace::(substr) {
-            loop(function:::{
+            loop(func:::{
                 return match(String.charAt(string:substr, index:0)) {
                     // found whitespace. remove it and look again
                     (' ', '\r', '\n', '\t'): ::{
-                        substr = String.removeChar(from:substr, index:0);
+                        substr = String.removeChar(string:substr, index:0);
                         return true;
                     }(),
 
@@ -55,12 +53,12 @@
                     // skip '"'
                     iter = String.removeChar(string:iter, index:0);
                     @rawstr = '';
-                    loop(function:::{
-                        return match(iter.charAt(index:0)) {
+                    loop(func:::{
+                        return match(String.charAt(string:iter, index:0)) {
                             // escape sequence
                             ('\\'): ::{
                                 iter = String.removeChar(string:iter, index:0);
-                                match(iter.charAt(index:0)) {
+                                match(String.charAt(string:iter, index:0)) {
                                     ('n'): ::{
                                         rawstr = rawstr + '\n';
                                     }(),
@@ -90,7 +88,7 @@
                             }(),
 
                             default: ::{
-                                rawstr = rawstr + iter.charAt(index:0);
+                                rawstr = rawstr + String.charAt(string:iter, index:0);
                                 iter = String.removeChar(string:iter, index:0);
                                 return true;
                             }()
@@ -103,9 +101,9 @@
                 
                 // true or false
                 ('t'): ::{
-                    return (if (iter.charAt(index:1) == 'r' &&
-                                iter.charAt(index:2) == 'u' &&
-                                iter.charAt(index:3) == 'e') ::{
+                    return (if (String.charAt(string:iter, index:1) == 'r' &&
+                                String.charAt(string:iter, index:2) == 'u' &&
+                                String.charAt(string:iter, index:3) == 'e') ::{
                         iter = String.removeChar(string:iter, index:0);
                         iter = String.removeChar(string:iter, index:0);
                         iter = String.removeChar(string:iter, index:0);
@@ -117,10 +115,10 @@
                 }(),
                 
                 ('f'): ::{
-                    return (if (iter.charAt(index:1) == 'a' &&
-                                iter.charAt(index:2) == 'l' &&
-                                iter.charAt(index:3) == 's' &&
-                                iter.charAt(index:4) == 'e') ::{
+                    return (if (String.charAt(string:iter, index:1) == 'a' &&
+                                String.charAt(string:iter, index:2) == 'l' &&
+                                String.charAt(string:iter, index:3) == 's' &&
+                                String.charAt(string:iter, index:4) == 'e') ::{
                         iter = String.removeChar(string:iter, index:0);
                         iter = String.removeChar(string:iter, index:0);
                         iter = String.removeChar(string:iter, index:0);
@@ -135,13 +133,13 @@
                 
                 // number
                 ('.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::{
-                    @rawnumstr = iter.charAt(index:0);
+                    @rawnumstr = String.charAt(string:iter, index:0);
                     iter = String.removeChar(string:iter, index:0);
 
-                    loop(function:::{
-                        return match(iter.charAt(index:0)) {
+                    loop(func:::{
+                        return match(String.charAt(string:iter, index:0)) {
                             ('0', '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::<={
-                                rawnumstr = rawnumstr + iter.charAt(index:0);
+                                rawnumstr = rawnumstr + String.charAt(string:iter, index:0);
                                 iter = String.removeChar(string:iter, index:0);
                                 return true;
                             },
@@ -161,12 +159,14 @@
                     iter = trimSpace(substr:iter);
 
                     // empty object!
-                    when(String.charAt(string:iter, index:0) == '}'){};
-
+                    when(String.charAt(string:iter, index:0) == '}')::<={
+                        iter = String.removeChar(string:iter, index:0);                        
+                        return {};
+                    };
                     @out = {};
 
                     // loop over "key": value,
-                    loop(function:::{
+                    loop(func:::{
 
                         // get string
                         @res = decodeV(iter:iter);
@@ -186,7 +186,7 @@
 
                         out[key] = val;
 
-                        return match(iter.charAt(index:0)) {
+                        return match(String.charAt(string:iter, index:0)) {
                             (','): ::{
                                 iter = String.removeChar(string:iter, index:0);
                                 return true;
@@ -213,141 +213,57 @@
                 ('['): ::{
                     // skip '['
                     iter = String.removeChar(string:iter, index:0);
-                    trimSpace(substr:iter);
+                    iter = trimSpace(substr:iter);
 
                     // empty object!
-                    when(iter.charAt(index:0) == ']')[];
-
-                    @arr = Array.new();
+                    when(String.charAt(string:iter, index:0) == ']')::<= {
+                        iter = String.removeChar(string:iter, index:0);
+                        return [];
+                    };
+                    @arr = [];
 
                     // loop over value,
-                    loop(functio:::{
+                    loop(func:::{
                         // get value
                         @res =  decodeV(iter:iter); 
                         @val = res.key;
                         iter = res.iter;
-                        trimSpace(substr:iter);
+                        iter = trimSpace(substr:iter);
 
-                        arr.push(value:val);
+                        Object.push(object:arr, value:val);
 
-                        return match(iter.charAt(index:0)) {
-                            (','): ::{
+                        return match(String.charAt(string:iter, index:0)) {
+                            (','): ::<={
                                 iter = String.removeChar(string:iter, index:0);
                                 return true;
-                            }(),
+                            },
 
                             // object over
-                            (']'): ::{
+                            (']'): ::<={
                                 iter = String.removeChar(string:iter, index:0);
                                 return false;
-                            }(),
+                            },
 
-                            default: ::{
+                            default: ::<={
                                 error(message:"Unknown character");
-                            }()
+                            }
                         };
                     });
 
-                    return arr.data;
+                    return arr;
                 }(),
 
 
-                default: error(message:"Could not parse object \""+iter+'\"')
+                default: error(detail:"Could not parse object \""+iter+'\"')
             };        
             out.iter = iter;
             return out;
         };
 
-        return decodeValue(iter:str).key;
+        return decodeValue(iter:string).key;
     }
 };
 
 
-
-/*
-print(JSON.encode({
-    testing : 'ohhh',
-    othertesting : {
-        ithink : 'i see',
-        theanswer: 42,
-        owwow:true
-    }
-}));
-
-
-
-@pObject ::(o) {
-    @already = {};
-    @pspace ::(level) {
-        @str = '';
-        for([0, level], ::{
-            str = str + ' ';
-        });
-        return str;
-    };
-    @helper ::(obj, level) {
-        @poself = context;
-
-        return match(introspect(obj).type()) {
-            (String) :    obj,
-            (Number) : ''+obj,
-            (Boolean): ''+obj,
-            (Empty)  : 'empty',
-            (Object) : ::{
-                when(already[obj] == true) '[already printed]';
-                 
-                @output = '{\n';
-                foreach(obj, ::(key, val) {
-                    output = output + pspace(level)+(String(key))+' : '+poself(val, level+1) + ',\n';
-                });
-                output = output + pspace(level) + '}\n';
-                already[obj] = true;
-                return output;                
-            }()
-        };
-    };
-    print(helper(o, 0));
-};
-
-
-@obj = '[
-  {
-    "ID": 1,
-    "Name": "Edward the Elder",
-    "Country": "United Kingdom",
-    "House": "House of Wessex",
-    "Reign": "899-925"
-  },
-  {
-    "ID": 2,
-    "Name": "Athelstan",
-    "Country": "United Kingdom",
-    "House": "House of Wessex",
-    "Reign": "925-940"
-  },
-  {
-    "ID": 3,
-    "Name": "Edmund",
-    "Country": "United Kingdom",
-    "House": "House of Wessex",
-    "Reign": "940-946"
-  },
-  {
-    "ID": 4,
-    "Name": "Edred",
-    "Country": "United Kingdom",
-    "House": "House of Wessex",
-    "Reign": "946-955"
-  },
-  {
-    "ID": 5,
-    "Name": "Edwy",
-    "Country": "United Kingdom",
-    "House": "House of Wessex",
-    "Reign": "955-959"
-  }
-]';
-*/
-//JSON.decode(obj));
 
 return JSON;
