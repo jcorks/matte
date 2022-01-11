@@ -1079,7 +1079,7 @@ provided contextually in code comments.
         // This is where the implementation of your class goes.
         // 'this' refers to the new instance of the class that is being created. 
         // It is the instance that will be worked with in user code.
-        define ::(this) {
+        define :::(this) {
 
             // because these are variabels that are local to the define function, it 
             // is common to use these variables as typical "private variables" for 
@@ -1163,7 +1163,7 @@ provided contextually in code comments.
                 }
             };
         }
-    });
+    );
 
     // once the class is created. instances can be made.
     // This is done by taking the class and calling the 
@@ -1207,7 +1207,7 @@ provided contextually in code comments.
 
 
 
-    @Biter = class(info:{
+    @Biter = class(
         name : 'Biter',
 
         // Inheritance is also possible using the inherits property.
@@ -1217,7 +1217,7 @@ provided contextually in code comments.
         // inherited types' define function before this one's in order.
         inherits : [Creature],
 
-        define ::(this) {
+        define :::(this) {
             // Since we want to initialize these instances using the same 
             // creature constructor, 
             // We can pull the existing constructor and use it as is.
@@ -1234,7 +1234,7 @@ provided contextually in code comments.
                 }
             };
         }
-    });
+    );
 
     @george = Biter.new(
         name : 'George',
