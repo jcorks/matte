@@ -166,8 +166,8 @@ There are only a handful of basic types within Matte:
     </pre>    
     <li><b>Type:</b> a value that denotes a type of a value. In Matte, types are explicit values. There are built-in constants for types: Empty, Boolean, Number, String, Object, Function, and Type. You can create your own types as well.</li>
     <pre>
-        // Types can be gleaned by calling the type() function
-        @f = type(of:40);
+        // Types can be gleaned by calling the getType() function
+        @f = getType(of:40);
 
         // will print "true"
         print(message:f == Number);
