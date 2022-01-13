@@ -2189,6 +2189,8 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
 
     matteArray_t argNames_array = MATTE_ARRAY_CAST(argNames, matteValue_t, 2);
 
+    matteArray_t *keys   = matte_array_create(sizeof(matteValue_t));
+    matteArray_t *values = matte_array_create(sizeof(matteValue_t));
 
     // first number 
     uint32_t i;
@@ -2200,11 +2202,10 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
         for(i = 0; i < len; ++i) {
             args[1] = matte_array_at(m->table.keyvalues_number, matteValue_t, i);
             *quickI = i;
-            matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
-            matteValue_t r = matte_vm_call(heap->vm, func, &arr, &argNames_array, NULL);
-            matte_heap_recycle(heap, r);
+            matte_value_object_push_lock(heap, args[1]);
+            matte_array_push(keys, args[0]);
+            matte_array_push(values, args[1]);
         }
-        matte_heap_recycle(heap, args[0]);
         args[0].binID = 0;
     }
 
@@ -2218,9 +2219,10 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
             args[0].value.id = matte_table_iter_get_key_uint(iter);
-            matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
-            matteValue_t r = matte_vm_call(heap->vm, func, &arr, &argNames_array, NULL);
-            matte_heap_recycle(heap, r);
+            matte_value_object_push_lock(heap, args[1]);
+            matte_array_push(keys, args[0]);
+            matte_array_push(values, args[1]);
+
         }
         matte_table_iter_destroy(iter);
     }
@@ -2234,9 +2236,12 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
             args[0].value.id = matte_table_iter_get_key_uint(iter);
-            matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
-            matteValue_t r = matte_vm_call(heap->vm, func, &arr, &argNames_array, NULL);
-            matte_heap_recycle(heap, r);
+            matte_value_object_push_lock(heap, args[1]);
+            matte_value_object_push_lock(heap, args[0]);
+            matte_array_push(keys, args[0]);
+            matte_array_push(values, args[1]);
+
+
         }
         matte_table_iter_destroy(iter);
     }
@@ -2245,21 +2250,17 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
     if (m->table.keyvalue_true.binID) {
         matte_value_into_boolean(heap, &args[0], 1);
         args[1] = m->table.keyvalue_true;
-        matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
-        matteValue_t r = matte_vm_call(heap->vm, func, &arr, &argNames_array, NULL);        
-        matte_heap_recycle(heap, args[0]);
-        args[0].binID = 0;
-        matte_heap_recycle(heap, r);
+        matte_value_object_push_lock(heap, args[1]);
+        matte_array_push(keys, args[0]);
+        matte_array_push(values, args[1]);
     }
     // false
     if (m->table.keyvalue_false.binID) {
         matte_value_into_boolean(heap, &args[0], 1);
         args[1] = m->table.keyvalue_false;
-        matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
-        matteValue_t r = matte_vm_call(heap->vm, func, &arr, &argNames_array, NULL);        
-        matte_heap_recycle(heap, r);
-        matte_heap_recycle(heap, args[0]);
-        args[0].binID = 0;
+        matte_value_object_push_lock(heap, args[1]);
+        matte_array_push(keys, args[0]);
+        matte_array_push(values, args[1]);
     }
 
     if (!matte_table_is_empty(m->table.keyvalues_types)) {
@@ -2270,14 +2271,35 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
             args[0].value.id = matte_table_iter_get_key_uint(iter);
-            matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
-            matteValue_t r = matte_vm_call(heap->vm, func, &arr, &argNames_array, NULL);
-            matte_heap_recycle(heap, r);
+            matte_value_object_push_lock(heap, args[1]);
+            matte_array_push(keys, args[0]);
+            matte_array_push(values, args[1]);
+
         }
-        matte_heap_recycle(heap, args[0]);
+        //matte_heap_recycle(heap, args[0]);
         args[0].binID = 0;
         matte_table_iter_destroy(iter);
     }
+    
+    
+    // now we can safely iterate
+    len = matte_array_get_size(keys);
+    for(i = 0; i < len; ++i) {
+        args[0] = matte_array_at(keys, matteValue_t, i);
+        args[1] = matte_array_at(values, matteValue_t, i);
+
+        matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
+        matteValue_t r = matte_vm_call(heap->vm, func, &arr, &argNames_array, NULL);
+        matte_heap_recycle(heap, r);
+    
+        matte_value_object_pop_lock(heap, args[0]);
+        matte_value_object_pop_lock(heap, args[1]);
+    }
+    
+    matte_array_destroy(keys);
+    matte_array_destroy(values);
+    
+    
     matte_value_object_pop_lock(heap, v);
 
 }
