@@ -60,6 +60,42 @@ static matteValue_t vm_ext_call__number__tan(matteVM_t * vm, matteValue_t fn, co
     return out;
 }
 
+static matteValue_t vm_ext_call__number__asin(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
+    matteValue_t out = matte_heap_new_value(vm->heap);    
+    matte_value_into_number(vm->heap, &out, asin(matte_value_as_number(vm->heap, a)));    
+    return out;
+}
+
+static matteValue_t vm_ext_call__number__acos(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
+    matteValue_t out = matte_heap_new_value(vm->heap);    
+    matte_value_into_number(vm->heap, &out, acos(matte_value_as_number(vm->heap, a)));    
+    return out;
+}
+
+static matteValue_t vm_ext_call__number__atan(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;
+    matteValue_t out = matte_heap_new_value(vm->heap);    
+    matte_value_into_number(vm->heap, &out, atan(matte_value_as_number(vm->heap, a)));    
+    return out;
+}
+
+static matteValue_t vm_ext_call__number__atan2(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];
+    matteValue_t b = args[1];
+    matteValue_t out = matte_heap_new_value(vm->heap);    
+    matte_value_into_number(vm->heap, &out, atan2(matte_value_as_number(vm->heap, a), matte_value_as_number(vm->heap, b)));    
+    return out;
+}
+
+static matteValue_t vm_ext_call__number__sqrt(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];;    
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    matte_value_into_number(vm->heap, &out, sqrt(matte_value_as_number(vm->heap, a)));
+    return out;
+}
+
 static matteValue_t vm_ext_call__number__abs(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];;    
     matteValue_t out = matte_heap_new_value(vm->heap);

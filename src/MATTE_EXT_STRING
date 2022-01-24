@@ -75,15 +75,48 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
     if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
 
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteString_t * str = matte_string_clone(matte_value_string_get_string_unsafe(heap, args[0]));
-    matteValue_t newlV = matte_value_as_string(heap, args[1]);
-    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
-        return matte_heap_new_value(heap);
-    }
-    const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
 
-    newlV = matte_value_as_string(heap, args[2]);
+
+    matteArray_t * keys = matte_array_create(sizeof(matteString_t*));    
+    // keys are always preferred
+    if (args[3].binID != MATTE_VALUE_TYPE_EMPTY) {
+        uint32_t len = matte_value_object_get_number_key_count(heap, args[3]);
+        uint32_t i;
+        
+        if (len == 0) {
+            matte_vm_raise_error_cstring(vm, "'keys' array input for replace cannot be empty.");
+            matte_array_destroy(keys);
+            return matte_heap_new_value(heap);
+        }
+        for(i = 0; i < len; ++i) {
+                    
+            const matteString_t * other = matte_value_string_get_string_unsafe(
+                heap, 
+                matte_value_object_access_index(
+                    heap, 
+                    args[3], 
+                    i
+                )
+            );
+            matte_array_push(keys, other);
+        }
+        
+    // else, single key
+    } else {
+        matteValue_t newlV = matte_value_as_string(heap, args[1]);
+        if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+            matte_array_destroy(keys);
+            return matte_heap_new_value(heap);
+        }
+
+        const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
+        matte_array_push(keys, other);
+    }
+    
+    matteString_t * str = matte_string_clone(matte_value_string_get_string_unsafe(heap, args[0]));
+    matteValue_t newlV = matte_value_as_string(heap, args[2]);
     if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+        matte_array_destroy(keys);
         return matte_heap_new_value(heap);
     }
     const matteString_t * newst = matte_value_string_get_string_unsafe(heap, newlV);
@@ -93,7 +126,6 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
     
     uint32_t i, n;
     uint32_t len = matte_string_get_length(str);
-    uint32_t lenOther = matte_string_get_length(other);
     uint32_t lenNew = matte_string_get_length(newst);
 
     uint32_t * newstBuffer = malloc(sizeof(uint32_t) * lenNew);
@@ -101,25 +133,34 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
         newstBuffer[n] = matte_string_get_char(newst, n);
     }
 
-
-    for(i = 0; i < len - (lenOther-1); ++i) {
-        for(n = 0; n < lenOther && i+n < len; ++n) {
-            if (matte_string_get_char(str, i+n) !=
-                matte_string_get_char(other, n)) {
-                break;
+    uint32_t nkeys = matte_array_get_size(keys);
+    uint32_t k;
+    for(k = 0; k < nkeys; ++k) {
+        const matteString_t * other = matte_array_at(keys, matteString_t *, k);
+        uint32_t lenOther = matte_string_get_length(other);
+        if (len >= lenOther-1) {
+            for(i = 0; i < len - (lenOther-1); ++i) {
+                for(n = 0; n < lenOther && i+n < len; ++n) {
+                    if (matte_string_get_char(str, i+n) !=
+                        matte_string_get_char(other, n)) {
+                        break;
+                    }
+                }
+                
+                if (n == lenOther) { // found:
+                    matte_string_remove_n_chars(str, i, lenOther);
+                    i -= lenOther;
+                    if (i >= len - lenOther) {
+                        matte_string_concat(str, newst); 
+                    } else {
+                        matte_string_insert_n_chars(str, i, newstBuffer, lenNew); 
+                    }
+                    len = matte_string_get_length(str);
+                }
             }
-        }
-        
-        if (n == lenOther) { // found:
-            matte_string_remove_n_chars(str, i, lenOther);
-            if (i >= len - lenOther) {
-                matte_string_concat(str, newst); 
-            } else {
-                matte_string_insert_n_chars(str, i, newstBuffer, lenNew); 
-            }
-            len = matte_string_get_length(str);
         }
     }
+    matte_array_destroy(keys);
     free(newstBuffer);
     matte_value_into_string(heap, &out, str);
     matte_string_destroy(str);
@@ -353,10 +394,154 @@ static matteValue_t vm_ext_call__string__split(matteVM_t * vm, matteValue_t fn, 
 }
 
 
+
+
+typedef struct {
+    int start;
+    char * str;
+} ScanAnchor;
+
+static int scan__index_of(const char * str, const char * substr) {
+    const char * sub = strstr(str, substr);
+    if (sub == NULL) return -1;
+    return (int)(sub - str);
+}
+
+static ScanAnchor scan__new_anchor(const char * str, int start, int len) {
+    ScanAnchor anchor;
+    anchor.start = start;
+    char * newsub = malloc(len+1);
+    memcpy(newsub, str+start, len);
+    newsub[len] = 0;
+    anchor.str = newsub;
+    return anchor;    
+}
+
+static matteArray_t * scan__get_anchor_set(const char * str) {
+    int from = 0;
+    int lastfrom = 0;
+    
+    matteArray_t * anchors = matte_array_create(sizeof(ScanAnchor));
+    while((from = scan__index_of(str+lastfrom, "[%]")) != -1) {
+        from += lastfrom;
+        ScanAnchor anchor = scan__new_anchor(str, lastfrom, from-lastfrom);
+        matte_array_push(anchors, anchor);
+        lastfrom = from+3; // skip [%]
+    }
+    
+    int lenstr = strlen(str);
+    ScanAnchor anchor = scan__new_anchor(str, lastfrom, lenstr - lastfrom);
+    matte_array_push(anchors, anchor);    
+    return anchors;
+}
+
+static void scan__cleanup_found_subs(matteArray_t * subs) {
+    uint32_t len = matte_array_get_size(subs);
+    uint32_t i;
+    for(i = 0; i < len; ++i) {
+        free(matte_array_at(subs, char*, i));    
+    }
+    
+    matte_array_destroy(subs);
+}
+
+static void scan__destroy_anchor_set(matteArray_t * subs) {
+    uint32_t len = matte_array_get_size(subs);
+    uint32_t i;
+    for(i = 0; i < len; ++i) {
+        free(matte_array_at(subs, ScanAnchor, i).str);
+    }
+    
+    matte_array_destroy(subs);
+}
+
+
+
 static matteValue_t vm_ext_call__string__scan(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
-    assert(!"TODO");
-    return matte_heap_new_value(vm->heap);   
+    if (!ensure_arg_string(vm, args)  ) return matte_heap_new_value(vm->heap);
+    if (!ensure_arg_string(vm, args+1)) return matte_heap_new_value(vm->heap);
+
+    const matteString_t * str = matte_value_string_get_string_unsafe(vm->heap, args[0]);
+    const matteString_t * fmt = matte_value_string_get_string_unsafe(vm->heap, args[1]);
+
+    const char * str_c = matte_string_get_c_str(str);
+    const char * fmt_c = matte_string_get_c_str(fmt);
+    int lenstr = strlen(str_c);
+    int lenfmt = strlen(fmt_c);
+
+
+    matteArray_t * anchors = scan__get_anchor_set(fmt_c);
+    matteArray_t * subs = matte_array_create(sizeof(char*));
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    uint32_t len;
+    uint32_t i;    
+    len = matte_array_get_size(anchors);
+    int offset = 0;
+    int lastoffset = 0;
+    int isstart = 0;
+    for(i = 0; i < len; ++i) {
+        ScanAnchor * anchor = &matte_array_at(anchors, ScanAnchor, i);
+        if (anchor->str[0] == 0 && (anchor->start != 0 && anchor->start != lenfmt)) {
+            scan__destroy_anchor_set(anchors);    
+            scan__cleanup_found_subs(subs);            
+
+            matte_vm_raise_error_cstring(vm, "Built-in String function 'scan' disallows 2 format anchors [%] next to each other.");
+            matte_value_into_new_object_ref(vm->heap, &out);
+            return out;            
+        }
+        
+        
+        if (anchor->start == lenfmt) // get remainder if last
+            offset = lenstr;
+        else {        
+            offset = scan__index_of(str_c+lastoffset, anchor->str);
+            if (offset == -1) {
+                scan__destroy_anchor_set(anchors);    
+                scan__cleanup_found_subs(subs);            
+                
+                matte_value_into_new_object_ref(vm->heap, &out);
+                return out;
+            }
+            offset+=lastoffset;
+        }
+        
+        // the anchor was found. 
+        if (anchor->start != 0) {
+                
+            int len = (offset - lastoffset);
+            char * newstr = malloc(len+1);
+            memcpy(newstr, str_c+lastoffset, len);
+            newstr[len] = 0;
+            matte_array_push(subs, newstr);
+        }
+        
+        
+        lastoffset = offset+strlen(anchor->str);
+    }
+
+
+
+    // take found subs (char*) and turn into matteValue strings for output
+    matteArray_t * arr = matte_array_create(sizeof(matteValue_t));
+    len = matte_array_get_size(subs);
+    for(i = 0; i < len; ++i) {
+        matteString_t * s = matte_string_create_from_c_str(matte_array_at(subs, char *, i));
+        matteValue_t s_v = matte_heap_new_value(vm->heap);
+        matte_value_into_string(vm->heap, &s_v, s);
+        matte_string_destroy(s);    
+        matte_array_push(arr, s_v);
+    }
+    
+    matte_value_into_new_object_array_ref(
+        vm->heap,
+        &out,
+        arr
+    );
+    
+    matte_array_destroy(arr);
+    scan__cleanup_found_subs(subs);            
+    scan__destroy_anchor_set(anchors);    
+    return out;
 }
 
 

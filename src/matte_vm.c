@@ -1123,10 +1123,11 @@ matteVM_t * matte_vm_create() {
         MATTE_VM_STR_CAST(vm, "parameters")
     };
     const matteString_t * keyName = MATTE_VM_STR_CAST(vm, "key");
+    const matteString_t * keys = MATTE_VM_STR_CAST(vm, "keys");
     const matteString_t * removeKey_names[] = {
         MATTE_VM_STR_CAST(vm, "from"),
         keyName,
-        MATTE_VM_STR_CAST(vm, "keys")
+        keys
     };
     const matteString_t * type_names[] = {
         MATTE_VM_STR_CAST(vm, "name"),
@@ -1205,7 +1206,8 @@ matteVM_t * matte_vm_create() {
     const matteString_t * replace_names[] = {
         stringName,
         keyName,
-        MATTE_VM_STR_CAST(vm, "with")
+        MATTE_VM_STR_CAST(vm, "with"),
+        keys
     };
     
     const matteString_t * strings = MATTE_VM_STR_CAST(vm, "strings");
@@ -1221,6 +1223,17 @@ matteVM_t * matte_vm_create() {
         stringName,
         token
     };
+
+    const matteString_t * scanNames[] = {
+        value,
+        MATTE_VM_STR_CAST(vm, "format")
+    };
+    
+    const matteString_t * atan2Names[] = {
+        MATTE_VM_STR_CAST(vm, "x"),
+        MATTE_VM_STR_CAST(vm, "y")
+    };
+
     matteArray_t temp;
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,  matte_array_empty(), vm_ext_call__noop);
     temp = MATTE_ARRAY_CAST(&loop_name, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_LOOP,   &temp, vm_ext_call__loop);
@@ -1248,6 +1261,11 @@ matteVM_t * matte_vm_create() {
     temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__COS,       &temp, vm_ext_call__number__cos);    
     temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__SIN,       &temp, vm_ext_call__number__sin);    
     temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__TAN,       &temp, vm_ext_call__number__tan);    
+    temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__ACOS,       &temp, vm_ext_call__number__acos);    
+    temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__ASIN,       &temp, vm_ext_call__number__asin);    
+    temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__ATAN,       &temp, vm_ext_call__number__atan);    
+    temp = MATTE_ARRAY_CAST(atan2Names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__ATAN2,       &temp, vm_ext_call__number__atan2);    
+    temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__SQRT,       &temp, vm_ext_call__number__sqrt);    
     temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__ABS,       &temp, vm_ext_call__number__abs);    
     temp = MATTE_ARRAY_CAST(&value, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__ISNAN,     &temp, vm_ext_call__number__isnan);    
     temp = MATTE_ARRAY_CAST(&stringName, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL__NUMBER__PARSE,     &temp, vm_ext_call__number__parse);    
@@ -1279,7 +1297,7 @@ matteVM_t * matte_vm_create() {
     temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__LENGTH,     &temp, vm_ext_call__string__length);    
     temp = MATTE_ARRAY_CAST(search_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__SEARCH,     &temp, vm_ext_call__string__search);    
     temp = MATTE_ARRAY_CAST(search_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__CONTAINS,     &temp, vm_ext_call__string__contains);    
-    temp = MATTE_ARRAY_CAST(replace_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__REPLACE,     &temp, vm_ext_call__string__replace);    
+    temp = MATTE_ARRAY_CAST(replace_names, matteString_t *, 4);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__REPLACE,     &temp, vm_ext_call__string__replace);    
     temp = MATTE_ARRAY_CAST(search_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__COUNT,     &temp, vm_ext_call__string__count);    
     temp = MATTE_ARRAY_CAST(charAt_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__CHARCODEAT,     &temp, vm_ext_call__string__charcodeat);    
     temp = MATTE_ARRAY_CAST(charAt_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__CHARAT,     &temp, vm_ext_call__string__charat);    
@@ -1289,7 +1307,7 @@ matteVM_t * matte_vm_create() {
     temp = MATTE_ARRAY_CAST(charAt_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__REMOVECHAR,     &temp, vm_ext_call__string__removechar);    
     temp = MATTE_ARRAY_CAST(substr_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__SUBSTR,     &temp, vm_ext_call__string__substr);    
     temp = MATTE_ARRAY_CAST(splitNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__SPLIT,     &temp, vm_ext_call__string__split);    
-    temp = MATTE_ARRAY_CAST(&of, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__SCAN,     &temp, vm_ext_call__string__scan);    
+    temp = MATTE_ARRAY_CAST(scanNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__SCAN,     &temp, vm_ext_call__string__scan);    
     
 
     /*
