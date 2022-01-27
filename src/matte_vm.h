@@ -291,6 +291,9 @@ uint32_t matte_vm_get_new_file_id(matteVM_t * vm, const matteString_t * name);
 // returned.
 const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t fileid);
 
+
+uint32_t matte_vm_get_file_id_by_name(matteVM_t * vm, const matteString_t * name);
+
 // gets a debug event callback.
 void matte_vm_set_debug_callback(
     matteVM_t * vm,

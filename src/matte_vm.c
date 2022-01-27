@@ -231,6 +231,12 @@ uint32_t matte_vm_get_new_file_id(matteVM_t * vm, const matteString_t * name) {
 }
 
 
+uint32_t matte_vm_get_file_id_by_name(matteVM_t * vm, const matteString_t * name) {
+    uint32_t * p = matte_table_find(vm->importPath2ID, name);   
+    if (!p) return 0xffffffff;
+    return *p;
+}
+
 
 typedef struct {
     matteValue_t (*userFunction)(matteVM_t *, matteValue_t, const matteValue_t * args, void * userData);
