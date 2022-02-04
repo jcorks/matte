@@ -541,18 +541,32 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
 
             
             
-        romLen = 0;
-        VMImportCompilerData data;
-        data.vm = vm;
-        data.filename = (matteString_t *)str;
-        rom = matte_compiler_run(
-            src, 
-            srcLen, 
-            &romLen, 
-            import_compile_error,
-            &data
-        );
-        free(src);
+
+        if (
+            tag[0] != 'M'  ||
+            tag[1] != 'A'  ||
+            tag[2] != 'T'  ||
+            tag[3] != 0x01 ||
+            tag[4] != 0x06 ||
+            tag[5] != 'B'  ||
+            tag[6] != 1
+        ) {
+            romLen = 0;
+            VMImportCompilerData data;
+            data.vm = vm;
+            data.filename = (matteString_t *)str;
+            rom = matte_compiler_run(
+                src, 
+                srcLen, 
+                &romLen, 
+                import_compile_error,
+                &data
+            );
+            free(src);        
+        } else {
+            rom = src;
+            romLen = srcLen;
+        }
     }
     
 

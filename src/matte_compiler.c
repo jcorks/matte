@@ -4014,11 +4014,14 @@ void * matte_function_block_array_to_bytecode(
     uint32_t nStrings;
 
     assert(sizeof(matteBytecodeStubInstruction_t) == sizeof(uint32_t) + sizeof(int32_t) + sizeof(uint64_t));
-
+    uint8_t tag[] = {
+        'M', 'A', 'T', 0x01, 0x06, 'B', 0x1
+    };
     for(i = 0; i < len; ++i) {
         matteFunctionBlock_t * block = matte_array_at(arr, matteFunctionBlock_t *, i);
+
         nSlots = 1;
-        WRITE_BYTES(uint8_t, nSlots); // bytecode version
+        WRITE_NBYTES(7, tag); // HEADER + bytecode version
         WRITE_BYTES(uint32_t, block->stubID);
         nSlots = matte_array_get_size(block->args);
         WRITE_BYTES(uint8_t, nSlots);

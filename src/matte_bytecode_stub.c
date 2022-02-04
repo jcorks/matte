@@ -62,12 +62,28 @@ static matteValue_t chomp_string(matteHeap_t * heap, uint8_t ** bytes, uint32_t 
 }
 
 
+
 static matteBytecodeStub_t * bytes_to_stub(matteHeap_t * heap, uint32_t fileID, uint8_t ** bytes, uint32_t * left) {
     matteBytecodeStub_t * out = calloc(1, sizeof(matteBytecodeStub_t));
     uint32_t i;
     uint8_t ver = 0;
+
+    uint8_t tag[6];
+    ADVANCEN(6*sizeof(uint8_t), tag);
+    if (
+        tag[0] != 'M'  ||
+        tag[1] != 'A'  ||
+        tag[2] != 'T'  ||
+        tag[3] != 0x01 ||
+        tag[4] != 0x06 ||
+        tag[5] != 'B'
+    ) {
+        return out;
+    }
     ADVANCE(uint8_t, ver);
     if (ver != 1) return out;
+
+
     out->fileID = fileID;
     ADVANCE(uint32_t, out->stubID);
     ADVANCE(uint8_t, out->argCount);
