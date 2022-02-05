@@ -794,7 +794,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             } else {
                 matteValue_t * ref = matte_value_object_access_direct(vm->heap, object, key, isBracket);
                 matteValue_t refH = {};
+                int isDirect = 1;
                 if (!ref) {
+                    isDirect = 0;
                     refH = matte_value_object_access(vm->heap, object, key, isBracket);
                     ref = &refH;
                 }
@@ -817,6 +819,18 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 }               
                 
                 matte_value_object_pop_lock(vm->heap, *ref);
+                // Slower path for things like accessors
+                // Indirect access means the ref being worked with is essentially a copy, so 
+                // we need to set the object value back after the operator has been applied.
+                if (!isDirect) {
+                    matte_value_object_set(
+                        vm->heap,
+                        object,
+                        key, 
+                        refH,
+                        isBracket
+                    );
+                }
                 if (refH.binID)     
                     matte_heap_recycle(vm->heap, refH); 
                     
