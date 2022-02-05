@@ -1020,6 +1020,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 }
 
 #define WRITE_BYTES(__T__, __VAL__) matte_array_push_n(arr, &(__VAL__), sizeof(__T__));
+#define WRITE_NBYTES(__VAL__, __N__) matte_array_push_n(arr, &(__VAL__), __N__);
 
 static void write_unistring(matteArray_t * arr, matteString_t * str) {
     uint32_t len = matte_string_get_length(str);
@@ -1054,9 +1055,12 @@ static void vm_add_built_in(
 
     
     matteArray_t * arr = matte_array_create(1);
-    uint8_t u8 = 1;
+    uint8_t tag[] = {
+        'M', 'A', 'T', 0x01, 0x06, 'B', 0x1
+    };
+    uint8_t u8;
     uint32_t u32 = index;
-    WRITE_BYTES(uint8_t, u8); 
+    WRITE_NBYTES(tag, 7); 
     WRITE_BYTES(uint32_t, u32); 
     
     u8 = matte_array_get_size(argNames);

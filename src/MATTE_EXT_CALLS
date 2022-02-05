@@ -540,9 +540,10 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
 
 
             
-            
-
+        
+        const uint8_t * tag = src;
         if (
+            srcLen < 7     || 
             tag[0] != 'M'  ||
             tag[1] != 'A'  ||
             tag[2] != 'T'  ||
