@@ -371,7 +371,7 @@ int matte_string_test_contains(const matteString_t * a, const matteString_t * b)
     uint32_t * itera, *iterb;
     uint32_t start = b->utf8[0];
     uint32_t ilimit = a->len - b->len;
-    if (b->len > a->len) return 0;
+    if (b->len == 0 || b->len > a->len) return 0;
     for(i = 0; i <= ilimit; ++i) {
         if (a->utf8[i] == start) {
             itera = a->utf8+i;

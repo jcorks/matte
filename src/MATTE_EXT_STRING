@@ -149,7 +149,6 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
                 
                 if (n == lenOther) { // found:
                     matte_string_remove_n_chars(str, i, lenOther);
-                    i -= lenOther;
                     if (i >= len - lenOther) {
                         matte_string_concat(str, newst); 
                     } else {
