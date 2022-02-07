@@ -367,17 +367,19 @@ void * matte_string_get_byte_data(const matteString_t * t) {
 }
 
 int matte_string_test_contains(const matteString_t * a, const matteString_t * b) {
+    if (b->len == 0 || a->len == 0) return 0;
     uint32_t i, n;
     uint32_t * itera, *iterb;
     uint32_t start = b->utf8[0];
     uint32_t ilimit = a->len - b->len;
+    uint32_t nilimit;
     if (b->len > a->len) return 0;
     for(i = 0; i <= ilimit; ++i) {
         if (a->utf8[i] == start) {
             itera = a->utf8+i;
             iterb = b->utf8;
-            ilimit = a->len-i;
-            for(n = 0; n < b->len && n < ilimit; ++n, ++itera, ++iterb) {
+            nilimit = a->len-i;
+            for(n = 0; n < b->len && n < nilimit; ++n, ++itera, ++iterb) {
                 if (*itera != *iterb) break;
             }
             if (n == b->len) {
