@@ -2,12 +2,7 @@
     Serialized instructions for use by the compiler.
 */
 
-static void write_instruction__nop(matteArray_t * insts, uint32_t lineNumber) {
-    matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_NOP;
-    matte_array_push(insts, inst);
-}
+
 
 static void write_instruction__prf(matteArray_t * insts, uint32_t lineNumber, uint32_t referrable) {
     matteBytecodeStubInstruction_t inst;

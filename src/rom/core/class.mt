@@ -1,6 +1,6 @@
 
 
-@class ::(define, name, inherits) {
+@class ::(define, name, inherits, statics) {
 
 
     @classinst = {define : define};
@@ -235,10 +235,11 @@
                         when(constructor != empty) constructor;
                         return ::{return newinst;};
                     };
-                    
                     when(key == 'inherits') classInherits;
                     when(key == 'type') selftype;
-                    
+
+                    @:r = statics[key];
+                    when(r != empty) r;
                     error(detail:'No such member of the class object.');
                 }
             }

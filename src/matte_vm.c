@@ -130,7 +130,7 @@ void matte_vm_find_in_stack(matteVM_t * vm, uint32_t id) {
         uint32_t n = 0;
         for(n = 0; n < matte_array_get_size(frame->valueStack); ++n) {
             matteValue_t v = matte_array_at(frame->valueStack, matteValue_t, n);
-            if (v.binID == MATTE_VALUE_TYPE_FUNCTION || v.binID == MATTE_VALUE_TYPE_OBJECT && v.value.id == id) {
+            if ((v.binID == MATTE_VALUE_TYPE_FUNCTION || v.binID == MATTE_VALUE_TYPE_OBJECT) && v.value.id == id) {
                 printf("@ stackframe %d, valuestack %d: %s\n", i, n, v.binID == MATTE_VALUE_TYPE_FUNCTION ? "(function)" : "(object)");
             }
         }
@@ -195,13 +195,13 @@ static uint8_t * vm_default_import(
     char * msg = malloc(DEFAULT_DUMP_SIZE);
     uint32_t totalLen = 0;
     uint32_t len;
-    while(len = fread(msg, 1, DEFAULT_DUMP_SIZE, f)) {
+    while((len = fread(msg, 1, DEFAULT_DUMP_SIZE, f))) {
         totalLen += len;
     }
     fseek(f, SEEK_SET, 0);
     uint8_t * outBuffer = malloc(totalLen);
     uint8_t * iter = outBuffer;
-    while(len = fread(msg, 1, DEFAULT_DUMP_SIZE, f)) {
+    while((len = fread(msg, 1, DEFAULT_DUMP_SIZE, f))) {
         memcpy(iter, msg, len);
         iter += len;
     }
@@ -353,7 +353,7 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
 
 
 
-
+/*
 static const char * opcode_to_str(int oc) {
     switch(oc) {
       case MATTE_OPCODE_NOP: return "NOP";
@@ -387,9 +387,11 @@ static const char * opcode_to_str(int oc) {
         return "???";
     }
 }
+*/
 
 #define STACK_SIZE() matte_array_get_size(frame->valueStack)
 #define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_value_object_pop_lock(vm->heap, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_POP_NORET() matte_value_object_pop_lock(vm->heap, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
 #define STACK_PEEK(__n__) (matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1-(__n__)))
 #define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__); matte_value_object_push_lock(vm->heap, __v__);
 
@@ -402,7 +404,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     uint32_t instCount;
     uint32_t sfscount = 0;
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
-    matteValue_t output = matte_heap_new_value(vm->heap);
 
   RELOOP:
     while(frame->pc < instCount) {
@@ -547,7 +548,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 free(vals);
 
                 for(i = 0; i < sfscount; ++i) {
-                    STACK_POP();
+                    STACK_POP_NORET();
                 }
                 sfscount = 0;
                 STACK_PUSH(v);
@@ -576,7 +577,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t i;
             matteArray_t * args = matte_array_create(sizeof(matteValue_t));
             matte_array_set_size(args, len);
-            matteValue_t t;
             for(i = 0; i < len; ++i) {
                 matte_array_at(args, matteValue_t, len-i-1) = STACK_PEEK(i);
             }
@@ -587,7 +587,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             #endif
 
             for(i = 0; i < len; ++i) {
-                STACK_POP();
+                STACK_POP_NORET();
                 matte_heap_recycle(vm->heap, matte_array_at(args, matteValue_t, i));
             }
             matte_array_destroy(args);
@@ -623,7 +623,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             len = matte_array_get_size(args);
             for(i = 0; i < len; ++i) {
-                STACK_POP();
+                STACK_POP_NORET();
                 matte_heap_recycle(vm->heap, matte_array_at(args, matteValue_t, i));
             }
             matte_array_destroy(args);
@@ -689,14 +689,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t result = matte_vm_call(vm, function, args, argnames, NULL);
 
             for(i = 0; i < argcount; ++i) {
-                STACK_POP();
+                STACK_POP_NORET();
                 matteValue_t v = matte_array_at(args, matteValue_t, i);
                 matte_heap_recycle(vm->heap, v);
-                STACK_POP(); // always a string
+                STACK_POP_NORET(); // always a string
             }
             matte_array_destroy(args);
             matte_array_destroy(argnames);
-            STACK_POP();
+            STACK_POP_NORET();
             matte_heap_recycle(vm->heap, function);
             STACK_PUSH(result);
             break;
@@ -734,7 +734,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matte_vm_raise_error_cstring(vm, "VM error: tried to access non-existent referrable operation (corrupt bytecode?).");                        
 
                 }                
-                STACK_POP();
+                STACK_POP_NORET();
                 matte_heap_recycle(vm->heap, v);
                 STACK_PUSH(vOut); // new value is pushed
             } else {
@@ -785,16 +785,18 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 if (lk) {
                     matte_value_into_copy(vm->heap, &lknp, *lk);
                 }
-                STACK_POP();
-                STACK_POP();
-                STACK_POP();
+                STACK_POP_NORET();
+                STACK_POP_NORET();
+                STACK_POP_NORET();
                 STACK_PUSH(lknp);
 
             
             } else {
                 matteValue_t * ref = matte_value_object_access_direct(vm->heap, object, key, isBracket);
                 matteValue_t refH = {};
+                int isDirect = 1;
                 if (!ref) {
+                    isDirect = 0;
                     refH = matte_value_object_access(vm->heap, object, key, isBracket);
                     ref = &refH;
                 }
@@ -817,12 +819,24 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 }               
                 
                 matte_value_object_pop_lock(vm->heap, *ref);
+                // Slower path for things like accessors
+                // Indirect access means the ref being worked with is essentially a copy, so 
+                // we need to set the object value back after the operator has been applied.
+                if (!isDirect) {
+                    matte_value_object_set(
+                        vm->heap,
+                        object,
+                        key, 
+                        refH,
+                        isBracket
+                    );
+                }
                 if (refH.binID)     
                     matte_heap_recycle(vm->heap, refH); 
                     
-                STACK_POP();
-                STACK_POP();
-                STACK_POP();
+                STACK_POP_NORET();
+                STACK_POP_NORET();
+                STACK_POP_NORET();
                 STACK_PUSH(out);
             }
 
@@ -846,8 +860,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t object = STACK_PEEK(1);            
             matteValue_t output = matte_value_object_access(vm->heap, object, key, isBracket);
             
-            STACK_POP();
-            STACK_POP();
+            STACK_POP_NORET();
+            STACK_POP_NORET();
             matte_heap_recycle(vm->heap, key);
             matte_heap_recycle(vm->heap, object);            
             STACK_PUSH(output);
@@ -877,7 +891,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             if (!matte_value_as_boolean(vm->heap, condition)) {
                 frame->pc += count;
             }
-            STACK_POP();
+            STACK_POP_NORET();
             matte_heap_recycle(vm->heap, condition);
             break;
           }
@@ -937,8 +951,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                             inst->data[0],
                             a, b
                         );
-                        STACK_POP();
-                        STACK_POP();
+                        STACK_POP_NORET();
+                        STACK_POP_NORET();
                         matte_heap_recycle(vm->heap, a);
                         matte_heap_recycle(vm->heap, b);
                         STACK_PUSH(v); // ok
@@ -962,7 +976,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                             inst->data[0],
                             a
                         );
-                        STACK_POP();
+                        STACK_POP_NORET();
                         matte_heap_recycle(vm->heap, a);
                         STACK_PUSH(v);
                     }
@@ -1020,6 +1034,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 }
 
 #define WRITE_BYTES(__T__, __VAL__) matte_array_push_n(arr, &(__VAL__), sizeof(__T__));
+#define WRITE_NBYTES(__VAL__, __N__) matte_array_push_n(arr, &(__VAL__), __N__);
 
 static void write_unistring(matteArray_t * arr, matteString_t * str) {
     uint32_t len = matte_string_get_length(str);
@@ -1054,9 +1069,12 @@ static void vm_add_built_in(
 
     
     matteArray_t * arr = matte_array_create(1);
-    uint8_t u8 = 1;
+    uint8_t tag[] = {
+        'M', 'A', 'T', 0x01, 0x06, 'B', 0x1
+    };
+    uint8_t u8;
     uint32_t u32 = index;
-    WRITE_BYTES(uint8_t, u8); 
+    WRITE_NBYTES(tag, 7); 
     WRITE_BYTES(uint32_t, u32); 
     
     u8 = matte_array_get_size(argNames);
@@ -1191,7 +1209,6 @@ matteVM_t * matte_vm_create() {
         comparator
     };
     
-    const matteString_t * filter = MATTE_VM_STR_CAST(vm, "filter");
     const matteString_t * functional_names[] = {
         object,
         loop_name
@@ -1307,7 +1324,7 @@ matteVM_t * matte_vm_create() {
     temp = MATTE_ARRAY_CAST(search_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__COUNT,     &temp, vm_ext_call__string__count);    
     temp = MATTE_ARRAY_CAST(charAt_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__CHARCODEAT,     &temp, vm_ext_call__string__charcodeat);    
     temp = MATTE_ARRAY_CAST(charAt_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__CHARAT,     &temp, vm_ext_call__string__charat);    
-    temp = MATTE_ARRAY_CAST(charAtSet_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__SETCHARCODEAT,     &temp, vm_ext_call__string__setcharat);    
+    temp = MATTE_ARRAY_CAST(charAtSet_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__SETCHARCODEAT,     &temp, vm_ext_call__string__setcharcodeat);    
     temp = MATTE_ARRAY_CAST(charAtSet_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__SETCHARAT,     &temp, vm_ext_call__string__setcharat);    
     temp = MATTE_ARRAY_CAST(&strings, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__COMBINE,     &temp, vm_ext_call__string__combine);    
     temp = MATTE_ARRAY_CAST(charAt_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__STRING__REMOVECHAR,     &temp, vm_ext_call__string__removechar);    
@@ -1630,7 +1647,6 @@ matteValue_t matte_vm_call(
 
         matteArray_t * referrables = matte_array_create(sizeof(matteValue_t));
         matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->heap, d);
-        matteValue_t empty = matte_heap_new_value(vm->heap);
 
         // slot 0 is always the context
         uint32_t i, n;
@@ -1886,7 +1902,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
  
     uint32_t jitSize = 0;
     uint8_t * jitBuffer = matte_compiler_run_with_named_references(
-        matte_string_get_c_str(src), // TODO: UTF8
+        (uint8_t*)matte_string_get_c_str(src), // TODO: UTF8
         matte_string_get_length(src),
         &jitSize,
         debug_compile_error,
@@ -2170,7 +2186,7 @@ void matte_vm_set_external_function_autoname(
         "y", "z", ""
     };
     for(i = 0; i < argCount; ++i) {
-        arr[i] = MATTE_VM_STR_CAST(vm, names[i]);
+        arr[i] = (matteString_t*)MATTE_VM_STR_CAST(vm, names[i]);
     }
     matteArray_t conv = MATTE_ARRAY_CAST(arr, matteString_t *, argCount);
     matte_vm_set_external_function(
@@ -2193,7 +2209,6 @@ void matte_vm_set_external_function(
 
 
 
-    ExternalFunctionSet_t * set;    
     uint32_t * id = matte_table_find(vm->externalFunctions, identifier);
     if (!id) {
         id = malloc(sizeof(uint32_t));

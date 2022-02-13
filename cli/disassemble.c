@@ -14,6 +14,7 @@
 
 
 #define CHOMP(__T__) *(__T__*)(iter); iter += sizeof(__T__); *size -= sizeof(__T__);
+#define CHOMPN(__P__, __N__) memcpy((void*)__P__, (void*)iter, __N__); iter += __N__; *size -= __N__;
 
 static uint32_t  str_len__;
 static uint8_t * str_buffer__ = NULL;
@@ -24,9 +25,11 @@ static uint32_t i__;
 
 
 uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
-    uint8_t ver = CHOMP(uint8_t);
-    if (ver != 1) {
-        return NULL;        
+    uint8_t tag_ver[7];
+    CHOMPN(tag_ver, 7);
+    if (tag_ver[6] != 1) {
+        printf("Function failed tag and version\n");
+        exit(0);    
     }
 
   
@@ -313,8 +316,9 @@ void matte_disassemble(char ** assemblyFilesSrc, uint32_t n, const char * output
             printf("Couldn't open input file %s (or was empty)\n", assemblyFilesSrc[i]);
             exit(1);
         }
-        while(len > 0) {
+        while(len > 0 && iter) {
             iter = print_function(out, iter, &len);
+
         } 
         free(keep);
     }    

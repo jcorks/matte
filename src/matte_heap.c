@@ -716,10 +716,8 @@ static void add_table_refs(
     while(*names) {
 
 
-        int * out = malloc(sizeof(int));
-        *out = *ids;
         
-        matte_table_insert_by_uint(table, matte_string_heap_internalize_cstring(stringHeap, *names), out);
+        matte_table_insert_by_uint(table, matte_string_heap_internalize_cstring(stringHeap, *names), (void*)(uintptr_t)*ids);
     
         names++;
         ids++;
@@ -855,6 +853,9 @@ void matte_heap_destroy(matteHeap_t * h) {
     matte_table_iter_destroy(h->routeIter);
     //matte_table_destroy(h->verifiedRoot);
     matte_string_heap_destroy(h->stringHeap);
+    matte_table_destroy(h->type_number_methods);
+    matte_table_destroy(h->type_object_methods);
+    matte_table_destroy(h->type_string_methods);
     free(h);
 }
 
@@ -1191,7 +1192,6 @@ void matte_value_into_new_function_ref_(matteHeap_t * heap, matteValue_t * v, ma
         &len
     );
     matteVMStackFrame_t frame;
-    uint16_t fileid = matte_bytecode_stub_get_file_id(stub);
 
     // save origin so that others may use referrables.
     // This happens in every case EXCEPT the 0-stub function.
@@ -1296,7 +1296,6 @@ void matte_heap_object_print_children(matteHeap_t * h, uint32_t id) {
         return;
     }
 
-    int n;
     /*
     matteTableIter_t * iter = matte_table_iter_create();
     for(
@@ -1782,7 +1781,7 @@ matteValue_t * matte_value_object_access_direct(matteHeap_t * heap, matteValue_t
             return NULL;
         }
         
-        int * out =  matte_table_find_by_uint(base, key.value.id);
+        int out = (uintptr_t)matte_table_find_by_uint(base, key.value.id);
         // for Types, its an error if no function is found.
         if (!out) {
             matteString_t * err = matte_string_create_from_c_str(
@@ -1792,7 +1791,7 @@ matteValue_t * matte_value_object_access_direct(matteHeap_t * heap, matteValue_t
             matte_vm_raise_error_string(heap->vm, err);
             return NULL;
         }
-        return matte_vm_get_external_builtin_function_as_value(heap->vm, *out);
+        return matte_vm_get_external_builtin_function_as_value(heap->vm, out);
       }
       case MATTE_VALUE_TYPE_OBJECT: {
         matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
@@ -2767,7 +2766,6 @@ static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) 
     }
 
     matte_array_set_size(h->routePather, 0);
-    matteObject_t * current = m;
     return 0;
 }
 

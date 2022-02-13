@@ -411,14 +411,13 @@ static matteString_t * import__push_path(matteArray_t * paths, const matteString
     }
 
 
-    matteString_t * base;
+    matteString_t * out;
     if (matte_array_get_size(paths) == 0) {
-        base = import__getcwd_generic();
+        out = import__getcwd_generic();
     } else {
-        base = matte_array_at(paths, matteString_t *, matte_array_get_size(paths)-1);
+        out = matte_string_clone(matte_array_at(paths, matteString_t *, matte_array_get_size(paths)-1));
     }
 
-    matteString_t * out = matte_string_clone(base);
     import__path_append(out, loc);
 
     // returns true if actually refers to something
@@ -468,6 +467,7 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
     
     uint32_t srcLen = 0;
     uint8_t * src = NULL;
+    int readonlyROM = 0;
     {
         uint32_t i;
         uint32_t len = MATTE_ROM__COUNT;
@@ -495,6 +495,7 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
     // if we have a built-in import, its actually always a 
     // pre-compiled rom. So we can use it directly
     if (src && srcLen) {
+        readonlyROM = 1;
         rom = src;
         romLen = srcLen;
     } else {
@@ -540,44 +541,49 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
 
 
             
-            
-        romLen = 0;
-        VMImportCompilerData data;
-        data.vm = vm;
-        data.filename = (matteString_t *)str;
-        rom = matte_compiler_run(
-            src, 
-            srcLen, 
-            &romLen, 
-            import_compile_error,
-            &data
-        );
-        free(src);
+        
+        const uint8_t * tag = src;
+        if (
+            srcLen < 7     || 
+            tag[0] != 'M'  ||
+            tag[1] != 'A'  ||
+            tag[2] != 'T'  ||
+            tag[3] != 0x01 ||
+            tag[4] != 0x06 ||
+            tag[5] != 'B'  ||
+            tag[6] != 1
+        ) {
+            romLen = 0;
+            VMImportCompilerData data;
+            data.vm = vm;
+            data.filename = (matteString_t *)str;
+            rom = matte_compiler_run(
+                src, 
+                srcLen, 
+                &romLen, 
+                import_compile_error,
+                &data
+            );
+            free(src);        
+        } else {
+            rom = src;
+            romLen = srcLen;
+        }
     }
     
 
 
     if (rom && romLen) {
         matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(vm->heap, fileid, rom, romLen);
-
+        if (!readonlyROM) free(rom);
         matte_vm_add_stubs(vm, stubs);
         matte_array_destroy(stubs);
-
-
-        matteValue_t result = matte_heap_new_value(vm->heap);
-
-        matteValue_t * ref = malloc(sizeof(matteValue_t));
-        *ref = result;
-        
-
-
 
         matteValue_t cached = matte_vm_run_fileid(
             vm,
             fileid,
             params
         );
-        matte_value_into_copy(vm->heap, ref, cached);
         return cached;
     }
 

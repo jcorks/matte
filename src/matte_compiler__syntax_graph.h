@@ -127,10 +127,6 @@ enum {
 };
 
 
-// since compilation only allow for external functions 
-// on error which result in termination of valid compilation,
-// settings are controlled using statics.
-static int OPTION__NAMED_REFERENCES = 0;
 
 typedef struct matteSyntaxGraphWalker_t matteSyntaxGraphWalker_t;
 typedef struct matteSyntaxGraphNode_t matteSyntaxGraphNode_t;

@@ -23,12 +23,12 @@ matteStringHeap_t * matte_string_heap_create() {
 }
 
 uint32_t matte_string_heap_internalize(matteStringHeap_t * h, const matteString_t * str) {
-    uint32_t id = (uint32_t) matte_table_find(h->strbufferToID, matte_string_get_c_str(str));
+    uint32_t id = (uintptr_t) matte_table_find(h->strbufferToID, matte_string_get_c_str(str));
     if (id == 0) {
         matteString_t * interned = matte_string_clone(str);
         id = matte_array_get_size(h->strings);
         matte_array_push(h->strings, interned);
-        matte_table_insert(h->strbufferToID, matte_string_get_c_str(interned), (void*)id);
+        matte_table_insert(h->strbufferToID, matte_string_get_c_str(interned), (void*)(uintptr_t)id);
         return id;
     } else {
         return id;
@@ -36,12 +36,12 @@ uint32_t matte_string_heap_internalize(matteStringHeap_t * h, const matteString_
 }
 uint32_t matte_string_heap_internalize_cstring(matteStringHeap_t * h, const char * strc) {
     matteString_t * str = matte_string_create_from_c_str(strc);
-    uint32_t id = (uint32_t) matte_table_find(h->strbufferToID, matte_string_get_c_str(str));
+    uint32_t id = (uintptr_t) matte_table_find(h->strbufferToID, matte_string_get_c_str(str));
     if (id == 0) {
         matteString_t * interned = str;
         id = matte_array_get_size(h->strings);
         matte_array_push(h->strings, interned);
-        matte_table_insert(h->strbufferToID, matte_string_get_c_str(interned), (void*)id);
+        matte_table_insert(h->strbufferToID, matte_string_get_c_str(interned), (void*)(uintptr_t)id);
         return id;
     } else {
         matte_string_destroy(str);

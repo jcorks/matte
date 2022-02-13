@@ -91,7 +91,9 @@ static void function_to_stub(FILE * f, uint32_t id) {
     instruction * instructions = 0;
     uint32_t instructionsCount = 0;
     uint32_t instructionsAlloc = 0;
-    uint8_t bytecodeVersion = 1;
+    uint8_t tag_bytecodeVersion[] = {
+        'M', 'A', 'T', 0x01, 0x06, 'B', 0x1
+    };
 
 
     while(next_line(f)) {
@@ -187,7 +189,7 @@ static void function_to_stub(FILE * f, uint32_t id) {
             }
 
             uint32_t i;
-            fwrite(&bytecodeVersion, 1, sizeof(uint8_t), out);
+            fwrite(&tag_bytecodeVersion, 7, sizeof(uint8_t), out);
             fwrite(&stubid, 1, sizeof(uint32_t), out);
             fwrite(&nargs, 1, sizeof(uint8_t), out);
             for(i = 0; i < nargs; ++i) {

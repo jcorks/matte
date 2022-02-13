@@ -18,6 +18,10 @@
 #define MATTE_TOKEN_END -1
 
 
+// since compilation only allow for external functions 
+// on error which result in termination of valid compilation,
+// settings are controlled using statics.
+static int OPTION__NAMED_REFERENCES = 0;
 
 typedef struct matteToken_t matteToken_t ;
 
@@ -119,7 +123,7 @@ static matteSyntaxGraphWalker_t * matte_syntax_graph_walker_create(
 static void matte_syntax_graph_walker_destroy(matteSyntaxGraphWalker_t *);
 
 // Returns the first parsed token from the user source
-static matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraphWalker_t * g);
+//static matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraphWalker_t * g);
 
 // compiles all nodes into bytecode function blocks.
 typedef struct matteFunctionBlock_t matteFunctionBlock_t;
@@ -582,7 +586,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
     switch(ty) {
       case MATTE_TOKEN_LITERAL_NUMBER: {
         // convert into ascii
-        int ccount = 0;
         int isDone = 0;
         matteString_t * out = matte_string_create();
         uint8_t * prev;
@@ -1500,9 +1503,9 @@ static matteString_t * matte_syntax_graph_node_get_string(
         uint32_t lenn = node->split.count;
         uint32_t n;
         for(n = 0; n < lenn; ++n) {
-            uint32_t i;
+            //uint32_t i;
             matteSyntaxGraphNode_t * nodeSub = node->split.nodes[n];
-            uint32_t len = nodeSub->split.count;
+            //uint32_t len = nodeSub->split.count;
 
             matte_string_concat(message, matte_syntax_graph_node_get_string(GRAPHSRC, nodeSub));
             if (n == lenn-2)
@@ -1524,7 +1527,9 @@ static void matte_syntax_graph_print_error(
     matteSyntaxGraphNode_t * node
 ) {
     matteString_t * message = matte_string_create_from_c_str("Syntax Error: Expected ");
-    matte_string_concat(message, matte_syntax_graph_node_get_string(GRAPHSRC, node));
+    matteString_t * c = matte_syntax_graph_node_get_string(GRAPHSRC, node);
+    matte_string_concat(message, c);
+    matte_string_destroy(c);
 
     matte_string_concat_printf(message, " but received '");
     matte_string_append_char(message, matte_tokenizer_peek_next(graph->tokenizer));
@@ -1540,7 +1545,7 @@ static void matte_syntax_graph_print_error(
     matte_string_destroy(message);
 }
 
-#ifdef MATTE_DEBUG
+/*
 static void print_graph_node(matteSyntaxGraphWalker_t * g, matteSyntaxGraphNode_t * n) {
     if (!n) {
         printf("<null>\n");
@@ -1592,7 +1597,7 @@ static void print_graph_node(matteSyntaxGraphWalker_t * g, matteSyntaxGraphNode_
     }
 }
 
-#endif
+*/
 
 
 
@@ -1788,7 +1793,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
                     fflush(stdout);
 
                 #endif
-                while(out = matte_syntax_graph_walk_helper(graph, out, node->construct, 0, error)) {
+                while((out = matte_syntax_graph_walk_helper(graph, out, node->construct, 0, error))) {
                     // The only way to validly finish a path
                     if (out && out->type == MATTE_SYNTAX_GRAPH_NODE__END) {
                         matte_table_clear(graph->tried);
@@ -1848,7 +1853,7 @@ int matte_syntax_graph_continue(
         return 0;
     }
 
-    matteSyntaxGraphRoot_t * root = matte_syntax_graph_get_root(GRAPHSRC, constructID);
+    //matteSyntaxGraphRoot_t * root = matte_syntax_graph_get_root(GRAPHSRC, constructID);
     matteSyntaxGraphNode_t topNode = {0};
     topNode.type = MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT; 
     topNode.construct = constructID;
@@ -1861,7 +1866,7 @@ int matte_syntax_graph_continue(
 
 
     matteSyntaxGraphNode_t * next = &topNode;
-    while(next = matte_syntax_graph_walk(graph, next, constructID, 0)) {
+    while((next = matte_syntax_graph_walk(graph, next, constructID, 0))) {
         // The only way to validly finish a path
         if (next && next->type == MATTE_SYNTAX_GRAPH_NODE__END) {
             return 1;
@@ -1871,11 +1876,11 @@ int matte_syntax_graph_continue(
     return 0;
 }
 
-
+/*
 matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraphWalker_t * g) {
     return g->first;
 }
-
+*/
 
 
 static void matte_token_print__helper(matteSyntaxGraphWalker_t * g, matteToken_t * t, matteString_t * str) {
@@ -2088,7 +2093,6 @@ static uint32_t function_intern_string(
 ) {
     uint32_t i;
     uint32_t len = matte_array_get_size(b->strings);
-    int found = 0;
     // look through interned strings 
     for(i = 0; i < len; ++i) {
         if (matte_string_test_eq(str, matte_array_at(b->strings, matteString_t *, i))) {
@@ -2784,6 +2788,8 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
+      default:;
+        
     }
 
     matte_syntax_graph_print_compile_error(g, iter, "Unrecognized value token (internal error)");
@@ -3163,6 +3169,7 @@ static int token_is_assignment_derived(matteTokenType_t t) {
       case MATTE_TOKEN_ASSIGNMENT_BLEFT:
       case MATTE_TOKEN_ASSIGNMENT_BRIGHT:
         return 1;
+      default:;
     }
     return 0;
 }   
@@ -3394,7 +3401,6 @@ static matteArray_t * compile_expression(
     // whose order of computation depends on its preceding operator
     int appearanceID = 0;
     int lvalue;
-    int vstartType;
 
     // if an expression uses && or ||, we need special 
     // editing to do short circuiting 
@@ -3414,7 +3420,6 @@ static matteArray_t * compile_expression(
 
         // by this point, all complex sub-expressions would have been 
         // reduced, so now we can just work with raw values
-        vstartType = iter->ttype;
         matteArray_t * valueInst = compile_value(g, block, functions, &iter, &lvalue);
         if (!valueInst) {
             goto L_FAIL;
@@ -4014,11 +4019,14 @@ void * matte_function_block_array_to_bytecode(
     uint32_t nStrings;
 
     assert(sizeof(matteBytecodeStubInstruction_t) == sizeof(uint32_t) + sizeof(int32_t) + sizeof(uint64_t));
-
+    uint8_t tag[] = {
+        'M', 'A', 'T', 0x01, 0x06, 'B', 0x1
+    };
     for(i = 0; i < len; ++i) {
         matteFunctionBlock_t * block = matte_array_at(arr, matteFunctionBlock_t *, i);
+
         nSlots = 1;
-        WRITE_BYTES(uint8_t, nSlots); // bytecode version
+        WRITE_NBYTES(7, tag); // HEADER + bytecode version
         WRITE_BYTES(uint32_t, block->stubID);
         nSlots = matte_array_get_size(block->args);
         WRITE_BYTES(uint8_t, nSlots);

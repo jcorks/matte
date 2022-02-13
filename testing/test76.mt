@@ -8,4 +8,4 @@ s = String.replace(string:s, key:'am', with:'are');
 s = String.replace(string:s, key:'We', with:'no one');
 s = String.replace(string:s, key:'store', with:'market');
 s = String.replace(string:s, key:' ', with:'-');
-return (String(from:s));
+return s;

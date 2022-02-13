@@ -85,8 +85,6 @@ static void matte_string_concat_cstr(matteString_t * s, const uint8_t * cstr, ui
     }
 
     uint32_t val;
-    uint32_t i;
-    uint32_t * iter = s->utf8 + s->len; 
     do {
         val = utf8_next_char((uint8_t**)&cstr);
         if (val) {
@@ -129,7 +127,7 @@ matteString_t * matte_string_create_from_c_str(const char * format, ...) {
     
 
     matteString_t * out = matte_string_create();
-    matte_string_set_cstr(out, newBuffer, lenReal);
+    matte_string_set_cstr(out, (uint8_t*)newBuffer, lenReal);
     free(newBuffer);
     return out;
 }
@@ -190,7 +188,7 @@ void matte_string_concat_printf(matteString_t * s, const char * format, ...) {
     
 
 
-    matte_string_concat_cstr(s, newBuffer, lenReal);
+    matte_string_concat_cstr(s, (const uint8_t*)newBuffer, lenReal);
     free(newBuffer);
 }
 
@@ -243,10 +241,10 @@ const matteString_t * matte_string_get_substr(
 const char * matte_string_get_c_str(const matteString_t * tsrc) {
     if (!tsrc->cstrtemp) {
         matteString_t * t = (matteString_t *)tsrc;
-        uint32_t i, n;
+        uint32_t i;
         uint32_t len = t->len;
         t->cstrtemp = malloc(len*sizeof(uint32_t)+1);
-        uint8_t * iter = t->cstrtemp;
+        uint8_t * iter = (uint8_t*)t->cstrtemp;
         for(i = 0; i < len; ++i) {
             uint32_t val = t->utf8[i];
             if (val < 0x80) {

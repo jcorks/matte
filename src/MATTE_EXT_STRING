@@ -149,7 +149,6 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
                 
                 if (n == lenOther) { // found:
                     matte_string_remove_n_chars(str, i, lenOther);
-                    i -= lenOther;
                     if (i >= len - lenOther) {
                         matte_string_concat(str, newst); 
                     } else {
@@ -303,7 +302,6 @@ static matteValue_t vm_ext_call__string__combine(matteVM_t * vm, matteValue_t fn
     matte_value_into_number(vm->heap, &out, -1);
     uint32_t len = matte_value_object_get_number_key_count(vm->heap, args[0]);
     uint32_t i;
-    uint32_t ctout = 0;
     for(i = 0; i < len; ++i) {
         if (vm->pendingCatchable) break;
         matteValue_t v = matte_value_as_string(vm->heap, matte_value_object_access_index(vm->heap, args[0], i));
@@ -478,7 +476,6 @@ static matteValue_t vm_ext_call__string__scan(matteVM_t * vm, matteValue_t fn, c
     len = matte_array_get_size(anchors);
     int offset = 0;
     int lastoffset = 0;
-    int isstart = 0;
     for(i = 0; i < len; ++i) {
         ScanAnchor * anchor = &matte_array_at(anchors, ScanAnchor, i);
         if (anchor->str[0] == 0 && (anchor->start != 0 && anchor->start != lenfmt)) {
