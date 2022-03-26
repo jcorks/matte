@@ -72,7 +72,9 @@ void matte_string_heap_print(matteStringHeap_t * h) {
     uint32_t i;
     uint32_t len = matte_array_get_size(h->strings);
     for(i = 0; i < len; ++i) {
-        printf("%d  | %s\n", i, matte_string_get_c_str(matte_array_at(h->strings, matteString_t *, i)));
+        matteString_t * str = matte_array_at(h->strings, matteString_t *, i);
+        if (str)
+            printf("%d  | %s\n", i, matte_string_get_c_str(str));
     }
 }
 #endif

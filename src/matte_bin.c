@@ -91,21 +91,10 @@ void matte_bin_recycle(matteBin_t * b, uint32_t id) {
     matte_array_push(b->dead, tag);
 }
 
-/*
-matteArray_t * matte_bin_get_all(const matteBin_t * b) {
-    matteArray_t * out = matte_array_create(sizeof(void*));
-    uint32_t i;
-    uint32_t len = matte_array_get_size(b->alive);
-    void ** objs = matte_array_get_data(b->alive);
 
-    for(i = 0; i < len; ++i) {
-        if (objs[i]) {
-            matte_array_push(out, objs[i]);
-        }
-    }
-
-    return out;
+const matteArray_t * matte_bin_get_active(const matteBin_t * b) {
+    return b->alive;
 }
-*/
+
 
 

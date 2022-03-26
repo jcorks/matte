@@ -31,7 +31,7 @@
         b1:state[index], 
         b2:state[after]
     )) {
-        (0, 2, 7, 5): false,
+        (0, 4, 7): false,
         default:      true
     };
 };
@@ -79,7 +79,7 @@ state[SWCA_WIDTH/2] = true;
 
 loop(func:::{
     // get the full state every line.
-    if (progress == SWCA_WIDTH) ::<= {
+    if (progress == SWCA_WIDTH)::<={
         for(in:[0, SWCA_WIDTH], do:::(i) {
             @next = getNextState(state:state, index:i);
             stateNext[i] = next;

@@ -1726,7 +1726,10 @@ matteValue_t matte_vm_call(
 
         // ref copies of values happen here.
         matte_value_into_new_object_array_ref(vm->heap, &frame->referrable, referrables);
+
         #ifdef MATTE_DEBUG__HEAP
+        printf("Context    for frame %d is: %d\n", vm->stacksize, frame->context.value.id);
+        printf("Referrable for frame %d is: %d\n", vm->stacksize, frame->referrable.value.id);
         {
             uint32_t instcount;
             const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame->stub, &instcount);                    

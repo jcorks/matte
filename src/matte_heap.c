@@ -24,29 +24,22 @@ typedef struct {
     matteArray_t * isa;    
 } MatteTypeData;
 
+typedef struct matteObject_t matteObject_t;
+
+
+
 struct matteHeap_t {    
     matteBin_t * sortedHeap;
     
     
     
     
-    // objects with suspected ref count 0.
-    // needs a double check before confirming.
-    // matteObject_t *
-    matteArray_t * toSweep;
-
-
-    // Collection of objects that were detected to have been 
-    // untraceable to a root object. This means that they are 
-    // effectively untraceable and should be considered similarly 
-    // to having a refcount of 0 (recycled)
-    matteArray_t * toSweep_rootless;
-    
     uint16_t gcLocked;
     int pathCheckedPool;
 
     // pool for value types.
     uint32_t typepool;
+    uint64_t checkID;
 
 
     matteValue_t type_empty;
@@ -75,7 +68,7 @@ struct matteHeap_t {
     uint16_t verifiedCycle;
     uint16_t cooldown;
     int shutdown;
-
+    uint32_t gcRequestStrength;
     matteVM_t * vm;
 
     matteStringHeap_t * stringHeap;
@@ -105,6 +98,11 @@ struct matteHeap_t {
     matteValue_t specialString_foreach;
     matteValue_t specialString_name;
     matteValue_t specialString_inherits;
+    
+    
+    matteArray_t * toRemove;
+    matteObject_t * root;
+    
 };
 
 
@@ -120,15 +118,10 @@ typedef struct {
 } CapturedReferrable_t;
 
 
-typedef struct {
+struct matteObject_t{
     // any user data. Defaults to null
     void * userdata;
     
-    // if currently waiting to update its root status
-    uint16_t toSweep;
-    uint16_t dormant;
-
-    uint32_t isRootless;
     // when refs are associated with other references,
     // a list of currently-active parents (owners of this ref) and 
     // children (the refs that consider this ref an owner) are 
@@ -145,13 +138,19 @@ typedef struct {
     //matteTable_t * refChildren;
     //matteTable_t * refParents;
 
-    // root refs keep children ref chains alive.
-    int isRootRef;
-    uint16_t verifiedRoot;
-    uint16_t isFunction;
+    // tri-color state.
+    // 
+    uint8_t rootState;
+    uint8_t toRemove;
+    uint8_t isFunction;
+    uint8_t dormant;
+    uint64_t checkID;
+    matteObject_t * prevRoot;
+    matteObject_t * nextRoot;
+    
     // id within sorted heap.
     uint32_t heapID;
-    int routeChecked;
+    uint32_t reachesRoot;
     void (*nativeFinalizer)(void * objectUserdata, void * functionUserdata);
     void * nativeFinalizerData;
 
@@ -193,7 +192,7 @@ typedef struct {
         } function;
     };
 
-} matteObject_t;
+};
 
 
 
@@ -237,22 +236,29 @@ static matteValue_t * object_lookup(matteHeap_t * heap, matteObject_t * m, matte
 }
 
 typedef struct {
+    matteObject_t * ref;
     uint32_t linkcount;
-    uint32_t id;
 } MatteHeapParentChildLink;
-static void object_link_parent(matteObject_t * parent, matteObject_t * child) {
+
+
+
+
+
+
+static void object_link_parent(matteHeap_t * h, matteObject_t * parent, matteObject_t * child) {
     uint32_t i;
     uint32_t lenP = matte_array_get_size(parent->refChildren);
     uint32_t lenC = matte_array_get_size(child->refParents);
 
+
     MatteHeapParentChildLink * iter = matte_array_get_data(parent->refChildren);
     for(i = 0; i < lenP; ++i, ++iter) {
-        if (iter->id == child->heapID) {
+        if (iter->ref == child) {
             iter->linkcount++;
 
             iter = matte_array_get_data(child->refParents);            
             for(i = 0; i < lenC; ++i, ++iter) {
-                if (iter->id == parent->heapID) {
+                if (iter->ref == parent) {
                     iter->linkcount++;
                     return;                
                 }
@@ -265,36 +271,38 @@ static void object_link_parent(matteObject_t * parent, matteObject_t * child) {
     matte_array_set_size(parent->refChildren, lenP+1);
     iter = &matte_array_at(parent->refChildren, MatteHeapParentChildLink, lenP);
     iter->linkcount = 1;
-    iter->id = child->heapID;
+    iter->ref = child;
 
     matte_array_set_size(child->refParents, lenC+1);
     iter = &matte_array_at(child->refParents, MatteHeapParentChildLink, lenC);
     iter->linkcount = 1;
-    iter->id = parent->heapID;
-
-
+    iter->ref = parent;
+    
+    
 
     //void * p = matte_table_find_by_uint(parent->refChildren, child->heapID);
     //matte_table_insert_by_uint(child->refParents,   parent->heapID, p+1);
     //matte_table_insert_by_uint(parent->refChildren, child->heapID,  p+1);
 }
 
-static void object_unlink_parent(matteObject_t * parent, matteObject_t * child) {
+static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteObject_t * child) {
     uint32_t i, n;
     uint32_t lenP = matte_array_get_size(parent->refChildren);
     uint32_t lenC = matte_array_get_size(child->refParents);
 
     MatteHeapParentChildLink * iter = matte_array_get_data(parent->refChildren);
     for(i = 0; i < lenP; ++i, ++iter) {
-        if (iter->id == child->heapID) {
+        if (iter->ref == child) {
 
             MatteHeapParentChildLink * iterO = matte_array_get_data(child->refParents);            
             for(n = 0; n < lenC; ++n, ++iterO) {
-                if (iterO->id == parent->heapID) {
+                if (iterO->ref == parent) {
                                            
                     if (iter->linkcount == 1) {
                         matte_array_remove(parent->refChildren, i);
                         matte_array_remove(child->refParents, n);
+                        
+                        h->gcRequestStrength++;
                     } else {
                         iter->linkcount--;
                         iterO->linkcount--;
@@ -322,19 +330,19 @@ static void object_unlink_parent(matteObject_t * parent, matteObject_t * child) 
     */
 }
 
-static void object_unlink_parent_child_only_all(matteObject_t * parent, matteObject_t * child) {
+static void object_unlink_parent_child_only_all(matteHeap_t * h, matteObject_t * parent, matteObject_t * child) {
     uint32_t n;
     uint32_t lenC = matte_array_get_size(child->refParents);
 
     MatteHeapParentChildLink * iterO = matte_array_get_data(child->refParents);            
     for(n = 0; n < lenC; ++n, ++iterO) {
-        if (iterO->id == parent->heapID) {
+        if (iterO->ref == parent) {
                                    
             matte_array_remove(child->refParents, n);
             return;                
         }
     }
-
+    h->gcRequestStrength++;
 
 
     /*
@@ -347,17 +355,19 @@ static void object_unlink_parent_child_only_all(matteObject_t * parent, matteObj
     */
 }
 
-static void object_unlink_parent_parent_only_all(matteObject_t * parent, matteObject_t * child) {
+static void object_unlink_parent_parent_only_all(matteHeap_t * h, matteObject_t * parent, matteObject_t * child) {
     uint32_t i;
     uint32_t lenP = matte_array_get_size(parent->refChildren);
 
     MatteHeapParentChildLink * iter = matte_array_get_data(parent->refChildren);
     for(i = 0; i < lenP; ++i, ++iter) {
-        if (iter->id == child->heapID) {                                           
+        if (iter->ref == child) {                                           
             matte_array_remove(parent->refChildren, i);
             return;                
         }
     }
+    h->gcRequestStrength++;
+
     /*
     void * p = matte_table_find_by_uint(parent->refChildren, child->heapID);
     if (p == (void*)0x1) {
@@ -369,11 +379,11 @@ static void object_unlink_parent_parent_only_all(matteObject_t * parent, matteOb
 
 
 static void object_link_parent_value(matteHeap_t * heap, matteObject_t * parent, const matteValue_t * child) {
-    object_link_parent(parent,  matte_bin_fetch(heap->sortedHeap, child->value.id));
+    object_link_parent(heap, parent,  matte_bin_fetch(heap->sortedHeap, child->value.id));
 }
 
 static void object_unlink_parent_value(matteHeap_t * heap, matteObject_t * parent, const matteValue_t * child) {
-    object_unlink_parent(parent,  matte_bin_fetch(heap->sortedHeap, child->value.id));
+    object_unlink_parent(heap, parent,  matte_bin_fetch(heap->sortedHeap, child->value.id));
 }
 
 
@@ -538,7 +548,6 @@ static void * create_object() {
     //out->refParents = matte_table_create_hash_pointer();
     out->refChildren = matte_array_create(sizeof(MatteHeapParentChildLink));
     out->refParents = matte_array_create(sizeof(MatteHeapParentChildLink));
-
     return out;
 }
 
@@ -569,7 +578,6 @@ static void destroy_object(void * d) {
         matte_table_destroy(out->table.keyvalues_types);
         matte_table_destroy(out->table.keyvalues_object);
         matte_array_destroy(out->table.keyvalues_number);
-    
     }
 
 
@@ -736,12 +744,11 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->routeIter = matte_table_iter_create();
     //out->verifiedRoot = matte_table_create_hash_pointer();
     out->stringHeap = matte_string_heap_create();
+    out->checkID = 101;
+    out->toRemove = matte_array_create(sizeof(matteObject_t*));
 
     MatteTypeData dummyD = {};
     matte_array_push(out->typecode2data, dummyD);
-    out->toSweep = matte_array_create(sizeof(matteObject_t *));
-    out->toSweep_rootless = matte_array_create(sizeof(matteObject_t *));
-
 
     out->type_empty = matte_heap_new_value(out);
     out->type_boolean = matte_heap_new_value(out);
@@ -827,7 +834,7 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
 void matte_heap_destroy(matteHeap_t * h) {
 
     h->shutdown = 1;
-    while(matte_array_get_size(h->toSweep) || matte_array_get_size(h->toSweep_rootless)) {
+    while(matte_array_get_size(h->toRemove)) {
         h->cooldown = 0;
         matte_heap_garbage_collect(h);
     }
@@ -837,8 +844,6 @@ void matte_heap_destroy(matteHeap_t * h) {
     assert(matte_heap_report(h) == 0);
     #endif
 
-    matte_array_destroy(h->toSweep);
-    matte_array_destroy(h->toSweep_rootless);
     matte_bin_destroy(h->sortedHeap);
     uint32_t i;
     uint32_t len = matte_array_get_size(h->typecode2data);
@@ -987,6 +992,11 @@ static void prep_object_as_table(matteObject_t * d) {
         d->table.keyvalue_false.binID = 0;       
         d->isFunction = 0;
     }
+    
+    d->rootState = 0;
+    d->toRemove = 0;
+    d->prevRoot = NULL;
+    d->nextRoot = NULL;
 }
 
 static void prep_object_as_function(matteObject_t * d) {
@@ -1002,6 +1012,10 @@ static void prep_object_as_function(matteObject_t * d) {
         d->function.types = NULL;
         d->isFunction = 1;
     }
+    d->rootState = 0;
+    d->toRemove = 0;
+    d->prevRoot = NULL;
+    d->nextRoot = NULL;
 }
 
 void matte_value_into_new_object_ref_(matteHeap_t * heap, matteValue_t * v) {
@@ -1308,7 +1322,7 @@ void matte_heap_object_print_children(matteHeap_t * h, uint32_t id) {
     uint32_t i;
     uint32_t len = matte_array_get_size(m->refChildren);
     for(i = 0; i < len; ++i) {
-        uint32_t nc = matte_array_at(m->refChildren, MatteHeapParentChildLink, i).id;
+        uint32_t nc = matte_array_at(m->refChildren, MatteHeapParentChildLink, i).ref->heapID;
         printf("  {%d}", nc);
         printf("\n");
 
@@ -1335,7 +1349,7 @@ void matte_heap_object_print_parents(matteHeap_t * h, uint32_t id) {
     uint32_t len = matte_array_get_size(m->refParents);
     for(i = 0; i < len; ++i) {
 
-        uint32_t nc = matte_array_at(m->refParents, MatteHeapParentChildLink, i).id;
+        uint32_t nc = matte_array_at(m->refParents, MatteHeapParentChildLink, i).ref->heapID;
         printf("  {%d}", nc);
         printf("\n");
 
@@ -1382,8 +1396,7 @@ void matte_value_print(matteHeap_t * heap, matteValue_t v) {
         if (m->dormant) {
             printf("  (WARNING: this object is currently dormant.)\n") ;          
         }
-        printf("  RootLock:  %d\n", m->isRootRef);
-        printf("  ToSweep?   %s\n", m->toSweep ? "true" : "false");
+        printf("  RootLock:  %d\n", m->rootState);
         printf("  Parents?   %s\n", !matte_array_get_size(m->refParents) ? "false" : "true");
         matte_heap_object_print_parents(heap, m->heapID);
         printf("  Children?  %s\n", !matte_array_get_size(m->refChildren) ? "false" : "true");
@@ -1835,21 +1848,76 @@ matteValue_t matte_value_object_access_index(matteHeap_t * heap, matteValue_t v,
     matte_heap_recycle(heap, keyO);
     return result;
 }
+static void print_list(matteHeap_t * h) {
+    matteObject_t * r = h->root;
+    while(r) {
+        printf("{%d}-", r->heapID);
+        r = r->nextRoot;
+    }
+    printf("|\n");
+}
+
+static void push_root_node(matteHeap_t * h, matteObject_t * m) {
+    m->nextRoot = NULL;
+    m->prevRoot = NULL;
+    //print_list(h);
+    if (!h->root)
+        h->root = m;
+    else {
+        m->nextRoot = h->root;
+        h->root->prevRoot = m;
+        h->root = m;
+    }
+    //print_list(h);
+
+}
+
+static void remove_root_node(matteHeap_t * h, matteObject_t * m) {
+    //print_list(h);
+    if (h->root == m) { // no prev
+        h->root = m->nextRoot;
+        if (h->root)
+            h->root->prevRoot = NULL;
+    } else {
+        if (m->prevRoot) {
+            m->prevRoot->nextRoot = m->nextRoot;
+        }
+        
+        if (m->nextRoot) {
+            m->nextRoot->prevRoot = m->prevRoot;
+        }
+    }
+    //print_list(h);
+    m->nextRoot = NULL;
+    m->prevRoot = NULL;
+}
 
 
 void matte_value_object_push_lock_(matteHeap_t * heap, matteValue_t v) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT && v.binID != MATTE_VALUE_TYPE_FUNCTION) return;
     matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
-    m->isRootRef++;
+    if (m->rootState == 0)
+        push_root_node(heap, m);
+    m->rootState++;
+    #ifdef MATTE_DEBUG__HEAP    
+    printf("%d + at state %d\n", v.value.id, m->rootState);
+    #endif
 }
 
 void matte_value_object_pop_lock_(matteHeap_t * heap, matteValue_t v) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT && v.binID != MATTE_VALUE_TYPE_FUNCTION) return;
     matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
-    if (m->isRootRef)
-        m->isRootRef--;
-    if (!m->isRootRef) 
-        matte_heap_recycle(heap, v);
+    if (m->rootState) {
+        m->rootState--;
+        if (m->rootState == 0) {
+            remove_root_node(heap, m);        
+            matte_heap_recycle(heap, v);
+            heap->gcRequestStrength++;
+        }
+    }     
+    #ifdef MATTE_DEBUG__HEAP    
+    printf("%d - at state %d\n", v.value.id, m->rootState);
+    #endif
 }
 
 
@@ -2703,108 +2771,43 @@ void matte_heap_recycle_(
     int line_
 #endif    
 ) {
+    
     if (v.binID == MATTE_VALUE_TYPE_OBJECT || v.binID == MATTE_VALUE_TYPE_FUNCTION) {
         matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
-        if (!m) return; // normal for cycles
-        // already handled as part of a rootless sweep.
-
-        if (m->isRootless) return;
-        if (m->toSweep) return;
-
-        m->toSweep = 1;
-        matte_array_push(heap->toSweep, m);
+        if (!m) return;
+        if (!m->toRemove) {
+            matte_array_push(heap->toRemove, m);
+            m->toRemove = 1;
+        }
     } 
-}
-
-
-
-
-
-// checks to see if the object has a reference back to its parents
-static int matte_object_check_ref_path_root(matteHeap_t * h, matteObject_t * m) {
-
-    if (m->isRootRef) return 1;
-    if (m->verifiedRoot == h->verifiedCycle) return 1;
     
-    matte_array_push(h->routePather, m);
-    if (h->pathCheckedPool == 0) h->pathCheckedPool = 1;
-    int CHECKED = h->pathCheckedPool++;
-    m->routeChecked = CHECKED;
-    uint32_t i;
-    uint32_t len;
-    uint32_t size = 1;
-    MatteHeapParentChildLink * iter;
-    while(size) {
-        matteObject_t * current = matte_array_at(h->routePather, matteObject_t *, --size);
-        
-
-        if (current->isRootRef || (current->verifiedRoot == h->verifiedCycle)) {
-            m->verifiedRoot = h->verifiedCycle;
-            matte_array_set_size(h->routePather, 0);
-            return 1;
-        }
-        
-        
- 
-
-        len = matte_array_get_size(current->refParents);
-        iter = matte_array_get_data(current->refParents);
-        matte_array_set_size(h->routePather, size+len);
-        for(i = 0; i < len; ++i , ++iter) {
-            uint32_t nc = iter->id;
-            current = matte_bin_fetch(h->sortedHeap, nc);
-            if (current->routeChecked != CHECKED) {
-                current->routeChecked = CHECKED;
-                #ifdef MATTE_DEBUG__HEAP
-                    assert(matte_bin_fetch(h->sortedHeap, nc));
-                #endif
-
-                matte_array_at(h->routePather, matteObject_t *, size++) = current;
-            }                        
-        }
-
-    }
-
-    matte_array_set_size(h->routePather, 0);
-    return 0;
 }
 
-// add all objects in the group / cycle to the special rootless bin.
-// There they will be handled safely (and separately) from the 
-// normal sweep.
-static void matte_object_group_add_to_rootless_bin(matteHeap_t * h, matteObject_t * m) {
-    if (!m->isRootless) {
-        m->isRootless = 1;
-        matte_array_push(h->toSweep_rootless, m);
-    }
-}
+
+
+
+
 
 
 static void object_cleanup(matteHeap_t * h) {
-
     matteTableIter_t * iter = matte_table_iter_create();
-    uint32_t o;
-    uint32_t olen = matte_array_get_size(h->toSweep_rootless);
-    for(o = 0; o < olen; ++o) {
-        matteObject_t * m = matte_array_at(h->toSweep_rootless, matteObject_t *, o);
+    if (!matte_array_get_size(h->toRemove)) return;
+
+
+    matteArray_t * toRemove = matte_array_clone(h->toRemove);
+    matte_array_set_size(h->toRemove, 0);
+
+    uint32_t i;
+    uint32_t len = matte_array_get_size(toRemove);
+    for(i = 0; i < len; ++i) {
+        matteObject_t * m = matte_array_at(toRemove, matteObject_t *, i);
+        m->toRemove = 0;
+        if (m->checkID == h->checkID && m->reachesRoot) continue;
+        if (m->rootState) continue;
         if (m->dormant) continue;
-
-        if (m->toSweep) {
-            // need to remove from sweep list :(
-            uint32_t i;
-            uint32_t len = matte_array_get_size(h->toSweep);
-            for(i = 0; i < len; ++i) {
-                if (matte_array_at(h->toSweep, matteObject_t *, i) == m) {
-                    matte_array_remove(h->toSweep, i);
-                    break;
-                }
-            }
-            m->toSweep = 0;
-        }
-
+        
         #ifdef MATTE_DEBUG__HEAP
 
-            assert(!m->isRootRef);
             printf("--RECYCLING OBJECT %d\n", m->heapID);
 
             {
@@ -2817,7 +2820,6 @@ static void object_cleanup(matteHeap_t * h) {
 
 
 
-        m->isRootless = 0;
         m->dormant = 1;
         if (matte_array_get_size(m->refChildren)) {
             matteValue_t v;
@@ -2827,10 +2829,9 @@ static void object_cleanup(matteHeap_t * h) {
             uint32_t len = matte_array_get_size(m->refChildren);
             MatteHeapParentChildLink * iter = matte_array_get_data(m->refChildren);
             for(i = 0; i < len; ++i , ++iter) {
-                v.value.id = iter->id;
-                matteObject_t * ch = matte_bin_fetch(h->sortedHeap, v.value.id);
+                matteObject_t * ch = iter->ref;
                 if (ch) {
-                    object_unlink_parent_child_only_all(m, ch);
+                    object_unlink_parent_child_only_all(h, m, ch);
                     matte_heap_recycle(h, v);
                 }
             }
@@ -2845,16 +2846,14 @@ static void object_cleanup(matteHeap_t * h) {
             uint32_t len = matte_array_get_size(m->refParents);
             MatteHeapParentChildLink * iter = matte_array_get_data(m->refParents);
             for(i = 0; i < len; ++i , ++iter) {
-                v.value.id = iter->id;
-                matteObject_t * ch = matte_bin_fetch(h->sortedHeap, v.value.id);
+                matteObject_t * ch = iter->ref;
                 if (ch) {
-                    object_unlink_parent_parent_only_all(ch, m);
+                    object_unlink_parent_parent_only_all(h, ch, m);
                     matte_heap_recycle(h, v);
                 }
             }
             matte_array_set_size(m->refParents, 0);
         }
-        m->isRootRef = 0;
 
 
 
@@ -2946,8 +2945,6 @@ static void object_cleanup(matteHeap_t * h) {
         }
         // clean up object;
         m->userdata = NULL;
-        m->routeChecked = 0;
-
 
     }
     matte_table_iter_destroy(iter);
@@ -2960,74 +2957,55 @@ void matte_heap_pop_lock_gc(matteHeap_t * h) {
     h->gcLocked--;
 }
 
+#define UNOWNED_COUNT_COLLECT_GARBAGE 500
+
 void matte_heap_garbage_collect(matteHeap_t * h) {
     if (h->gcLocked) return;
-    /*if (h->cooldown) {
-        h->cooldown--;
-        h->gcLocked = 0;
-        return;
-    }*/
-
+    if (!h->shutdown && h->gcRequestStrength < UNOWNED_COUNT_COLLECT_GARBAGE) return;
 
     h->gcLocked = 1;
-    ++(h->verifiedCycle);
-    if (h->verifiedCycle == 0) h->verifiedCycle = 1;
-
-    //matte_table_clear(h->verifiedRoot);
-    // transfer to an array juuuust in case the 
-    // finalizers mark additional objects for GCing
-    matteArray_t * sweep = matte_array_clone(h->toSweep);
-    matte_array_set_size(h->toSweep, 0);
-
+    h->gcRequestStrength = 0;
     
-    uint32_t i;
-    uint32_t len = matte_array_get_size(sweep);
-    #ifdef MATTE_DEBUG__HEAP
-        if (len) {
-            printf("BEGINNING SWEEP\n");
-        }
-    #endif
+    h->checkID++;
+    if (h->root) {
+        static matteArray_t * stack = NULL;
+        if (!stack) stack = matte_array_create(sizeof(matteObject_t*));
+        else matte_array_set_size(stack, 0);
+        uint32_t i;
+        uint32_t len;
 
-    for(i = 0; i < len; ++i) {
-        matteObject_t * m = matte_array_at(sweep, matteObject_t *, i);
-        m->toSweep = 0;
-        m->verifiedRoot = 0;
-    }
+        matteObject_t * root = h->root;        
+        while(root) {
 
-    for(i = 0; i < len; ++i) {
-        matteObject_t * m = matte_array_at(sweep, matteObject_t *, i);
-        if (m->isRootless) continue;
+            
+            uint32_t ssize = 1;
+            matte_array_push(stack, root);
+            
+            root->checkID = h->checkID;
 
-        if (!matte_object_check_ref_path_root(h, m)) {
-            matte_object_group_add_to_rootless_bin(h, m);
-        } 
-        #ifdef MATTE_DEBUG__HEAP
-            else {
-                if (m->isRootRef)
-                    printf("--IGNORING OBJECT %d (root object)\n", m->heapID);
-                else
-                    printf("--IGNORING OBJECT %d (still reachable)\n", m->heapID);
+            while(ssize) {
+                ssize--;
+                matteObject_t * obj = matte_array_at(stack, matteObject_t *, ssize);            
+                matte_array_set_size(stack, ssize);
+                                
+                obj->reachesRoot = 1;
+                
+                len = matte_array_get_size(obj->refChildren);
+                for(i = 0; i < len; ++i) {
+                    MatteHeapParentChildLink * link = &matte_array_at(obj->refChildren, MatteHeapParentChildLink, i);
+                    if (link->ref->checkID != h->checkID) {
+                        link->ref->checkID = h->checkID;
+                        matte_array_push(stack, link->ref);
+                        ssize++;
+                    }
+                }
             }
-        #endif
+            matte_array_set_size(stack, 0);
+            root = root->nextRoot;
+        }
+
     }
-    matte_array_destroy(sweep);
-
-    // then we also check the rootless sweeping bin.
-    // we limit the size to 100 objects per iteration.
-    //#define ROOTLESS_SWEEP_LIMIT_COUNT 100
-
-    len = matte_array_get_size(h->toSweep_rootless);
-    if (len) {
-        //if (len > ROOTLESS_SWEEP_LIMIT_COUNT) len = ROOTLESS_SWEEP_LIMIT_COUNT;
-
-
-        object_cleanup(h);
-        matte_array_set_size(
-            h->toSweep_rootless,
-            0
-        );
-    }
-    
+    object_cleanup(h);    
     h->gcLocked = 0;
     //h->cooldown++;
 }

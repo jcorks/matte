@@ -92,6 +92,14 @@ void matte_bin_recycle(
     uint32_t id
 );
 
+/// Returns an array of active bin references,
+/// each ID referring to an index. If the 
+/// index does not refer to a reference, it 
+/// will be NULL.
+const matteArray_t * matte_bin_get_active(
+    const matteBin_t * bin
+);
+
 
 
 
