@@ -2,7 +2,7 @@
 
 all:
 	rm -f ./*.gcda
-	gcc -g -pthread -fmax-errors=5 -fprofile-arcs -ftest-coverage ./*.c ../src/*.c ../src/rom/native.c -o ./test_driver -lm
+	gcc -g -DMATTE_DEBUG -DMATTE_DEBUG__HEAP -pthread -fmax-errors=5 -fprofile-arcs -ftest-coverage ./*.c ../src/*.c ../src/rom/native.c -o ./test_driver -lm
 
 
 

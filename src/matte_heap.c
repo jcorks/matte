@@ -195,6 +195,50 @@ struct matteObject_t{
 };
 
 
+static void print_list(matteHeap_t * h) {
+    matteObject_t * r = h->root;
+    while(r) {
+        printf("{%d}-", r->heapID);
+        r = r->nextRoot;
+    }
+    printf("|\n");
+}
+
+static void push_root_node(matteHeap_t * h, matteObject_t * m) {
+    m->nextRoot = NULL;
+    m->prevRoot = NULL;
+    //print_list(h);
+    if (!h->root)
+        h->root = m;
+    else {
+        m->nextRoot = h->root;
+        h->root->prevRoot = m;
+        h->root = m;
+    }
+    //print_list(h);
+
+}
+
+static void remove_root_node(matteHeap_t * h, matteObject_t * m) {
+    //print_list(h);
+    if (h->root == m) { // no prev
+        h->root = m->nextRoot;
+        if (h->root)
+            h->root->prevRoot = NULL;
+    } else {
+        if (m->prevRoot) {
+            m->prevRoot->nextRoot = m->nextRoot;
+        }
+        
+        if (m->nextRoot) {
+            m->nextRoot->prevRoot = m->prevRoot;
+        }
+    }
+    //print_list(h);
+    m->nextRoot = NULL;
+    m->prevRoot = NULL;
+}
+
 
 
 static matteValue_t * object_lookup(matteHeap_t * heap, matteObject_t * m, matteValue_t key) {
@@ -268,6 +312,11 @@ static void object_link_parent(matteHeap_t * h, matteObject_t * parent, matteObj
         }
     }
     
+    if (parent->rootState && !matte_array_get_size(parent->refChildren))
+        push_root_node(h, parent);
+
+    
+    
     matte_array_set_size(parent->refChildren, lenP+1);
     iter = &matte_array_at(parent->refChildren, MatteHeapParentChildLink, lenP);
     iter->linkcount = 1;
@@ -277,6 +326,7 @@ static void object_link_parent(matteHeap_t * h, matteObject_t * parent, matteObj
     iter = &matte_array_at(child->refParents, MatteHeapParentChildLink, lenC);
     iter->linkcount = 1;
     iter->ref = parent;
+    
     
     
 
@@ -302,7 +352,10 @@ static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteO
                         matte_array_remove(parent->refChildren, i);
                         matte_array_remove(child->refParents, n);
                         
-                        h->gcRequestStrength++;
+                        if (!matte_array_get_size(parent->refChildren)) {
+                            remove_root_node(h, parent);
+                        }
+                        
                     } else {
                         iter->linkcount--;
                         iterO->linkcount--;
@@ -342,7 +395,6 @@ static void object_unlink_parent_child_only_all(matteHeap_t * h, matteObject_t *
             return;                
         }
     }
-    h->gcRequestStrength++;
 
 
     /*
@@ -363,10 +415,12 @@ static void object_unlink_parent_parent_only_all(matteHeap_t * h, matteObject_t 
     for(i = 0; i < lenP; ++i, ++iter) {
         if (iter->ref == child) {                                           
             matte_array_remove(parent->refChildren, i);
+            if (!matte_array_get_size(parent->refChildren)) {
+                remove_root_node(h, parent);
+            }
             return;                
         }
     }
-    h->gcRequestStrength++;
 
     /*
     void * p = matte_table_find_by_uint(parent->refChildren, child->heapID);
@@ -1848,56 +1902,16 @@ matteValue_t matte_value_object_access_index(matteHeap_t * heap, matteValue_t v,
     matte_heap_recycle(heap, keyO);
     return result;
 }
-static void print_list(matteHeap_t * h) {
-    matteObject_t * r = h->root;
-    while(r) {
-        printf("{%d}-", r->heapID);
-        r = r->nextRoot;
-    }
-    printf("|\n");
-}
 
-static void push_root_node(matteHeap_t * h, matteObject_t * m) {
-    m->nextRoot = NULL;
-    m->prevRoot = NULL;
-    //print_list(h);
-    if (!h->root)
-        h->root = m;
-    else {
-        m->nextRoot = h->root;
-        h->root->prevRoot = m;
-        h->root = m;
-    }
-    //print_list(h);
-
-}
-
-static void remove_root_node(matteHeap_t * h, matteObject_t * m) {
-    //print_list(h);
-    if (h->root == m) { // no prev
-        h->root = m->nextRoot;
-        if (h->root)
-            h->root->prevRoot = NULL;
-    } else {
-        if (m->prevRoot) {
-            m->prevRoot->nextRoot = m->nextRoot;
-        }
-        
-        if (m->nextRoot) {
-            m->nextRoot->prevRoot = m->prevRoot;
-        }
-    }
-    //print_list(h);
-    m->nextRoot = NULL;
-    m->prevRoot = NULL;
-}
 
 
 void matte_value_object_push_lock_(matteHeap_t * heap, matteValue_t v) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT && v.binID != MATTE_VALUE_TYPE_FUNCTION) return;
     matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
-    if (m->rootState == 0)
-        push_root_node(heap, m);
+    if (m->rootState == 0) {
+        if (matte_array_get_size(m->refChildren))
+            push_root_node(heap, m);
+    }
     m->rootState++;
     #ifdef MATTE_DEBUG__HEAP    
     printf("%d + at state %d\n", v.value.id, m->rootState);
@@ -1910,7 +1924,9 @@ void matte_value_object_pop_lock_(matteHeap_t * heap, matteValue_t v) {
     if (m->rootState) {
         m->rootState--;
         if (m->rootState == 0) {
-            remove_root_node(heap, m);        
+            if (matte_array_get_size(m->refChildren)) {
+                remove_root_node(heap, m);        
+            }
             matte_heap_recycle(heap, v);
             heap->gcRequestStrength++;
         }
@@ -2775,7 +2791,8 @@ void matte_heap_recycle_(
     if (v.binID == MATTE_VALUE_TYPE_OBJECT || v.binID == MATTE_VALUE_TYPE_FUNCTION) {
         matteObject_t * m = matte_bin_fetch(heap->sortedHeap, v.value.id);
         if (!m) return;
-        if (!m->toRemove) {
+        if (!m->toRemove && !m->rootState) {
+            heap->gcRequestStrength++;
             matte_array_push(heap->toRemove, m);
             m->toRemove = 1;
         }
