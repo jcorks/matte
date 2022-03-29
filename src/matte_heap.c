@@ -2906,11 +2906,12 @@ static void object_cleanup(matteHeap_t * h) {
     if (!matte_array_get_size(h->toRemove)) return;
 
 
-    matteArray_t * toRemove = matte_array_clone(h->toRemove);
-    matte_array_set_size(h->toRemove, 0);
+    matteArray_t * toRemove = h->toRemove;
+    // preserve current size. Real size may increase midway through 
+    // but only object_cleanup will reduce the size (end of function);
+    uint32_t len = matte_array_get_size(h->toRemove);
 
     uint32_t i;
-    uint32_t len = matte_array_get_size(toRemove);
     for(i = 0; i < len; ++i) {
         matteObject_t * m = matte_array_at(toRemove, matteObject_t *, i);
         m->toRemove = 0;
@@ -3077,6 +3078,17 @@ static void object_cleanup(matteHeap_t * h) {
 
     }
     matte_table_iter_destroy(iter);
+    uint32_t newlen = matte_array_get_size(h->toRemove);
+    if (newlen != len) {
+        memmove(
+            matte_array_get_data(h->toRemove),
+            &matte_array_at(h->toRemove, matteObject_t *, len),
+            (newlen - len)*sizeof(matteObject_t*)
+        );
+        matte_array_set_size(h->toRemove, newlen - len);
+    } else {
+        matte_array_set_size(h->toRemove, 0);    
+    }  
 }
 
 void matte_heap_push_lock_gc(matteHeap_t * h) {
