@@ -15,6 +15,9 @@
     #include <assert.h>
 #endif
 
+#define ROOT_AGE_LIMIT 2
+
+
 typedef struct {
     // name of the type
     matteValue_t name;
@@ -34,6 +37,8 @@ enum {
     ROOT_AGE__YOUNG,
     ROOT_AGE__OLDEST
 };
+
+
 
 struct matteHeap_t {    
     matteBin_t * tableHeap;
@@ -77,6 +82,7 @@ struct matteHeap_t {
     uint16_t cooldown;
     int shutdown;
     uint32_t gcRequestStrength;
+    uint32_t gcOldCycle;
     matteVM_t * vm;
 
     matteStringHeap_t * stringHeap;
@@ -174,6 +180,7 @@ struct matteObject_t{
     uint8_t  state;
     uint8_t  rootAge;
     uint64_t checkID;
+    uint32_t oldRootLock;
     matteObject_t * prevRoot;
     matteObject_t * nextRoot;
     
@@ -220,6 +227,10 @@ struct matteObject_t{
     };
 
 };
+typedef struct {
+    matteObject_t * ref;
+    uint32_t linkcount;
+} MatteHeapParentChildLink;
 
 
 static void print_list(matteObject_t * root, matteHeap_t * h) {
@@ -264,6 +275,31 @@ static void remove_root_node(matteHeap_t * h, matteObject_t ** root, matteObject
     //print_list(h);
     m->nextRoot = NULL;
     m->prevRoot = NULL;
+
+    // no longer a root. Need to remove lock status for all reachable children
+    if (m->rootAge > ROOT_AGE__OLDEST) {
+        uint32_t ssize = 1;
+        static matteArray_t * stack = NULL;
+        if (!stack) stack = matte_array_create(sizeof(matteObject_t *));
+        matte_array_set_size(stack, 0);
+
+        matte_array_push(stack, m); 
+        uint32_t i, len;
+        while(ssize) {
+            ssize--;
+            matteObject_t * o = matte_array_at(stack, matteObject_t *, ssize);
+
+            len = matte_array_get_size(o->refChildren);
+            for(i = 0; i < len; ++i) {
+                matteObject_t * child = matte_array_at(o->refChildren, MatteHeapParentChildLink, i).ref;
+                if (child->oldRootLock) {
+                    o->oldRootLock = 0;
+                    matte_array_push(stack, child);
+                    ssize++;
+                }
+            }
+        }
+    }
 }
 
 
@@ -314,10 +350,6 @@ static matteValue_t * object_lookup(matteHeap_t * heap, matteObject_t * m, matte
     return NULL;
 }
 
-typedef struct {
-    matteObject_t * ref;
-    uint32_t linkcount;
-} MatteHeapParentChildLink;
 
 
 
@@ -388,7 +420,7 @@ static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteO
                         matte_array_remove(child->refParents, n);
                         
                         if (!matte_array_get_size(parent->refChildren)) {
-                            remove_root_node(h, h->root+ROOT_AGE__YOUNG, parent);
+                            remove_root_node(h, h->root+(parent->rootAge <= ROOT_AGE_LIMIT ? ROOT_AGE__YOUNG : ROOT_AGE__OLDEST), parent);
                         }
                         
                     } else {
@@ -451,7 +483,7 @@ static void object_unlink_parent_parent_only_all(matteHeap_t * h, matteObject_t 
         if (iter->ref == child) {                                           
             matte_array_remove(parent->refChildren, i);
             if (!matte_array_get_size(parent->refChildren)) {
-                remove_root_node(h, h->root+ROOT_AGE__YOUNG, parent);
+                remove_root_node(h, h->root+(parent->rootAge <= ROOT_AGE_LIMIT ? ROOT_AGE__YOUNG : ROOT_AGE__OLDEST), parent);
             }
             return;                
         }
@@ -1970,7 +2002,7 @@ void matte_value_object_pop_lock_(matteHeap_t * heap, matteValue_t v) {
         m->rootState--;
         if (m->rootState == 0) {
             if (matte_array_get_size(m->refChildren)) {
-                remove_root_node(heap, heap->root+ROOT_AGE__YOUNG, m);        
+                remove_root_node(heap, heap->root+(m->rootAge <= ROOT_AGE_LIMIT ? ROOT_AGE__YOUNG : ROOT_AGE__OLDEST), m);        
             }
             matte_heap_recycle(heap, v);
             heap->gcRequestStrength++;
@@ -2949,7 +2981,7 @@ static void object_cleanup(matteHeap_t * h) {
         matteObject_t * m = matte_array_at(toRemove, matteObject_t *, i);
         DISABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
         if (m->checkID == h->checkID && QUERY_STATE(m, OBJECT_STATE__REACHES_ROOT)) continue;
-        if (m->rootState) continue;
+        if (m->rootState || m->oldRootLock) continue;
         if (QUERY_STATE(m, OBJECT_STATE__RECYCLED)) continue;
         cleanedUP++;
         #ifdef MATTE_DEBUG__HEAP
@@ -3109,9 +3141,8 @@ static void object_cleanup(matteHeap_t * h) {
         DISABLE_STATE(m, OBJECT_STATE__REACHES_ROOT);        
         m->prevRoot = NULL;
         m->nextRoot = NULL;
+        m->rootAge  = 0;
         
-        print_state_bits(m);
-        printf("\n");
     }
     printf("cleaned Up: %d\n", cleanedUP);
     matte_table_iter_destroy(iter);
@@ -3136,57 +3167,82 @@ void matte_heap_pop_lock_gc(matteHeap_t * h) {
 }
 
 #define UNOWNED_COUNT_COLLECT_GARBAGE 10000
+#define OLD_CYCLE_COUNT_LIMIT   7
+
+void check_roots(matteHeap_t * h, matteObject_t ** rootSrc) {
+    if (!*rootSrc) return;
+    static matteArray_t * stack = NULL;
+    if (!stack) stack = matte_array_create(sizeof(matteObject_t*));
+    else matte_array_set_size(stack, 0);
+    uint32_t i;
+    uint32_t len;
+
+    matteObject_t * root = *rootSrc;        
+    uint32_t roots = 0;
+    int checked = 0;
+    while(root) {
+        roots++;
+        
+        uint32_t ssize = 1;
+        
+        root->checkID = h->checkID;
+        if (root->rootAge < 0xff)
+            root->rootAge++;
+        
+        if (root->rootAge > ROOT_AGE_LIMIT) {   
+            root = root->nextRoot;
+            remove_root_node(h, h->root+ROOT_AGE__YOUNG, root);
+            push_root_node(h, h->root+ROOT_AGE__OLDEST, root);
+            continue;
+        }
+        matte_array_push(stack, root);
+
+
+        while(ssize) {
+            ssize--;
+            matteObject_t * obj = matte_array_at(stack, matteObject_t *, ssize);            
+            matte_array_set_size(stack, ssize);
+                            
+            ENABLE_STATE(obj, OBJECT_STATE__REACHES_ROOT);
+            if (*rootSrc == h->root[ROOT_AGE__OLDEST]) {
+                obj->oldRootLock = 1;
+            }
+            checked++;
+
+
+            len = matte_array_get_size(obj->refChildren);
+            for(i = 0; i < len; ++i) {
+                MatteHeapParentChildLink * link = &matte_array_at(obj->refChildren, MatteHeapParentChildLink, i);
+                if (link->ref->checkID != h->checkID && !link->ref->oldRootLock) {
+                    link->ref->checkID = h->checkID;
+                    matte_array_push(stack, link->ref);
+                    ssize++;
+                }
+            }
+        }
+        matte_array_set_size(stack, 0);
+        root = root->nextRoot;
+    }
+    printf("Roots: %d, checked %d\n", roots, checked);
+
+}
 
 void matte_heap_garbage_collect(matteHeap_t * h) {
     if (h->gcLocked) return;
-    if (!h->shutdown && h->gcRequestStrength < UNOWNED_COUNT_COLLECT_GARBAGE) return;
 
+    if (!h->shutdown && h->gcRequestStrength < UNOWNED_COUNT_COLLECT_GARBAGE) return;
     h->gcLocked = 1;
     h->gcRequestStrength = 0;
     
-    h->checkID++;
-    if (h->root[ROOT_AGE__YOUNG]) {
-        static matteArray_t * stack = NULL;
-        if (!stack) stack = matte_array_create(sizeof(matteObject_t*));
-        else matte_array_set_size(stack, 0);
-        uint32_t i;
-        uint32_t len;
-
-        matteObject_t * root = h->root[ROOT_AGE__YOUNG];        
-        uint32_t roots = 0;
-        int checked;
-        while(root) {
-            roots++;
-            
-            uint32_t ssize = 1;
-            matte_array_push(stack, root);
-            
-            root->checkID = h->checkID;
-
-            while(ssize) {
-                ssize--;
-                matteObject_t * obj = matte_array_at(stack, matteObject_t *, ssize);            
-                matte_array_set_size(stack, ssize);
-                                
-                ENABLE_STATE(obj, OBJECT_STATE__REACHES_ROOT);
-                checked++;
-                len = matte_array_get_size(obj->refChildren);
-                for(i = 0; i < len; ++i) {
-                    MatteHeapParentChildLink * link = &matte_array_at(obj->refChildren, MatteHeapParentChildLink, i);
-                    if (link->ref->checkID != h->checkID) {
-                        link->ref->checkID = h->checkID;
-                        //DISABLE_STATE(obj, OBJECT_STATE__REACHES_ROOT);
-                        matte_array_push(stack, link->ref);
-                        ssize++;
-                    }
-                }
-            }
-            matte_array_set_size(stack, 0);
-            root = root->nextRoot;
-        }
-        printf("Roots: %d, checked %d\n", roots, checked);
-
+    // Generational GC:
+    // first cycle across the oldest roots occasionally
+    if (h->gcOldCycle > OLD_CYCLE_COUNT_LIMIT) {
+        h->gcOldCycle = 0;
+        check_roots(h, h->root+ROOT_AGE__OLDEST);
     }
+
+    h->checkID++;
+    check_roots(h, h->root+ROOT_AGE__YOUNG);
     object_cleanup(h);    
     h->gcLocked = 0;
     //h->cooldown++;
@@ -3194,7 +3250,7 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
 
 
 
-
+ 
 
 #ifdef MATTE_DEBUG__HEAP 
 
