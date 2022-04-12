@@ -177,7 +177,7 @@ static matteValue_t vm_ext_call__object__findindex(matteVM_t * vm, matteValue_t 
     uint32_t i;
     for(i = 0; i < len; ++i) {
         if (vm->pendingCatchable) break;
-        matteValue_t v = matte_value_object_access_index(vm->heap, out, i);
+        matteValue_t v = matte_value_object_access_index(vm->heap, args[0], i);
 
         if (matte_value_as_boolean(vm->heap, vm_operator__eq(vm, v, args[1])))  {
             matte_value_into_number(vm->heap, &out, i);

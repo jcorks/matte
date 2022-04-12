@@ -43,7 +43,8 @@ enum {
 struct matteHeap_t {    
     matteBin_t * tableHeap;
     matteBin_t * functionHeap;
-    
+    matteArray_t * valueHeap;
+    matteArray_t * valueHeap_refs;
     
     
     
@@ -115,8 +116,7 @@ struct matteHeap_t {
     
     
     matteArray_t * toRemove;
-    matteObject_t * root[ROOT_AGE__OLDEST+1];
-    
+    matteObject_t * roots;
 };
 
 
@@ -178,9 +178,7 @@ struct matteObject_t{
     uint32_t heapID;
     uint16_t rootState;
     uint8_t  state;
-    uint8_t  rootAge;
     uint64_t checkID;
-    uint32_t oldRootLock;
     matteObject_t * prevRoot;
     matteObject_t * nextRoot;
     
@@ -276,36 +274,42 @@ static void remove_root_node(matteHeap_t * h, matteObject_t ** root, matteObject
     m->nextRoot = NULL;
     m->prevRoot = NULL;
 
-    // no longer a root. Need to remove lock status for all reachable children
-    if (m->rootAge > ROOT_AGE_LIMIT) {
-        return;
-        uint32_t ssize = 1;
-        static matteArray_t * stack = NULL;
-        if (!stack) stack = matte_array_create(sizeof(matteObject_t *));
-        matte_array_set_size(stack, 0);
-        m->oldRootLock = 0;
-        m->rootAge = 0;
 
-        matte_array_push(stack, m); 
-        uint32_t i, len;
-        while(ssize) {
-            ssize--;
-            matteObject_t * o = matte_array_at(stack, matteObject_t *, ssize);
-
-            len = matte_array_get_size(o->refChildren);
-            for(i = 0; i < len; ++i) {
-                matteObject_t * child = matte_array_at(o->refChildren, MatteHeapParentChildLink, i).ref;
-                if (child->oldRootLock) {
-                    child->oldRootLock = 0;
-                    matte_array_push(stack, child);
-                    ssize++;
-                }
-            }
-        }
-    }
 }
 
+#define HEAP_VALUE_POINTER_BLOCK_SIZE 2048
+static matteValue_t * heap_new_value_pointer(matteHeap_t * h) {
+    uint32_t size = matte_array_get_size(h->valueHeap);
+    if (!size) {
+        // encourage locality by allocating in blocks
+        matteValue_t * block = malloc(HEAP_VALUE_POINTER_BLOCK_SIZE*sizeof(matteValue_t));
+        matte_array_push(h->valueHeap_refs, block);
+        uint32_t i;
+        matte_array_set_size(h->valueHeap, HEAP_VALUE_POINTER_BLOCK_SIZE);
+        matteValue_t ** iter = matte_array_get_data(h->valueHeap);
+        for(i = 0; i < HEAP_VALUE_POINTER_BLOCK_SIZE; ++i, iter++, block++) {
+            *iter = block;            
+        }
+        size = HEAP_VALUE_POINTER_BLOCK_SIZE;
+    }
+    matteValue_t * out = matte_array_at(h->valueHeap, matteValue_t *, size=1);
+    matte_array_set_size(h->valueHeap, size-1);
+    return out;
+}
 
+static void heap_recycle_value_pointer(matteHeap_t * h, matteValue_t * val) {
+    matte_array_push(h->valueHeap, val);
+}
+
+static void heap_free_value_pointers(matteHeap_t * h) {
+    uint32_t i;
+    uint32_t len = matte_array_get_size(h->valueHeap_refs);
+    for(i = 0; i < len; ++i) {
+        free(matte_array_at(h->valueHeap_refs, matteValue_t *, i));
+    }
+    matte_array_destroy(h->valueHeap);
+    matte_array_destroy(h->valueHeap_refs);
+}
 
 static matteValue_t * object_lookup(matteHeap_t * heap, matteObject_t * m, matteValue_t key) {
     switch(key.binID) {
@@ -383,7 +387,7 @@ static void object_link_parent(matteHeap_t * h, matteObject_t * parent, matteObj
     }
     
     if (parent->rootState && !matte_array_get_size(parent->refChildren))
-        push_root_node(h, h->root+ROOT_AGE__YOUNG, parent);
+        push_root_node(h, &h->roots, parent);
 
     
     
@@ -423,7 +427,7 @@ static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteO
                         matte_array_remove(child->refParents, n);
                         
                         if (!matte_array_get_size(parent->refChildren)) {
-                            remove_root_node(h, h->root+(parent->rootAge <= ROOT_AGE_LIMIT ? ROOT_AGE__YOUNG : ROOT_AGE__OLDEST), parent);
+                            remove_root_node(h, &h->roots, parent);
                         }
                         
                     } else {
@@ -486,7 +490,7 @@ static void object_unlink_parent_parent_only_all(matteHeap_t * h, matteObject_t 
         if (iter->ref == child) {                                           
             matte_array_remove(parent->refChildren, i);
             if (!matte_array_get_size(parent->refChildren)) {
-                remove_root_node(h, h->root+(parent->rootAge <= ROOT_AGE_LIMIT ? ROOT_AGE__YOUNG : ROOT_AGE__OLDEST), parent);
+                remove_root_node(h, &h->roots, parent);
             }
             return;                
         }
@@ -533,7 +537,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
             *value = out;
             return value;
         } else {
-            value = malloc(sizeof(matteValue_t));
+            value = heap_new_value_pointer(heap);
             *value = out;
             matte_table_insert_by_uint(m->table.keyvalues_string, key.value.id, value);
             return value;
@@ -602,7 +606,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
             return value;
         } else {
             object_link_parent_value(heap, m, &key);
-            value = malloc(sizeof(matteValue_t));
+            value = heap_new_value_pointer(heap);
             *value = out;
             matte_table_insert_by_uint(m->table.keyvalues_functs, key.value.id, value);
             return value;
@@ -620,7 +624,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
             return value;
         } else {
             object_link_parent_value(heap, m, &key);
-            value = malloc(sizeof(matteValue_t));
+            value = heap_new_value_pointer(heap);
             *value = out;
             matte_table_insert_by_uint(m->table.keyvalues_table, key.value.id, value);
             return value;
@@ -638,7 +642,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
             *value = out;
             return value;
         } else {
-            value = malloc(sizeof(matteValue_t));
+            value = heap_new_value_pointer(heap);
             *value = out;
             matte_table_insert_by_uint(m->table.keyvalues_types, key.value.id, value);
             return value;
@@ -684,7 +688,7 @@ static matteValue_t object_get_access_operator(matteHeap_t * heap, matteObject_t
     return out;
 }
 
-
+static uint32_t CREATED_COUNT = 1;
 
 static void * create_table() {
     matteObject_t * out = calloc(1, sizeof(matteObject_t));
@@ -701,7 +705,7 @@ static void * create_table() {
     out->table.keyvalue_true.binID = 0;
     out->table.keyvalue_false.binID = 0;       
     DISABLE_STATE(out, OBJECT_STATE__IS_FUNCTION);
-
+    CREATED_COUNT++;
     return out;
 }
 
@@ -715,6 +719,7 @@ static void * create_function() {
     out->function.captures = matte_array_create(sizeof(CapturedReferrable_t));
     out->function.types = NULL;
     ENABLE_STATE(out, OBJECT_STATE__IS_FUNCTION);
+    CREATED_COUNT++;
 
     return out;
 }
@@ -728,26 +733,6 @@ static void destroy_object(void * d) {
         matte_array_destroy(out->function.captures);
     
     } else {
-        matteTableIter_t * iter = matte_table_iter_create();
-        if (out->table.keyvalues_string) {
-            for(matte_table_iter_start(iter, out->table.keyvalues_string);
-                !matte_table_iter_is_end(iter);
-                matte_table_iter_proceed(iter)
-            ) {
-                free(matte_table_iter_get_value(iter));
-            }
-        }
-        
-        if (out->table.keyvalues_types) {
-            for(matte_table_iter_start(iter, out->table.keyvalues_types);
-                !matte_table_iter_is_end(iter);
-                matte_table_iter_proceed(iter)
-            ) {
-                free(matte_table_iter_get_value(iter));
-            }
-        }
-        
-        matte_table_iter_destroy(iter);
 
         if (out->table.keyvalues_string) matte_table_destroy(out->table.keyvalues_string);
         if (out->table.keyvalues_types)  matte_table_destroy(out->table.keyvalues_types);
@@ -916,6 +901,8 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->vm = vm;
     out->tableHeap = matte_bin_create(create_table, destroy_object);
     out->functionHeap = matte_bin_create(create_function, destroy_object);
+    out->valueHeap = matte_array_create(sizeof(matteValue_t*));
+    out->valueHeap_refs = matte_array_create(sizeof(matteValue_t*));
     out->typecode2data = matte_array_create(sizeof(MatteTypeData));
     out->routePather = matte_array_create(sizeof(void*));
     out->routeIter = matte_table_iter_create();
@@ -1039,6 +1026,8 @@ void matte_heap_destroy(matteHeap_t * h) {
     matte_table_destroy(h->type_number_methods);
     matte_table_destroy(h->type_object_methods);
     matte_table_destroy(h->type_string_methods);
+    
+    heap_free_value_pointers(h);
     free(h);
 }
 
@@ -1990,7 +1979,7 @@ void matte_value_object_push_lock_(matteHeap_t * heap, matteValue_t v) {
     matteObject_t * m = matte_bin_fetch(VALUE_TO_HEAP(heap, v), v.value.id);
     if (m->rootState == 0) {
         if (matte_array_get_size(m->refChildren))
-            push_root_node(heap, heap->root+ROOT_AGE__YOUNG, m);
+            push_root_node(heap, &heap->roots, m);
     }
     m->rootState++;
     #ifdef MATTE_DEBUG__HEAP    
@@ -2005,7 +1994,7 @@ void matte_value_object_pop_lock_(matteHeap_t * heap, matteValue_t v) {
         m->rootState--;
         if (m->rootState == 0) {
             if (matte_array_get_size(m->refChildren)) {
-                remove_root_node(heap, heap->root+(m->rootAge <= ROOT_AGE_LIMIT ? ROOT_AGE__YOUNG : ROOT_AGE__OLDEST), m);        
+                remove_root_node(heap, &heap->roots, m);        
             }
             matte_heap_recycle(heap, v);
             heap->gcRequestStrength++;
@@ -2293,7 +2282,7 @@ void matte_value_object_remove_key(matteHeap_t * heap, matteValue_t v, matteValu
                 object_unlink_parent_value(heap, m, value);                
             }
             matte_heap_recycle(heap, *value);
-            free(value);
+            heap_recycle_value_pointer(heap, value);
         }
         return;
       }
@@ -2307,7 +2296,7 @@ void matte_value_object_remove_key(matteHeap_t * heap, matteValue_t v, matteValu
                 object_unlink_parent_value(heap, m, value);                
             }
             matte_heap_recycle(heap, *value);
-            free(value);
+            heap_recycle_value_pointer(heap, value);
         }
         return;
       }
@@ -2940,7 +2929,7 @@ void matte_heap_recycle_(
     if (v.binID == MATTE_VALUE_TYPE_OBJECT || v.binID == MATTE_VALUE_TYPE_FUNCTION) {
         matteObject_t * m = matte_bin_fetch(VALUE_TO_HEAP(heap, v), v.value.id);
         if (!m) return;
-        if (!QUERY_STATE(m, OBJECT_STATE__TO_REMOVE) && !m->rootState && !m->oldRootLock) {
+        if (!QUERY_STATE(m, OBJECT_STATE__TO_REMOVE) && !m->rootState) {
             matte_array_push(heap->toRemove, m);
             ENABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
         }
@@ -2982,11 +2971,11 @@ static void object_cleanup(matteHeap_t * h) {
     uint32_t i;
     for(i = 0; i < len; ++i) {        
         matteObject_t * m = matte_array_at(toRemove, matteObject_t *, i);
-        if (m->heapID == 1156) 
+        if (m->heapID == 2051) 
             printf("BRUH\n");
         DISABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
         if (m->checkID == h->checkID && QUERY_STATE(m, OBJECT_STATE__REACHES_ROOT)) continue;
-        if (m->rootState || m->oldRootLock) continue;
+        if (m->rootState) continue;
         if (QUERY_STATE(m, OBJECT_STATE__RECYCLED)) continue;
         cleanedUP++;
         #ifdef MATTE_DEBUG__HEAP
@@ -3015,6 +3004,7 @@ static void object_cleanup(matteHeap_t * h) {
                 matteObject_t * ch = iter->ref;
                 if (ch) {
                     object_unlink_parent_child_only_all(h, m, ch);
+                    v.value.id = ch->heapID;
                     matte_heap_recycle(h, v);
                 }
             }
@@ -3032,6 +3022,7 @@ static void object_cleanup(matteHeap_t * h) {
                 matteObject_t * ch = iter->ref;
                 if (ch) {
                     object_unlink_parent_parent_only_all(h, ch, m);
+                    v.value.id = ch->heapID;
                     matte_heap_recycle(h, v);
                 }
             }
@@ -3062,25 +3053,25 @@ static void object_cleanup(matteHeap_t * h) {
         } else {
 
             if (m->table.attribSet.binID) {
-                matte_heap_recycle(h, m->table.attribSet);
+                //matte_heap_recycle(h, m->table.attribSet);
                 m->table.attribSet.binID = 0;
             }
 
 
             if (m->table.keyvalue_true.binID) {
-                matte_heap_recycle(h, m->table.keyvalue_true);
+                //matte_heap_recycle(h, m->table.keyvalue_true);
                 m->table.keyvalue_true.binID = 0;
             }
             if (m->table.keyvalue_false.binID) {
-                matte_heap_recycle(h, m->table.keyvalue_false);
+                //matte_heap_recycle(h, m->table.keyvalue_false);
                 m->table.keyvalue_false.binID = 0;
             }
             if (m->table.keyvalues_number && matte_array_get_size(m->table.keyvalues_number)) {
-                uint32_t n;
-                uint32_t subl = matte_array_get_size(m->table.keyvalues_number);
-                for(n = 0; n < subl; ++n) {
-                    matte_heap_recycle(h, matte_array_at(m->table.keyvalues_number, matteValue_t, n));
-                }
+                //uint32_t n;
+                //uint32_t subl = matte_array_get_size(m->table.keyvalues_number);
+                //for(n = 0; n < subl; ++n) {
+                //    matte_heap_recycle(h, matte_array_at(m->table.keyvalues_number, matteValue_t, n));
+                //}
                 matte_array_set_size(m->table.keyvalues_number, 0);
             }
 
@@ -3090,8 +3081,9 @@ static void object_cleanup(matteHeap_t * h) {
                     matte_table_iter_proceed(iter)
                 ) {
                     matteValue_t * v = matte_table_iter_get_value(iter);
-                    matte_heap_recycle(h, *v);
-                    free(v);
+                    //matte_heap_recycle(h, *v);
+                    heap_recycle_value_pointer(h, v);
+
                 }
                 matte_table_clear(m->table.keyvalues_string);
             }
@@ -3103,8 +3095,8 @@ static void object_cleanup(matteHeap_t * h) {
                     matte_table_iter_proceed(iter)
                 ) {
                     matteValue_t * v = matte_table_iter_get_value(iter);
-                    matte_heap_recycle(h, *v);
-                    free(v);
+                    //matte_heap_recycle(h, *v);
+                    heap_recycle_value_pointer(h, v);
                 }
                 matte_table_clear(m->table.keyvalues_types);
             }
@@ -3114,8 +3106,8 @@ static void object_cleanup(matteHeap_t * h) {
                     matte_table_iter_proceed(iter)
                 ) {
                     matteValue_t * v = matte_table_iter_get_value(iter);
-                    matte_heap_recycle(h, *v);
-                    free(v);
+                    //matte_heap_recycle(h, *v);
+                    heap_recycle_value_pointer(h, v);
                 }
                 matte_table_clear(m->table.keyvalues_table);
             }
@@ -3126,8 +3118,8 @@ static void object_cleanup(matteHeap_t * h) {
                     matte_table_iter_proceed(iter)
                 ) {
                     matteValue_t * v = matte_table_iter_get_value(iter);
-                    matte_heap_recycle(h, *v);
-                    free(v);
+                    //matte_heap_recycle(h, *v);
+                    heap_recycle_value_pointer(h, v);
                 }
                 matte_table_clear(m->table.keyvalues_functs);
             }
@@ -3146,7 +3138,6 @@ static void object_cleanup(matteHeap_t * h) {
         DISABLE_STATE(m, OBJECT_STATE__REACHES_ROOT);        
         m->prevRoot = NULL;
         m->nextRoot = NULL;
-        m->rootAge  = 0;
         
     }
     printf("cleaned Up: %d\n", cleanedUP);
@@ -3192,44 +3183,10 @@ void check_roots(matteHeap_t * h, matteObject_t ** rootSrc) {
         uint32_t ssize = 1;
         
         root->checkID = h->checkID;
-        if (root->rootAge < 0xff)
-            root->rootAge++;
         matteObject_t * n = root->nextRoot;;
         
         
-        // lock root of all children
-        if (root->rootAge == ROOT_AGE_LIMIT) {   
-            remove_root_node(h, h->root+ROOT_AGE__YOUNG, root);
-            root->rootAge++;
-            push_root_node(h, h->root+ROOT_AGE__OLDEST, root);
-            
-            uint32_t ssize = 1;
-            static matteArray_t * stack = NULL;
-            if (!stack) stack = matte_array_create(sizeof(matteObject_t *));
-            matte_array_set_size(stack, 0);
-            root->oldRootLock = 1;
-            locked++;
 
-            matte_array_push(stack, root); 
-            uint32_t i, len;
-            while(ssize) {
-                ssize--;
-                matteObject_t * o = matte_array_at(stack, matteObject_t *, ssize);
-
-                len = matte_array_get_size(o->refChildren);
-                for(i = 0; i < len; ++i) {
-                    matteObject_t * child = matte_array_at(o->refChildren, MatteHeapParentChildLink, i).ref;
-                    if (!child->oldRootLock) {
-                        child->oldRootLock = 1;
-                        locked++;
-                        matte_array_push(stack, child);
-                        ssize++;
-                    }
-                }
-            }
-            root = n;
-            continue;
-        }
         matte_array_push(stack, root);
 
 
@@ -3245,7 +3202,7 @@ void check_roots(matteHeap_t * h, matteObject_t ** rootSrc) {
             len = matte_array_get_size(obj->refChildren);
             for(i = 0; i < len; ++i) {
                 MatteHeapParentChildLink * link = &matte_array_at(obj->refChildren, MatteHeapParentChildLink, i);
-                if (link->ref->checkID != h->checkID && !link->ref->oldRootLock) {
+                if (link->ref->checkID != h->checkID) {
                     link->ref->checkID = h->checkID;
                     matte_array_push(stack, link->ref);
                     ssize++;
@@ -3262,19 +3219,15 @@ void check_roots(matteHeap_t * h, matteObject_t ** rootSrc) {
 void matte_heap_garbage_collect(matteHeap_t * h) {
     if (h->gcLocked) return;
 
-    if (!h->shutdown && h->gcRequestStrength < UNOWNED_COUNT_COLLECT_GARBAGE) return;
+    if (!h->shutdown && h->gcRequestStrength < CREATED_COUNT) return;
     h->gcLocked = 1;
     h->gcRequestStrength = 0;
     h->checkID++;
     // Generational GC:
     // first cycle across the oldest roots occasionally
-    if (h->gcOldCycle > OLD_CYCLE_COUNT_LIMIT) {
-        h->gcOldCycle = 0;
-        //check_roots(h, h->root+ROOT_AGE__OLDEST);
-    }
 
 
-    check_roots(h, h->root+ROOT_AGE__YOUNG);
+    check_roots(h, &h->roots);
     object_cleanup(h);    
     h->gcOldCycle++;
     h->gcLocked = 0;
