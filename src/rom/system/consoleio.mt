@@ -19,10 +19,10 @@ return class(
                 };
 
 
-                @:o = format;
+                @o = format;
                 foreach(in:args, do:::(k, v){
                     @:key = '$('+k+')';
-                    String.replace(string:o, key:key, with:''+v);
+                    o = String.replace(string:o, key:key, with:''+v);
                 });
                 _print(a:o);
             },

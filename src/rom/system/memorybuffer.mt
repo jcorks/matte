@@ -67,17 +67,17 @@
             ) {
                 checkReleased(t:this);
                 checkReleased(t:src);
-                _mbuffer_copy(a:buffer, b:selfOffset, c:src, d:srcOffset, e:len);
+                _mbuffer_copy(a:buffer, b:selfOffset, c:src.handle, d:srcOffset, e:len);
             },
             
             // performs a memset
             set::(
                 selfOffset => Number, 
-                val => Number, 
+                value => Number, 
                 len => Number
             ) {
                 checkReleased(t:this);
-                _mbuffer_set(a:buffer, b:selfOffset, c:val, d:len);
+                _mbuffer_set(a:buffer, b:selfOffset, c:value, d:len);
             },
             
             // copies a new buffer.
@@ -118,10 +118,10 @@
                 },
                 
                 
-                set ::(v) {
+                set ::(value) {
                     checkReleased(t:this);
-                    length = v;         
-                    _mbuffer_set_size(a:buffer, b:v);       
+                    length = value;         
+                    _mbuffer_set_size(a:buffer, b:value);       
                 }
             }
         };
@@ -133,9 +133,9 @@
                     return _mbuffer_get_index(a:buffer, b:key);                    
                 },
                 
-                set ::(key => Number, val => Number) {
+                set ::(key => Number, value => Number) {
                     checkReleased(t:this);
-                    _mbuffer_set_index(a:buffer, b:key, c:val);                                    
+                    _mbuffer_set_index(a:buffer, b:key, c:value);                                    
                 }
             }
         };

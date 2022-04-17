@@ -1835,6 +1835,15 @@ matteString_t * matte_vm_import_expand_path(
     return locationExpanded;
 }
 
+const matteString_t * matte_vm_get_import_path(matteVM_t * vm) {
+    matteArray_t * paths = vm->importPaths;
+    if (matte_array_get_size(paths)) {
+        return matte_array_at(paths, matteString_t *, matte_array_get_size(paths)-1);
+    } else {
+        return NULL;
+    }
+
+}
 
 matteValue_t matte_vm_import(
     matteVM_t * vm, 

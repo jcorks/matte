@@ -91,6 +91,9 @@ matteString_t * matte_vm_import_expand_path(
     const matteString_t * module
 );
 
+// Gets the current import path.
+const matteString_t * matte_vm_get_import_path(matteVM_t * vm);
+
 // Performs an import, which evaluates the source at the given path 
 // and returns its value, as if calling import() within 
 // source.

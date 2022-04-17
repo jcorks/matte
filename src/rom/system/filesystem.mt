@@ -3,7 +3,7 @@
 
 @_getcwd = getExternalFunction(name:"__matte_::filesystem_getcwd");
 @_setcwd = getExternalFunction(name:"__matte_::filesystem_setcwd");
-
+@_getimportpath = getExternalFunction(name:"__matte_::filesystem_getimportpath");
 @_directoryEnumerate = getExternalFunction(name:"__matte_::filesystem_directoryenumerate");
 @_directoryObjectCount  = getExternalFunction(name:"__matte_::filesystem_directoryobjectcount");
 @_directoryObjectName   = getExternalFunction(name:"__matte_::filesystem_directoryobjectname");
@@ -27,6 +27,14 @@ return class(
                 
                 set ::(value => String){
                     _setcwd(a:value);                
+                }
+            },
+            
+            // gets the current import path. This is the current path that imported 
+            // the module first.
+            importPath : {
+                get :: {
+                    return _getimportpath();
                 }
             },
             
@@ -60,7 +68,7 @@ return class(
             // Expects one argument: a path to the file
             // On failure, throws an error.
             readString ::(path) {
-                _readString(a:path);
+                return _readString(a:path);
             } ,
 
             // reads the contents of a file and returns MemoryBuffer of its contents.
@@ -79,10 +87,12 @@ return class(
             // Given a path and a MemoryBuffer, writes the given file.
             // on failure, throws an error.
             writeBytes ::(path, bytes => MemoryBuffer.type) {
-                _writeBytes(a:path, b:bytes);
+                _writeBytes(a:path, b:bytes.handle);
             }
         
         };
+        
+        this.cwd = _getimportpath();
     }
 
 ).new();

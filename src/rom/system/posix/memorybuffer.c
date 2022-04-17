@@ -150,15 +150,11 @@ MATTE_EXT_FN(matte_ext__memory_buffer__subset) {
     }
 
 
-    matteValue_t out = matte_heap_new_value(heap);
-    MatteMemoryBuffer * mOut = calloc(1, sizeof(MatteMemoryBuffer));
-    matte_value_object_set_userdata(heap, out, m);    
-    
-    mOut->size = (from-to)+1;
-    mOut->alloc = mOut->size;
-    mOut->buffer = malloc(mOut->size);
-    memcpy(mOut->buffer, m->buffer+from, mOut->size);
-    return out;    
+    return matte_system_shared__create_memory_buffer_from_raw(
+        vm, 
+        m->buffer+from, 
+        (to-from)+1
+    ); 
 }
 
 

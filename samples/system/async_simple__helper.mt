@@ -10,7 +10,7 @@
 
 
 AsyncWorker.sendToParent(
-    message:'Im alive! you sent me input:' + parameters.input + '\n'
+    message:'Im alive! you sent me input:' + parameters.input
 );
 
 AsyncWorker.installHook(event:'onNewMessage', hook:::(detail) {
