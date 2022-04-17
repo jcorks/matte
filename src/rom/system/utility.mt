@@ -1,26 +1,23 @@
 @:class = import(module:"Matte.Core.Class");
 
 
-@:_nextRand = getExternalFunction(name:"__matte_::utility_nextRand");
 @:_run = getExternalFunction(name:"__matte_::utility_system");
-getExternalFunction(name:"__matte_::utility_initRand")();
-
-
+@:_os = getExternalFunction(name:"__matte_::utility_os")();
+@:_exit = getExternalFunction(name:"__matte_::utility_exit");
 return class(
-    name : 'Matte.Core.Utility',
+    name : 'Matte.System.OS',
     define:::(this) {
         this.interface = {
-            
-            // returns a random value between 0 and 1.
-            random : {
-                get ::{
-                    return _nextRand();
+            name : {
+                get :: {
+                    return _os;
                 }
             },
-
-
+            
             /// time 
-            exit : getExternalFunction(name:"__matte_::utility_exit"),
+            exit ::(code) {
+                _exit(a:code);
+            } ,
 
 
             /// Execute command in the environment shell

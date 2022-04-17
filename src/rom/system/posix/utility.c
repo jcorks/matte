@@ -26,22 +26,15 @@ MATTE_EXT_FN(matte_utility__exit) {
 
 
 
-MATTE_EXT_FN(matte_utility__init_rand) {
+MATTE_EXT_FN(matte_utility__os) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    srand(time(NULL));
-    return matte_heap_new_value(heap);
-}
-
-MATTE_EXT_FN(matte_utility__next_rand) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_number(heap, &out, (rand() / (double)(RAND_MAX)));    
-    return out;
+    matteValue_t v = matte_heap_new_value(heap);
+    matte_value_into_string(heap, &v, MATTE_VM_STR_CAST(vm, "unix-like"));
+    return v;
 }
 
 static void matte_system__utility(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::utility_system"),   1, matte_utility__system, NULL);
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::utility_initRand"), 0, matte_utility__init_rand, NULL);
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::utility_nextRand"), 0, matte_utility__next_rand, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::utility_exit"),     1, matte_utility__exit, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::utility_os"),     0, matte_utility__os, NULL);
 }

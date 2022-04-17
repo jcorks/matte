@@ -8,7 +8,8 @@ return class(
             MemoryBuffer : import(module:'Matte.System.MemoryBuffer'),
             SocketIO     : import(module:'Matte.System.SocketIO'),
             Time         : import(module:'Matte.System.Time'),
-            Utility      : import(module:'Matte.System.Utility')    
+            Utility      : import(module:'Matte.System.Utility')    ,
+            Async        : import(module:'Matte.System.Async')
         };
     }
 ).new();
