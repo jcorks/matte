@@ -76,6 +76,13 @@
                 ev.hooks[ev.hookCount] = hook;
                 ev.hookCount += 1;
             },
+
+            installHooks ::(events => Object) {
+                foreach(in:events, do:::(index, ev) {
+                    this.installHook(event:ev.event, hook:ev.hook);
+                });
+            },
+
             
             getKnownEvents ::{
                 @arr = [];

@@ -18,29 +18,34 @@
     input  : JSON.encode(object:{a:"hello", count:4200})
 );
 
-
-
-// Workers are eventsystems and have a set of events 
-// that are hookable. onStateChange is one of the most useful.
-w.installHook(event:'onStateChange', hook:::(detail) {
-    // When successful, the state will change to 'Finished'.
-    when(detail == Async.Worker.State.Finished) ::<= {
-        print(message:'Done. Computed result: ' + w.result);    
-    };
-    
-    // When an error occurs in the worker, the state will change to 'Failed'.
-    when(detail == Async.Worker.State.Failed) ::<= {
-        print(message:'Failed');    
-        print(message:'From worker:');
-        print(message:w.error);
-    };
-});
+w.installHooks(events:[
+    // Workers are eventsystems and have a set of events 
+    // that are hookable. onStateChange is one of the most useful.
+    {
+        event:'onStateChange', 
+        hook::(detail) {
+        // When successful, the state will change to 'Finished'.
+        when(detail == Async.Worker.State.Finished) ::<= {
+            print(message:'Done. Computed result: ' + w.result);    
+        };
+        
+        // When an error occurs in the worker, the state will change to 'Failed'.
+        when(detail == Async.Worker.State.Failed) ::<= {
+            print(message:'Failed');    
+            print(message:'From worker:');
+            print(message:w.error);
+        };
+    },
 
 // Communication can occur between the parent and the workers
 // Listening for messages is done with an event hook.
-w.installHook(event:'onNewMessage', hook:::(detail) {
-    print(message:'Message from worker: ' + detail);
-});
+    {
+        event:'onNewMessage', 
+        hook::(detail) {
+            print(message:'Message from worker: ' + detail);
+        }
+    }
+]);
 
 // Similarly, we can send messages to the child.
 w.send(message:'Hi!');

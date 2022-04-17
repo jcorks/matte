@@ -13,9 +13,12 @@ AsyncWorker.sendToParent(
     message:'Im alive! you sent me input:' + parameters.input
 );
 
-AsyncWorker.installHook(event:'onNewMessage', hook:::(detail) {
-    print(message:'Message from parent: ' + detail);
-});
+AsyncWorker.installHook(
+    event:'onNewMessage', 
+    hook:::(detail) {
+        print(message:'Message from parent: ' + detail);
+    }
+);
 
 @out = 0;
 for(in:[0, input.count], do:::(i) {

@@ -143,14 +143,18 @@
                 @id_number;
                 @pendingMessages = {};
                 @socket;
-                @info = _socket_server_client_infostring(a:socket, b:id_number);
-                @address = _socket_server_client_address(a:socket, b:id_number);
+                @info;
+                @address;
                 @messageIn;
 
                 this.constructor = ::(id, handle, message) {
-                    id_number = Number(from:id);
+                    id_number = Number.parse(string:id);
                     socket = handle;
                     messageIn = message;
+                    
+                    info = _socket_server_client_infostring(a:socket, b:id_number);
+                    address = _socket_server_client_address(a:socket, b:id_number);
+                    return this;
                 };
 
                 this.events = {
@@ -185,7 +189,7 @@
                         @count = _socket_server_client_get_pending_byte_count(a:socket, b:id_number);
 
                         if (count > 0) ::<={
-                            @: bytes = MemoryBuffer.new(handle:_socket_server_client_read_bytes(a:socket, b:id_number, c:count));
+                            @: bytes = MemoryBuffer.new(handle:_socket_server_client_read_bytes(a:socket, b:id_number));
                             this.emit(
                                 event:'onIncomingData',
                                 detail:bytes
@@ -195,8 +199,8 @@
                     };
 
 
-                    sendData = ::(m => MemoryBuffer.type) {
-                        _socket_server_client_write_bytes(a:socket, b:id_number, c:m.handle);
+                    sendData = ::(bytes => MemoryBuffer.type) {
+                        _socket_server_client_write_bytes(a:socket, b:id_number, c:bytes.handle);
                     };
                 };
 
@@ -206,7 +210,7 @@
 
                 this.interface = {
                     update : update,
-                    sendData : sendData,
+                    'send' : sendData,
                     info : {
                         get ::{
                             return info;
@@ -233,10 +237,10 @@
             }
         );
 
-        @:Server = class(info:{
+        @:Server = class(
             name: 'Matte.System.SocketIO.Server',
             inherits:[EventSystem],
-            define::(this) {
+            define:::(this) {
 
                 // initialize socket right away.
                 @socket;
@@ -259,6 +263,7 @@
                         timeout:100, // => timeout in seconds. not sure yet!
                         messageMode:Boolean(from:messageMode)
                     );
+                    return this;
                 };
 
                 
@@ -268,7 +273,7 @@
                 @:clientIndex = [];
                                 
                 this.events = {
-                    onNewClient ::{}
+                    onNewClient ::(detail){}
                 };
             
             
@@ -290,21 +295,21 @@
                                 clientIndex[id] = true;
                                 found[id] = true;
 
-                                this.emit(name:'onNewClient', detail:client);
+                                this.emit(event:'onNewClient', detail:client);
                             };
                         }); 
 
                         // emit update disconnects or update.
                         @i = 0;
-                        loop(function:::{
+                        loop(func:::{
                             when(i == Object.length(of:clients)) false;
                             @idKey = String(from:clients[i].id);
                             if (found[idKey]) ::<= {
                                 clients[i].update();
                                 i+=1;
                             } else ::<={
-                                clients[i].emit(name:'onDisconnect', detail:clients[i]);
-                                Object.removeKey(from:clients, index:i);
+                                clients[i].emit(event:'onDisconnect', detail:clients[i]);
+                                Object.removeKey(from:clients, key:i);
                                 Object.removeKey(from:clientIndex, key:idKey);                                
                             };
                             return true;
@@ -312,7 +317,7 @@
                     }
                 };
             }
-        });
+        );
         
         Server.Client = Client;
         return Server;
@@ -369,10 +374,10 @@
 
                 
                 
-        return class(info:{
+        return class(
             name : 'Matte.System.SocketIO.Client',
             inherits : [EventSystem],
-            define::(this) {
+            define:::(this) {
                 @socket;
                 
                 this.events = {
@@ -394,7 +399,8 @@
                         @err;
                         listen(to:::{
                             _socket_client_update(a:socket);
-                        }, onMessage:::(er) {
+                        }, onMessage:::(message) {
+                            @:er = message;
                             err = er;
                         });
 
@@ -409,7 +415,7 @@
                                 _socket_client_delete(a:socket);
                                 socket = empty;
                             },
-                            (oldstate != 2 && newstate == 2): this.emit(name:'onConnectSuccess')
+                            (oldstate != 2 && newstate == 2): this.emit(event:'onConnectSuccess')
                         };
                         
                         when(state != 2) empty;
@@ -417,18 +423,18 @@
                         
                         @count = _socket_get_pending_byte_count(a:socket);                        
                         if (count > 0) ::<={
-                            @: bytes = MemoryBuffer.new(handle:_socket_client_read_bytes(a:socket, b:count));
+                            @: bytes = MemoryBuffer.new(handle:_socket_client_read_bytes(a:socket));
                             this.emit(
-                                name:'onIncomingData',
+                                event:'onIncomingData',
                                 detail:bytes
                             );             
                             bytes.release();
                         };
                     };
 
-                    sendData = ::(m => MemoryBuffer.type) {
+                    sendData = ::(bytes => MemoryBuffer.type) {
                         when(socket == empty) empty;
-                        _socket_client_write_bytes(a:socket, b:m.handle);
+                        _socket_client_write_bytes(a:socket, b:bytes.handle);
                     };
 
                 } else ::<={
@@ -439,14 +445,14 @@
                 
                 
                 this.interface = {
-                    connect::(addr => String, port => Number, mode) {
+                    connect::(address => String, port => Number, mode) {
                         when (socket != empty) error(message:'Socket is already connected.');
                         if (mode == empty) ::<={
                             mode = 0;
                         };
                         
                         listen(to:::{
-                            socket = _socket_client_create(a:addr, b:port, c:0, d:mode);
+                            socket = _socket_client_create(a:address, b:port, c:0, d:mode);
                         }, onMessage:::(message){
                             this.emit(event:'onConnectFail', detail:message);
                         });
@@ -459,7 +465,7 @@
                     },
                     
                     update : update,
-                    sendData : sendData,
+                    'send' : sendData,
                     
                     host : {
                         get :: {
@@ -469,7 +475,7 @@
                     }              
                 };
             }        
-        });            
+        );            
     
     }
 };
@@ -691,34 +697,3 @@ loop(::{
 
 //Server example:
 
-
-/*
-@server = SocketIO.Server.new({
-    port : 8080
-});
-
-
-
-server.installHook('onNewClient', ::(t, client){
-    print('Server: ' + client.address + ' has connected.');
-
-    client.installHook('onDisconnect', ::{
-        print('Server: ' + client.address + ' has disconnected');    
-    });
-
-    client.installHook('onIncomingData', ::(t, data) {
-        print('Server: ' + client.address + ' has sent ' + data.size + 'bytes.');
-        dumphex(data);
-        sendDataString(client, 'whoa!!');
-    });
-});
-
-
-loop(::{
-    server.update();
-    Time.sleep(20);
-
-    return true;
-});
-
-*/
