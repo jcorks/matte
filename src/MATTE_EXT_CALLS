@@ -1,3 +1,4 @@
+//
 static int vm_ext_call__loop_restart_condition(
     matteVM_t * vm,
     matteVMStackFrame_t * frame, 
@@ -399,9 +400,9 @@ static int import__path_canonicalize(matteString_t * path) {
 //   If loc is already a canonical path that points to an item, this function returns a 
 //   copy of that string 
 //
-// - If a canonical path cannot be made, NULL is returned.
+// - If a canonical path cannot be made, the input string is returned and current base path pushed
 // - If a canonical path can by made, its returned and paths has a new path pushed representing the 
-//   directory portion of the 
+//   directory portion of the path.
 static matteString_t * import__push_path(matteArray_t * paths, const matteString_t * loc) {
     // first, check if loc is a full (canonical) path
     if (import__is_canonical(loc)) {
@@ -425,7 +426,10 @@ static matteString_t * import__push_path(matteArray_t * paths, const matteString
         matteString_t * base = import__get_directory(out);
         matte_array_push(paths, base);
     } else {
+        // if it doesnt, this still needs to push SOMETHING, so push the current directory.
+        matteString_t * base = import__get_directory(out);
         matte_string_set(out, loc);
+        matte_array_push(paths, base);
     }
 
     return out;

@@ -62,7 +62,8 @@ int main() {
             "system/socketio.mt",       "Matte.System.SocketIO",       
             "system/time.mt",           "Matte.System.Time",       
             "system/utility.mt",        "Matte.System.Utility",               
-            "system/async.mt",        "Matte.System.Async",               
+            "system/async.mt",          "Matte.System.Async",               
+            "system/async_worker.mt",   "Matte.System.AsyncWorker",               
             "system/system.mt",         "Matte.System",       
         #endif
 

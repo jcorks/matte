@@ -45,7 +45,7 @@ struct matteHeap_t {
     matteBin_t * functionHeap;
     matteArray_t * valueHeap;
     matteArray_t * valueHeap_refs;
-    
+    matteArray_t * checkRootsStack;
     
     
     uint16_t gcLocked;
@@ -292,7 +292,7 @@ static matteValue_t * heap_new_value_pointer(matteHeap_t * h) {
         }
         size = HEAP_VALUE_POINTER_BLOCK_SIZE;
     }
-    matteValue_t * out = matte_array_at(h->valueHeap, matteValue_t *, size=1);
+    matteValue_t * out = matte_array_at(h->valueHeap, matteValue_t *, size-1);
     matte_array_set_size(h->valueHeap, size-1);
     return out;
 }
@@ -904,6 +904,7 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
     out->valueHeap = matte_array_create(sizeof(matteValue_t*));
     out->valueHeap_refs = matte_array_create(sizeof(matteValue_t*));
     out->typecode2data = matte_array_create(sizeof(MatteTypeData));
+    out->checkRootsStack = matte_array_create(sizeof(matteObject_t*));
     out->routePather = matte_array_create(sizeof(void*));
     out->routeIter = matte_table_iter_create();
     //out->verifiedRoot = matte_table_create_hash_pointer();
@@ -1026,8 +1027,9 @@ void matte_heap_destroy(matteHeap_t * h) {
     matte_table_destroy(h->type_number_methods);
     matte_table_destroy(h->type_object_methods);
     matte_table_destroy(h->type_string_methods);
-    
+    matte_array_destroy(h->checkRootsStack);    
     heap_free_value_pointers(h);
+    matte_array_destroy(h->toRemove);
     free(h);
 }
 
@@ -3140,7 +3142,9 @@ static void object_cleanup(matteHeap_t * h) {
         m->nextRoot = NULL;
         
     }
-    printf("cleaned Up: %d\n", cleanedUP);
+    #ifdef MATTE_DEBUG__HEAP
+        printf("cleaned Up: %d\n", cleanedUP);
+    #endif
     matte_table_iter_destroy(iter);
     uint32_t newlen = matte_array_get_size(h->toRemove);
     if (newlen != len) {
@@ -3167,9 +3171,8 @@ void matte_heap_pop_lock_gc(matteHeap_t * h) {
 
 void check_roots(matteHeap_t * h, matteObject_t ** rootSrc) {
     if (!*rootSrc) return;
-    static matteArray_t * stack = NULL;
-    if (!stack) stack = matte_array_create(sizeof(matteObject_t*));
-    else matte_array_set_size(stack, 0);
+    matteArray_t * stack = h->checkRootsStack;
+    matte_array_set_size(stack, 0);
     uint32_t i;
     uint32_t len;
 
@@ -3212,7 +3215,9 @@ void check_roots(matteHeap_t * h, matteObject_t ** rootSrc) {
         matte_array_set_size(stack, 0);
         root = n;
     }
+    #ifdef MATTE_DEBUG__HEAP
     printf("Roots: %d, checked %d, locked: %d\n", roots, checked, locked);
+    #endif
 
 }
 

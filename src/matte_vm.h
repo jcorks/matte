@@ -81,6 +81,16 @@ void matte_vm_set_import(
     void * userData
 );
 
+
+// Expands a given filename as if it were from an import 
+// call. This does not impact the import path chain.
+// The returned path is a fully-qualified path.
+// The result should be cleaned up by the caller.
+matteString_t * matte_vm_import_expand_path(
+    matteVM_t * vm, 
+    const matteString_t * module
+);
+
 // Performs an import, which evaluates the source at the given path 
 // and returns its value, as if calling import() within 
 // source.

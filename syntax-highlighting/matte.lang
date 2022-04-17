@@ -170,6 +170,8 @@
                 <context id="boolean" style-ref="boolean">
                     <keyword>true</keyword>
                     <keyword>false</keyword>
+                    <keyword>empty</keyword>
+                    <keyword>parameters</keyword>                    
                 </context>
 
                 <!--<context id="builtin" style-ref="def:constant">

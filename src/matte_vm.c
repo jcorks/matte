@@ -1826,6 +1826,15 @@ matteValue_t matte_vm_run_fileid(
     return result;
 }
 
+matteString_t * matte_vm_import_expand_path(
+    matteVM_t * vm, 
+    const matteString_t * module
+) {
+    matteString_t * locationExpanded = import__push_path(vm->importPaths, module);
+    import__pop_path(vm->importPaths);
+    return locationExpanded;
+}
+
 
 matteValue_t matte_vm_import(
     matteVM_t * vm, 
