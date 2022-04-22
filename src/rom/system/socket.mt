@@ -1,7 +1,7 @@
 @class = import(module:'Matte.Core.Class');
 @EventSystem = import(module:'Matte.Core.EventSystem');
 @MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
-@SocketIO = {
+@Socket = {
     Server : ::<={
         // Creates a new socket bound to an address and port.
         // args:
@@ -137,7 +137,7 @@
 
         // actual client that a user interacts with.
         @:Client = class(
-            name: 'Matte.System.SocketIO.Server.Client',
+            name: 'Matte.System.Socket.Server.Client',
             inherits:[EventSystem],
             define:::(this) {
                 @id_number;
@@ -238,7 +238,7 @@
         );
 
         @:Server = class(
-            name: 'Matte.System.SocketIO.Server',
+            name: 'Matte.System.Socket.Server',
             inherits:[EventSystem],
             define:::(this) {
 
@@ -375,7 +375,7 @@
                 
                 
         return class(
-            name : 'Matte.System.SocketIO.Client',
+            name : 'Matte.System.Socket.Client',
             inherits : [EventSystem],
             define:::(this) {
                 @socket;
@@ -445,16 +445,16 @@
                 
                 
                 this.interface = {
-                    connect::(address => String, port => Number, mode) {
+                    connect::(address => String, port => Number, mode, tls) {
                         when (socket != empty) error(message:'Socket is already connected.');
                         if (mode == empty) ::<={
                             mode = 0;
                         };
                         
                         listen(to:::{
-                            socket = _socket_client_create(a:address, b:port, c:0, d:mode);
+                            socket = _socket_client_create(a:address, b:port, c:0, d:mode, e:tls);
                         }, onMessage:::(message){
-                            this.emit(event:'onConnectFail', detail:message);
+                            this.emit(event:'onConnectFail', detail:message.detail);
                         });
                     },
                     
@@ -481,219 +481,6 @@
 };
 
 
-return SocketIO;
+return Socket;
 
-
-
-/*
-
-//@SocketIO     = import("Matte.System.SocketIO");
-//@MemoryBuffer = import("Matte.System.MemoryBuffer");
-@Array = import("Matte.Core.Array");
-@Time = import("Matte.System.Time");
-@ConsoleIO = import("Matte.System.ConsoleIO");
-
-/// hexdump style printing of a memory buffer
-@: dumphex = ::<={
-    @hextable = {
-        0: '0',
-        1: '1',
-        2: '2',
-        3: '3',
-        4: '4',
-        5: '5',
-        6: '6',
-        7: '7',
-        8: '8',
-        9: '9',
-        10: 'a',
-        11: 'b',
-        12: 'c',
-        13: 'd',
-        14: 'e',
-        15: 'f'
-    };
-
-    // assumes 0-255
-    @: numberToHex::(n => Number) {
-        return hextable[n / 16] + // number lookups are always floored.
-               hextable[n % 16];
-    };
-
-    @asciitable = {
-        33: '!',
-        34: '"',
-        35: '#',
-        36: '$',
-        37: '%',
-        38: '&',
-        39: "'",
-        40: '(',
-        41: ')',
-        42: '*',
-        43: '+',
-        44: ',',
-        45: '-',
-        46: '.',
-        47: '/',
-        48: '0',
-        49: '1',
-        50: '2',
-        51: '3',
-        52: '4',
-        53: '5',
-        54: '6',
-        55: '7',
-        56: '8',
-        57: '9',
-        58: ':',
-        59: ';',
-        60: '<',
-        61: '=',
-        62: '>',
-        63: '?',
-        64: '@',
-        65: 'A',
-        66: 'B',
-        67: 'C',
-        68: 'D',
-        69: 'E',
-        70: 'F',
-        71: 'G',
-        72: 'H',
-        73: 'I',
-        74: 'J',
-        75: 'K',
-        76: 'L',
-        77: 'M',
-        78: 'N',
-        79: 'O',
-        80: 'P',
-        81: 'Q',
-        82: 'R',
-        83: 'S',
-        84: 'T',
-        85: 'U',
-        86: 'V',
-        87: 'W',
-        88: 'X',
-        89: 'Y',
-        90: 'Z',
-        91: '[',
-        92: '\\',
-        93: ']',
-        94: '^',
-        95: '_',
-        96: '`',
-        97: 'a',
-        98: 'b',
-        99: 'c',
-        100: 'd',
-        101: 'e',
-        102: 'f',
-        103: 'g',
-        104: 'h',
-        105: 'i',
-        106: 'j',
-        107: 'k',
-        108: 'l',
-        109: 'm',
-        110: 'n',
-        111: 'o',
-        112: 'p',
-        113: 'q',
-        114: 'r',
-        115: 's',
-        116: 't',
-        117: 'u',
-        118: 'v',
-        119: 'w',
-        120: 'x',
-        121: 'y',
-        122: 'z',
-        123: '{',
-        124: '|',
-        125: '}',
-        126: '~'
-    };
-
-    @: numberToAscii::(n => Number) {
-        @: res = asciitable[n];
-        when(res == empty) '__';
-        return res + ' ';
-    };
-
-    return ::(data => MemoryBuffer.type){
-        ConsoleIO.println('[' + data.size + ' Bytes]');
-        @line       = '';
-        @lineAsText = ''; 
-        for([0, data.size], ::(i) {
-            if (i%8 == 0) ::<={
-                ConsoleIO.println(line + "      " + lineAsText);
-                line = '';
-                lineAsText = '';
-            };
-
-            line = line + numberToHex(data[i]) + ' ';
-            lineAsText = lineAsText + numberToAscii(data[i]); 
-        });
-        
-        if (lineAsText != '') ::<= {
-            ConsoleIO.println(line + "      " + lineAsText);            
-        };
-    };
-};
-
-@sendDataString::(client, str => String) {
-    @m = MemoryBuffer.new();
-    @:len = introspect.length(str); 
-    m.size = len;
-    for([0, len], ::(i){
-        m[i] = introspect.charCodeAt(str, i);
-    });
-    
-    client.sendData(m);
-};
-*/
-
-
-
-
-
-//client example:
-/*
-@client = SocketIO.Client.new();
-
-client.installHook('onConnectSuccess', ::{
-    ConsoleIO.println('Successfully connected.');
-    sendDataString(client, 'whoa!!');
-});
-
-client.installHook('onConnectFail', ::(v, reason => String) {
-    ConsoleIO.println('Connection failed: ' + String(reason));
-});
-
-client.installHook('onDisconnect', ::{
-    ConsoleIO.println('Disconnected');
-});
-
-client.installHook('onIncomingData', ::(v, data => MemoryBuffer.type) {
-    @a = [];
-    for([0, data.size], ::(i) {
-        a[i] = data[i];
-    });
-    @str = introspect.arrayToString(a);
-    ConsoleIO.println('Message from server: ' + str);
-});
-
-client.connect('127.0.0.1', 8080);
-loop(::{    
-    client.update();
-    Time.sleep(20);
-    return true;
-});
-*/
-
-
-//Server example:
 

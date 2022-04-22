@@ -59,7 +59,7 @@ int main() {
             "system/consoleio.mt",      "Matte.System.ConsoleIO",       
             "system/filesystem.mt",     "Matte.System.Filesystem",       
             "system/memorybuffer.mt",   "Matte.System.MemoryBuffer",       
-            "system/socketio.mt",       "Matte.System.SocketIO",       
+            "system/socket.mt",         "Matte.System.Socket",       
             "system/time.mt",           "Matte.System.Time",       
             "system/utility.mt",        "Matte.System.OS",               
             "system/async.mt",          "Matte.System.Async",               

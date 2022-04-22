@@ -44,11 +44,11 @@ typedef struct {
     int connected;
     
     
-    
 } MatteSocketServer_Client;
 
 
 #define INTEGRITY_ID_SOCKET_OBJECT 0x080850c3
+#define READBLOCKSIZE 512
 
 typedef struct {
     // data integrity ID check.
@@ -65,7 +65,7 @@ typedef struct {
     
     int mode;
     int poolid;
-    
+
 } MatteSocketServer;
 
 
@@ -732,7 +732,89 @@ typedef struct {
     // 1-> pending connection 
     // 2-> connected
     int state;
+    
+    int tls;
 } MatteSocketClient;
+
+
+static const char * matte_socket__client_start_tls(MatteSocketClient * s) {
+    BIO * certbio = NULL;
+    BIO * outbio = NULL;
+    const SSL_METHOD * method;
+    SSL_CTX *ctx;
+    SSL *ssl;
+    int server = 0;
+    int ret, i;
+
+    // initialize
+    OpenSSL_add_all_algorithms();
+    ERR_load_BIO_strings();
+    ERR_load_crypto_strings();
+    SSL_load_error_strings();
+
+    // binary io for certs
+    certbio = BIO_new(BIO_s_file());
+    outbio  = BIO_new_fp(stdout, BIO_NOCLOSE);
+
+
+    // initialize SSL
+    if (SSL_library_init() < 0)
+        return "SSL Failed to initialize";
+
+    // context initialize
+    method = SSLv23_client_method();
+    if ((ctx = SSL_CTX_new(method)) == NULL)
+        return "SSL could not create context";
+
+    // Disable SSLv2, only want TLS
+    SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
+
+
+    // connect to socket
+    ssl = SSL_new(ctx);
+    SSL_set_fd(ssl, s->socketfd);
+
+    int status;
+    while ((status = SSL_connect(ssl)) != 1) {
+        switch(SSL_get_error(ssl, status)) {
+          case SSL_ERROR_NONE: return NULL; // ? good??
+          case SSL_ERROR_ZERO_RETURN: 
+            return "Could not bind SSL session to socket connection: the session has been closed";
+
+          // non-blocking
+          case SSL_ERROR_WANT_READ:
+          case SSL_ERROR_WANT_WRITE:
+          case SSL_ERROR_WANT_CONNECT:
+          case SSL_ERROR_WANT_ACCEPT:
+            break;
+          case SSL_ERROR_WANT_X509_LOOKUP:
+          case SSL_ERROR_SYSCALL:
+          case SSL_ERROR_SSL:
+            return "SSL error occurred";
+        }
+    }
+    /*
+    // check cert
+    cert = SSL_get_peer_certificate(ssl);
+    if (cert == NULL)
+        return "Could not get peer certificate";
+
+    certname = X509_NAME_new();
+    certname = X509_get_subject_name(cert);
+
+    BIO_printf(outbio, "Displaying the certificate subject data:\n");
+    X509_NAME_print_ex(outbio, certname, 0, 0);
+    BIO_printf(outbio, "\n");
+
+    SSL_free(ssl);
+    close(server);
+    X509_free(cert);
+    SSL_CTX_free(ctx);
+    BIO_printf(outbio, "Finished SSL/TLS connection with server: %s.\n", dest_url);
+    return(0);
+    */
+    return NULL;
+}
 
 MATTE_EXT_FN(matte_socket__client_create) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
@@ -740,6 +822,7 @@ MATTE_EXT_FN(matte_socket__client_create) {
     int port = matte_value_as_number(heap, args[1]);
     int type = matte_value_as_number(heap, args[2]);
     int mode = matte_value_as_boolean(heap, args[3]);
+    int tls  = matte_value_as_boolean(heap, args[4]);
     // error in args
     if (matte_vm_pending_message(vm)) {
         return matte_heap_new_value(heap);
@@ -905,7 +988,16 @@ MATTE_EXT_FN(matte_socket__client_create) {
             return matte_heap_new_value(heap);
         } 
     }    
-    
+    if (tls) {
+        const char * err = matte_socket__client_start_tls(socketfd);
+        if (err) {
+            matteString_t * realErr = matte_string_create_from_c_str("Socket connect error: %s", err);
+            matte_vm_raise_error_string(vm, realErr);
+            matte_string_destroy(realErr);
+            close(socketfd);
+            return matte_heap_new_value(heap);        
+        }
+    }
     
     MatteSocketClient * cl = calloc(1, sizeof(MatteSocketClient));
     cl->socketfd = socketfd;
@@ -913,6 +1005,9 @@ MATTE_EXT_FN(matte_socket__client_create) {
     cl->outdata = matte_array_create(1);    
     cl->state = res == 0 ? 2 : 1; // if res == 0, then connection was immediate somehow. Probably localhost loop?
     cl->mode = mode;
+    
+
+
     
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_new_object_ref(heap, &out);
@@ -931,6 +1026,18 @@ MATTE_EXT_FN(matte_socket__client_delete) {
     free(cl);
 
     return matte_heap_new_value(heap);
+}
+
+
+static ssize_t matte_client_read(MatteSocketClient * c, int * err) {
+    if (c->tls) {
+        size_t readBytes;
+        int res = SSL_read(c->SSL, 
+    } else {
+        ssize_t out = read(c->socketfd, c->readBuffer, READBLOCKSIZE);
+        if (out < 0)
+            *err = errno;
+    }
 }
 
 
@@ -1031,28 +1138,22 @@ MATTE_EXT_FN(matte_socket__client_update) {
     } else if (cl->state == 2) {
         // normal connection case: check for incoming/outgoing data
         if (cl->mode == 0) {
-            #define READBLOCKSIZE 512
-            uint8_t block[READBLOCKSIZE];
-
+            int err;
             ssize_t readsize;
-            while((readsize = read(cl->socketfd, block, READBLOCKSIZE)) > 0) {
-                matte_array_push_n(cl->indata, block, readsize);
+            while((readsize = matte_client_read(cl, &err)) > 0) {
+                matte_array_push_n(cl->indata, cl->readBuffer, readsize);
             }
             
             if (readsize < 0) {
                 const char * err = NULL;
-                switch(errno) {
+                switch(err) {
                   case EWOULDBLOCK: // EAGAIN == EWOULDBLOCK
                     break;
                    
-                  case EBADF:
-                    err = "Socket read error: bad file descriptor.";
-                    break;
-                  case EFAULT:
-                    err = "Socket read error: source reading buffer address is invalid.";
-                    break;
-                  case EINTR:
-                    err = "Socket read error: signal interrupted.";
+                  case EBADF: //"Socket read error: bad file descriptor.";
+                  case EFAULT: //"Socket read error: source reading buffer address is invalid.";
+                  case EINTR: //"Socket read error: signal interrupted.";
+                    cl->state = 0; // normal disconnect
                     break;
                   case EINVAL:
                     err = "Socket read error: file descriptor is not of a type that can be read.";
@@ -1074,7 +1175,6 @@ MATTE_EXT_FN(matte_socket__client_update) {
                     matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
                 }
             } else if (readsize == 0) {
-                cl->state = 0; // normal disconnect
             }   
             
                 
@@ -1241,7 +1341,7 @@ void matte_system__socketio(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_server_client_get_pending_message_count"),   2, matte_socket__server_client_get_pending_message_count, NULL);
 
 
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_create"),  4, matte_socket__client_create, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_create"),  5, matte_socket__client_create, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_delete"),  1, matte_socket__client_delete, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_update"),  1, matte_socket__client_update, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::socket_client_get_state"),  1, matte_socket__client_get_state, NULL);

@@ -1,6 +1,6 @@
-// This demonstrates the server-side basic usage of SocketIO,
+// This demonstrates the server-side basic usage of Socket,
 // which performssockets over the IP.
-@:SocketIO     = import(module:'Matte.System.SocketIO');
+@:Socket     = import(module:'Matte.System.Socket');
 @:Time         = import(module:'Matte.System.Time');
 @:MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
 
@@ -35,7 +35,7 @@
 // The server requests a port from the OS to use for 
 // communication. If the process is not successful,
 // an error is thrown.
-@server = SocketIO.Server.new(
+@server = Socket.Server.new(
     port : 8080
 );
 

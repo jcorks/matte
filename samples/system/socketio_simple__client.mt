@@ -1,7 +1,7 @@
-// This demonstrates the client-side basic usage of SocketIO,
+// This demonstrates the client-side basic usage of Socket,
 // which uses sockets over the IP.
 @:ConsoleIO = import(module:'Matte.System.ConsoleIO');
-@:SocketIO  = import(module:'Matte.System.SocketIO');
+@:Socket  = import(module:'Matte.System.Socket');
 @:MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
 @:Time = import(module:'Matte.System.Time');
 
@@ -24,7 +24,7 @@
 
 
 // This creates a new client instance.
-@client = SocketIO.Client.new();
+@client = Socket.Client.new();
 
 // Clients are EventSystems, meaning they mostly 
 // are interacted with via events and responses to 

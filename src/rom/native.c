@@ -37,7 +37,12 @@
 #include <time.h> 
 #include <pthread.h>
 #include <fcntl.h>
-
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
 
 
 ////////////
