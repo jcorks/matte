@@ -116,7 +116,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_LITERAL_EMPTY, "Empty Literal",
         MATTE_TOKEN_EXTERNAL_NOOP, "no-op built-in",
         MATTE_TOKEN_EXTERNAL_GATE, "Gate built-in",
-        MATTE_TOKEN_EXTERNAL_LOOP, "Loop built-in",
+        MATTE_TOKEN_EXTERNAL_FOREVER, "Forever built-in",
         MATTE_TOKEN_EXTERNAL_FOR, "For built-in",
         MATTE_TOKEN_EXTERNAL_FOREACH, "Foreach built-in",
         MATTE_TOKEN_EXTERNAL_MATCH, "Match built-in",
@@ -241,16 +241,33 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 
             // one or more args
             matte_syntax_graph_node_token(MATTE_TOKEN_VARIABLE_NAME),
-            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER),
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-            matte_syntax_graph_node_split(
-                // 1 arg
-                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
-                matte_syntax_graph_node_end(),
+
+            matte_syntax_graph_node_split(            
+                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER),
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+                matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+                matte_syntax_graph_node_split(
+                    // 1 arg
+                    matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+                    matte_syntax_graph_node_end(),
+                    NULL,
+                    matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_SEPARATOR),
+                    matte_syntax_graph_node_to_parent(8), // back to arg expression
+                    NULL,
+                    NULL
+                ),
                 NULL,
-                matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_SEPARATOR),
-                matte_syntax_graph_node_to_parent(6), // back to arg expression
+                
+                matte_syntax_graph_node_split(
+                    // 1 arg
+                    matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+                    matte_syntax_graph_node_end(),
+                    NULL,
+                    matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_SEPARATOR),
+                    matte_syntax_graph_node_to_parent(5), // back to arg expression
+                    NULL,
+                    NULL
+                ),
                 NULL,
                 NULL
             ),
@@ -513,7 +530,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_LITERAL_STRING,
 
             MATTE_TOKEN_EXTERNAL_NOOP,
-            MATTE_TOKEN_EXTERNAL_LOOP,
+            MATTE_TOKEN_EXTERNAL_FOREVER,
             MATTE_TOKEN_EXTERNAL_FOREACH,
             MATTE_TOKEN_EXTERNAL_FOR,
             MATTE_TOKEN_EXTERNAL_MATCH,

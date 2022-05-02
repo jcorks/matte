@@ -7,7 +7,7 @@
 
 listen(to:::{
     for(in:[0, 1], do:1);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'nofn';
 });
 
@@ -16,14 +16,14 @@ listen(to:::{
     for(in:[10, 4, 1], do:::{
         out = out + 'a';
     });
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'norun';
 });
 
 
 listen(to:::{
     for();
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'nofn';
 });
 
@@ -33,7 +33,7 @@ listen(to:::{
     for(in:[5, 0, -1], do:::{
         out = out + 'b';
     });
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'norun';
 });
 
@@ -41,7 +41,7 @@ listen(to:::{
     for(in:0, do:::{
     
     });
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'noind';
 });
 
@@ -52,7 +52,7 @@ listen(to:::{
         out = out + 'c';        
         when (i == 4) 10; 
     });
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'norun';
 });
 

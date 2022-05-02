@@ -33,6 +33,7 @@ static char * lastCommand = NULL;
 static matteTable_t * lines;
 static int stackframe = 0;
 uint32_t DEBUG_FILEID;
+matteString_t * DEBUG_FILE;
 
 typedef struct {
     uint32_t fileid;
@@ -146,7 +147,7 @@ static int execCommand(matteVM_t * vm) {
                !strcmp(command, "r")) {
         if (!started) {
             started = 1;
-            matte_vm_run_fileid(vm, DEBUG_FILEID, parse_parameter_line(vm, res + strlen(command)));
+            matte_vm_run_fileid(vm, DEBUG_FILEID, parse_parameter_line(vm, res + strlen(command)), DEBUG_FILE);
 
 
             printf("Execution complete.\n");
@@ -241,7 +242,7 @@ static int execCommand(matteVM_t * vm) {
                !strcmp(command, "p")) {
 
         matteString_t * src = matte_string_create();
-        matte_string_concat_printf(src, "return import(module:'debug.mt').printObject(o:%s);", res);
+        matte_string_concat_printf(src, "return import(module:'$DEBUG').printObject(o:%s);", res);
 
 
         matteValue_t output = matte_vm_run_scoped_debug_source(
@@ -317,14 +318,36 @@ static void onDebugPrint(matteVM_t * vm, const matteString_t * str, void * ud) {
 }
 
 
+static void addUtils(matteVM_t * vm) {
+    uint32_t debugfile = matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, "$DEBUG"));
+    
+    uint32_t srcLen = 0;
+    uint8_t * src = dump_bytes("debug.mt", &srcLen);
+    
+    uint32_t bytecodeLen = 0;
+    uint8_t * bytecode = matte_compiler_run(src, srcLen, &bytecodeLen, NULL, NULL);
+    
+    matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+        matte_vm_get_heap(vm),
+        debugfile,
+        bytecode,
+        bytecodeLen
+    );
+    
+    matte_vm_add_stubs(vm, stubs);
+    matte_vm_run_fileid(vm, debugfile, matte_heap_new_value(matte_vm_get_heap(vm)), NULL);
+
+}
+
 
 int matte_debug(const char * input, char ** argv, int argc) {
     matte_t * m = matte_create();
     vm = matte_get_vm(m);
-    DEBUG_FILEID = matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, input));
+    DEBUG_FILE = matte_string_clone(MATTE_VM_STR_CAST(vm, input));
+    DEBUG_FILEID = matte_vm_get_new_file_id(vm, DEBUG_FILE);
     matte_vm_set_debug_callback(vm, onDebugEvent, NULL);
     matte_vm_set_print_callback(vm, onDebugPrint, NULL);
-    printf("Compiling %s...\n", input);
+    printf("Compiling %s...", input);
     fflush(stdout);    
     uint32_t lenBytes;
     uint8_t * src = dump_bytes(input, &lenBytes);
@@ -357,7 +380,16 @@ int matte_debug(const char * input, char ** argv, int argc) {
     lastCommand = strdup("");
     matteArray_t * arr = matte_bytecode_stubs_from_bytecode(matte_vm_get_heap(vm), DEBUG_FILEID, outBytes, outByteLen);
     matte_vm_add_stubs(vm, arr);
-    printf("...Done! (%.2fKB to %.2fKB)\n\n", lenBytes / 1000.0, outByteLen / 1000.0);
+    printf("(%.2fKB to %.2fKB)\n", lenBytes / 1000.0, outByteLen / 1000.0);
+
+    printf("Loading utils...");
+    fflush(stdout);    
+    breakpoints = matte_array_create(sizeof(breakpoint));
+    addUtils(vm);
+
+
+    printf("Done.\n\n");
+
 
     printf("Welcome to the Matte debugger!\n");
     printf("Enter 'help' for available commands.\n");
@@ -365,7 +397,6 @@ int matte_debug(const char * input, char ** argv, int argc) {
 
 
 
-    breakpoints = matte_array_create(sizeof(breakpoint));
     while(keepgoing) execCommand(vm);
     printf("Exiting.\n");
     fflush(stdout);

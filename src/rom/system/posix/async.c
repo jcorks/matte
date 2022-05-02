@@ -184,14 +184,15 @@ static void * matte_thread(void * userData) {
     uint32_t lenBytes;
     *startData->stateRef = MWAS_UNKNOWN;
     uint8_t * src = dump_bytes(startData->from, &lenBytes);
-
+    matteString_t * fromPath = matte_string_create_from_c_str("%s", startData->from);
     if (!src || !lenBytes) {
         matteString_t * str = matte_string_create();
-        matte_string_concat_printf(str, "Could not read from file %s", src);        
+        matte_string_concat_printf(str, "Could not read from file %s", startData->from);        
         *startData->errorStringRef = str;
         *startData->stateRef = MWAS_FAILED;
         
         free(startData);  
+        matte_string_destroy(fromPath);
         return NULL;
     }
 
@@ -203,11 +204,13 @@ static void * matte_thread(void * userData) {
         matte_thread_compiler_error,
         startData
     );
-
     free(src);
+    
     if (!outByteLen || !outBytes) {
         *startData->stateRef = MWAS_FAILED;
-        free(startData);  
+        free(src);
+        free(startData);          
+        matte_string_destroy(fromPath);
         return NULL;
     }
 
@@ -250,7 +253,8 @@ static void * matte_thread(void * userData) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::asyncworker_send_message"),   1, matte_asyncworker__send_message, startData);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::asyncworker_check_message"),   0, matte_asyncworker__check_message, startData);
 
-    matteValue_t v = matte_vm_run_fileid(vm, FILEIDS, params);
+    matteValue_t v = matte_vm_run_fileid(vm, FILEIDS, params, fromPath);
+    matte_string_destroy(fromPath);
 
     
 

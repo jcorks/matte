@@ -17,7 +17,7 @@
 
 listen(to:::{
     Object.removeKey(from:100);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'noobj';
 });
 

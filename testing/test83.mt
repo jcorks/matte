@@ -9,7 +9,7 @@ listen(to:::{
     
     // should error out, not allowed.
     output = String.substr(string:a, from:'a', to:[]);    
-}, onMessage:::(message) {
+}, onError:::(message) {
     output = 'a';
 });
 

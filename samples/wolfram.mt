@@ -3,7 +3,6 @@
 
 @Time    = import(module:'Matte.System.Time');
 @Console = import(module:'Matte.System.ConsoleIO');
-@Utility = import(module:'Matte.System.Utility');
 
 @:SWCA_WIDTH = 80;
 @:SWCA_SPEED = 120;
@@ -77,7 +76,7 @@ state[SWCA_WIDTH/2] = true;
  
 
 
-loop(func:::{
+forever(do:::{
     // get the full state every line.
     if (progress == SWCA_WIDTH)::<={
         for(in:[0, SWCA_WIDTH], do:::(i) {
@@ -96,10 +95,9 @@ loop(func:::{
     };
     @nextChar = String.charAt(string:str, index:progress);
     @wait = (if (nextChar == ' ') SWCA_SPEED/7 else SWCA_SPEED);
-    Time.sleep(milliseconds:Utility.random*wait);
+    Time.sleep(milliseconds:Number.random()*wait);
     Console.printf(format:nextChar);
     progress += 1;
-    return true;
 });
 
 

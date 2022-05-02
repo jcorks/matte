@@ -791,8 +791,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "if");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_LOOP: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "loop");
+      case MATTE_TOKEN_EXTERNAL_FOREVER: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "forever");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_FOR: {
@@ -2560,8 +2560,8 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
-      case MATTE_TOKEN_EXTERNAL_LOOP: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_LOOP);
+      case MATTE_TOKEN_EXTERNAL_FOREVER: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_FOREVER);
         *src = iter->next;
         return inst;
       }
@@ -2889,8 +2889,16 @@ static matteArray_t * compile_function_call(
         // parse out the parameters
         uint32_t i = function_intern_string(block, iter->text);
         uint32_t nameLineNum = iter->line;
-        iter = iter->next->next; // skip :    
-        matteArray_t * exp = compile_expression(g, block, functions, &iter);
+        matteArray_t * exp;
+        // usual case -> "name: expression"
+        if (iter->next->ttype == MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER) {           
+            iter = iter->next->next; // skip :    
+            exp = compile_expression(g, block, functions, &iter);
+        // convenient case -> "name" (which is also the expression)
+        } else {
+            int isLvalue; // nused
+            exp = compile_value(g, block, functions, &iter, &isLvalue);        
+        }
         if (!exp) {
             goto L_FAIL;
         }

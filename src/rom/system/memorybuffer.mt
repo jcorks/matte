@@ -8,7 +8,7 @@
 @:_mbuffer_append = getExternalFunction(name:"__matte_::mbuffer_append");
 @:_mbuffer_remove = getExternalFunction(name:"__matte_::mbuffer_remove");
 @:_mbuffer_get_size = getExternalFunction(name:"__matte_::mbuffer_get_size");
-
+@:_mbuffer_as_utf8 = getExternalFunction(name:"__matte_::mbuffer_as_utf8");
 
 @:_mbuffer_get_index = getExternalFunction(name:"__matte_::mbuffer_get_index");
 @:_mbuffer_set_index = getExternalFunction(name:"__matte_::mbuffer_set_index");
@@ -105,6 +105,11 @@
                 _mbuffer_append_byte(a:buffer, b:val);
             },
             
+            utf8 : {
+                get :: {
+                    return _mbuffer_as_utf8(a:buffer);
+                }
+            },
             
             handle : {
                 get :: {

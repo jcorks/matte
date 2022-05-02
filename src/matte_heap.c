@@ -11,6 +11,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
+#include <float.h>
 #ifdef MATTE_DEBUG 
     #include <assert.h>
 #endif
@@ -1639,7 +1641,12 @@ matteValue_t matte_value_as_string(matteHeap_t * heap, matteValue_t v) {
 
       // slow.. make fast please!
       case MATTE_VALUE_TYPE_NUMBER: {        
-        matteString_t * str = matte_string_create_from_c_str("%g", v.value.number);
+        matteString_t * str;
+        if (fabs(v.value.number - (int64_t)v.value.number) < DBL_EPSILON) {
+            str = matte_string_create_from_c_str("%d", (int)v.value.number);                
+        } else {
+            str = matte_string_create_from_c_str("%.15g", v.value.number);        
+        }
         matteValue_t out;
         out.binID = MATTE_VALUE_TYPE_STRING;
         out.value.id = matte_string_heap_internalize(heap->stringHeap, str);

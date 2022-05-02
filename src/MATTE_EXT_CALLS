@@ -1,26 +1,21 @@
 //
-static int vm_ext_call__loop_restart_condition(
+static int vm_ext_call__forever_restart_condition(
     matteVM_t * vm,
     matteVMStackFrame_t * frame, 
     matteValue_t result,
     void * data
 ) {
-    if (result.binID != MATTE_VALUE_TYPE_BOOLEAN) {
-        matte_heap_recycle(vm->heap, result);
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'loop' requires the looping function to return a boolean."));
-        return 0;        
-    }
-    return matte_value_as_boolean(vm->heap, result);
+    return 1;
 }
-static matteValue_t vm_ext_call__loop(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+static matteValue_t vm_ext_call__forever(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];
     if (!matte_value_is_callable(vm->heap, a)) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'loop' requires only argument to be a function."));
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'forever' requires only argument to be a function."));
         return matte_heap_new_value(vm->heap);
     }
 
-    vm->pendingRestartCondition = vm_ext_call__loop_restart_condition;
-    matte_heap_recycle(vm->heap, matte_vm_call(vm, a, matte_array_empty(),matte_array_empty(), MATTE_VM_STR_CAST(vm, "loop")));
+    vm->pendingRestartCondition = vm_ext_call__forever_restart_condition;
+    matte_heap_recycle(vm->heap, matte_vm_call(vm, a, matte_array_empty(),matte_array_empty(), MATTE_VM_STR_CAST(vm, "forever")));
     return matte_heap_new_value(vm->heap);
 }
 
@@ -235,6 +230,7 @@ static matteValue_t vm_ext_call__send(matteVM_t * vm, matteValue_t fn, const mat
     matte_value_object_push_lock(vm->heap, b);
     vm->catchable = b;
     vm->pendingCatchable = 1;
+    vm->pendingCatchableIsError = 0;
     return matte_heap_new_value(vm->heap);
 }
 
@@ -257,23 +253,47 @@ static matteValue_t vm_ext_call__listen(matteVM_t * vm, matteValue_t fn, const m
         matteValue_t catchable = vm->catchable;
         vm->catchable.binID = 0;
         vm->pendingCatchable = 0;
-        matte_value_object_pop_lock(vm->heap, catchable);
 
 
         // if the catchable exists, we either 
         // 1) return this return value 
         // 2) run a response function and return its result
-        if (matte_value_is_callable(vm->heap, args[1])) {
+        if (!vm->pendingCatchableIsError && matte_value_is_callable(vm->heap, args[1])) {
             matteValue_t response = args[1];
             matteArray_t arr = MATTE_ARRAY_CAST(&catchable, matteValue_t, 1);
             matteArray_t arrNames = MATTE_ARRAY_CAST(&vm->specialString_message, matteValue_t, 1);
-            out = matte_vm_call(vm, response, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response"));
+            out = matte_vm_call(vm, response, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (message)"));
+            matte_value_object_pop_lock(vm->heap, catchable);
+            matte_heap_recycle(vm->heap, catchable);
+            return out;
+        } if (vm->pendingCatchableIsError && matte_value_is_callable(vm->heap, args[2])) {
+            matteValue_t response = args[2];
+            matteArray_t arr = MATTE_ARRAY_CAST(&catchable, matteValue_t, 1);
+            matteArray_t arrNames = MATTE_ARRAY_CAST(&vm->specialString_message, matteValue_t, 1);
+            // the error is caught. Undo the error flag 
+            vm->pendingCatchableIsError = 0;
+            out = matte_vm_call(vm, response, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (error)"));
+            matte_value_object_pop_lock(vm->heap, catchable);
             matte_heap_recycle(vm->heap, catchable);
             return out;
         } else {
-            // OK, popped but not recycled.
-            return catchable;
+            if (vm->pendingCatchableIsError) {
+                // The error is uncaught, and must be handled properly before continuing.
+                vm->catchable = catchable;
+                vm->pendingCatchable = 1;
+            } else {
+                // OK, popped but not recycled. 
+                matte_value_object_pop_lock(vm->heap, catchable);           
+                return catchable;
+            }
         }
+        
+        
+        
+        
+        
+        
+        
     } else {
         // OK, already new from vm_call
         return out;        
@@ -586,7 +606,8 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
         matteValue_t cached = matte_vm_run_fileid(
             vm,
             fileid,
-            params
+            params,
+            NULL
         );
         return cached;
     }

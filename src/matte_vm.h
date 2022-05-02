@@ -116,7 +116,8 @@ matteValue_t matte_vm_import(
 matteValue_t matte_vm_run_fileid(
     matteVM_t *, 
     uint32_t fileid, 
-    matteValue_t parameters
+    matteValue_t parameters,
+    const matteString_t * importPath
 );
 
 

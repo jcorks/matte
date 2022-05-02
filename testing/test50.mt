@@ -7,7 +7,7 @@
 @n100 = listen(to:::{
     error(detail:'Testing');    
     return 50;
-}, onMessage::: (message){
+}, onError::: (message){
     errMessage = 
         'callstack:' + 
         message.callstack.length +':' + 

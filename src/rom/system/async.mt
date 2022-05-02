@@ -86,16 +86,17 @@ return class(
 
         // message checking
         @checkMessages::{
-            loop(func:::{
-                @nextm = _workernextmessage();
-                when(nextm != empty) ::<={
-                    idToWorker(id:nextm[0]).emit(
-                        event:'onNewMessage',
-                        detail:  nextm[1]                        
-                    );
-                    return true;
-                };
-                return false;
+            listen(to:::{
+                forever(do:::{
+                    @nextm = _workernextmessage();
+                    when(nextm != empty) ::<={
+                        idToWorker(id:nextm[0]).emit(
+                            event:'onNewMessage',
+                            detail:  nextm[1]                        
+                        );
+                    };
+                    send();
+                });
             });
         };
         
@@ -153,10 +154,12 @@ return class(
                             };
                         });
                         
-                        loop(func:::{
-                            Time.sleep(milliseconds:50);
-                            asinstance.update();
-                            return waiting;
+                        listen(to:::{
+                            forever(do:::{
+                                Time.sleep(milliseconds:50);
+                                asinstance.update();
+                                when(!waiting) send();
+                            });
                         });
                         asinstance.update();
                     },

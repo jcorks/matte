@@ -25,18 +25,19 @@ return listen(to:::{
                 },
                 
                 update :: {
-                    loop(func:::{
-                        @:msg = _workercheckmessage();        
-                        when(msg == empty) false;
-                        this.emit(event:'onNewMessage', detail:msg);
-                        return true;
+                    listen(to:::{
+                        forever(do:::{
+                            @:msg = _workercheckmessage();        
+                            when(msg == empty) send();
+                            this.emit(event:'onNewMessage', detail:msg);
+                        });
                     });
                 }
                 
             };
         }
     ).new();
-}, onMessage:::(detail) {
+}, onError:::(detail) {
     error(detail:'Only workers are allowed to import the AsyncWorker module.');
 });
 

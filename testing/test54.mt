@@ -3,45 +3,40 @@
 // Operator
 
 
-@createNumber ::(from) {
-    @val = from;
-    @valDecimal;
-    @valInteger;
+
+@createUSD ::(from) {
     // overly complex implementations are great for testing
     // ... or so i tell myself
-    if (val < 0) ::<={
-        valDecimal = Number.abs(of:val - Number.floor(of:val) - 1);
-        valInteger = Number.floor(of:val) + 1;
-    } else ::<={
-        valDecimal = val - Number.floor(of:val);
-        valInteger = Number.floor(of:val);
-    };
-
+    @isNeg = from < 0;
+    from = Number.abs(of:from);
+    
     @ref = {
-        decimal  : valDecimal,
-        integer  : valInteger
+        cents    : Number.round(value:100*(from - Number.floor(of:from))),
+        dollars  : Number.floor(of:from),
+        isDebt   : isNeg
     };
+    
+    @:toValue::(USD) {
+        return (USD.dollars + USD.cents/100) * (if (USD.isDebt) -1 else 1);
+    };
+    
     
     Object.setAttributes(of:ref, 
         attributes: {
             '+' ::(value) {
-                return createNumber(from:val + (value.decimal + value.integer));
+                return createUSD(from:toValue(USD:ref) + toValue(USD:value));
             },
 
             '-' ::(value) {
-                return createNumber(from:val - (value.decimal + value.integer));
+                return createUSD(from:toValue(USD:ref) - toValue(USD:value));
             },
 
-            '/' ::(value) {
-                return createNumber(from:val / (value.decimal + value.integer));
+            '*' ::(value => Number) {
+                return createUSD(from:toValue(USD:ref) * value);
             },
-
-            '*' ::(value) {
-                return createNumber(from:val * (value.decimal + value.integer));
-            },
-
+            
             (String) :: {
-                return 'Integer:' + valInteger + ',Decimal:' + valDecimal; 
+                return 'Dollars:' + ref.dollars + ',Cents:' + ref.cents + ',IsDebt:' + ref.isDebt; 
             }
     });
     
@@ -50,11 +45,11 @@
 
 
 
-@a = createNumber(from:10.5);
-@b = createNumber(from:2.5);
-@c = createNumber(from:5.5);
+@a = createUSD(from:10.5);
+@b = createUSD(from:2.5);
+@c = createUSD(from:5.5);
 
-return '' + (a - b * c);
+return '' + (a - (b * 2) + c);
 
 
 

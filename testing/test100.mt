@@ -26,14 +26,14 @@ out = out + test.data;
 
 listen(to:::{
     Object.setAttributes(of:10, attributes:op);    
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'noobj0';
 });
 
 
 listen(to:::{
     Object.setAttributes(of:test, attributes:0);    
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'noobj1';
 });
 test +=  1;
@@ -61,7 +61,7 @@ out = out + test.data;
 out = out + Boolean(from:Object.getAttributes(of:test) == op2);
 listen(to:::{
     Object.getAttributes(of:'d');
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'noobjEX';
 });
 

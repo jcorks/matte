@@ -6,27 +6,27 @@
 
 listen(to:::{
     out = out + Object.keys(of:2423);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 1;
 });
 
 
 listen(to:::{
     out = out + Object.values(of:String);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 2;
 });
 
 listen(to:::{
     out = out + Object.keycount(of:String);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 3;
 });
 
 
 listen(to:::{
     out = out + Object.length(of:'[0, 1, 2]');
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 4 + 5;
 });
 
@@ -36,26 +36,26 @@ listen(to:::{
 listen(to:::{
     out = out + String.charAt(string:'123456', index:5);
     out = out + String.charAt(string:1321, index:2);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 7;
 });
 
 
 listen(to:::{
     out = out + String.charAt(string:'222222', index:'2');
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 8;
 });
 
 listen(to:::{
     out = out + String.charCodeAt(string:1321, index:1);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 9;
 });
 
 listen(to:::{
     out = out + String.charCodeAt(string:'222222', index:'2');
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'A';
 });
 
@@ -64,20 +64,20 @@ listen(to:::{
 
 listen(to:::{
     out = out + Object.subset(set:20);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'B';
 });
 
 listen(to:::{
     out = out + Object.subset(set:[0, 1, 2], from:1);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'C';
 });
 
 
 listen(to:::{
     out = out + Object.subset(set:[0, 1, 2], from:'1', to:2);
-}, onMessage:::(message){
+}, onError:::(message){
     out = out + 'C';
 });
 

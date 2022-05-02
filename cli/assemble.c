@@ -509,8 +509,8 @@ static void function_to_stub(FILE * f, uint32_t id) {
                 inst->opcode = MATTE_OPCODE_EXT;
                 if (!strcmp("noop", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_NOOP;
-                } else if (!strcmp("loop", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_LOOP;
+                } else if (!strcmp("forever", m)) {
+                    *(uint64_t*)inst->data = MATTE_EXT_CALL_FOREVER;
                 } else if (!strcmp("for", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR;
                 } else if (!strcmp("foreach", m)) {

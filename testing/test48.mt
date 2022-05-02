@@ -7,7 +7,7 @@ listen(to:::{
         error(detail:'Testing');
     },
      
-    onMessage:::(message) {
+    onError:::(message) {
         errMessage = message.detail;
     }
 );
@@ -17,7 +17,7 @@ listen(to:
         error();
     },
      
-    onMessage:::(message) {
+    onError:::(message) {
         errMessage = errMessage + String(from:message.detail == empty);
     }
 );
@@ -28,7 +28,7 @@ listen(to:
         listen();
     }, 
     
-    onMessage:::(message){
+    onError:::(message){
         errMessage = errMessage + 'failed!';
     }
 );

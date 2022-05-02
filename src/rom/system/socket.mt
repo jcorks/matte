@@ -301,18 +301,20 @@
 
                         // emit update disconnects or update.
                         @i = 0;
-                        loop(func:::{
-                            when(i == Object.length(of:clients)) false;
-                            @idKey = String(from:clients[i].id);
-                            if (found[idKey]) ::<= {
-                                clients[i].update();
-                                i+=1;
-                            } else ::<={
-                                clients[i].emit(event:'onDisconnect', detail:clients[i]);
-                                Object.removeKey(from:clients, key:i);
-                                Object.removeKey(from:clientIndex, key:idKey);                                
-                            };
-                            return true;
+                        listen(to:::{
+                            forever(do:::{
+                                when(i == Object.length(of:clients)) send();
+                                
+                                @idKey = String(from:clients[i].id);
+                                if (found[idKey]) ::<= {
+                                    clients[i].update();
+                                    i+=1;
+                                } else ::<={
+                                    clients[i].emit(event:'onDisconnect', detail:clients[i]);
+                                    Object.removeKey(from:clients, key:i);
+                                    Object.removeKey(from:clientIndex, key:idKey);                                
+                                };
+                            });
                         });                  
                     }
                 };
@@ -399,7 +401,7 @@
                         @err;
                         listen(to:::{
                             _socket_client_update(a:socket);
-                        }, onMessage:::(message) {
+                        }, onError:::(message) {
                             @:er = message;
                             err = er;
                         });
@@ -453,7 +455,7 @@
                         
                         listen(to:::{
                             socket = _socket_client_create(a:address, b:port, c:0, d:mode, e:tls);
-                        }, onMessage:::(message){
+                        }, onError:::(message){
                             this.emit(event:'onConnectFail', detail:message.detail);
                         });
                     },

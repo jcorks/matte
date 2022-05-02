@@ -272,7 +272,7 @@ int main() {
         matte_array_destroy(arr);
         free(outBytes);
 
-        matteValue_t v = matte_vm_run_fileid(vm, i+1, matte_heap_new_value(matte_vm_get_heap(vm)));
+        matteValue_t v = matte_vm_run_fileid(vm, i+1, matte_heap_new_value(matte_vm_get_heap(vm)), NULL);
 
         char * outstr = dump_string(matte_string_get_c_str(outfile));
         if (!outstr) {

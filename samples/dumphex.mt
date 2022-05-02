@@ -183,51 +183,53 @@ when(parameters == empty || parameters.file == empty) ::<={
         return iterBytes+BYTES_PER_PAGE;
     };
 
-    loop(func:::{
-        @iter = 0;
-        @lineIter = 0;
-        @lineAsTextIter = 0;
-        @out = '';
-        @lines = [];
+    listen(to:::{
+        forever(do:::{
+            @iter = 0;
+            @lineIter = 0;
+            @lineAsTextIter = 0;
+            @out = '';
+            @lines = [];
 
-    
-        for(in:[iterBytes, endPoint()], do:::(i) {
-            if (i%BYTES_PER_LINE == 0) ::<={
-                Object.push(object:lines, value: '' + line + "      " + lineAsText + '\n');
-                iter = 0;
+        
+            for(in:[iterBytes, endPoint()], do:::(i) {
+                if (i%BYTES_PER_LINE == 0) ::<={
+                    Object.push(object:lines, value: '' + line + "      " + lineAsText + '\n');
+                    iter = 0;
+                    line = '';
+                    lineAsText = '';
+                };
+
+                @n = numberToHex(n:data[i]);
+                line = String.combine(strings:[line, n.first, n.second, ' ']);
+
+                n = numberToAscii(n:data[i]);
+                lineAsText = String.combine(strings:[lineAsText, n.first, n.second]);  
+
+                iter += 1;
+            });
+            
+            if (iter%BYTES_PER_LINE) ::<= {
+                for(in:[iter, BYTES_PER_LINE], do:::(i){
+                    @n = numberToHex(n:data[i]);
+                    line = String.combine(strings:[line, '   ']);
+
+                    n = numberToAscii(n:data[i]);
+                    lineAsText = String.combine(strings:[lineAsText, '   ']);  
+                });
+                Object.push(object:lines, value: line + "      " + lineAsText + '\n');
                 line = '';
                 lineAsText = '';
             };
 
-            @n = numberToHex(n:data[i]);
-            line = String.combine(strings:[line, n.first, n.second, ' ']);
 
-            n = numberToAscii(n:data[i]);
-            lineAsText = String.combine(strings:[lineAsText, n.first, n.second]);  
 
-            iter += 1;
+            iterBytes = endPoint();
+            out = String.combine(strings:lines);
+            onPageFinish(page:String(from:out));
+            
+            when(iterBytes >= data.size) send();
         });
-        
-        if (iter%BYTES_PER_LINE) ::<= {
-            for(in:[iter, BYTES_PER_LINE], do:::(i){
-                @n = numberToHex(n:data[i]);
-                line = String.combine(strings:[line, '   ']);
-
-                n = numberToAscii(n:data[i]);
-                lineAsText = String.combine(strings:[lineAsText, '   ']);  
-            });
-            Object.push(object:lines, value: line + "      " + lineAsText + '\n');
-            line = '';
-            lineAsText = '';
-        };
-
-
-
-        iterBytes = endPoint();
-        out = String.combine(strings:lines);
-        onPageFinish(page:String(from:out));
-        
-        return iterBytes < data.size;
     });
 
 };

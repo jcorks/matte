@@ -205,7 +205,7 @@ int main(int argc, char ** args) {
 
         uint32_t len = matte_array_get_size(fileID);
         for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_vm_run_fileid(vm, matte_array_at(fileID, uint32_t, i), matte_heap_new_value(matte_vm_get_heap(vm)));
+            matteValue_t v = matte_vm_run_fileid(vm, matte_array_at(fileID, uint32_t, i), matte_heap_new_value(matte_vm_get_heap(vm)), NULL);
             printf("> %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), v))));
             matte_heap_recycle(matte_vm_get_heap(vm), v);
         }

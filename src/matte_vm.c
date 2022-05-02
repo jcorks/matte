@@ -80,6 +80,7 @@ struct matteVM_t {
     uint32_t nextID;
 
     int pendingCatchable;
+    int pendingCatchableIsError;
     int errorLastLine;
     uint32_t errorLastFile;
 
@@ -109,6 +110,7 @@ struct matteVM_t {
     matteValue_t specialString_from;
     matteValue_t specialString_value;
     matteValue_t specialString_message;
+    matteValue_t specialString_error;
     matteValue_t specialString_previous;
 
 };
@@ -1133,11 +1135,13 @@ matteVM_t * matte_vm_create() {
     matte_value_into_string(vm->heap, &vm->specialString_from, MATTE_VM_STR_CAST(vm, "from"));
     vm->specialString_message = matte_heap_new_value(vm->heap);
     matte_value_into_string(vm->heap, &vm->specialString_message, MATTE_VM_STR_CAST(vm, "message"));
+    vm->specialString_error = matte_heap_new_value(vm->heap);
+    matte_value_into_string(vm->heap, &vm->specialString_error, MATTE_VM_STR_CAST(vm, "error"));
     vm->specialString_parameters = matte_heap_new_value(vm->heap);
     matte_value_into_string(vm->heap, &vm->specialString_parameters, MATTE_VM_STR_CAST(vm, "parameters"));
     
     // add built in functions
-    const matteString_t * loop_name = MATTE_VM_STR_CAST(vm, "func");
+    const matteString_t * forever_name = MATTE_VM_STR_CAST(vm, "do");
     const matteString_t * for_names[] = {
         MATTE_VM_STR_CAST(vm, "in"),
         MATTE_VM_STR_CAST(vm, "do")
@@ -1167,7 +1171,8 @@ matteVM_t * matte_vm_create() {
     const matteString_t * detail = MATTE_VM_STR_CAST(vm, "detail");
     const matteString_t * listen_names[] = {
         MATTE_VM_STR_CAST(vm, "to"),
-        MATTE_VM_STR_CAST(vm, "onMessage")
+        MATTE_VM_STR_CAST(vm, "onMessage"),
+        MATTE_VM_STR_CAST(vm, "onError")
     };
     const matteString_t * name = MATTE_VM_STR_CAST(vm, "name");
     const matteString_t * value = MATTE_VM_STR_CAST(vm, "value");
@@ -1211,7 +1216,7 @@ matteVM_t * matte_vm_create() {
     
     const matteString_t * functional_names[] = {
         object,
-        loop_name
+        forever_name
     };
     
     const matteString_t * findIndex_names[] = {
@@ -1259,14 +1264,14 @@ matteVM_t * matte_vm_create() {
 
     matteArray_t temp;
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,  matte_array_empty(), vm_ext_call__noop);
-    temp = MATTE_ARRAY_CAST(&loop_name, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_LOOP,   &temp, vm_ext_call__loop);
+    temp = MATTE_ARRAY_CAST(&forever_name, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_FOREVER,   &temp, vm_ext_call__forever);
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_FOR,    &temp, vm_ext_call__for);
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, &temp, vm_ext_call__foreach);
     temp = MATTE_ARRAY_CAST(&import_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  &temp, vm_ext_call__import);
 
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      &temp, vm_ext_call__print);
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_SEND,       &temp, vm_ext_call__send);
-    temp = MATTE_ARRAY_CAST(listen_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_LISTEN,     &temp, vm_ext_call__listen);
+    temp = MATTE_ARRAY_CAST(listen_names, matteString_t *, 3);vm_add_built_in(vm, MATTE_EXT_CALL_LISTEN,     &temp, vm_ext_call__listen);
     temp = MATTE_ARRAY_CAST(&detail, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_ERROR,      &temp, vm_ext_call__error);
 
     temp = MATTE_ARRAY_CAST(&name, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_GETEXTERNALFUNCTION, &temp, vm_ext_call__getexternalfunction);
@@ -1786,6 +1791,7 @@ matteValue_t matte_vm_call(
             matte_value_object_pop_lock(vm->heap, vm->catchable);
             vm->catchable.binID = 0;
             vm->pendingCatchable = 0;
+            vm->pendingCatchableIsError = 0;
             return matte_heap_new_value(vm->heap);
         }
         return result; // ok, vm_execution_loop returns new
@@ -1795,7 +1801,8 @@ matteValue_t matte_vm_call(
 matteValue_t matte_vm_run_fileid(
     matteVM_t * vm, 
     uint32_t fileid, 
-    matteValue_t parameters
+    matteValue_t parameters,
+    const matteString_t * importPath
 ) {
     if (fileid != MATTE_VM_DEBUG_FILE) {
         matteValue_t * precomp = matte_table_find_by_uint(vm->imported, fileid);
@@ -1814,7 +1821,15 @@ matteValue_t matte_vm_run_fileid(
     matteArray_t argNames = MATTE_ARRAY_CAST(&vm->specialString_parameters, matteValue_t, 1);
     matteArray_t args = MATTE_ARRAY_CAST(&parameters, matteValue_t, 1);
 
+    matteString_t * locationExpanded;
+    if (importPath) {
+        locationExpanded = import__push_path(vm->importPaths, importPath);
+    }
     matteValue_t result = matte_vm_call(vm, func, &args, &argNames, matte_vm_get_script_name_by_id(vm, fileid));
+    if (importPath) {
+        matte_string_destroy(locationExpanded);
+        import__pop_path(vm->importPaths);
+    }
 
     matteValue_t * ref = malloc(sizeof(matteValue_t));
     *ref = result;
@@ -1874,6 +1889,7 @@ matteValue_t matte_vm_import(
         matte_value_object_pop_lock(vm->heap, vm->catchable);
         vm->catchable.binID = 0;
         vm->pendingCatchable = 0;
+        vm->pendingCatchableIsError = 0;
         return matte_heap_new_value(vm->heap);
     }
     return v;
@@ -1917,9 +1933,10 @@ matteValue_t matte_vm_run_scoped_debug_source(
     vm->debugData = onErrorData;
     matteValue_t catchable = vm->catchable;
     int pendingCatchable = vm->pendingCatchable;
-
+    int pendingCatchableIsError = vm->pendingCatchableIsError;
     vm->catchable.binID = 0;
     vm->pendingCatchable = 0;
+    vm->pendingCatchableIsError = 0;
  
     uint32_t jitSize = 0;
     uint8_t * jitBuffer = matte_compiler_run_with_named_references(
@@ -1936,7 +1953,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
         );
         
         matte_vm_add_stubs(vm, jitstubs);
-        result = matte_vm_run_fileid(vm, MATTE_VM_DEBUG_FILE, matte_heap_new_value(vm->heap));
+        result = matte_vm_run_fileid(vm, MATTE_VM_DEBUG_FILE, matte_heap_new_value(vm->heap), NULL);
 
     } else {
         result = matte_heap_new_value(vm->heap);
@@ -1951,6 +1968,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
       
     vm->pendingCatchable = pendingCatchable;
     vm->catchable = catchable;
+    vm->pendingCatchableIsError = pendingCatchableIsError;
     matte_heap_pop_lock_gc(vm->heap);
 
     return result;
@@ -2065,6 +2083,7 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     matteValue_t info = vm_info_new_object(vm, val);
     vm->catchable = info;
     vm->pendingCatchable = 1;
+    vm->pendingCatchableIsError = 1;
     if (!vm->stacksize) {
         vm->errorLastFile = 0;
         vm->errorLastLine = -1;

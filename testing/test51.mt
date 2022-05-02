@@ -16,7 +16,7 @@
     });
 
     return 100;
-}, onMessage: ::(message){
+}, onError: ::(message){
     errMessage = message.detail;
 });
 return ''+n100 + errMessage + iterCheck;

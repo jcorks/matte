@@ -480,7 +480,6 @@ MATTE_EXT_FN(matte_socket__server_client_update) {
     uint32_t len = matte_array_get_size(s->clients);
     
     if (s->mode == 0) {
-        #define READBLOCKSIZE 512
         uint8_t block[READBLOCKSIZE];
 
         ssize_t readsize;
@@ -734,6 +733,11 @@ typedef struct {
     int state;
     
     int tls;
+    
+    SSL * ssl;    
+    
+    uint8_t readBuffer[READBLOCKSIZE];
+
 } MatteSocketClient;
 
 
@@ -741,8 +745,8 @@ static const char * matte_socket__client_start_tls(MatteSocketClient * s) {
     BIO * certbio = NULL;
     BIO * outbio = NULL;
     const SSL_METHOD * method;
-    SSL_CTX *ctx;
-    SSL *ssl;
+    SSL_CTX * ctx;
+    SSL * ssl;
     int server = 0;
     int ret, i;
 
@@ -773,6 +777,7 @@ static const char * matte_socket__client_start_tls(MatteSocketClient * s) {
     // connect to socket
     ssl = SSL_new(ctx);
     SSL_set_fd(ssl, s->socketfd);
+    s->ssl = ssl;
 
     int status;
     while ((status = SSL_connect(ssl)) != 1) {
@@ -988,19 +993,22 @@ MATTE_EXT_FN(matte_socket__client_create) {
             return matte_heap_new_value(heap);
         } 
     }    
+
+    MatteSocketClient * cl = calloc(1, sizeof(MatteSocketClient));
+    cl->socketfd = socketfd;
+    
     if (tls) {
-        const char * err = matte_socket__client_start_tls(socketfd);
+        const char * err = matte_socket__client_start_tls(cl);
         if (err) {
             matteString_t * realErr = matte_string_create_from_c_str("Socket connect error: %s", err);
             matte_vm_raise_error_string(vm, realErr);
             matte_string_destroy(realErr);
             close(socketfd);
+            free(cl);
             return matte_heap_new_value(heap);        
         }
+        cl->tls = 1;
     }
-    
-    MatteSocketClient * cl = calloc(1, sizeof(MatteSocketClient));
-    cl->socketfd = socketfd;
     cl->indata = matte_array_create(1);
     cl->outdata = matte_array_create(1);    
     cl->state = res == 0 ? 2 : 1; // if res == 0, then connection was immediate somehow. Probably localhost loop?
@@ -1029,14 +1037,189 @@ MATTE_EXT_FN(matte_socket__client_delete) {
 }
 
 
-static ssize_t matte_client_read(MatteSocketClient * c, int * err) {
-    if (c->tls) {
-        size_t readBytes;
-        int res = SSL_read(c->SSL, 
+static ssize_t matte_client_write(MatteSocketClient * cl, matteString_t ** err) {
+    if (cl->tls) {
+        size_t out = 0;
+        while((out = SSL_write(cl->ssl,   
+            matte_array_get_data(cl->outdata),
+            matte_array_get_size(cl->outdata) 
+        )) > 0) {
+            matte_array_remove_n(cl->outdata, 0, out);            
+        }
+        if (out < 0) {
+            switch(SSL_get_error(cl->ssl, out)) {
+              // Apparently doesnt necessarily indicate that the "underlying transport has been closed",
+              // but does mean the peer has closed the connection for writing.
+              case SSL_ERROR_ZERO_RETURN:
+                return 0;
+                break;
+                
+
+              // async: incomplete read/write/action. Try again
+              case SSL_ERROR_WANT_READ:
+              case SSL_ERROR_WANT_WRITE:
+              case SSL_ERROR_WANT_CONNECT: 
+              case SSL_ERROR_WANT_ACCEPT:
+              case SSL_ERROR_WANT_X509_LOOKUP:
+              case SSL_ERROR_WANT_ASYNC:
+              case SSL_ERROR_WANT_ASYNC_JOB:
+              case SSL_ERROR_WANT_CLIENT_HELLO_CB:
+                return 0;
+                break;
+
+              case SSL_ERROR_SYSCALL:
+                *err = matte_string_create_from_c_str("Socket TLS write error: System call failure.");
+                break;
+              case SSL_ERROR_SSL:
+                *err = matte_string_create_from_c_str("Socket TLS write error: TLS or protocol error.");
+                break;
+              default:; {
+                *err = matte_string_create_from_c_str("Socket TLS write error: Unknown error (%d)", errno);
+                break;
+              }
+            }
+        }
+        return *err ? 0 : out;
     } else {
-        ssize_t out = read(c->socketfd, c->readBuffer, READBLOCKSIZE);
-        if (out < 0)
-            *err = errno;
+        size_t writesize = 0;
+        while((writesize = write(
+            cl->socketfd, 
+            matte_array_get_data(cl->outdata),
+            matte_array_get_size(cl->outdata) 
+        )) > 0) {
+            matte_array_remove_n(cl->outdata, 0, writesize);            
+        }
+
+        if (writesize < 0) {
+            switch(errno) {
+              case EWOULDBLOCK: // EAGAIN == EWOULDBLOCK
+                return 0;
+                break;
+               
+              case EBADF:
+                *err = matte_string_create_from_c_str("Socket write error: bad file descriptor.");
+                break;
+              case EDESTADDRREQ:
+                *err = matte_string_create_from_c_str("Socket write error: mismatch for socket vs connect. (internal parameter error).");
+                break;
+              case EDQUOT:
+                *err = matte_string_create_from_c_str("Socket write error: no space left on the filesystem (quota).");
+                break;
+              case EFAULT:
+                *err = matte_string_create_from_c_str("Socket write error: source reading buffer address is invalid.");
+                break;
+              case EFBIG:
+                *err = matte_string_create_from_c_str("Socket write error: size too big / out of bounds.");
+                break;
+              case EINTR:
+                *err = matte_string_create_from_c_str("Socket write error: signal interrupted.");
+                break;
+              case EINVAL:
+                *err = matte_string_create_from_c_str("Socket write error: file descriptor is not of a type that can be read.");
+                break;
+              case ENOSPC:
+                *err = matte_string_create_from_c_str("Socket write error: no room left in socket's underlying device.");
+                break;
+              case EPERM:
+                *err = matte_string_create_from_c_str("Socket write error: permission error.");
+                break;
+              case EPIPE:
+                *err = matte_string_create_from_c_str("Socket write error: other end of pipe was closed.");
+                break;
+              case EIO:
+                *err = matte_string_create_from_c_str("Socket write error: I/O error. (Please check your hardware!)");
+                break;
+              case EISDIR:
+                *err = matte_string_create_from_c_str("Socket write error: the file descriptor points to a directory.");
+                break;
+              default:; {
+                *err = matte_string_create_from_c_str("Socket write error: Unknown error (%d)", errno);
+                break;
+              }
+            }    
+        } 
+        return *err ? 0 : writesize;
+
+    }
+    
+}
+// Returns number of bytes read into the client read buffer.
+// If an error occurs, 
+static ssize_t matte_client_read(MatteSocketClient * cl, matteString_t ** err, int * disconnected) {
+    if (cl->tls) {
+        size_t out = SSL_read(cl->ssl, cl->readBuffer, READBLOCKSIZE);
+        if (out < 0) {
+            switch(SSL_get_error(cl->ssl, out)) {
+              // Apparently doesnt necessarily indicate that the "underlying transport has been closed",
+              // but does mean the peer has closed the connection for writing.
+              case SSL_ERROR_ZERO_RETURN:
+                *disconnected = 1; 
+                return 0;
+                break;
+                
+
+              // async: incomplete read/write/action. Try again
+              case SSL_ERROR_WANT_READ:
+              case SSL_ERROR_WANT_WRITE:
+              case SSL_ERROR_WANT_CONNECT: 
+              case SSL_ERROR_WANT_ACCEPT:
+              case SSL_ERROR_WANT_X509_LOOKUP:
+              case SSL_ERROR_WANT_ASYNC:
+              case SSL_ERROR_WANT_ASYNC_JOB:
+              case SSL_ERROR_WANT_CLIENT_HELLO_CB:
+                return 0;
+                break;
+
+              case SSL_ERROR_SYSCALL:
+                *err = matte_string_create_from_c_str("Socket TLS read error: System call failure.");
+                break;
+              case SSL_ERROR_SSL:
+                *err = matte_string_create_from_c_str("Socket TLS read error: TLS or protocol error.");
+                break;
+              default:; {
+                *err = matte_string_create_from_c_str("Socket TLS read error: Unknown error");
+                break;
+              }
+              
+                
+              
+            }
+            return 0;
+        } else {
+            return out;
+        }
+        
+    } else {
+        ssize_t out = read(cl->socketfd, cl->readBuffer, READBLOCKSIZE);
+
+        if (out < 0) {
+            switch(errno) {
+              case EWOULDBLOCK: // EAGAIN == EWOULDBLOCK
+                return 0;
+                break;
+               
+              case EBADF: //"Socket read error: bad file descriptor.";
+              case EFAULT: //"Socket read error: source reading buffer address is invalid.";
+              case EINTR: //"Socket read error: signal interrupted.";
+                *disconnected = 1; // normal disconnect
+                return 0;
+                break;
+              case EINVAL:
+                *err = matte_string_create_from_c_str("Socket read error: file descriptor is not of a type that can be read.");
+                break;
+              case EIO:
+                *err = matte_string_create_from_c_str("Socket read error: I/O error. (Please check your hardware!)");
+                break;
+              case EISDIR:
+                *err = matte_string_create_from_c_str("Socket read error: the file descriptor points to a directory.");
+              default:; {
+                *err = matte_string_create_from_c_str("Socket read error: Unknown error (%d)", errno);
+                break;
+              }
+            }            
+        }
+
+        return *err ? 0 : out;
     }
 }
 
@@ -1138,110 +1321,36 @@ MATTE_EXT_FN(matte_socket__client_update) {
     } else if (cl->state == 2) {
         // normal connection case: check for incoming/outgoing data
         if (cl->mode == 0) {
-            int err;
+            matteString_t * err = NULL;
             ssize_t readsize;
-            while((readsize = matte_client_read(cl, &err)) > 0) {
+            int disconnected = 0;
+            while((readsize = matte_client_read(cl, &err, &disconnected)) > 0) {
                 matte_array_push_n(cl->indata, cl->readBuffer, readsize);
             }
             
-            if (readsize < 0) {
-                const char * err = NULL;
-                switch(err) {
-                  case EWOULDBLOCK: // EAGAIN == EWOULDBLOCK
-                    break;
-                   
-                  case EBADF: //"Socket read error: bad file descriptor.";
-                  case EFAULT: //"Socket read error: source reading buffer address is invalid.";
-                  case EINTR: //"Socket read error: signal interrupted.";
-                    cl->state = 0; // normal disconnect
-                    break;
-                  case EINVAL:
-                    err = "Socket read error: file descriptor is not of a type that can be read.";
-                    break;
-                  case EIO:
-                    err = "Socket read error: I/O error. (Please check your hardware!)";
-                    break;
-                  case EISDIR:
-                    err = "Socket read error: the file descriptor points to a directory.";
-                  default:; {
-                    matteString_t * realErr = matte_string_create_from_c_str("Socket read error: Unknown error (%d)", errno);
-                    matte_vm_raise_error_string(vm, realErr);
-                    matte_string_destroy(realErr);
-                    break;
-                  }
-                }            
-                
-                if (err) {
-                    matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
-                }
-            } else if (readsize == 0) {
-            }   
+            if (err) {            
+                matte_vm_raise_error_string(vm, err);
+                matte_string_destroy(err);
+            } 
+            
+            if (disconnected) {
+                cl->state = 0; 
+            }
             
                 
             // write any pending data waiting to go out to the client.
             if (cl->state == 2 && matte_array_get_size(cl->outdata)) {
                 ssize_t writesize;
-                while((writesize = write(
-                    cl->socketfd, 
-                    matte_array_get_data(cl->outdata),
-                    matte_array_get_size(cl->outdata) 
-                )) > 0) {
-                    matte_array_remove_n(cl->outdata, 0, writesize);            
-                }
+                writesize = matte_client_write(
+                    cl,
+                    &err
+                );
                 
-                if (writesize < 0) {
-                    const char * err = NULL;
-                    switch(errno) {
-                      case EWOULDBLOCK: // EAGAIN == EWOULDBLOCK
-                        break;
-                       
-                      case EBADF:
-                        err = "Socket write error: bad file descriptor.";
-                        break;
-                      case EDESTADDRREQ:
-                        err = "Socket write error: mismatch for socket vs connect. (internal parameter error).";
-                        break;
-                      case EDQUOT:
-                        err = "Socket write error: no space left on the filesystem (quota).";
-                        break;
-                      case EFAULT:
-                        err = "Socket write error: source reading buffer address is invalid.";
-                        break;
-                      case EFBIG:
-                        err = "Socket write error: size too big / out of bounds.";
-                        break;
-                      case EINTR:
-                        err = "Socket write error: signal interrupted.";
-                        break;
-                      case EINVAL:
-                        err = "Socket write error: file descriptor is not of a type that can be read.";
-                        break;
-                      case ENOSPC:
-                        err = "Socket write error: no room left in socket's underlying device.";
-                        break;
-                      case EPERM:
-                        err = "Socket write error: permission error.";
-                        break;
-                      case EPIPE:
-                        err = "Socket write error: other end of pipe was closed.";
-                        break;
-                      case EIO:
-                        err = "Socket write error: I/O error. (Please check your hardware!)";
-                        break;
-                      case EISDIR:
-                        err = "Socket write error: the file descriptor points to a directory.";
-                      default:; {
-                        matteString_t * realErr = matte_string_create_from_c_str("Socket write error: Unknown error (%d)", errno);
-                        matte_vm_raise_error_string(vm, realErr);
-                        matte_string_destroy(realErr);
-                        break;
-                      }
-                    }            
                     
-                    if (err) {
-                        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, err));
-                    }
-                } 
+                if (err) {
+                    matte_vm_raise_error_string(vm, err);
+                    matte_string_destroy(err);
+                }
             }
             
             

@@ -242,6 +242,24 @@ MATTE_EXT_FN(matte_ext__memory_buffer__get_index) {
     return out;    
 }
 
+MATTE_EXT_FN(matte_ext__memory_buffer__as_utf8) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteValue_t a = args[0];
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
+
+    char * buf = malloc(m->size+1);
+    buf[m->size] = 0;
+    memcpy(buf, m->buffer, m->size);
+    
+    matteString_t * outStr = matte_string_create_from_c_str("%s", buf);
+    free(buf);
+    
+    matteValue_t out = matte_heap_new_value(heap);
+    matte_value_into_string(heap, &out, outStr);
+    matte_string_destroy(outStr);
+    return out;
+}
+
 MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t a = args[0];
@@ -284,7 +302,7 @@ static void matte_system__memorybuffer(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_get_size"),      1, matte_ext__memory_buffer__get_size,   NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_get_index"),     2, matte_ext__memory_buffer__get_index,  NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_set_index"),     3, matte_ext__memory_buffer__set_index,  NULL);
-
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_as_utf8"),       1, matte_ext__memory_buffer__as_utf8,    NULL);
 
  
 }

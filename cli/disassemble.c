@@ -194,8 +194,8 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                     case MATTE_EXT_CALL_NOOP:
                         fprintf(fout, "noop\n");
                         break;
-                    case MATTE_EXT_CALL_LOOP:
-                        fprintf(fout, "loop\n");
+                    case MATTE_EXT_CALL_FOREVER:
+                        fprintf(fout, "forever\n");
                         break;
                     case MATTE_EXT_CALL_FOR:
                         fprintf(fout, "for\n");

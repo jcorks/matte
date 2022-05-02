@@ -6,26 +6,26 @@
 @output = '';
 
 listen(to:::{
-    loop();
-}, onMessage:::(message) {
+    forever();
+}, onError:::(message) {
     output = output + 'noarg';
 });
 
 
 listen(to:::{
-    loop(func:'hi');
-}, onMessage:::(message){
+    forever(do:'hi');
+}, onError:::(message){
     output = output + 'nofn';
 });
 
 listen(to:::{
-    loop(func:::{
+    forever(do:::{
         for(in:[0, 10], do:::{
 
         });
-        return false;
+        send();
     });
-}, onMessage:::(message){
+}, onError:::(message){
     output = output + 'norun';
 });
 

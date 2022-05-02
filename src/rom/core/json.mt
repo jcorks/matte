@@ -1,3 +1,34 @@
+@:hexToNumber = ::<= {
+    @:table = {
+        '0' : 0,
+        '1' : 1,
+        '2' : 2,
+        '3' : 3,
+        '4' : 4,
+        '5' : 5,
+        '6' : 6,
+        '7' : 7,
+        '8' : 8,
+        '9' : 9,
+        
+        'a' : 10,
+        'b' : 11,
+        'c' : 12,
+        'd' : 13,
+        'e' : 14,
+        'f' : 15
+    };
+    
+    return ::(string){
+        @out = 0;
+        @:len = String.length(of:string);
+        for(in:[0, len], do:::(i) {
+            out += table[String.charAt(string:string, index:i)] * (2**(len - (i+1)));
+        });
+        return out;
+    };
+};
+
 @JSON = {
     encode :: (object) {        
         @encodeValue ::(obj){
@@ -27,17 +58,16 @@
     decode ::(string) {
         
         @:trimSpace::(substr) {
-            loop(func:::{
-                return match(String.charAt(string:substr, index:0)) {
-                    // found whitespace. remove it and look again
-                    (' ', '\r', '\n', '\t'): ::{
-                        substr = String.removeChar(string:substr, index:0);
-                        return true;
-                    }(),
-
-                    // loop is over
-                    default : false
-                };                
+            listen(to:::{
+                forever(do:::{
+                    match(String.charAt(string:substr, index:0)) {
+                        // found whitespace. remove it and look again
+                        (' ', '\r', '\n', '\t'): ::<={
+                            substr = String.removeChar(string:substr, index:0);
+                        },
+                        default:send() // end loop
+                    };   
+                });
             });
             return substr;
         };
@@ -53,46 +83,66 @@
                     // skip '"'
                     iter = String.removeChar(string:iter, index:0);
                     @rawstr = '';
-                    loop(func:::{
-                        return match(String.charAt(string:iter, index:0)) {
-                            // escape sequence
-                            ('\\'): ::{
-                                iter = String.removeChar(string:iter, index:0);
-                                match(String.charAt(string:iter, index:0)) {
-                                    ('n'): ::{
-                                        rawstr = rawstr + '\n';
-                                    }(),
-                                    ('r'): ::{
-                                        rawstr = rawstr + '\r';
-                                    }(),
-                                    ('t'): ::{
-                                        rawstr = rawstr + '\t';
-                                    }(),
-                                    ('b'): ::{
-                                        rawstr = rawstr + '\b';
-                                    }(),
-                                    ('\\'): ::{
-                                        rawstr = rawstr + '\\';
-                                    }(),
+                    listen(to:::{
+                        forever(do:::{
+                            match(String.charAt(string:iter, index:0)) {
+                                // escape sequence
+                                ('\\'): ::{
+                                    iter = String.removeChar(string:iter, index:0);
+                                    match(String.charAt(string:iter, index:0)) {
+                                        ('n'): ::{
+                                            rawstr = rawstr + '\n';
+                                        }(),
+                                        ('r'): ::{
+                                            rawstr = rawstr + '\r';
+                                        }(),
+                                        ('t'): ::{
+                                            rawstr = rawstr + '\t';
+                                        }(),
+                                        ('b'): ::{
+                                            rawstr = rawstr + '\b';
+                                        }(),
+                                        ('u'): ::{
+                                            @token = ' ';
+                                            token = String.setCharCodeAt(
+                                                string:token,
+                                                value:hexToNumber(
+                                                    string: String.substr(
+                                                        from:1,
+                                                        to:4,
+                                                        string:iter
+                                                    )
+                                                ),
+                                                index: 0
+                                            );
+                                            rawstr = rawstr + token;
+                                            iter = String.removeChar(string:iter, index:1);
+                                            iter = String.removeChar(string:iter, index:1);
+                                            iter = String.removeChar(string:iter, index:1);
+                                            iter = String.removeChar(string:iter, index:1);
+                                        }(),
+                                        ('\\'): ::{
+                                            rawstr = rawstr + '\\';
+                                        }(),
 
-                                    default: error(data:'Unknown escape sequence.')
-                                };
-                                iter = String.removeChar(string:iter, index:0);
-                                return true;
-                            }(),
+                                        default: error(data:'Unknown escape sequence.')
+                                    };
+                                    iter = String.removeChar(string:iter, index:0);
+                                }(),
 
-                            // end of string 
-                            ('"'): ::{
-                                iter = String.removeChar(string:iter, index:0);
-                                return false;
-                            }(),
+                                // end of string 
+                                ('"'): ::{
+                                    iter = String.removeChar(string:iter, index:0);
+                                    send();
+                                }(),
 
-                            default: ::{
-                                rawstr = rawstr + String.charAt(string:iter, index:0);
-                                iter = String.removeChar(string:iter, index:0);
-                                return true;
-                            }()
-                        };
+                                default: ::{
+                                    rawstr = rawstr + String.charAt(string:iter, index:0);
+                                    iter = String.removeChar(string:iter, index:0);
+                                    send();
+                                }()
+                            };
+                        });
                     });
                     return rawstr;
                 }(),
@@ -135,17 +185,17 @@
                 ('.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::{
                     @rawnumstr = String.charAt(string:iter, index:0);
                     iter = String.removeChar(string:iter, index:0);
+                    listen(to:::{
+                        forever(do:::{
+                            return match(String.charAt(string:iter, index:0)) {
+                                ('0', '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::<={
+                                    rawnumstr = rawnumstr + String.charAt(string:iter, index:0);
+                                    iter = String.removeChar(string:iter, index:0);
+                                },
 
-                    loop(func:::{
-                        return match(String.charAt(string:iter, index:0)) {
-                            ('0', '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::<={
-                                rawnumstr = rawnumstr + String.charAt(string:iter, index:0);
-                                iter = String.removeChar(string:iter, index:0);
-                                return true;
-                            },
-
-                            default: false
-                        };       
+                                default: send()
+                            };       
+                        });
                     });
 
                     return Number.parse(string:rawnumstr);
@@ -166,42 +216,43 @@
                     @out = {};
 
                     // loop over "key": value,
-                    loop(func:::{
+                    listen(to:::{
+                        forever(do:::{
 
-                        // get string
-                        @res = decodeV(iter:iter);
-                        @key = res.key;
-                        iter = res.iter;
-                        iter = trimSpace(substr:iter);
+                            // get string
+                            @res = decodeV(iter:iter);
+                            @key = res.key;
+                            iter = res.iter;
+                            iter = trimSpace(substr:iter);
 
-                        // skip ':'
-                        iter = String.removeChar(string:iter, index:0);
-                        iter = trimSpace(substr:iter);
+                            // skip ':'
+                            iter = String.removeChar(string:iter, index:0);
+                            iter = trimSpace(substr:iter);
 
-                        // get value
-                        res = decodeV(iter:iter);
-                        @val = res.key;
-                        iter = res.iter;
-                        iter = trimSpace(substr:iter);
+                            // get value
+                            res = decodeV(iter:iter);
+                            @val = res.key;
+                            iter = res.iter;
+                            iter = trimSpace(substr:iter);
 
-                        out[key] = val;
+                            out[key] = val;
 
-                        return match(String.charAt(string:iter, index:0)) {
-                            (','): ::{
-                                iter = String.removeChar(string:iter, index:0);
-                                return true;
-                            }(),
+                            match(String.charAt(string:iter, index:0)) {
+                                (','): ::{
+                                    iter = String.removeChar(string:iter, index:0);
+                                }(),
 
-                            // object over
-                            ('}'): ::{
-                                iter = String.removeChar(string:iter, index:0);
-                                return false;
-                            }(),
+                                // object over
+                                ('}'): ::{
+                                    iter = String.removeChar(string:iter, index:0);
+                                    send();
+                                }(),
 
-                            default: ::{
-                                error(message:"Unknown character");
-                            }()
-                        };
+                                default: ::{
+                                    error(message:"Unknown character");
+                                }()
+                            };
+                        });
                     });
 
                     return out;
@@ -223,31 +274,32 @@
                     @arr = [];
 
                     // loop over value,
-                    loop(func:::{
-                        // get value
-                        @res =  decodeV(iter:iter); 
-                        @val = res.key;
-                        iter = res.iter;
-                        iter = trimSpace(substr:iter);
+                    listen(to:::{
+                        forever(do:::{
+                            // get value
+                            @res =  decodeV(iter:iter); 
+                            @val = res.key;
+                            iter = res.iter;
+                            iter = trimSpace(substr:iter);
 
-                        Object.push(object:arr, value:val);
+                            Object.push(object:arr, value:val);
 
-                        return match(String.charAt(string:iter, index:0)) {
-                            (','): ::<={
-                                iter = String.removeChar(string:iter, index:0);
-                                return true;
-                            },
+                            match(String.charAt(string:iter, index:0)) {
+                                (','): ::<={
+                                    iter = String.removeChar(string:iter, index:0);
+                                },
 
-                            // object over
-                            (']'): ::<={
-                                iter = String.removeChar(string:iter, index:0);
-                                return false;
-                            },
+                                // object over
+                                (']'): ::<={
+                                    iter = String.removeChar(string:iter, index:0);
+                                    send();
+                                },
 
-                            default: ::<={
-                                error(message:"Unknown character");
-                            }
-                        };
+                                default: ::<={
+                                    error(message:"Unknown character");
+                                }
+                            };
+                        });
                     });
 
                     return arr;

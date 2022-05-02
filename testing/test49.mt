@@ -16,7 +16,7 @@
     );
     
     return 100;
-}, onMessage:::(message){
+}, onError:::(message){
     errMessage = 'outerMessage';
 });
 return errMessage + emptyOnError;
