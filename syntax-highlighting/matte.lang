@@ -171,7 +171,51 @@
                     <keyword>true</keyword>
                     <keyword>false</keyword>
                     <keyword>empty</keyword>
-                    <keyword>parameters</keyword>                    
+                    <keyword>parameters</keyword>
+                    <keyword>cos</keyword>             
+                    <keyword>sin</keyword>             
+                    <keyword>tan</keyword>             
+                    <keyword>acos</keyword>             
+                    <keyword>asin</keyword>             
+                    <keyword>atan2</keyword>             
+                    <keyword>sqrt</keyword>             
+                    <keyword>abs</keyword>             
+                    <keyword>isNaN</keyword>             
+                    <keyword>floor</keyword>             
+                    <keyword>ceil</keyword>             
+                    <keyword>round</keyword>             
+                    <keyword>asRadians</keyword>             
+                    <keyword>asDegrees</keyword>             
+                    <keyword>removeChar</keyword>             
+                    <keyword>substr</keyword>             
+                    <keyword>split</keyword>             
+                    <keyword>scan</keyword>             
+                    <keyword>length</keyword>             
+                    <keyword>search</keyword>             
+                    <keyword>contains</keyword>             
+                    <keyword>replace</keyword>             
+                    <keyword>count</keyword>             
+                    <keyword>charCodeAt</keyword>             
+                    <keyword>charAt</keyword>             
+                    <keyword>setCharCodeAt</keyword>             
+                    <keyword>setCharAt</keyword>             
+                    <keyword>keycount</keyword>             
+                    <keyword>keys</keyword>             
+                    <keyword>values</keyword>             
+                    <keyword>push</keyword>             
+                    <keyword>pop</keyword>             
+                    <keyword>insert</keyword>             
+                    <keyword>remove</keyword>             
+                    <keyword>setAttributes</keyword>             
+                    <keyword>attributes</keyword>             
+                    <keyword>sort</keyword>             
+                    <keyword>subset</keyword>             
+                    <keyword>filter</keyword>             
+                    <keyword>findIndex</keyword>             
+                    <keyword>isa</keyword>             
+                    <keyword>map</keyword>             
+                    <keyword>filter</keyword>             
+                    <keyword>type</keyword>             
                 </context>
 
                 <!--<context id="builtin" style-ref="def:constant">

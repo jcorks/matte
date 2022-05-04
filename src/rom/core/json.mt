@@ -21,9 +21,9 @@
     
     return ::(string){
         @out = 0;
-        @:len = String.length(of:string);
+        @:len = string->length;
         for(in:[0, len], do:::(i) {
-            out += table[String.charAt(string:string, index:i)] * (2**(len - (i+1)));
+            out += table[string->charAt(index:i)] * (2**(len - (i+1)));
         });
         return out;
     };
@@ -33,7 +33,7 @@
     encode :: (object) {        
         @encodeValue ::(obj){
             @encodeSub = context;
-            return match(getType(of:obj)) {
+            return match(obj->type) {
                 (Number): ''+obj,
                 (String): '\"'+obj+'\"',
                 (Boolean): ''+obj,
@@ -60,10 +60,10 @@
         @:trimSpace::(substr) {
             listen(to:::{
                 forever(do:::{
-                    match(String.charAt(string:substr, index:0)) {
+                    match(substr->charAt(index:0)) {
                         // found whitespace. remove it and look again
                         (' ', '\r', '\n', '\t'): ::<={
-                            substr = String.removeChar(string:substr, index:0);
+                            substr = substr->removeChar(index:0);
                         },
                         default:send() // end loop
                     };   
@@ -76,20 +76,20 @@
             @:decodeV = context;
             iter = trimSpace(substr:iter);
             @out = {};
-            out.key = match(String.charAt(string:iter, index:0)){
+            out.key = match(iter->charAt(index:0)){
                 
                 // parse and consume string
                 ('\"'): ::{
                     // skip '"'
-                    iter = String.removeChar(string:iter, index:0);
+                    iter = iter->removeChar(index:0);
                     @rawstr = '';
                     listen(to:::{
                         forever(do:::{
-                            match(String.charAt(string:iter, index:0)) {
+                            match(iter->charAt(index:0)) {
                                 // escape sequence
                                 ('\\'): ::{
-                                    iter = String.removeChar(string:iter, index:0);
-                                    match(String.charAt(string:iter, index:0)) {
+                                    iter = iter->removeChar(index:0);
+                                    match(iter->charAt(index:0)) {
                                         ('n'): ::{
                                             rawstr = rawstr + '\n';
                                         }(),
@@ -104,22 +104,20 @@
                                         }(),
                                         ('u'): ::{
                                             @token = ' ';
-                                            token = String.setCharCodeAt(
-                                                string:token,
+                                            token = token->setCharCodeAt(
                                                 value:hexToNumber(
-                                                    string: String.substr(
+                                                    string: iter->substr(
                                                         from:1,
                                                         to:4,
-                                                        string:iter
                                                     )
                                                 ),
                                                 index: 0
                                             );
                                             rawstr = rawstr + token;
-                                            iter = String.removeChar(string:iter, index:1);
-                                            iter = String.removeChar(string:iter, index:1);
-                                            iter = String.removeChar(string:iter, index:1);
-                                            iter = String.removeChar(string:iter, index:1);
+                                            iter = iter->removeChar(index:1);
+                                            iter = iter->removeChar(index:1);
+                                            iter = iter->removeChar(index:1);
+                                            iter = iter->removeChar(index:1);
                                         }(),
                                         ('\\'): ::{
                                             rawstr = rawstr + '\\';
@@ -127,18 +125,18 @@
 
                                         default: error(data:'Unknown escape sequence.')
                                     };
-                                    iter = String.removeChar(string:iter, index:0);
+                                    iter = iter->removeChar(index:0);
                                 }(),
 
                                 // end of string 
                                 ('"'): ::{
-                                    iter = String.removeChar(string:iter, index:0);
+                                    iter = iter->removeChar(index:0);
                                     send();
                                 }(),
 
                                 default: ::{
-                                    rawstr = rawstr + String.charAt(string:iter, index:0);
-                                    iter = String.removeChar(string:iter, index:0);
+                                    rawstr = rawstr + iter->charAt(index:0);
+                                    iter = iter->removeChar(index:0);
                                     send();
                                 }()
                             };
@@ -151,13 +149,13 @@
                 
                 // true or false
                 ('t'): ::{
-                    return (if (String.charAt(string:iter, index:1) == 'r' &&
-                                String.charAt(string:iter, index:2) == 'u' &&
-                                String.charAt(string:iter, index:3) == 'e') ::{
-                        iter = String.removeChar(string:iter, index:0);
-                        iter = String.removeChar(string:iter, index:0);
-                        iter = String.removeChar(string:iter, index:0);
-                        iter = String.removeChar(string:iter, index:0);
+                    return (if (iter->charAt(index:1) == 'r' &&
+                                iter->charAt(index:2) == 'u' &&
+                                iter->charAt(index:3) == 'e') ::{
+                        iter = iter->removeChar(index:0);
+                        iter = iter->removeChar(index:0);
+                        iter = iter->removeChar(index:0);
+                        iter = iter->removeChar(index:0);
                         return true;
                     }() else ::{
                         error(data:'Unrecognized token (expected true)');
@@ -165,15 +163,15 @@
                 }(),
                 
                 ('f'): ::{
-                    return (if (String.charAt(string:iter, index:1) == 'a' &&
-                                String.charAt(string:iter, index:2) == 'l' &&
-                                String.charAt(string:iter, index:3) == 's' &&
-                                String.charAt(string:iter, index:4) == 'e') ::{
-                        iter = String.removeChar(string:iter, index:0);
-                        iter = String.removeChar(string:iter, index:0);
-                        iter = String.removeChar(string:iter, index:0);
-                        iter = String.removeChar(string:iter, index:0);
-                        iter = String.removeChar(string:iter, index:0);
+                    return (if (iter->charAt(index:1) == 'a' &&
+                                iter->charAt(index:2) == 'l' &&
+                                iter->charAt(index:3) == 's' &&
+                                iter->charAt(index:4) == 'e') ::{
+                        iter = iter->removeChar(index:0);
+                        iter = iter->removeChar(index:0);
+                        iter = iter->removeChar(index:0);
+                        iter = iter->removeChar(index:0);
+                        iter = iter->removeChar(index:0);
                         return false;
                     }() else ::{
                         error(data:'Unrecognized token (expected true)');
@@ -183,14 +181,14 @@
                 
                 // number
                 ('.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::{
-                    @rawnumstr = String.charAt(string:iter, index:0);
-                    iter = String.removeChar(string:iter, index:0);
+                    @rawnumstr = iter->charAt(index:0);
+                    iter = iter->removeChar(index:0);
                     listen(to:::{
                         forever(do:::{
-                            return match(String.charAt(string:iter, index:0)) {
+                            return match(iter->charAt(index:0)) {
                                 ('0', '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::<={
-                                    rawnumstr = rawnumstr + String.charAt(string:iter, index:0);
-                                    iter = String.removeChar(string:iter, index:0);
+                                    rawnumstr = rawnumstr + iter->charAt(index:0);
+                                    iter = iter->removeChar(index:0);
                                 },
 
                                 default: send()
@@ -205,12 +203,12 @@
                 // object
                 ('{'): ::{
                     // skip '{'
-                    iter = String.removeChar(string:iter, index:0);
+                    iter = iter->removeChar(index:0);
                     iter = trimSpace(substr:iter);
 
                     // empty object!
-                    when(String.charAt(string:iter, index:0) == '}')::<={
-                        iter = String.removeChar(string:iter, index:0);                        
+                    when(iter->charAt(index:0) == '}')::<={
+                        iter = iter->removeChar(index:0);                        
                         return {};
                     };
                     @out = {};
@@ -226,7 +224,7 @@
                             iter = trimSpace(substr:iter);
 
                             // skip ':'
-                            iter = String.removeChar(string:iter, index:0);
+                            iter = iter->removeChar(index:0);
                             iter = trimSpace(substr:iter);
 
                             // get value
@@ -237,14 +235,14 @@
 
                             out[key] = val;
 
-                            match(String.charAt(string:iter, index:0)) {
+                            match(iter->charAt(index:0)) {
                                 (','): ::{
-                                    iter = String.removeChar(string:iter, index:0);
+                                    iter = iter->removeChar(index:0);
                                 }(),
 
                                 // object over
                                 ('}'): ::{
-                                    iter = String.removeChar(string:iter, index:0);
+                                    iter = iter->removeChar(index:0);
                                     send();
                                 }(),
 
@@ -263,12 +261,12 @@
                 // array
                 ('['): ::{
                     // skip '['
-                    iter = String.removeChar(string:iter, index:0);
+                    iter = iter->removeChar(index:0);
                     iter = trimSpace(substr:iter);
 
                     // empty object!
-                    when(String.charAt(string:iter, index:0) == ']')::<= {
-                        iter = String.removeChar(string:iter, index:0);
+                    when(iter->charAt(index:0) == ']')::<= {
+                        iter = iter->removeChar(index:0);
                         return [];
                     };
                     @arr = [];
@@ -284,14 +282,14 @@
 
                             Object.push(object:arr, value:val);
 
-                            match(String.charAt(string:iter, index:0)) {
+                            match(iter->charAt(index:0)) {
                                 (','): ::<={
-                                    iter = String.removeChar(string:iter, index:0);
+                                    iter = iter->removeChar(index:0);
                                 },
 
                                 // object over
                                 (']'): ::<={
-                                    iter = String.removeChar(string:iter, index:0);
+                                    iter = iter->removeChar(index:0);
                                     send();
                                 },
 

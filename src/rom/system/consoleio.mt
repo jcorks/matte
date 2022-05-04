@@ -14,7 +14,7 @@ return class(
             // Prints a formatted string
             // The first argument must be a string.
             printf ::(format => String, args) {
-                when (getType(of:args) != Object)::<={
+                when (args->type != Object)::<={
                     _print(a:''+format);
                 };
 
@@ -22,7 +22,7 @@ return class(
                 @o = format;
                 foreach(in:args, do:::(k, v){
                     @:key = '$('+k+')';
-                    o = String.replace(string:o, key:key, with:''+v);
+                    o = o->replace(key:key, with:''+v);
                 });
                 _print(a:o);
             },

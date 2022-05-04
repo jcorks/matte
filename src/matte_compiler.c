@@ -842,10 +842,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Type");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_TYPE: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "getType");
-        break;
-      }
       case MATTE_TOKEN_EXTERNAL_TYPEFUNCTION: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Function");
         break;
@@ -2609,13 +2605,6 @@ static matteArray_t * compile_base_value(
 
 
 
-      case MATTE_TOKEN_EXTERNAL_TYPE: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_GETTYPE);
-        *src = iter->next;
-        return inst;
-      }
-      
-
 
       case MATTE_TOKEN_VARIABLE_NAME: {
         matte_array_destroy(inst);
@@ -2803,12 +2792,12 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "atan2")) return MATTE_QUERY__ATAN2;
     if (!strcmp(st, "sqrt"))  return MATTE_QUERY__SQRT;
     if (!strcmp(st, "abs"))   return MATTE_QUERY__ABS;
-    if (!strcmp(st, "isnan")) return MATTE_QUERY__ISNAN;
+    if (!strcmp(st, "isNaN")) return MATTE_QUERY__ISNAN;
     if (!strcmp(st, "floor")) return MATTE_QUERY__FLOOR;
     if (!strcmp(st, "ceil")) return MATTE_QUERY__CEIL;
     if (!strcmp(st, "round")) return MATTE_QUERY__ROUND;
-    if (!strcmp(st, "radians")) return MATTE_QUERY__RADIANS;
-    if (!strcmp(st, "degrees")) return MATTE_QUERY__DEGREES;
+    if (!strcmp(st, "asRadians")) return MATTE_QUERY__RADIANS;
+    if (!strcmp(st, "asDegrees")) return MATTE_QUERY__DEGREES;
     if (!strcmp(st, "removeChar")) return MATTE_QUERY__REMOVECHAR;
     if (!strcmp(st, "substr")) return MATTE_QUERY__SUBSTR;
     if (!strcmp(st, "split")) return MATTE_QUERY__SPLIT;
@@ -2823,14 +2812,14 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "setCharCodeAt")) return MATTE_QUERY__SETCHARCODEAT;
     if (!strcmp(st, "setCharAt")) return MATTE_QUERY__SETCHARAT;
     if (!strcmp(st, "keycount")) return MATTE_QUERY__KEYCOUNT;
-    if (!strcmp(st, "keys")) return ATTE_QUERY__KEYS;
+    if (!strcmp(st, "keys")) return MATTE_QUERY__KEYS;
     if (!strcmp(st, "values")) return MATTE_QUERY__VALUES;
     if (!strcmp(st, "push")) return MATTE_QUERY__PUSH;
     if (!strcmp(st, "pop")) return MATTE_QUERY__POP;
     if (!strcmp(st, "insert")) return MATTE_QUERY__INSERT;
     if (!strcmp(st, "remove")) return MATTE_QUERY__REMOVE;
     if (!strcmp(st, "setAttributes")) return MATTE_QUERY__SETATTRIBUTES;
-    if (!strcmp(st, "getAttributes")) return MATTE_QUERY__GETATTRIBUTES;
+    if (!strcmp(st, "attributes")) return MATTE_QUERY__ATTRIBUTES;
     if (!strcmp(st, "sort")) return MATTE_QUERY__SORT;
     if (!strcmp(st, "subset")) return MATTE_QUERY__SUBSET;
     if (!strcmp(st, "filter")) return MATTE_QUERY__FILTER;
@@ -2838,6 +2827,7 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "isa")) return MATTE_QUERY__ISA;
     if (!strcmp(st, "map")) return MATTE_QUERY__MAP;
     if (!strcmp(st, "filter")) return MATTE_QUERY__REDUCE;
+    if (!strcmp(st, "type")) return MATTE_QUERY__TYPE;
     return -1;
 }
 
@@ -2912,14 +2902,14 @@ static matteArray_t * compile_value(
             
             if (index == -1) {
                 matteString_t * m = matte_string_create_from_c_str("Unrecognized query name '%s'", matte_string_get_c_str(iter->text));            
-                matte_syntax_graph_print_compile_error(g, iter, m);
+                matte_syntax_graph_print_compile_error(g, iter, matte_string_get_c_str(m));
                 matte_string_destroy(m);
                 matte_array_destroy(inst);
                 return NULL;               
             }
             write_instruction__qry(
                 inst,
-                iter->lineNumber,
+                iter->line,
                 index
             );
             iter = iter->next;

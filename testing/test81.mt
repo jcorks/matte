@@ -6,8 +6,8 @@
 
 
 @strout = '';
-for(in:[0, String.length(of:a)], do:::(i){
-    strout = strout + String.charCodeAt(string:a, index:i);
+for(in:[0, a->length], do:::(i){
+    strout = strout + a->charCodeAt(index:i);
 });
 
 

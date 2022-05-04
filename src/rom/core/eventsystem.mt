@@ -9,7 +9,7 @@
         this.interface = {
             events : {
                 set ::(value) {
-                    when (Object.keycount(of:events) != 0) error(data:'Interface is already defined.');
+                    when (events->keycount != 0) error(data:'Interface is already defined.');
                     
                     // filter to ensure types of key/val pairs
                     foreach(in:value, do:::(key => String, val => Function) {
@@ -87,7 +87,7 @@
             getKnownEvents ::{
                 @arr = [];
                 foreach(in:events, do:::(k, v) {
-                    Object.push(object:arr, value:k);
+                    arr->push(value:k);
                 });
                 return arr;                
             },
@@ -99,7 +99,7 @@
                 listen(to:::{
                     for(in:[0, ev.hookCount], do:::(i) {
                         if (ev.hooks[i] == hook) ::<= { 
-                            Object.removeKey(from:ev.hooks, key:i);
+                            ev.hooks->remove(key:i);
                             ev.hookCount-=1;
                             send();
                         };
@@ -113,7 +113,7 @@
                 listen(to:::{
                     for(in:[0, ev.handlerCount], do:::(i) {
                         if (ev.handlers[i] == handler) ::<= { 
-                            Object.removeKey(from:ev.handlers, key:i);
+                            ev.handlers->remove(key:i);
                             ev.handlerCount-=1;
                             send();
                         };

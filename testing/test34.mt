@@ -2,8 +2,7 @@
 //
 // empty object
 @r = {};
-Object.setAttributes(
-    of:r, 
+r->setAttributes( 
     attributes:{
         (String) ::{
             return 'Testing';

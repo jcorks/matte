@@ -2,9 +2,9 @@
 //
 // String: length
 
-when(String.length(of:'') != 0) 'failed0';
-when(String.length(of:'Hello') != 5) 'failed1';
-when(String.length(of:'this is a string') != 16) 'failed2';
+when(''->length != 0) 'failed0';
+when('Hello'->length != 5) 'failed1';
+when('this is a string'->length != 16) 'failed2';
     
     
 return ''+6;

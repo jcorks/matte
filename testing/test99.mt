@@ -16,29 +16,29 @@
 @out = '';
 
 listen(to:::{
-    Object.removeKey(from:100);
+    100->remove();
 }, onError:::(message){
     out = out + 'noobj';
 });
 
 
-Object.removeKey(from:testObj, key:'hello');
+testObj->remove(key:'hello');
 out = out + String(from:testObj.hello);
 
-Object.removeKey(from:testObj, key:'');
-Object.removeKey(from:testObj, key:'hello1');
+testObj->remove(key:'');
+testObj->remove(key:'hello1');
 
 out = out + testObj[String];
 out = out + testObj[keyobj];
 
-out = out + Object.keycount(of:testObj);
+out = out + testObj->keycount;;
 
-Object.removeKey(from:testObj, key:String);
-Object.removeKey(from:testObj, key:keyobj);
-Object.removeKey(from:testObj, key:'keyobj');
-Object.removeKey(from:testObj, key:String); // ok
+testObj->remove(key:String);
+testObj->remove(key:keyobj);
+testObj->remove(key:'keyobj');
+testObj->remove(key:String); // ok
 
-out = out + Object.keycount(of:testObj);
+out = out + testObj->keycount;
 
 return out;
 

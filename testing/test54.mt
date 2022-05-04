@@ -8,11 +8,11 @@
     // overly complex implementations are great for testing
     // ... or so i tell myself
     @isNeg = from < 0;
-    from = Number.abs(of:from);
+    from = from->abs;
     
     @ref = {
-        cents    : Number.round(value:100*(from - Number.floor(of:from))),
-        dollars  : Number.floor(of:from),
+        cents    : (100*(from - from->floor))->round,
+        dollars  : from->floor,
         isDebt   : isNeg
     };
     
@@ -21,7 +21,7 @@
     };
     
     
-    Object.setAttributes(of:ref, 
+    ref->setAttributes( 
         attributes: {
             '+' ::(value) {
                 return createUSD(from:toValue(USD:ref) + toValue(USD:value));
@@ -42,6 +42,7 @@
     
     return ref;
 };
+
 
 
 

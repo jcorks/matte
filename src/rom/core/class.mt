@@ -4,7 +4,7 @@
 
 
     @classinst = {define : define};
-    when(getType(of:classinst.define) != Function) error(detail:'class must include a "define" function within its "info" specification');
+    when(classinst.define->type != Function) error(detail:'class must include a "define" function within its "info" specification');
     @classInherits = inherits;
     @pool = [];
     @poolCount = 0;
@@ -81,7 +81,7 @@
                 isFunction : false,
                 set ::(value) {
                     foreach(in:value, do:::(k => String, v) {
-                        if (getType(of:v) == Function) ::<= {
+                        if (v->type == Function) ::<= {
                             interface[k] = {
                                 isFunction : true,
                                 fn : v
@@ -97,7 +97,7 @@
                 }
             };
 
-            Object.setAttributes(of:newinst, attributes:attribs);
+            newinst->setAttributes(attributes:attribs);
             // default / building interface
             newinst.interface = {
                 class : {
@@ -143,10 +143,10 @@
                 attributes : {
                     set ::(value) {
                         foreach(in:value, do:::(k, v) {
-                            when(getType(of:k) == String && k == '.') empty; // skip 
+                            when(k->type == String && k == '.') empty; // skip 
                             attribs[k] = v;
                         }); 
-                        Object.setAttributes(of:newinst, attributes:attribs);
+                        newinst->setAttributes(attributes:attribs);
                     }  
                 }
                 
@@ -156,7 +156,7 @@
             instSet = instSetIn;
             newinst = instSetIn.newinst;
             interface = instSetIn.interface;
-            Object.push(object:instSetIn.bases, value:instSet);            
+            instSetIn.bases->push(value:instSet);            
         };
         
         @runSelf = context;
@@ -182,15 +182,14 @@
     
 
     
-    Object.setAttributes(
-        of         : classinst,
+    classinst->setAttributes(
         attributes : {
             '.' : {
                 get ::(key => String)  {
                     when(key == 'new')::<={
                         when(poolCount > 0) ::<={
                             @out = pool[poolCount-1];
-                            Object.removeKey(from:pool, key:poolCount-1);
+                            pool->remove(key:poolCount-1);
                             poolCount -= 1;
                             
                             @constructor = out.constructor;
@@ -229,7 +228,7 @@
                             };
                         };
 
-                        Object.removeKey(from:newinst, keys:['constructor', 'onRecycle', 'interface']);
+                        newinst->remove(keys:['constructor', 'onRecycle', 'interface']);
 
 
                         when(constructor != empty) constructor;

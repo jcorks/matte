@@ -2,6 +2,7 @@
 #define H_MATTE__HEAP__INCLUDED
 
 
+#include "matte_opcode.h"
 typedef struct matteString_t matteString_t;
 typedef struct matteVM_t matteVM_t;
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
@@ -274,6 +275,8 @@ int matte_value_isa(matteHeap_t *, matteValue_t, matteValue_t typeobj);
 
 // Gets a Type object of the given value.
 matteValue_t matte_value_get_type(matteHeap_t *, matteValue_t);
+
+matteValue_t matte_value_query(matteHeap_t * heap, matteValue_t * v, matteQuery_t query);
 
 // Given a value type, returns the public name of it.
 // Every type has a name.

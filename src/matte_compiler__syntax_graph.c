@@ -132,7 +132,6 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_TYPEFUNCTION, "Function Type object",
 
 
-        MATTE_TOKEN_EXTERNAL_TYPE, "Type query built-in",
         MATTE_TOKEN_EXTERNAL_PRINT, "Print built-in",
         MATTE_TOKEN_EXTERNAL_SEND, "Send built-in",
         MATTE_TOKEN_EXTERNAL_LISTEN, "Listen built-in",
@@ -541,7 +540,6 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_FOREACH,
             MATTE_TOKEN_EXTERNAL_FOR,
             MATTE_TOKEN_EXTERNAL_MATCH,
-            MATTE_TOKEN_EXTERNAL_TYPE,
             MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
             MATTE_TOKEN_EXTERNAL_IMPORT,
             MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN,

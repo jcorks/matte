@@ -14,25 +14,25 @@
     }
 };
 
-Object.setAttributes(of:test, attributes:op);
+test->setAttributes(attributes:op);
 
 test +=  100;
 test +=  10;
 out = out + test.data;
 
-Object.setAttributes(of:test, attributes:op);
+test->setAttributes(attributes:op);
 test +=  1;
 out = out + test.data;
 
 listen(to:::{
-    Object.setAttributes(of:10, attributes:op);    
+    10->setAttributes(attributes:op);    
 }, onError:::(message){
     out = out + 'noobj0';
 });
 
 
 listen(to:::{
-    Object.setAttributes(of:test, attributes:0);    
+    test->setAttributes(attributes:0);    
 }, onError:::(message){
     out = out + 'noobj1';
 });
@@ -52,20 +52,20 @@ out = out + test.data;
     }
 };
 
-Object.setAttributes(of:test, attributes:op2);
+test->setAttributes(attributes:op2);
 test +=  33;
 out = out + test.data;
 
 
 
-out = out + Boolean(from:Object.getAttributes(of:test) == op2);
+out = out + Boolean(from:test->attributes == op2);
 listen(to:::{
     Object.getAttributes(of:'d');
 }, onError:::(message){
     out = out + 'noobjEX';
 });
 
-out = out + Boolean(from:Object.getAttributes(of:test) == op);
+out = out + Boolean(from:test->attributes == op);
 
 
 

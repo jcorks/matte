@@ -4,63 +4,63 @@
 
 @out = '';
 
-out = out + Number.floor(of:4.99);
-out = out + Number.floor(of:2.01);
+out = out + 4.99->floor;
+out = out + 2.01->floor;
 listen(to:::{
-    out = out + Number.floor(of:'20.02');
+    out = out + '20.02'->floor;
 }, onError:::(message){
     out = out + 'a';
 });
 
-out = out + Number.ceil(of:0.02);
-out = out + Number.ceil(of:2.7988);
+out = out + 0.02->ceil;
+out = out + 2.7988->ceil;
 listen(to:::{
-    out = out + Number.ceil(of:'20.02');
+    out = out + '20.02'->ceil;
 }, onError:::(message){
     out = out + 'b';
 });
 
 
-out = out + Number.round(value:4.51);
-out = out + Number.round(value:7.39);
+out = out + 4.51->round;
+out = out + 7.39->round;
 listen(to:::{
-    out = out + Number.round(value:'20.02');
+    out = out + '20.02'->round;
 }, onError:::(message){
     out = out + 'c';
 });
 
 
-out = out + Number.toRadians(value:28.64788975654116);
-out = out + Number.toDegrees(value:1.5707963267948966);
+out = out + 28.64788975654116->asRadians;
+out = out + 1.5707963267948966->asDegrees;
 listen(to:::{
-    out = out + Number.toRadians(value:{});
+    out = out + {}->asRadians;
 }, onError:::(message){
     out = out + 'd';
 });
 listen(to:::{
-    out = out + Number.toDegrees(value:Number);
+    out = out + Number->asDegrees;
 }, onError:::(message){
     out = out + 'e';
 });
 
 
-out = out + Number.round(value:Number.sin(of:1.5707963267948966));
-out = out + Number.round(value:Number.cos(of:0));
+out = out + 1.5707963267948966->sin->round;
+out = out + 0->cos->round;
 listen(to:::{
-    out = out + Number.sin(of:'2');
+    out = out + '2'->sin;
 }, onError:::(message){
     out = out + 'f';
 });
 listen(to:::{
-    out = out + Number.cos();
+    out = out + Number->cos;
 }, onError:::(message){
     out = out + 'g';
 });
 
 
-out = out + Number.round(value:Number.tan(of:0.7853981633974483));
+out = out + 0.7853981633974483->tan->round;
 listen(to:::{
-    out = out + Number.tan(of:[]);
+    out = out + []->tan;
 }, onError:::(message){
     out = out + 'h';
 });
@@ -70,10 +70,10 @@ listen(to:::{
 out = out + 256**0.5;
 out = out + 'i';
 
-out = out + Number.isNaN(value:0 / 0);
-out = out + Number.isNaN(value:1/1);
+out = out + (0 / 0)->isNaN;
+out = out + (1/1)->isNaN;
 listen(to:::{
-    out = out + Number.isNaN(value:'2');
+    out = out + '2'->isNaN;
 }, onError:::(message){
     out = out + 'j';
 });

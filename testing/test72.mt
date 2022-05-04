@@ -4,7 +4,7 @@
 @:containsAny::(in, keys) {
     return listen(to:::{
         foreach(in:keys, do:::(k, v) {
-            when(String.contains(string:in, key:v)) send(message:true);
+            when(in->contains(key:v)) send(message:true);
         });
         return false;        
     });

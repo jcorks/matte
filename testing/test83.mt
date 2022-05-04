@@ -8,15 +8,15 @@
 listen(to:::{
     
     // should error out, not allowed.
-    output = String.substr(string:a, from:'a', to:[]);    
+    output = a->substr(from:'a', to:[]);    
 }, onError:::(message) {
     output = 'a';
 });
 
 
 return '' + output + 
-        String.substr(string:a, from:0, to:3) + 
-        String.substr(string:a, from:5, to:6) +
-        String.substr(string:a, from:8, to:8) +
-        String.substr(string:a, from:10, to:String.length(of:a)-1) +
-        String.substr(string:'test', from:0, to:3);
+        a->substr(from:0, to:3) + 
+        a->substr(from:5, to:6) +
+        a->substr(from:8, to:8) +
+        a->substr(from:10, to:a->length-1) +
+        'test'->substr(from:0, to:3);

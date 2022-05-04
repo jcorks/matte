@@ -117,6 +117,11 @@ struct matteHeap_t {
     matteValue_t specialString_inherits;
     
     
+    
+    
+
+    
+    
     matteArray_t * toRemove;
     matteObject_t * roots;
 };
@@ -753,128 +758,38 @@ static void destroy_object(void * d) {
 
 
 static char * BUILTIN_NUMBER__NAMES[] = {
-    "floor",
-    "ceil",
-    "round",
-    "toRadians",
-    "toDegrees",
     "PI",
-    "cos",
-    "sin",
-    "tan",
-    "acos",
-    "asin",
-    "atan",
-    "atan2",
-    "sqrt",
-    "abs",
-    "isNaN",
     "parse",
     "random",
     NULL
 };
 
 static int BUILTIN_NUMBER__IDS[] = {
-    MATTE_EXT_CALL__NUMBER__FLOOR,
-    MATTE_EXT_CALL__NUMBER__CEIL,
-    MATTE_EXT_CALL__NUMBER__ROUND,
-    MATTE_EXT_CALL__NUMBER__TORADIANS,
-    MATTE_EXT_CALL__NUMBER__TODEGREES,
     MATTE_EXT_CALL__NUMBER__PI,
-    MATTE_EXT_CALL__NUMBER__COS,
-    MATTE_EXT_CALL__NUMBER__SIN,
-    MATTE_EXT_CALL__NUMBER__TAN,
-    MATTE_EXT_CALL__NUMBER__ACOS,
-    MATTE_EXT_CALL__NUMBER__ASIN,
-    MATTE_EXT_CALL__NUMBER__ATAN,
-    MATTE_EXT_CALL__NUMBER__ATAN2,
-    MATTE_EXT_CALL__NUMBER__SQRT,
-    MATTE_EXT_CALL__NUMBER__ABS,
-    MATTE_EXT_CALL__NUMBER__ISNAN,
     MATTE_EXT_CALL__NUMBER__PARSE,
     MATTE_EXT_CALL__NUMBER__RANDOM
 };
 
 static char * BUILTIN_STRING__NAMES[] = {
-    "length",
-    "search",
-    "contains",
-    "replace",
-    "count",
-    "charCodeAt",
-    "charAt",
-    "setCharCodeAt",
-    "setCharAt",
     "combine",
-    "removeChar",
-    "substr",
-    "split",
-    "scan",
     NULL
 };
 
 static int BUILTIN_STRING__IDS[] = {
-    MATTE_EXT_CALL__STRING__LENGTH,
-    MATTE_EXT_CALL__STRING__SEARCH,
-    MATTE_EXT_CALL__STRING__CONTAINS,
-    MATTE_EXT_CALL__STRING__REPLACE,
-    MATTE_EXT_CALL__STRING__COUNT,
-    MATTE_EXT_CALL__STRING__CHARCODEAT,
-    MATTE_EXT_CALL__STRING__CHARAT,
-    MATTE_EXT_CALL__STRING__SETCHARCODEAT,
-    MATTE_EXT_CALL__STRING__SETCHARAT,
     MATTE_EXT_CALL__STRING__COMBINE,
-    MATTE_EXT_CALL__STRING__REMOVECHAR,
-    MATTE_EXT_CALL__STRING__SUBSTR,
-    MATTE_EXT_CALL__STRING__SPLIT,
-    MATTE_EXT_CALL__STRING__SCAN
 };
 
 
 static char * BUILTIN_OBJECT__NAMES[] = {
-    "keycount",
-    "keys",
-    "values",
-    "length",
-    "push",
-    "pop",
-    "insert",
-    "removeKey",
-    "setAttributes",
-    "getAttributes",
-    "sort",
-    "subset",
-    "filter",
-    "findIndex",
     "newType",
     "instantiate",
-    "is",
-    "map",
-    "reduce",
     NULL
 };
 
 
 static int BUILTIN_OBJECT__IDS[] = {
-    MATTE_EXT_CALL__OBJECT__KEYCOUNT,
-    MATTE_EXT_CALL__OBJECT__KEYS,
-    MATTE_EXT_CALL__OBJECT__VALUES,
-    MATTE_EXT_CALL__OBJECT__LENGTH,
-    MATTE_EXT_CALL__OBJECT__PUSH,
-    MATTE_EXT_CALL__OBJECT__POP,
-    MATTE_EXT_CALL__OBJECT__INSERT,
-    MATTE_EXT_CALL__OBJECT__REMOVE,
-    MATTE_EXT_CALL__OBJECT__SETATTRIBUTES,
-    MATTE_EXT_CALL__OBJECT__GETATTRIBUTES,
-    MATTE_EXT_CALL__OBJECT__SORT,
-    MATTE_EXT_CALL__OBJECT__SUBSET,
-    MATTE_EXT_CALL__OBJECT__FILTER,
-    MATTE_EXT_CALL__OBJECT__FINDINDEX,
     MATTE_EXT_CALL__OBJECT__NEWTYPE,
     MATTE_EXT_CALL__OBJECT__INSTANTIATE,
-    MATTE_EXT_CALL__OBJECT__IS,
-    MATTE_EXT_CALL__OBJECT__MAP,
-    MATTE_EXT_CALL__OBJECT__REDUCE
 };
 
 
@@ -1150,73 +1065,482 @@ void matte_value_into_string_(matteHeap_t * heap, matteValue_t * v, const matteS
 matteValue_t matte_value_query(matteHeap_t * heap, matteValue_t * v, matteQuery_t query) {
     matteValue_t out = matte_heap_new_value(heap);
     switch(query) {
-      case MATTE_QUERY__COS: {
+      case MATTE_QUERY__TYPE:
+        return matte_value_get_type(heap, *v);
+
+
+      case MATTE_QUERY__COS: 
         if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("cos requires base value to be a number.");
             matte_vm_raise_error_string(heap->vm, str);
             matte_string_destroy(str);
             return out;
         }
-        return matte_value_as_number(heap, &out, cos(matte_value_as_number(heap, v)));
-      }    
+        matte_value_into_number(heap, &out, cos(matte_value_as_number(heap, *v)));
+        return out;
 
-      case MATTE_QUERY__SIN: {
+      case MATTE_QUERY__SIN: 
         if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("sin requires base value to be a number.");
             matte_vm_raise_error_string(heap->vm, str);
             matte_string_destroy(str);
             return out;
         }
-        return matte_value_as_number(heap, &out, sin(matte_value_as_number(heap, v)));
-      }    
+        matte_value_into_number(heap, &out, sin(matte_value_as_number(heap, *v)));
+        return out;
+      
 
-      case MATTE_QUERY__TAN: {
+      case MATTE_QUERY__TAN: 
         if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("tan requires base value to be a number.");
             matte_vm_raise_error_string(heap->vm, str);
             matte_string_destroy(str);
             return out;
         }
-        return matte_value_as_number(heap, &out, tan(matte_value_as_number(heap, v)));
-      }    
+        matte_value_into_number(heap, &out, tan(matte_value_as_number(heap, *v)));
+        return out;
       
       
-      case MATTE_QUERY__ACOS: {
+      
+      case MATTE_QUERY__ACOS:
         if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("acos requires base value to be a number.");
             matte_vm_raise_error_string(heap->vm, str);
             matte_string_destroy(str);
             return out;
         }
-        return matte_value_as_number(heap, &out, acos(matte_value_as_number(heap, v)));
-      }    
+        matte_value_into_number(heap, &out, acos(matte_value_as_number(heap, *v)));
+        return out;
+      
 
-      case MATTE_QUERY__ASIN: {
+      case MATTE_QUERY__ASIN: 
         if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("asin requires base value to be a number.");
             matte_vm_raise_error_string(heap->vm, str);
             matte_string_destroy(str);
             return out;
         }
-        return matte_value_as_number(heap, &out, asin(matte_value_as_number(heap, v)));
-      }    
+        matte_value_into_number(heap, &out, asin(matte_value_as_number(heap, *v)));
+        return out;
+      
 
-      case MATTE_QUERY__ATAN: {
+      case MATTE_QUERY__ATAN:
         if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("atan requires base value to be a number.");
             matte_vm_raise_error_string(heap->vm, str);
             matte_string_destroy(str);
             return out;
         }
-        return matte_value_as_number(heap, &out, atan(matte_value_as_number(heap, v)));
-      }    
+        matte_value_into_number(heap, &out, atan(matte_value_as_number(heap, *v)));
+        return out;
+      
 
-      case MATTE_QUERY__ATAN2: {
-        return heap->query_atan2;
-      } 
+      case MATTE_QUERY__ATAN2: 
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__ATAN2);
+      
+      case MATTE_QUERY__SQRT: 
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("sqrt requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matte_value_into_number(heap, &out, sqrt(matte_value_as_number(heap, *v)));
+        return out;
+
+      case MATTE_QUERY__ABS: 
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("abs requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matte_value_into_number(heap, &out, fabs(matte_value_as_number(heap, *v)));
+        return out;
+      
 
 
+      case MATTE_QUERY__ISNAN: 
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("isNaN requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matte_value_into_boolean(heap, &out, isnan(matte_value_as_number(heap, *v)));
+        return out;
+      
+      
+      case MATTE_QUERY__FLOOR: 
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("floor requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matte_value_into_number(heap, &out, floor(matte_value_as_number(heap, *v)));
+        return out;
+
+
+      case MATTE_QUERY__CEIL: 
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("ceil requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matte_value_into_number(heap, &out, ceil(matte_value_as_number(heap, *v)));
+        return out;
+
+      case MATTE_QUERY__ROUND: 
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("round requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matte_value_into_number(heap, &out, round(matte_value_as_number(heap, *v)));
+        return out;
+
+      case MATTE_QUERY__RADIANS: 
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("radian conversion requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matte_value_into_number(heap, &out, matte_value_as_number(heap, *v)* (M_PI / 180.0));
+        return out;
+
+      case MATTE_QUERY__DEGREES: 
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("degree conversion requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matte_value_into_number(heap, &out, matte_value_as_number(heap, *v)* (180.0 / M_PI));
+        return out;
+
+
+
+
+
+
+
+
+
+      case MATTE_QUERY__REMOVECHAR: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("removeChar requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__REMOVECHAR);
+      }
+      case MATTE_QUERY__SUBSTR: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("substr requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SUBSTR);
+      }
+      case MATTE_QUERY__SPLIT: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("split requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SPLIT);
+      }
+      case MATTE_QUERY__SCAN: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("scan requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SCAN);
+      }
+      case MATTE_QUERY__LENGTH: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("length requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matteValue_t len = matte_heap_new_value(heap);
+        const matteString_t * strVal = matte_value_string_get_string_unsafe(heap, *v);
+        matte_value_into_number(heap, &len, matte_string_get_length(strVal));   
+        return len;     
+      }
+      case MATTE_QUERY__SEARCH: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("search requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SEARCH);
+      }
+      case MATTE_QUERY__CONTAINS: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("contains requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__CONTAINS);
+      }
+      case MATTE_QUERY__REPLACE: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("replace requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__REPLACE);
+      }
+      case MATTE_QUERY__COUNT: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("count requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__COUNT);
+      }
+      case MATTE_QUERY__CHARCODEAT: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("charCodeAt requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__CHARCODEAT);
+      }
+      case MATTE_QUERY__CHARAT: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("charAt requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__CHARAT);
+      }
+      case MATTE_QUERY__SETCHARCODEAT: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("setCharCodeAt requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SETCHARCODEAT);
+      }
+      case MATTE_QUERY__SETCHARAT: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("setCharAt requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SETCHARAT);
+      }
+
+
+
+
+
+
+
+
+      case MATTE_QUERY__KEYCOUNT: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("keycount requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matte_value_into_number(heap, &out, matte_value_object_get_key_count(heap, *v));
+        return out;
+      }
+
+      case MATTE_QUERY__KEYS: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("keys requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return matte_value_object_keys(heap, *v);
+      }
+
+      case MATTE_QUERY__VALUES: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("values requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return matte_value_object_values(heap, *v);
+      }
+
+      case MATTE_QUERY__PUSH: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("push requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__PUSH);
+      }
+
+      case MATTE_QUERY__POP: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("pop requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matteValue_t key = {};
+        uint32_t index = matte_value_object_get_number_key_count(heap, *v) - 1;
+        matte_value_into_number(heap, &key, index);
+
+        matteValue_t * at = matte_value_object_access_direct(heap, *v, key, 1);
+        if (at) {
+            matte_value_object_remove_key(heap, *v, key);
+            return *at;            
+        }
+
+        return matte_heap_new_value(heap);      
+      }
+      
+      case MATTE_QUERY__INSERT: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("insert requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__INSERT);
+      }
+
+      case MATTE_QUERY__REMOVE: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("remove requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__REMOVE);
+      }
+
+      case MATTE_QUERY__SETATTRIBUTES: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("setAttributes requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SETATTRIBUTES);
+      }
+
+      case MATTE_QUERY__ATTRIBUTES: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("attributes requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        matteValue_t out = matte_heap_new_value(heap);
+
+        const matteValue_t * op = matte_value_object_get_attributes_unsafe(heap, *v);
+        if (op)
+            matte_value_into_copy(heap, &out, *op);
+
+        return out;
+      }
+      
+      case MATTE_QUERY__SORT: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("sort requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SORT);
+      }
+      
+      case MATTE_QUERY__SUBSET: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("subset requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SUBSET);
+      }
+
+      case MATTE_QUERY__FILTER: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("filter requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__FILTER);
+      }
+
+      case MATTE_QUERY__FINDINDEX: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("findIndex requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__FINDINDEX);
+      }
+
+      case MATTE_QUERY__ISA: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("isA requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__ISA);
+      }
+
+      case MATTE_QUERY__MAP: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("map requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__MAP);
+      }
+      
+      case MATTE_QUERY__REDUCE: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("reduce requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__REDUCE);
+      }
+      
     }
+
+    matteString_t * str = matte_string_create_from_c_str("VM error: unknown query operator.");
+    matte_vm_raise_error_string(heap->vm, str);
+    matte_string_destroy(str);
+
 }
 
 

@@ -1,36 +1,4 @@
 
-static matteValue_t vm_ext_call__number__floor(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_number(vm->heap, &out, floor(matte_value_as_number(vm->heap, a)));    
-    return out;
-}
-
-static matteValue_t vm_ext_call__number__ceil(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_number(vm->heap, &out, ceil(matte_value_as_number(vm->heap, a)));    
-    return out;
-}
-
-static matteValue_t vm_ext_call__number__round(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;    
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_number(vm->heap, &out, round(matte_value_as_number(vm->heap, a)));    
-    return out;
-}
-static matteValue_t vm_ext_call__number__toradians(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, matte_value_as_number(vm->heap, a) * (M_PI / 180.0));    
-    return out;
-}
-static matteValue_t vm_ext_call__number__todegrees(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, matte_value_as_number(vm->heap, a) * (180.0 / M_PI));    
-    return out;
-}
 
 static matteValue_t vm_ext_call__number__pi(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t out = matte_heap_new_value(vm->heap);    
@@ -39,76 +7,12 @@ static matteValue_t vm_ext_call__number__pi(matteVM_t * vm, matteValue_t fn, con
 }
 
 
-static matteValue_t vm_ext_call__number__sin(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, sin(matte_value_as_number(vm->heap, a)));    
-    return out;
-}
-
-static matteValue_t vm_ext_call__number__cos(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, cos(matte_value_as_number(vm->heap, a)));    
-    return out;
-}
-
-static matteValue_t vm_ext_call__number__tan(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, tan(matte_value_as_number(vm->heap, a)));    
-    return out;
-}
-
-static matteValue_t vm_ext_call__number__asin(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, asin(matte_value_as_number(vm->heap, a)));    
-    return out;
-}
-
-static matteValue_t vm_ext_call__number__acos(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, acos(matte_value_as_number(vm->heap, a)));    
-    return out;
-}
-
-static matteValue_t vm_ext_call__number__atan(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, atan(matte_value_as_number(vm->heap, a)));    
-    return out;
-}
 
 static matteValue_t vm_ext_call__number__atan2(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];
     matteValue_t b = args[1];
     matteValue_t out = matte_heap_new_value(vm->heap);    
     matte_value_into_number(vm->heap, &out, atan2(matte_value_as_number(vm->heap, a), matte_value_as_number(vm->heap, b)));    
-    return out;
-}
-
-static matteValue_t vm_ext_call__number__sqrt(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;    
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_number(vm->heap, &out, sqrt(matte_value_as_number(vm->heap, a)));
-    return out;
-}
-
-static matteValue_t vm_ext_call__number__abs(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;    
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_number(vm->heap, &out, fabs(matte_value_as_number(vm->heap, a)));
-    return out;
-}
-
-
-
-static matteValue_t vm_ext_call__number__isnan(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];;    
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_boolean(vm->heap, &out, isnan(matte_value_as_number(vm->heap, a)));
     return out;
 }
 

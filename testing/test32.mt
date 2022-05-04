@@ -1,11 +1,11 @@
 //// Test 32
 //
 // introspection testing 
-@keys = Object.keys(of:{
+@keys = {
     (0) : '123',
     (1) : '456',
     (2) : '789'
-});
+}->keys;
 
 return keys[1];
 

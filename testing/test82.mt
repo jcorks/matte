@@ -7,8 +7,8 @@
 
 @strout = '';
 @c = [];
-for(in:[0, String.length(of:a)], do:::(i) {
-    c[i] = String.charAt(string:a, index:i);
+for(in:[0, a->length], do:::(i) {
+    c[i] = a->charAt(index:i);
 });
 
 strout = String.combine(strings:[

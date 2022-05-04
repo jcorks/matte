@@ -6,16 +6,16 @@
 
 
 return '' +
-    String.charCodeAt(string:a, index:0) + 
-    String.charCodeAt(string:a, index:1) + 
-    String.charCodeAt(string:a, index:2) + 
-    String.charCodeAt(string:a, index:3) + 
-    String.charCodeAt(string:a, index:4) + 
-    String.charCodeAt(string:a, index:5) + 
-    String.charCodeAt(string:a, index:6) + 
-    String.charCodeAt(string:a, index:7) +
-    String.charCodeAt(string:a, index:8) +
-    String.charCodeAt(string:a, index:9) +
-    String.charCodeAt(string:a, index:10) +
-    String.charCodeAt(string:a, index:11);
+    a->charCodeAt(index:0) + 
+    a->charCodeAt(index:1) + 
+    a->charCodeAt(index:2) + 
+    a->charCodeAt(index:3) + 
+    a->charCodeAt(index:4) + 
+    a->charCodeAt(index:5) + 
+    a->charCodeAt(index:6) + 
+    a->charCodeAt(index:7) +
+    a->charCodeAt(index:8) +
+    a->charCodeAt(index:9) +
+    a->charCodeAt(index:10) +
+    a->charCodeAt(index:11);
     
