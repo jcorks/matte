@@ -93,7 +93,7 @@ forever(do:::{
         progress = 0;
         Console.printf(format:'\n');
     };
-    @nextChar = String.charAt(string:str, index:progress);
+    @nextChar = str->charAt(index:progress);
     @wait = (if (nextChar == ' ') SWCA_SPEED/7 else SWCA_SPEED);
     Time.sleep(milliseconds:Number.random()*wait);
     Console.printf(format:nextChar);

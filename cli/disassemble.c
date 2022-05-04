@@ -219,9 +219,6 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                     case MATTE_EXT_CALL_ERROR:
                         fprintf(fout, "error\n");
                         break;
-                    case MATTE_EXT_CALL_GETTYPE:
-                        fprintf(fout, "gettype\n");
-                        break;
 
                     case MATTE_EXT_CALL_GETEXTERNALFUNCTION:
                         fprintf(fout, "getExternalFunction\n");
@@ -240,6 +237,10 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
             case MATTE_OPCODE_PNR:
                 a = *(uint32_t*)data.bytes;
                 fprintf(fout, "pnr %d\n", a);
+                break; 
+            case MATTE_OPCODE_QRY:
+                a = *(uint32_t*)data.bytes;
+                fprintf(fout, "qry %d\n", a);
                 break; 
 
             case MATTE_OPCODE_PTO:

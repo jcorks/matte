@@ -18,7 +18,7 @@ Console.println(message:"Hi. What's your favorite color?");
     @raw = Console.getln();
     
     // most systems will incude the newline. Filter it out.
-    return String.replace(string:raw, key:'\n', with:'');
+    return raw->replace(key:'\n', with:'');
 };
 
 // Printf takes a series of tokens and replaces them.

@@ -12,7 +12,7 @@ when(parameters == empty || parameters.file == empty) ::<={
 
 
 // config
-@:BYTES_PER_LINE = if (getType(of:parameters.wordsize) == String) Number.parse(string:parameters.wordsize) else 8;
+@:BYTES_PER_LINE = if ((parameters.wordsize)->type == String) Number.parse(string:parameters.wordsize) else 8;
 @:BYTES_PER_PAGE = BYTES_PER_LINE*8;
     
 
@@ -194,7 +194,7 @@ when(parameters == empty || parameters.file == empty) ::<={
         
             for(in:[iterBytes, endPoint()], do:::(i) {
                 if (i%BYTES_PER_LINE == 0) ::<={
-                    Object.push(object:lines, value: '' + line + "      " + lineAsText + '\n');
+                    lines->push(value: '' + line + "      " + lineAsText + '\n');
                     iter = 0;
                     line = '';
                     lineAsText = '';
@@ -217,7 +217,7 @@ when(parameters == empty || parameters.file == empty) ::<={
                     n = numberToAscii(n:data[i]);
                     lineAsText = String.combine(strings:[lineAsText, '   ']);  
                 });
-                Object.push(object:lines, value: line + "      " + lineAsText + '\n');
+                lines->push(value: line + "      " + lineAsText + '\n');
                 line = '';
                 lineAsText = '';
             };

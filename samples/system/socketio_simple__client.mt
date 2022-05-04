@@ -10,10 +10,10 @@
 // This will be used below to send data to a connected server.
 @sendDataString::(client, str => String) {
     @m = MemoryBuffer.new();
-    @:len = String.length(of:str); 
+    @:len = str->length; 
     m.size = len;
     for(in:[0, len], do:::(i){
-        m[i] = String.charCodeAt(string:str, index:i);
+        m[i] = str->charCodeAt(index:i);
     });
     
     client.send(bytes:m);
@@ -71,7 +71,7 @@ client.installHooks(events:[
             @str = '';
             for(in:[0, data.size], do:::(i) {
                 str = str + ' ';
-                str = String.setCharCodeAt(string:str, index:i, value:data[i]);
+                str = str->setCharCodeAt(index:i, value:data[i]);
             });
             ConsoleIO.println(message:'Message from server: ' + str);
         }

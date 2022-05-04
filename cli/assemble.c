@@ -525,8 +525,6 @@ static void function_to_stub(FILE * f, uint32_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_LISTEN;
                 } else if (!strcmp("error", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_ERROR;
-                } else if (!strcmp("gettype", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_GETTYPE;
                 } else if (!strcmp("getExternalFunction", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_GETEXTERNALFUNCTION;
                 } else {
@@ -542,6 +540,16 @@ static void function_to_stub(FILE * f, uint32_t id) {
                 inst->opcode = MATTE_OPCODE_POP; 
                 if (sscanf(line, "%"SCNu32" pop %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
                     printf("ERROR on line %d: unrecognized pop format. Syntax: [line] pop [pop count]\n", lineN);
+                    exit(1);                
+                }
+            } else if (
+                oc0 == 'q' &&
+                oc1 == 'r' &&
+                oc2 == 'y'
+            ) { 
+                inst->opcode = MATTE_OPCODE_QRY; 
+                if (sscanf(line, "%"SCNu32" pnr %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
+                    printf("ERROR on line %d: unrecognized qry format. Syntax: [line] qry [query operation]\n", lineN);
                     exit(1);                
                 }
                 
