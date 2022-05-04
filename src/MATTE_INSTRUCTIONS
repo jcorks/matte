@@ -169,6 +169,14 @@ static void write_instruction__cpy(matteArray_t * insts, uint32_t lineNumber) {
     matte_array_push(insts, inst);
 }
 
+static void write_instruction__qry(matteArray_t * insts, uint32_t lineNumber, uint32_t query) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_QRY;
+    memcpy(inst.data, &query, sizeof(uint32_t));
+    matte_array_push(insts, inst);
+}
+
 static void write_instruction__ret(matteArray_t * insts, uint32_t lineNumber) {
     matteBytecodeStubInstruction_t inst;
     inst.lineNumber = lineNumber;

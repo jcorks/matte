@@ -286,6 +286,13 @@ static void generate_graph(matteSyntaxGraph_t * g) {
     ///////////////
     
 
+    matte_syntax_graph_add_construct_path(g, "Query Operator", MATTE_SYNTAX_CONSTRUCT_POSTFIX,
+        matte_syntax_graph_node_token(MATTE_TOKEN_QUERY_OPERATOR),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_end(),    
+        NULL
+    );
+
 
     matte_syntax_graph_add_construct_path(g, "2-Operand", MATTE_SYNTAX_CONSTRUCT_POSTFIX,
         matte_syntax_graph_node_token(MATTE_TOKEN_GENERAL_OPERATOR2),

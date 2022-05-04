@@ -110,7 +110,6 @@ struct matteVM_t {
     matteValue_t specialString_from;
     matteValue_t specialString_value;
     matteValue_t specialString_message;
-    matteValue_t specialString_error;
     matteValue_t specialString_previous;
 
 };
@@ -919,6 +918,22 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             frame->pc += count;
             break;
           }  
+          
+          case MATTE_OPCODE_QRY: {
+            matteValue_t o = STACK_PEEK(0);
+            matteValue_t output = matte_value_query(vm->heap, o, *(uint32_t*)inst->data);
+            STACK_POP_NORET();            
+            STACK_PUSH(output);
+            
+            // re-insert the base as "base"
+            if (output.binID == MATTE_VALUE_TYPE_FUNCTION) {
+                STACK_PUSH(vm->specialString_base);
+                STACK_PUSH(o);
+            } 
+            break;
+          }
+          
+          
           case MATTE_OPCODE_OPR: {            
             switch(inst->data[0]) {
                 case MATTE_OPERATOR_ADD:
@@ -1135,8 +1150,6 @@ matteVM_t * matte_vm_create() {
     matte_value_into_string(vm->heap, &vm->specialString_from, MATTE_VM_STR_CAST(vm, "from"));
     vm->specialString_message = matte_heap_new_value(vm->heap);
     matte_value_into_string(vm->heap, &vm->specialString_message, MATTE_VM_STR_CAST(vm, "message"));
-    vm->specialString_error = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_error, MATTE_VM_STR_CAST(vm, "error"));
     vm->specialString_parameters = matte_heap_new_value(vm->heap);
     matte_value_into_string(vm->heap, &vm->specialString_parameters, MATTE_VM_STR_CAST(vm, "parameters"));
     

@@ -883,6 +883,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
 
+      case MATTE_TOKEN_QUERY_OPERATOR: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "->");
+      }
+
       case MATTE_TOKEN_ASSIGNMENT_ADD: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "+=");
         break;
@@ -1189,16 +1193,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             t->backup = t->iter;
             c = utf8_next_char(&t->iter);
             switch(c) {
-              case '>':
-                t->character++;
-                t->backup = t->iter;
-                return new_token(
-                    matte_string_create_from_c_str("-%c", c),
-                    currentLine,
-                    currentCh,
-                    ty
-                );            
-                break;
 
               default:
                 t->iter = t->backup;
@@ -2798,6 +2792,55 @@ static matteArray_t * compile_base_value(
 
 }
 
+static int query_name_to_index(const matteString_t * str) {
+    const char * st = matte_string_get_c_str(str);
+    if (!strcmp(st, "cos"))   return MATTE_QUERY__COS;
+    if (!strcmp(st, "sin"))   return MATTE_QUERY__SIN;
+    if (!strcmp(st, "tan"))   return MATTE_QUERY__TAN;
+    if (!strcmp(st, "acos"))  return MATTE_QUERY__ACOS;
+    if (!strcmp(st, "asin"))  return MATTE_QUERY__ASIN;
+    if (!strcmp(st, "atan"))  return MATTE_QUERY__ATAN;
+    if (!strcmp(st, "atan2")) return MATTE_QUERY__ATAN2;
+    if (!strcmp(st, "sqrt"))  return MATTE_QUERY__SQRT;
+    if (!strcmp(st, "abs"))   return MATTE_QUERY__ABS;
+    if (!strcmp(st, "isnan")) return MATTE_QUERY__ISNAN;
+    if (!strcmp(st, "floor")) return MATTE_QUERY__FLOOR;
+    if (!strcmp(st, "ceil")) return MATTE_QUERY__CEIL;
+    if (!strcmp(st, "round")) return MATTE_QUERY__ROUND;
+    if (!strcmp(st, "radians")) return MATTE_QUERY__RADIANS;
+    if (!strcmp(st, "degrees")) return MATTE_QUERY__DEGREES;
+    if (!strcmp(st, "removeChar")) return MATTE_QUERY__REMOVECHAR;
+    if (!strcmp(st, "substr")) return MATTE_QUERY__SUBSTR;
+    if (!strcmp(st, "split")) return MATTE_QUERY__SPLIT;
+    if (!strcmp(st, "scan")) return MATTE_QUERY__SCAN;
+    if (!strcmp(st, "length")) return MATTE_QUERY__LENGTH;
+    if (!strcmp(st, "search")) return MATTE_QUERY__SEARCH;
+    if (!strcmp(st, "contains")) return MATTE_QUERY__CONTAINS;
+    if (!strcmp(st, "replace")) return MATTE_QUERY__REPLACE;
+    if (!strcmp(st, "count")) return MATTE_QUERY__COUNT;
+    if (!strcmp(st, "charCodeAt")) return MATTE_QUERY__CHARCODEAT;
+    if (!strcmp(st, "charAt")) return MATTE_QUERY__CHARAT;
+    if (!strcmp(st, "setCharCodeAt")) return MATTE_QUERY__SETCHARCODEAT;
+    if (!strcmp(st, "setCharAt")) return MATTE_QUERY__SETCHARAT;
+    if (!strcmp(st, "keycount")) return MATTE_QUERY__KEYCOUNT;
+    if (!strcmp(st, "keys")) return ATTE_QUERY__KEYS;
+    if (!strcmp(st, "values")) return MATTE_QUERY__VALUES;
+    if (!strcmp(st, "push")) return MATTE_QUERY__PUSH;
+    if (!strcmp(st, "pop")) return MATTE_QUERY__POP;
+    if (!strcmp(st, "insert")) return MATTE_QUERY__INSERT;
+    if (!strcmp(st, "remove")) return MATTE_QUERY__REMOVE;
+    if (!strcmp(st, "setAttributes")) return MATTE_QUERY__SETATTRIBUTES;
+    if (!strcmp(st, "getAttributes")) return MATTE_QUERY__GETATTRIBUTES;
+    if (!strcmp(st, "sort")) return MATTE_QUERY__SORT;
+    if (!strcmp(st, "subset")) return MATTE_QUERY__SUBSET;
+    if (!strcmp(st, "filter")) return MATTE_QUERY__FILTER;
+    if (!strcmp(st, "findIndex")) return MATTE_QUERY__FINDINDEX;
+    if (!strcmp(st, "isa")) return MATTE_QUERY__ISA;
+    if (!strcmp(st, "map")) return MATTE_QUERY__MAP;
+    if (!strcmp(st, "filter")) return MATTE_QUERY__REDUCE;
+    return -1;
+}
+
 static matteArray_t * compile_function_call(
     matteSyntaxGraphWalker_t * g, 
     matteFunctionBlock_t * block,
@@ -2862,7 +2905,25 @@ static matteArray_t * compile_value(
                 matte_array_destroy(inst);
                 return NULL;               
             }
-        } //else if (square brackets accessor)
+        // queries return a value of some kind. Sometimes theyre functions, sometimes not.
+        } else if (iter->ttype == MATTE_TOKEN_QUERY_OPERATOR) {
+            iter = iter->next;
+            int index = query_name_to_index(iter->text);
+            
+            if (index == -1) {
+                matteString_t * m = matte_string_create_from_c_str("Unrecognized query name '%s'", matte_string_get_c_str(iter->text));            
+                matte_syntax_graph_print_compile_error(g, iter, m);
+                matte_string_destroy(m);
+                matte_array_destroy(inst);
+                return NULL;               
+            }
+            write_instruction__qry(
+                inst,
+                iter->lineNumber,
+                index
+            );
+            iter = iter->next;
+        }
 
         else {
             // no more post ops

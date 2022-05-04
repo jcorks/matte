@@ -1147,6 +1147,77 @@ void matte_value_into_string_(matteHeap_t * heap, matteValue_t * v, const matteS
     v->binID = MATTE_VALUE_TYPE_STRING;
     v->value.id = matte_string_heap_internalize(heap->stringHeap, str);
 }
+matteValue_t matte_value_query(matteHeap_t * heap, matteValue_t * v, matteQuery_t query) {
+    matteValue_t out = matte_heap_new_value(heap);
+    switch(query) {
+      case MATTE_QUERY__COS: {
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("cos requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return matte_value_as_number(heap, &out, cos(matte_value_as_number(heap, v)));
+      }    
+
+      case MATTE_QUERY__SIN: {
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("sin requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return matte_value_as_number(heap, &out, sin(matte_value_as_number(heap, v)));
+      }    
+
+      case MATTE_QUERY__TAN: {
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("tan requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return matte_value_as_number(heap, &out, tan(matte_value_as_number(heap, v)));
+      }    
+      
+      
+      case MATTE_QUERY__ACOS: {
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("acos requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return matte_value_as_number(heap, &out, acos(matte_value_as_number(heap, v)));
+      }    
+
+      case MATTE_QUERY__ASIN: {
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("asin requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return matte_value_as_number(heap, &out, asin(matte_value_as_number(heap, v)));
+      }    
+
+      case MATTE_QUERY__ATAN: {
+        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * str = matte_string_create_from_c_str("atan requires base value to be a number.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return matte_value_as_number(heap, &out, atan(matte_value_as_number(heap, v)));
+      }    
+
+      case MATTE_QUERY__ATAN2: {
+        return heap->query_atan2;
+      } 
+
+
+    }
+}
 
 
 
