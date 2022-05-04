@@ -166,8 +166,9 @@ There are only a handful of basic types within Matte:
     </pre>    
     <li><b>Type:</b> a value that denotes a type of a value. In Matte, types are explicit values. There are built-in constants for types: Empty, Boolean, Number, String, Object, Function, and Type. You can create your own types as well.</li>
     <pre>
-        // Types can be gleaned by calling the getType() function
-        @f = getType(of:40);
+        // Types can be gleaned by calling the type query. 
+        // Introspective queries are covered later.
+        @f = 40->type;
 
         // will print "true"
         print(message:f == Number);
@@ -314,7 +315,7 @@ will attempt to be converted.
 <hr>
 <br>
 <h2> 5. Flow Control</h2>
-Matte's flow control is a bit different than other languages. For example, "while" and "switch" do not exist, but instead, there is "loop" and "match" respectively that do similar things. 
+Matte's flow control is a bit different than other languages. For example, "while" and "switch" do not exist, but instead, there is "forever" and "match" respectively that do similar things. 
 
 <h3> 5.1 when</h3>
 
@@ -407,27 +408,9 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
 
 </pre>
 
-<br>
-<h3> 5.3 loop</h3>
-<i>loop</i> is similar to "while" in C-like languages in concept, but the behavior is different. <i>loop</i> is a function 
-that takes a single argument, a function 'func', and runs it at least once until it returns <i>false</i>. If the function returns 
-<i>true</i>, the function is immediately called again.
-
-
-<pre>
-    @counter = 0;
-    loop(func:::{
-        // It is common (and readable) to use the 
-        // when statement as a termination condition.
-        when(counter == 10) false;
-
-        counter += 1;
-        return true;
-    });
-</pre>
 
 </br>
-<h3> 5.4 for</h3>
+<h3> 5.3 for</h3>
 
 In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is a list of numbers (the 'in' parameter), denoting the start value, end value, and optional iteration value. The second argument ('do') is a function to be called for each iteration. The function receives one value, which is the value of the for loop's iterator as a Number. <b>The argument for the 'do' parameter function can be any name of your choosing.</b>
 
@@ -461,7 +444,7 @@ In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is
 </pre>
 
 </br>
-<h3> 5.5 foreach</h3>
+<h3> 5.4 foreach</h3>
 
 Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iteration. <i>foreach</i> iterates over an Object's keys and values. <b>The key and value arguments for the 'do' parameter function can be any names of your choosing. The first is always the key, and the second is always the value.</b>
 
@@ -481,7 +464,7 @@ Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iter
  
 
 
-<h3> 5.6 if</h3>
+<h3> 5.5 if</h3>
 
 The if expression in matte can be used to control or avoid computation of another expression. Unlike in other languages, <b>if and else only work with one expression. If you need multiple expressions, have your expression compute to a function or function expression.</b>
 
@@ -520,85 +503,126 @@ This makes <i>if</i> equivalent to the ternary <i>?:</i> seen in some C-like lan
 
 <hr>
 <br>
-<h2> 6. Type Utilities</h2>
-Often, using strings and numbers requires more than just concatenation and arithmetic. The Type 
-values for Number, String, and Object have functions attached to them that extend the 
-basic functionality of those respective types.
+<h2> 6. Introspection</h2>
+
+Often, using strings and numbers requires more than just concatenation and arithmetic.
+Every value has the potential for introspection through the query operator (->).
+Here are the different available queries:
 <ul>
-    <li><b>Number.floor(<i>of</i>):</b> Returns the number, floored.</li>
-    <li><b>Number.ceil(<i>of</i>):</b> Returns the number, ceiling'd.</li>
-    <li><b>Number.round(<i>value</i>):</b> Returns the number rounded</li>
-    <li><b>Number.toRadians(<i>value</i>):</b> Returns a radian value, assuming the given value is in degrees.</li>
-    <li><b>Number.toDegrees(<i>value</i>):</b> Returns a degree value, assuming the given value is in radians. </li>
-    <li><b>Number.PI():</b> Returns a standard value of pi. </li>
-    <li><b>Number.cos(<i>of</i>):</b> Returns the cosine of the value (radians).</li>
-    <li><b>Number.sin(<i>of</i>):</b> Returns the sine of the value (radians).</li>
-    <li><b>Number.tan(<i>of</i>):</b> Returns the tangent of the value (radians).</li>
-    <li><b>Number.abs(<i>of</i>):</b> Returns the absolute value of the value.</li>
-    <li><b>Number.isNaN(<i>of</i>):</b> Returns a boolean for whether the value is a number.</li>
-    <li><b>Number.parse(<i>of</i>):</b> Returns a number representation of a string. Throws an error if not possible.</li>
-    <li><b>Number.random():</b> Returns a random number between 0 and 1. </li>
+    <h4>Any value:</h4>
+    <br>
+    <li><b>type:</b> Returns the Type value of the value.</li>
+    <h4>Numbers:</h4>
+    <br>
+    <li><b>floor:</b> Returns the number, floored.</li>
+    <li><b>ceil:</b> Returns the number, ceiling'd.</li>
+    <li><b>round:</b> Returns the number rounded</li>
+    <li><b>asRadians:</b> Returns a radian value, assuming the given value is in degrees.</li>
+    <li><b>asDegrees:</b> Returns a degree value, assuming the given value is in radians. </li>
+    <li><b>cos:</b> Returns the cosine of the value (radians).</li>
+    <li><b>sin:</b> Returns the sine of the value (radians).</li>
+    <li><b>tan:</b> Returns the tangent of the value (radians).</li>
+    <li><b>acos:</b> Returns the cosine of the value (radians).</li>
+    <li><b>asin:</b> Returns the sine of the value (radians).</li>
+    <li><b>atan:</b> Returns the tangent of the value (radians).</li>
+    <li><b>atan2(<i>y</i>):</b> Returns the tangent of the value (radians).</li>
+    <li><b>abs:</b> Returns the absolute value of the value.</li>
+    <li><b>isNaN:</b> Returns a boolean for whether the value is a number.</li>
     <br>
     <br>
-    <li><b>String.length(<i>of</i>):</b> Returns the length of the string in characters.</li>
-    <li><b>String.search(<i>string</i>, <i>key</i>):</b> Returns the index where the keys tring can be found within "string". If not present, -1 is returned.</li>
-    <li><b>String.contains(<i>string</i>, <i>key</i>):</b> Returns a boolean on whether key is contained within string. </li>
-    <li><b>String.replace(<i>string</i>, <i>key</i>, <i>with</i>):</b> Returns a new string representing the replacement of "key" with "with" within "string".</li>
-    <li><b>String.count(<i>string</i>, <i>key</i>):</b> Returns the number of times "key" is within "string".</li>
-    <li><b>String.charCodeAt(<i>string</i>, <i>index</i>):</b> Returns a number code for one character at the given index within "string".</li>
-    <li><b>String.charAt(<i>string</i>, <i>index</i>):</b> Returns a string of one character at the given index within "string".</li>
-    <li><b>String.setCharCodeAt(<i>string</i>, <i>index</i>, <i>value</i>):</b> Returns a new string with one character altered  at the given index within "string". </li>
-    <li><b>String.setCharAt(<i>string</i>, <i>index</i>, <i>value</i>):</b> Returns a new string with one character altered via character code at the given index within "string".</li>
-    <li><b>String.combine(<i>strings</i>):</b> Returns the a concatenation of an array of strings. Quicker than adding the strings individually. </li>
-    <li><b>String.removeChar(<i>string</i>, <i>index</i>):</b> Returns "string" with the character at "index" removed. </li>
-    <li><b>String.substr(<i>string</i>, <i>from</i>, <i>to</i>):</b> Returns a substring of the given string. </li>
-    <li><b>String.split(<i>string</i>, <i>token</i>):</b> Returns an array of strings in between the given token. </li>
-    <li><b>String.scan(<i>format</i>):</b> Returns a set of strings that meet the given criteria. </li>
+
+    <h4>Strings:</h4>
+
+    <br>
+
+    <li><b>length:</b> Returns the length of the string in characters.</li>
+    <li><b>search(<i>key</i>):</b> Returns the index where the keys tring can be found within "string". If not present, -1 is returned.</li>
+    <li><b>contains(<i>key</i>, <i>keys</i>):</b> Returns a boolean on whether key (or array of keys) is contained within string. </li>
+    <li><b>replace(<i>key</i>, <i>keys</i>, <i>with</i>):</b> Returns a new string representing the replacement of "key" (or array of "keys") with "with" within "string".</li>
+    <li><b>count(<i>key</i>, <i>keys</i>):</b> Returns the number of times "key" (or array of "keys") is within "string".</li>
+    <li><b>charCodeAt(<i>index</i>):</b> Returns a number code for one character at the given index within "string".</li>
+    <li><b>charAt(<i>index</i>):</b> Returns a string of one character at the given index within "string".</li>
+    <li><b>setCharCodeAt(<i>index</i>, <i>value</i>):</b> Returns a new string with one character altered  at the given index within "string". </li>
+    <li><b>setCharAt(<i>index</i>, <i>value</i>):</b> Returns a new string with one character altered via character code at the given index within "string".</li>
+    <li><b>removeChar(<i>string</i>, <i>index</i>):</b> Returns "string" with the character at "index" removed. </li>
+    <li><b>substr(<i>from</i>, <i>to</i>):</b> Returns a substring of the given string. </li>
+    <li><b>split(<i>token</i>):</b> Returns an array of strings in between the given token. </li>
+    <li><b>scan(<i>format</i>):</b> Returns a set of strings that meet the given criteria. For every "[%]" in the format string, a new entry in the output array is placed with its content.</li>
     <br>
     <br>
-    <li><b>Object.keycount(<i>of</i>):</b> Returns the number of keys of all kinds within the object.</li>
-    <li><b>Object.keys(<i>of</i>):</b> Returns an array of all the object's keys.</li>
-    <li><b>Object.values(<i>of</i>):</b> Returns an array of all the object's values.</li>
-    <li><b>Object.length(<i>of</i>):</b> Returns the number of keys that are number-typed. This lets you treat object as an array.</li>
-    <li><b>Object.push(<i>object</i>, <i>value</i>):</b> Adds an additional value with a number key equal to Object.length. This lets you treat object as an array.</li>
-    <li><b>Object.pop(<i>object</i>):</b> Removes and returns the value with a number key equal to Object.length-1 (the last array member).</li>
-    <li><b>Object.insert(<i>object</i>, <i>index</i>, <i>value</i>):</b> Inserts an additional value at the given number key, push all values with greater number keys above. </li>
-    <li><b>Object.remove(<i>from</i>, <i>key</i>):</b> Removes a value with the give key. If the key is a number, all values with greater number keys are shifted down one, as if an array.</li>
-    <li><b>Object.setAttributes(<i>of</i>, <i>attributes</i>):</b> Sets the attributes for this object.</li>
-    <li><b>Object.getAttributes(<i>of</i>):</b> Returns the attributes for this object.</li>
-    <li><b>Object.sort(<i>object</i>, <i>func</i>):</b> Sorts the object's values with number keys according to a comparator. The comparator is given each value.</li>
-    <li><b>Object.subset(<i>set</i>, <i>from</i>, <i>to</i>):</b> Returns a slice of the object's number-keyed values.</li>
-    <li><b>Object.findIndex(<i>object</i>, <i>value</i>):</b> Returns the index within the object's numbered keys whose value matches the one given. Returns -1 if not found.</li>
-    <li><b>Object.newType(<i>name</i>, <i>inherits</i>):</b> Returns a Type value representing a new type with the given parameters. </li>
-    <li><b>Object.instantiate(<i>type</i>):</b> Returns a new Object of the given type.</li>
-    <li><b>Object.is(<i>object</i>, <i>type</i>):</b> Returns whether the obejct is the given Type, taking into account inheritance. </li>
-    <li><b>Object.map(<i>object</i>, <i>func</i>):</b> Applies a function to all members of an object, altering them.</li>
-    <li><b>Object.reduce(<i>object</i>, <i>func</i>):</b> Returns a reduction of the given set.</li>
-    <li><b>Object.filter(<i>object</i>, <i>func</i>):</b> Returns a new array of items that meet the filter function criteria. </li>
+    <h4>Objects:</h4>
+    <li><b>keycount:</b> Returns the number of keys of all kinds within the object.</li>
+    <li><b>keys:</b> Returns an array of all the object's keys.</li>
+    <li><b>values:</b> Returns an array of all the object's values.</li>
+    <li><b>length:</b> Returns the number of keys that are number-typed. This lets you treat object as an array.</li>
+    <li><b>push(<i>value</i>):</b> Adds an additional value with a number key equal to Object.length. This lets you treat object as an array.</li>
+    <li><b>pop:</b> Removes and returns the value with a number key equal to Object.length-1 (the last array member).</li>
+    <li><b>insert(<i>index</i>, <i>value</i>):</b> Inserts an additional value at the given number key, push all values with greater number keys above. </li>
+    <li><b>remove(<i>key</i>):</b> Removes a value with the give key. If the key is a number, all values with greater number keys are shifted down one, as if an array.</li>
+    <li><b>setAttributes(<i>attributes</i>):</b> Sets the attributes for this object.</li>
+    <li><b>attributes:</b> Returns the attributes for this object.</li>
+    <li><b>sort(<i>func</i>):</b> Sorts the object's values with number keys according to a comparator. The comparator is given each value.</li>
+    <li><b>subset(<i>from</i>, <i>to</i>):</b> Returns a slice of the object's number-keyed values.</li>
+    <li><b>findIndex(<i>value</i>):</b> Returns the index within the object's numbered keys whose value matches the one given. Returns -1 if not found.</li>
+    <li><b>is(<i>type</i>):</b> Returns whether the obejct is the given Type, taking into account inheritance. </li>
+    <li><b>map(<i>func</i>):</b> Applies a function to all members of an object, altering them.</li>
+    <li><b>reduce(<i>func</i>):</b> Returns a reduction of the given set.</li>
+    <li><b>filter(<i>func</i>):</b> Returns a new array of items that meet the filter function criteria. </li>
         
 
     
 </ul>
 
+
 <pre>
+
+    // Should print '42'
+    print(message: (-42)->abs);
+
+    // Should print '3'
+    print(message: 180->asRadians->round);
+
+
+
     @str = 'Hello, world!';
 
     // Should print 'o'
-    print(message:String.charAt(string:str, index:4));
+    print(message:str->charAt(index:4));
 
     // Should print '13'
-    print(message:String.length(of:str));
-
-    // Should print '42'
-    print(message:Number.abs(of:-42));
+    print(message:str->length);
+    
+    // Should print 'world'
+    print(message: (str->scan(format:'Hello, [%]!'))[0]);
 
 </pre>
+
+
+
+<h3> 6.1 Type Utilities</h3>
+
+Along with the query operator, additional built-in functions for base types are available.
+These utilities are accessible from the built-in Type values:
+<ul>
+    <li><b>Number.PI():</b> Returns a standard value of pi. </li>
+    <li><b>Number.parse(<i>string</i>):</b> Returns a number representation of a string. Throws an error if not possible.</li>
+    <li><b>Number.random():</b> Returns a random number between 0 and 1. </li>
+    <br>
+    <br>
+    <li><b>String.combine(<i>strings</i>):</b> Returns the a concatenation of an array of strings. Quicker than adding the strings individually. </li>
+    <br>
+    <br>
+    <li><b>Object.newType(<i>name</i>, <i>inherits</i>):</b> Returns a Type value representing a new type with the given parameters. </li>
+    <li><b>Object.instantiate(<i>type</i>):</b> Returns a new Object of the given type.</li>            
+</ul>
+
+
 
 <hr>
 <br>
 <h2> 7. Messages</h2>
 
-You may have noticed that with features such as <i>foreach</i>, <i>for</i>, and <i>loop</i> are functionally (no pun intended)
+You may have noticed that with features such as <i>foreach</i> and <i>for</i> are functionally (no pun intended)
 different from their C-like counterparts. With each running its own function, something like "break" doesn't fundamentally 
 make sense in Matte. 
 <br>
@@ -656,13 +680,36 @@ second function will ONLY be called when a message is received.
     });
 </pre>
 
+<br>
+<br>
+<h3> 7.1 forever</h3>
+In contexts where a process or algorithm loops until some end condition is reached,
+a message-based pattern can be employed with the <i>forever</i> function.
+This acts as a conceptual analog to the C-like "while", but instead, 
+a function is run forever. Using message passing via <i>send</i>, the 
+loop can safely be broken:
+
+
+<pre>
+    @counter = 0;
+    listen(to:::{
+        forever(func:::{
+            // when send is called, forever() is escaped.
+            if(counter == 10) send();
+
+            counter += 1;
+            return true;
+        });
+    });
+</pre>
+<br>
+<br>
 Messages should be used in controlled instances, as any uncaught message is a fatal error.
-<br>
-<br>
 
 
 
-<h3> 7.1 Error Messages</h3>
+
+<h3> 7.2 Error Messages</h3>
 
 Any function has the potential to throw an error. In Matte, errors are just a special 
 type of message. Outside of what was mentioned already, you can generate 
@@ -681,7 +728,7 @@ your own errors with the built-in <i>error</i> function:
 </pre>
 
 Since not handling a message is a fatal error, it is often useful to specify an error catching mechanism. 
-Error catching is equivalent to catching regular messages with <i>send</i>:
+Error catching is similar to catching regular messages with <i>send</i>:
 
 <pre>
     @errorExample :: {
@@ -691,7 +738,7 @@ Error catching is equivalent to catching regular messages with <i>send</i>:
             error(detail:'Uh oh!');
             print(message:"3");
             print(message:"4");
-        }, onMessage:::(message) {        
+        }, onError:::(message) {        
             print(message:"The following error was caught: " + message.data);
         });
     };
@@ -730,7 +777,7 @@ Error catching is equivalent to catching regular messages with <i>send</i>:
             print(message:1);
             dangerousFunction();
             print(message:2);
-        }, onMessage:::(message){        
+        }, onError:::(message){        
             print(message:'Caught external error');
         });
     };
@@ -828,8 +875,7 @@ specified.
     // setAttributes takes the object to modify 
     // and an attronites object, keyed with strings of the 
     // operator to specify overloading with.
-    Object.setAttributes(
-        of: special, 
+    special->setAttributes( 
         attributes: {
         '<<' ::(value) {
             special.data = special.data + value;
@@ -852,7 +898,6 @@ Here are the list of built-in operators that can be overloaded:
 <ul>
     <li><b>Add Operator('+'):</b> 1 argument </li>
     <li><b>Sub Operator('-'):</b> 1 argument </li>
-    <li><b>Point Operator ('->'):</b> 1 argument </li>
     <li><b>Division Operator ('/'):</b> 1 argument </li>
     <li><b>Multiplication Operator ('*'):</b> 1 argument </li>
     <li><b>Power Operator ('**'):</b> 1 argument </li>
@@ -907,8 +952,7 @@ Along with typical operator overloading, there exist a few special features that
         internalData2 : 100
     };
 
-    setAttributes(
-        of: secret, 
+    secret->setAttributes(
         attributes: {
             '[]' : {
                 get ::(key) {
@@ -973,8 +1017,7 @@ it is not defined how objects can be converted to other types by default.
         asString : 'Forty-two'
     };
 
-    setAttributes(
-        of: cool,
+    cool->setAttributes(
         attributes: {
             (String) :: {
                 return cool.asString;
@@ -1042,11 +1085,11 @@ completely unique. New objects of this type can be created using the <i>Object.i
     myFunction(a:myInheritedInstance);
     
     // should print 'true' since it is inherited.
-    print(message:Object.is(object:myInheritedInstance, type:MyType));
+    print(message:myInheritedInstance->is(type:MyType));
     
     // should print 'false' since the original instance 
     // is not of the inherited type.
-    print(message:Object.is(object:myInstance,          type:MyInheritedType));
+    print(message:myInstance->is(type:MyInheritedType));
 
 
 </pre>
