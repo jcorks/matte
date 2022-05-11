@@ -1,8 +1,8 @@
 static void * dump_bytes(const char * filename, uint32_t * len) {
     FILE * f = fopen(filename, "rb");
     if (!f) {
-        printf("Could not open input file %s\n", filename);
-        exit(1);    
+        *len = 0;
+        return NULL;
     }
     char chunk[2048];
     int chunkSize;
