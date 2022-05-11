@@ -11,7 +11,7 @@
         @helper ::(obj, level) {
             @poself = context;
 
-            return match(getType(of:obj)) {
+            return match(obj->type) {
                 (String) : '(type => String): \'' + obj + '\'',
                 (Number) : '(type => Number): '+obj,
                 (Boolean): '(type => Boolean): '+obj,
@@ -32,7 +32,7 @@
                     return output;                
                 }(),
                 (Type): '(type => Type): ' + obj,
-                default: '(type => ' + getType(of:obj) + '): {...}'
+                default: '(type => ' + (obj->type) + '): {...}'
 
             };
         };

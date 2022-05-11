@@ -178,6 +178,8 @@ typedef enum {
     MATTE_EXT_CALL__QUERY__ISA,
     MATTE_EXT_CALL__QUERY__MAP,
     MATTE_EXT_CALL__QUERY__REDUCE,
+    MATTE_EXT_CALL__QUERY__ANY,
+    MATTE_EXT_CALL__QUERY__ALL,
 
 
     
@@ -251,7 +253,9 @@ typedef enum {
     MATTE_QUERY__FINDINDEX,
     MATTE_QUERY__ISA,
     MATTE_QUERY__MAP,
-    MATTE_QUERY__REDUCE
+    MATTE_QUERY__REDUCE,
+    MATTE_QUERY__ANY,
+    MATTE_QUERY__ALL
 } matteQuery_t;
 
 #endif

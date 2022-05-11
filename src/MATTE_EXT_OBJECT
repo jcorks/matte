@@ -269,3 +269,76 @@ static matteValue_t vm_ext_call__object__reduce(matteVM_t * vm, matteValue_t fn,
     return out;
 }
 
+static matteValue_t vm_ext_call__object__any(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_object(vm, args)) return matte_heap_new_value(vm->heap);
+    matte_value_object_push_lock(vm->heap, args[0]);
+    matte_value_object_push_lock(vm->heap, fn);
+    
+    matteValue_t nameValues[] = {
+        vm->specialString_value
+    };
+    matteValue_t argValues[1];
+    matteArray_t names = MATTE_ARRAY_CAST(&nameValues, matteValue_t, 1);
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    matte_value_into_boolean(vm->heap, &out, 0);
+    
+    uint32_t len = matte_value_object_get_number_key_count(vm->heap, args[0]);
+    uint32_t i;
+    for(i = 0; i < len; ++i) {
+        if (vm->pendingCatchable) break;
+        
+               
+        argValues[0] = matte_value_object_access_index(vm->heap, args[0], i);
+        matteArray_t argsv = MATTE_ARRAY_CAST(&argValues, matteValue_t, 1);
+
+    
+        matteValue_t newv = matte_vm_call(vm, args[1], &argsv, &names, NULL);
+        if (matte_value_as_boolean(vm->heap, newv) == 1) {
+            matte_heap_recycle(vm->heap, newv);
+            matte_value_into_boolean(vm->heap, &out, 1);
+            break;
+        }
+
+    }
+    matte_value_object_pop_lock(vm->heap, args[0]);
+    matte_value_object_pop_lock(vm->heap, fn);
+    return out;
+}
+
+static matteValue_t vm_ext_call__object__all(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_object(vm, args)) return matte_heap_new_value(vm->heap);
+    matte_value_object_push_lock(vm->heap, args[0]);
+    matte_value_object_push_lock(vm->heap, fn);
+    
+    matteValue_t nameValues[] = {
+        vm->specialString_value
+    };
+    matteValue_t argValues[1];
+    matteArray_t names = MATTE_ARRAY_CAST(&nameValues, matteValue_t, 1);
+    matteValue_t out = matte_heap_new_value(vm->heap);
+    matte_value_into_boolean(vm->heap, &out, 1);
+    
+    uint32_t len = matte_value_object_get_number_key_count(vm->heap, args[0]);
+    uint32_t i;
+    for(i = 0; i < len; ++i) {
+        if (vm->pendingCatchable) break;
+        
+               
+        argValues[0] = matte_value_object_access_index(vm->heap, args[0], i);
+        matteArray_t argsv = MATTE_ARRAY_CAST(&argValues, matteValue_t, 1);
+
+    
+        matteValue_t newv = matte_vm_call(vm, args[1], &argsv, &names, NULL);
+        if (matte_value_as_boolean(vm->heap, newv) == 0) {
+            matte_heap_recycle(vm->heap, newv);
+            matte_value_into_boolean(vm->heap, &out, 0);
+            break;
+        }
+
+    }
+    matte_value_object_pop_lock(vm->heap, args[0]);
+    matte_value_object_pop_lock(vm->heap, fn);
+    return out;
+}
+
+

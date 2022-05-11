@@ -30,7 +30,10 @@
 };
 
 @JSON = {
-    encode :: (object) {        
+    encode :: (object) {  
+        @:isNumber ::(value) {
+            return value->type == Number;
+        };      
         @encodeValue ::(obj){
             @encodeSub = context;
             return match(obj->type) {
@@ -38,6 +41,20 @@
                 (String): '\"'+obj+'\"',
                 (Boolean): ''+obj,
                 (Object): ::{
+                    // array case:
+                    when (obj->keys->all(condition:isNumber)) ::<= {
+                    
+                    
+                        @ostr = '[';
+                        foreach(in:obj, do:::(k, v){
+                            if (ostr != '[')::<={
+                                ostr = ostr+',';
+                            };
+                            ostr = ostr + encodeSub(obj:v);
+                        });
+                        @ostr = ostr+']';
+                        return ostr;    
+                    };
                     @ostr = '{';
                     foreach(in:obj, do:::(k, v){
                         if (ostr != '{')::{
@@ -137,7 +154,6 @@
                                 default: ::{
                                     rawstr = rawstr + iter->charAt(index:0);
                                     iter = iter->removeChar(index:0);
-                                    send();
                                 }()
                             };
                         });
@@ -280,7 +296,7 @@
                             iter = res.iter;
                             iter = trimSpace(substr:iter);
 
-                            Object.push(object:arr, value:val);
+                            arr->push(value:val);
 
                             match(iter->charAt(index:0)) {
                                 (','): ::<={

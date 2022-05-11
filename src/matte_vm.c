@@ -1242,9 +1242,15 @@ matteVM_t * matte_vm_create() {
     };
     
     const matteString_t * functional_names[] = {
-        object,
+        query_name,
         forever_name
     };
+
+    const matteString_t * conditional_names[] = {
+        query_name,
+        MATTE_VM_STR_CAST(vm, "condition"),
+    };
+
     
     const matteString_t * findIndex_names[] = {
         object,
@@ -1341,6 +1347,8 @@ matteVM_t * matte_vm_create() {
     temp = MATTE_ARRAY_CAST(is_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ISA,     &temp, vm_ext_call__object__is);    
     temp = MATTE_ARRAY_CAST(functional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__MAP,     &temp, vm_ext_call__object__map);    
     temp = MATTE_ARRAY_CAST(functional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REDUCE,     &temp, vm_ext_call__object__reduce);    
+    temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ANY,     &temp, vm_ext_call__object__any);    
+    temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ALL,     &temp, vm_ext_call__object__all);    
 
     
     

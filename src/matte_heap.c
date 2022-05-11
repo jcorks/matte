@@ -1525,6 +1525,26 @@ matteValue_t matte_value_query(matteHeap_t * heap, matteValue_t * v, matteQuery_
         return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__MAP);
       }
       
+      case MATTE_QUERY__ANY: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("any requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__ANY);
+      }
+      
+      case MATTE_QUERY__ALL: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("all requires base value to be an object.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__ALL);
+      }
+      
       case MATTE_QUERY__REDUCE: {
         if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
             matteString_t * str = matte_string_create_from_c_str("reduce requires base value to be an object.");
