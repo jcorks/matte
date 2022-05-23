@@ -288,6 +288,15 @@ static void onDebugEvent(
         while(execCommand(vm));
         return;    
     }
+    
+    if (event == MATTE_VM_DEBUG_EVENT__BREAKPOINT) {
+        stackframe = 0;
+        printArea();
+        printf("Source breakpoint reached.\n");
+        while(execCommand(vm));
+        return;
+    }
+    
      
     if (stepinto &&
         (stepreqframe == -1 ||
@@ -299,17 +308,23 @@ static void onDebugEvent(
         while(execCommand(vm));
         return;
     }
+
+
+
+
     uint32_t i;
     for(i = 0; i < matte_array_get_size(breakpoints); ++i) {
         breakpoint p = matte_array_at(breakpoints, breakpoint, i);
         if (p.fileid == file &&
             p.line == lineNumber) {
             stackframe = 0;
-            printf("Breakpoint %d reached.\n", i);
             printArea();
+            printf("Breakpoint %d reached.\n", i);
             while(execCommand(vm));
         }
     }
+    
+    
 }
 
 

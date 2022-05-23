@@ -3249,6 +3249,7 @@ int matte_value_isa(matteHeap_t * heap, matteValue_t v, matteValue_t typeobj) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return matte_value_get_type(heap, v).value.id == typeobj.value.id;
     } else {
+        if (typeobj.value.id == heap->type_object.value.id) return 1;
         matteValue_t typep = matte_value_get_type(heap, v);
         if (typep.value.id == typeobj.value.id) return 1;
 
@@ -3395,8 +3396,6 @@ static void object_cleanup(matteHeap_t * h) {
     uint32_t i;
     for(i = 0; i < len; ++i) {        
         matteObject_t * m = matte_array_at(toRemove, matteObject_t *, i);
-        if (m->heapID == 2051) 
-            printf("BRUH\n");
         DISABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
         if (m->checkID == h->checkID && QUERY_STATE(m, OBJECT_STATE__REACHES_ROOT)) continue;
         if (m->rootState) continue;

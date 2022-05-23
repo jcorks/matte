@@ -58,7 +58,7 @@
                                                     
                     when(result.isFunction) result.fn;
                     @get = result.get;
-                    when(get == empty) error(detail:'The attribute is not readable.');
+                    when(get == empty) error(detail:'The attribute ' + key + ' is not readable.');
                     return get();
                 },
 
@@ -70,7 +70,7 @@
                     
                     when(result.isFunction) error(detail:'Interface functions cannot be overwritten.');
                     @set = result.set;
-                    when(set == empty) error(detail:'The attribute is not writable.');
+                    when(set == empty) error(detail:'The attribute ' + key + ' is not writable.');
                     return set(value:value);
                 }
             };

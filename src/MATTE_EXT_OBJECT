@@ -1,3 +1,4 @@
+//
 static int ensure_arg_object(matteVM_t * vm, const matteValue_t * args) {
     if (args[0].binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(vm, "Built-in Object function expects a value of type Object to work with.");

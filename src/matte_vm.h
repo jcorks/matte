@@ -50,6 +50,12 @@ typedef enum {
     // This event is signaled right when the error is raised, so it may 
     // be caught by the software.
     MATTE_VM_DEBUG_EVENT__ERROR_RAISED,
+    
+    // User code may call the built-in "breakpoint()" function 
+    // When called and the debug context is enabled, a debug event 
+    // will be fired when it is reached. Otherwise, the "breakpoint()" 
+    // call is ignored.
+    MATTE_VM_DEBUG_EVENT__BREAKPOINT
 } matteVMDebugEvent_t;
 
 

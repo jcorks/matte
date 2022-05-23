@@ -1,3 +1,4 @@
+//
 static int ensure_arg_string(matteVM_t * vm, const matteValue_t * args) {
     if (args[0].binID != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_cstring(vm, "Built-in String function expects a value of type String to work with.");
@@ -155,6 +156,7 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
                         matte_string_insert_n_chars(str, i, newstBuffer, lenNew); 
                     }
                     len = matte_string_get_length(str);
+                    i += lenNew-1;
                 }
             }
         }

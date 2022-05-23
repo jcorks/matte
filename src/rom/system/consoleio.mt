@@ -9,6 +9,10 @@ return class(
             println ::(message => String) {
                 _print(a:message + '\n');
             },
+            
+            put ::(string => String) {
+                _print(a:string);
+            },
 
 
             // Prints a formatted string

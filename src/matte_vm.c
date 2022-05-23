@@ -1297,6 +1297,7 @@ matteVM_t * matte_vm_create() {
 
     matteArray_t temp;
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,  matte_array_empty(), vm_ext_call__noop);
+    vm_add_built_in(vm, MATTE_EXT_CALL_BREAKPOINT,  matte_array_empty(), vm_ext_call__breakpoint);
     temp = MATTE_ARRAY_CAST(&forever_name, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_FOREVER,   &temp, vm_ext_call__forever);
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_FOR,    &temp, vm_ext_call__for);
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_FOREACH, &temp, vm_ext_call__foreach);

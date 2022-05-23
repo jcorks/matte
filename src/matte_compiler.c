@@ -861,6 +861,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "send");
         break;
       }
+      case MATTE_TOKEN_EXTERNAL_BREAKPOINT: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "breakpoint");
+        break;
+      }
       case MATTE_TOKEN_EXTERNAL_LISTEN: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "listen");
         break;
@@ -2527,6 +2531,11 @@ static matteArray_t * compile_base_value(
       }
       case MATTE_TOKEN_EXTERNAL_SEND: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_SEND);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_BREAKPOINT: {
+        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_BREAKPOINT);
         *src = iter->next;
         return inst;
       }

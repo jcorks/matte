@@ -207,16 +207,17 @@ MATTE_EXT_FN(matte_filesystem__readstring) {
         return matte_heap_new_value(heap);
     }
 
+    char * bytesStr = malloc(len+1);
+    memcpy(bytesStr, bytes, len);
+    free(bytes);
+    bytesStr[len] = 0;
+    
+    matteString_t * compiled = matte_string_create_from_c_str("%s", bytesStr);
+    free(bytesStr);
+    
 
-    matteString_t * compiled = matte_string_create();
-    uint32_t i;
-    for(i = 0; i < len; ++i) {
-        // TODO: unicode
-        matte_string_append_char(compiled, bytes[i]);
-    }
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_string(heap, &out, compiled);
-    free(bytes);
     matte_string_destroy(compiled);
     return out;
 }
@@ -265,8 +266,7 @@ MATTE_EXT_FN(matte_filesystem__writestring) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeString() could not open output file"));
         return matte_heap_new_value(heap);
     }
-    // todo: unicode
-    if (!fwrite(matte_string_get_c_str(data), 1, matte_string_get_length(data), f)) {
+    if (!fwrite(matte_string_get_byte_data(data), 1, matte_string_get_byte_length(data), f)) {
         fclose(f);
         return matte_heap_new_value(heap);
     }

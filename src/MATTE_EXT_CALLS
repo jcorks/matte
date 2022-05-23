@@ -186,6 +186,26 @@ static matteValue_t vm_ext_call__noop(matteVM_t * vm, matteValue_t fn, const mat
     return matte_heap_new_value(vm->heap);
 }
 
+static matteValue_t vm_ext_call__breakpoint(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (vm->debug) {
+        matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, 0);
+        uint32_t numinst;
+        const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
+        uint32_t line = 0;
+        if (frame.pc-1 < numinst && frame.pc-1 >= 0)
+            line = inst[frame.pc-1].lineNumber;        
+        vm->debug(
+            vm,
+            MATTE_VM_DEBUG_EVENT__BREAKPOINT,
+            matte_bytecode_stub_get_file_id(frame.stub),
+            line,
+            matte_heap_new_value(vm->heap),
+            vm->debugData                   
+        );
+    }    
+
+    return matte_heap_new_value(vm->heap);
+}
 
 
 static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {

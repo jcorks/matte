@@ -136,6 +136,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_SEND, "Send built-in",
         MATTE_TOKEN_EXTERNAL_LISTEN, "Listen built-in",
         MATTE_TOKEN_EXTERNAL_ERROR, "Error built-in",
+        MATTE_TOKEN_EXTERNAL_BREAKPOINT, "Breakpoint built-in",
         MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, "Expression '('",
         MATTE_TOKEN_EXPRESSION_GROUP_END, "Expression ')'",
         MATTE_TOKEN_ASSIGNMENT, "Assignment Operator '='",
@@ -553,6 +554,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_SEND,
             MATTE_TOKEN_EXTERNAL_LISTEN,
             MATTE_TOKEN_EXTERNAL_ERROR,
+            MATTE_TOKEN_EXTERNAL_BREAKPOINT,
             0
         ),
         matte_syntax_graph_node_split(
@@ -914,10 +916,12 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         matte_syntax_graph_node_end(),
         NULL 
     );
+    /*
     matte_syntax_graph_add_construct_path(g, "Nothing", MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
         matte_syntax_graph_node_end(),
         NULL 
     );
+    */
 
 }
 

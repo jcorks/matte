@@ -1028,6 +1028,7 @@ MATTE_EXT_FN(matte_socket__client_delete) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     MatteSocketClient * cl = matte_value_object_get_userdata(heap, args[0]);
     
+    if (cl->tls) SSL_free(cl->ssl);
     if (cl->socketfd) close(cl->socketfd);
     matte_array_destroy(cl->indata);
     matte_array_destroy(cl->outdata);
