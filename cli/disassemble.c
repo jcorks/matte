@@ -119,15 +119,13 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 fprintf(fout, "nfn %d\n", a);
                 break;            
 
-            case MATTE_OPCODE_NAR:
-                a = *(uint32_t*)data.bytes;
-                fprintf(fout, "nar %d\n", a);
+            case MATTE_OPCODE_CAA:
+                fprintf(fout, "caa\n");
+                break;            
+            case MATTE_OPCODE_CAS:
+                fprintf(fout, "cas\n");
                 break;            
 
-            case MATTE_OPCODE_NSO:
-                a = *(uint32_t*)data.bytes;
-                fprintf(fout, "nso %d\n", a);
-                break;            
 
             
             case MATTE_OPCODE_CAL:

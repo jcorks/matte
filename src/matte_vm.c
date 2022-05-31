@@ -566,73 +566,106 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             break;
           }
-          case MATTE_OPCODE_NAR: {
 
-              
-            uint32_t len;
-            memcpy(&len, inst->data, 4);
-            if (STACK_SIZE() < len) {
-                matte_vm_raise_error_cstring(vm, "Array cannot be created. (insufficient stack size)");
+          case MATTE_OPCODE_CAA: {
+            if (STACK_SIZE() < 2) {
+                matte_vm_raise_error_cstring(vm, "VM error: missing object - value pair for constructor push");    
+                break;
+            }            
+            
+            matteValue_t obj = STACK_PEEK(1);
+            matte_value_object_insert(
+                vm->heap,
+                obj,
+                matte_value_object_get_number_key_count(vm->heap, STACK_PEEK(1)),
+                STACK_PEEK(0)
+            );
+
+            STACK_POP_NORET();            
+            break;
+            
+          }
+          case MATTE_OPCODE_CAS: {
+            if (STACK_SIZE() < 3) {
+                matte_vm_raise_error_cstring(vm, "VM error: missing object - value pair for constructor push");    
+                break;
+            }            
+            
+            matteValue_t obj = STACK_PEEK(2);
+            matte_value_object_set(
+                vm->heap,
+                obj,
+                STACK_PEEK(1),
+                STACK_PEEK(0),
+                1
+            );
+
+            STACK_POP_NORET();            
+            STACK_POP_NORET();            
+            break;
+            
+          }          
+          case MATTE_OPCODE_SPA: {
+            if (STACK_SIZE() < 2) {
+                matte_vm_raise_error_cstring(vm, "VM error: tried to prepare key-value pairs for object construction, but there are an odd number of items on the stack.");    
                 break;
             }
-            matteValue_t v = matte_heap_new_value(vm->heap);
+             
+            matteValue_t p = STACK_POP();
+            matteValue_t target = STACK_PEEK(0);
+            matte_value_object_push_lock(vm->heap, p);
+                       
+            uint32_t len = matte_value_object_get_number_key_count(vm->heap, p);
             uint32_t i;
-            matteArray_t * args = matte_array_create(sizeof(matteValue_t));
-            matte_array_set_size(args, len);
+            uint32_t keylen = matte_value_object_get_number_key_count(vm->heap, target);
             for(i = 0; i < len; ++i) {
-                matte_array_at(args, matteValue_t, len-i-1) = STACK_PEEK(i);
+                matte_value_object_insert(
+                    vm->heap,
+                    target, 
+                    keylen++,
+                    matte_value_object_access_index(vm->heap, p, i)
+                );
             }
-
-            matte_value_into_new_object_array_ref(vm->heap, &v, args);
-            #ifdef MATTE_DEBUG__HEAP
-                matte_heap_track_neutral(vm->heap, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
-            #endif
-
-            for(i = 0; i < len; ++i) {
-                STACK_POP_NORET();
-                matte_heap_recycle(vm->heap, matte_array_at(args, matteValue_t, i));
-            }
-            matte_array_destroy(args);
-
-            STACK_PUSH(v);
-            break;
+            matte_value_object_pop_lock(vm->heap, p);
+            break;            
           }
-          case MATTE_OPCODE_NSO: {
-            uint32_t len;
-            memcpy(&len, inst->data, 4);
-            if (STACK_SIZE() < len*2) {
-                matte_vm_raise_error_cstring(vm, "Static object cannot be created. (insufficient stack size)");
+  
+
+          case MATTE_OPCODE_SPO: {
+            if (STACK_SIZE() < 2) {
+                matte_vm_raise_error_cstring(vm, "VM error: tried to prepare key-value pairs for object construction, but there are an odd number of items on the stack.");    
                 break;
             }
+             
+            matteValue_t p = STACK_POP();
+            matte_value_object_push_lock(vm->heap, p);
+            matteValue_t keys = matte_value_object_keys(vm->heap, p);
+            matte_value_object_push_lock(vm->heap, keys);
+            matteValue_t vals = matte_value_object_values(vm->heap, p);
+            matte_value_object_push_lock(vm->heap, vals);
 
-            matteValue_t v = matte_heap_new_value(vm->heap);
+            matteValue_t target = STACK_PEEK(0);
+                       
+            uint32_t len = matte_value_object_get_number_key_count(vm->heap, keys);
             uint32_t i;
-            matteArray_t * args = matte_array_create(sizeof(matteValue_t));
-
-            matteValue_t va, ke;
+            matteValue_t item;            
             for(i = 0; i < len; ++i) {
-                va = STACK_PEEK(i*2+0);
-                ke = STACK_PEEK(i*2+1);
-                matte_array_push(args, ke);  
-                matte_array_push(args, va);  
+                matte_value_object_set(
+                    vm->heap,
+                    target,
+                    matte_value_object_access_index(vm->heap, keys, i),
+                    matte_value_object_access_index(vm->heap, vals, i),
+                    1
+                );
             }
-
-            matte_value_into_new_object_literal_ref(vm->heap, &v, args);
-            #ifdef MATTE_DEBUG__HEAP
-                matte_heap_track_neutral(vm->heap, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
-            #endif
-
-
-            len = matte_array_get_size(args);
-            for(i = 0; i < len; ++i) {
-                STACK_POP_NORET();
-                matte_heap_recycle(vm->heap, matte_array_at(args, matteValue_t, i));
-            }
-            matte_array_destroy(args);
-
-            STACK_PUSH(v);
-            break;
+            
+            matte_value_object_pop_lock(vm->heap, keys);
+            matte_value_object_pop_lock(vm->heap, vals);
+            matte_value_object_pop_lock(vm->heap, p);
+            break;            
           }
+          
+          
           case MATTE_OPCODE_PTO: {
             uint32_t typecode;
             memcpy(&typecode, inst->data, sizeof(uint32_t));            
@@ -1237,7 +1270,7 @@ matteVM_t * matte_vm_create() {
     
     const matteString_t * comparator = MATTE_VM_STR_CAST(vm, "comparator");
     const matteString_t * sort_names[] = {
-        object,
+        query_name,
         comparator
     };
     
@@ -1294,6 +1327,17 @@ matteVM_t * matte_vm_create() {
         query_name,
         MATTE_VM_STR_CAST(vm, "y")
     };
+    
+    const matteString_t * filterNames[] = {
+        query_name,
+        MATTE_VM_STR_CAST(vm, "by")
+    };
+
+    const matteString_t * mapReduceNames[] = {
+        query_name,
+        MATTE_VM_STR_CAST(vm, "to")
+    };
+
 
     matteArray_t temp;
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,  matte_array_empty(), vm_ext_call__noop);
@@ -1343,11 +1387,11 @@ matteVM_t * matte_vm_create() {
     temp = MATTE_ARRAY_CAST(setAttributes_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SETATTRIBUTES,     &temp, vm_ext_call__object__set_attributes);    
     temp = MATTE_ARRAY_CAST(sort_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SORT,     &temp, vm_ext_call__object__sort);    
     temp = MATTE_ARRAY_CAST(subset_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SUBSET,     &temp, vm_ext_call__object__subset);    
-    temp = MATTE_ARRAY_CAST(functional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FILTER,     &temp, vm_ext_call__object__filter);    
+    temp = MATTE_ARRAY_CAST(filterNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FILTER,     &temp, vm_ext_call__object__filter);    
     temp = MATTE_ARRAY_CAST(findIndex_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FINDINDEX,     &temp, vm_ext_call__object__findindex);    
     temp = MATTE_ARRAY_CAST(is_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ISA,     &temp, vm_ext_call__object__is);    
-    temp = MATTE_ARRAY_CAST(functional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__MAP,     &temp, vm_ext_call__object__map);    
-    temp = MATTE_ARRAY_CAST(functional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REDUCE,     &temp, vm_ext_call__object__reduce);    
+    temp = MATTE_ARRAY_CAST(mapReduceNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__MAP,     &temp, vm_ext_call__object__map);    
+    temp = MATTE_ARRAY_CAST(mapReduceNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REDUCE,     &temp, vm_ext_call__object__reduce);    
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ANY,     &temp, vm_ext_call__object__any);    
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ALL,     &temp, vm_ext_call__object__all);    
 

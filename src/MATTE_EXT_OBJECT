@@ -213,6 +213,7 @@ static matteValue_t vm_ext_call__object__is(matteVM_t * vm, matteValue_t fn, con
 static matteValue_t vm_ext_call__object__map(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_object(vm, args)) return matte_heap_new_value(vm->heap);
     matte_value_object_push_lock(vm->heap, args[0]);
+    matte_value_object_push_lock(vm->heap, args[1]);
     matte_value_object_push_lock(vm->heap, fn);
     
     
@@ -225,18 +226,20 @@ static matteValue_t vm_ext_call__object__map(matteVM_t * vm, matteValue_t fn, co
         matteValue_t v = matte_value_object_access_index(vm->heap, args[0], i);
         matteArray_t argsv = MATTE_ARRAY_CAST(&v, matteValue_t, 1);
 
-        matteValue_t newv = matte_vm_call(vm, fn, &argsv, &names, NULL);
+        matteValue_t newv = matte_vm_call(vm, args[1], &argsv, &names, NULL);
         matte_value_object_set_index_unsafe(vm->heap, args[0], i, newv);
     }
     
     matte_value_object_pop_lock(vm->heap, args[0]);
+    matte_value_object_pop_lock(vm->heap, args[1]);
     matte_value_object_pop_lock(vm->heap, fn);
-    return matte_heap_new_value(vm->heap);
+    return args[0];
 }
 
 static matteValue_t vm_ext_call__object__reduce(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_object(vm, args)) return matte_heap_new_value(vm->heap);
     matte_value_object_push_lock(vm->heap, args[0]);
+    matte_value_object_push_lock(vm->heap, args[1]);
     matte_value_object_push_lock(vm->heap, fn);
     
     matteValue_t nameValues[] = {
@@ -258,7 +261,7 @@ static matteValue_t vm_ext_call__object__reduce(matteVM_t * vm, matteValue_t fn,
         matteArray_t argsv = MATTE_ARRAY_CAST(&argValues, matteValue_t, 2);
 
     
-        matteValue_t newv = matte_vm_call(vm, fn, &argsv, &names, NULL);
+        matteValue_t newv = matte_vm_call(vm, args[1], &argsv, &names, NULL);
         matte_value_object_pop_lock(vm->heap, out);
         matte_value_into_copy(vm->heap, &out, newv);
         matte_value_object_push_lock(vm->heap, out);
@@ -266,6 +269,7 @@ static matteValue_t vm_ext_call__object__reduce(matteVM_t * vm, matteValue_t fn,
     }
     matte_value_object_pop_lock(vm->heap, out);
     matte_value_object_pop_lock(vm->heap, args[0]);
+    matte_value_object_pop_lock(vm->heap, args[1]);
     matte_value_object_pop_lock(vm->heap, fn);
     return out;
 }

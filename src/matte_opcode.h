@@ -20,11 +20,22 @@ typedef enum {
     MATTE_OPCODE_NOB,
     // push new function from a compiled stub
     MATTE_OPCODE_NFN,
-    // push new object with numbered, index keys
-    MATTE_OPCODE_NAR,
-    // push new object with defined keys and values
-    MATTE_OPCODE_NSO,
+
+    // costructor object assignment
+    // with an object, key, and value,
+    // assigns bypassing normal assignment 
+    // checks. The object is left on the stack 
+    // afterwards.
+    MATTE_OPCODE_CAS,
     
+    // costructor array assignment
+    // with an array and value,
+    // assigns bypassing normal assignment 
+    // checks. The object is left on the stack 
+    // afterwards.
+    MATTE_OPCODE_CAA,    
+    
+
     // push a new callstack from the given function object.
     MATTE_OPCODE_CAL,
     // assign value to a referrable 
@@ -85,7 +96,14 @@ typedef enum {
     // Peek the top. If true, skip by given count
     MATTE_OPCODE_SCO,
 
-        
+    // spread operator: array.
+    // pops the top of the stack and push all values of the object.
+    MATTE_OPCODE_SPA,
+
+    // spread operator: object 
+    // pops the top of the stack and pushes all keys and values of the object.
+    MATTE_OPCODE_SPO,
+
 } matteOpcode_t;
 
 

@@ -315,23 +315,23 @@ static void function_to_stub(FILE * f, uint32_t id) {
                     exit(1);                
                 }
             } else if (
-                oc0 == 'n' &&
+                oc0 == 'c' &&
                 oc1 == 'a' &&
-                oc2 == 'r'
+                oc2 == 's'
             ) {
-                inst->opcode = MATTE_OPCODE_NAR;
-                if (sscanf(line, "%"SCNu32" nar %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
-                    printf("ERROR on line %d: unrecognized nar format. Syntax: [line] nar [number of stack objects into array]\n", lineN);
+                inst->opcode = MATTE_OPCODE_CAS;
+                if (sscanf(line, "%"SCNu32" cas", &inst->line) != 1) {
+                    printf("ERROR on line %d: unrecognized cas format. Syntax: [line] cas\n", lineN);
                     exit(1);                
                 }
             } else if (
-                oc0 == 'n' &&
-                oc1 == 's' &&
-                oc2 == 'o'
+                oc0 == 'c' &&
+                oc1 == 'a' &&
+                oc2 == 'a'
             ) {
-                inst->opcode = MATTE_OPCODE_NSO;
-                if (sscanf(line, "%"SCNu32" nso %"SCNu32"", &inst->line, (uint32_t*)inst->data) != 2) {
-                    printf("ERROR on line %d: unrecognized nso format. Syntax: [line] nar [number of object pairs]\n", lineN);
+                inst->opcode = MATTE_OPCODE_SPA;
+                if (sscanf(line, "%"SCNu32" caa", &inst->line) != 1) {
+                    printf("ERROR on line %d: unrecognized caa format. Syntax: [line] caa\n", lineN);
                     exit(1);                
                 }
             } else if (

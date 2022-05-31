@@ -13,6 +13,7 @@
 #include <time.h>
 #include <math.h>
 #include <float.h>
+#include <inttypes.h>
 #ifdef MATTE_DEBUG 
     #include <assert.h>
 #endif
@@ -2058,7 +2059,7 @@ matteValue_t matte_value_as_string(matteHeap_t * heap, matteValue_t v) {
       case MATTE_VALUE_TYPE_NUMBER: {        
         matteString_t * str;
         if (fabs(v.value.number - (int64_t)v.value.number) < DBL_EPSILON) {
-            str = matte_string_create_from_c_str("%d", (int)v.value.number);                
+            str = matte_string_create_from_c_str("%"PRId64"", (int64_t)v.value.number);                
         } else {
             str = matte_string_create_from_c_str("%.15g", v.value.number);        
         }
@@ -3072,11 +3073,11 @@ static int matte_value_object_sort__cmp(
     const void * asrc,
     const void * bsrc
 ) {
-    matteValue_Sort_t * a = (*(matteValue_Sort_t **)asrc);
-    matteValue_Sort_t * b = (*(matteValue_Sort_t **)bsrc);
+    matteValue_Sort_t * a = (matteValue_Sort_t *)asrc;
+    matteValue_Sort_t * b = (matteValue_Sort_t *)bsrc;
 
     matteValue_t args[] = {
-        (*(matteValue_Sort_t **)a)->value,
+        a->value,
         b->value
     };
     matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);

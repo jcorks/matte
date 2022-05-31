@@ -73,24 +73,35 @@ static void write_instruction__sfs(matteArray_t * insts, uint32_t lineNumber, ui
 }
 
 
-
-static void write_instruction__nar(matteArray_t * insts, uint32_t lineNumber, uint32_t nItems) {
+static void write_instruction__cas(matteArray_t * insts, uint32_t lineNumber) {
     matteBytecodeStubInstruction_t inst;
     inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_NAR;
-    memcpy(inst.data, &nItems, sizeof(uint32_t));
-    matte_array_push(insts, inst);
+    inst.opcode = MATTE_OPCODE_CAS;
+    matte_array_push(insts, inst);    
+}
+
+static void write_instruction__caa(matteArray_t * insts, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_CAA;
+    matte_array_push(insts, inst);    
 }
 
 
-
-static void write_instruction__nso(matteArray_t * insts, uint32_t lineNumber, uint32_t nPairs) {
+static void write_instruction__spa(matteArray_t * insts, uint32_t lineNumber) {
     matteBytecodeStubInstruction_t inst;
     inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_NSO;
-    memcpy(inst.data, &nPairs, sizeof(uint32_t));
-    matte_array_push(insts, inst);
+    inst.opcode = MATTE_OPCODE_SPA;
+    matte_array_push(insts, inst);    
 }
+
+static void write_instruction__spo(matteArray_t * insts, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_SPO;
+    matte_array_push(insts, inst);    
+}
+
 
 static void write_instruction__cal(matteArray_t * insts, uint32_t lineNumber, uint32_t args) {
     matteBytecodeStubInstruction_t inst;

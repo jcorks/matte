@@ -953,6 +953,12 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
         break;          
       }
+      case MATTE_TOKEN_OBJECT_SPREAD: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "...");
+
+        break;          
+      }
+
       case MATTE_TOKEN_OBJECT_ACCESSOR_DOT: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '.');
 
@@ -2628,9 +2634,16 @@ static matteArray_t * compile_base_value(
 
       // array literal
       case MATTE_TOKEN_OBJECT_ARRAY_START: {
+        write_instruction__nob(inst, iter->line);
         iter = iter->next;
-        uint32_t itemCount = 0;
+        
         while(iter->ttype != MATTE_TOKEN_OBJECT_ARRAY_END) {
+            matteToken_t * spread = NULL;
+            if (iter->ttype == MATTE_TOKEN_OBJECT_SPREAD) {                
+                spread = iter;
+                iter = iter->next;
+            }
+        
             matteArray_t * expInst = compile_expression(
                 g,
                 block,
@@ -2644,10 +2657,14 @@ static matteArray_t * compile_base_value(
             if (iter->ttype != MATTE_TOKEN_OBJECT_ARRAY_END) 
                 iter = iter->next; // skip ,
 
+            
             merge_instructions(inst, expInst);
-            itemCount++;
+            if (spread) {
+                write_instruction__spa(inst, spread->line);            
+            } else {
+                write_instruction__caa(inst, iter->line);            
+            }
         }
-        write_instruction__nar(inst, iter->line, itemCount);
         *src = iter->next; // skip ]
         return inst;
         break;
@@ -2657,15 +2674,21 @@ static matteArray_t * compile_base_value(
 
       // object literal
       case MATTE_TOKEN_OBJECT_LITERAL_BEGIN: {
+        write_instruction__nob(inst, iter->line);
         iter = iter->next;
-        uint32_t nPairs = 0;
         while(iter->ttype != MATTE_TOKEN_OBJECT_LITERAL_END) {
             // key : value,
             // OR
             // key :: function
+            // OR
+            // ...value
+            matteToken_t * spread = NULL;
+            if (iter->ttype == MATTE_TOKEN_OBJECT_SPREAD) {
+                spread = iter;
+                iter = iter->next;
 
             // special case: variable name is treated like a string for convenience
-            if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME &&
+            } else if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME &&
                 (iter->next->next->ttype == MATTE_TOKEN_OBJECT_DEF_PROP ||
                  iter->next->next->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR)
             ) {
@@ -2707,17 +2730,18 @@ static matteArray_t * compile_base_value(
                 matte_array_destroy(inst);
                 return NULL;                
             }
-            merge_instructions(inst, expInst);
+
+            merge_instructions(inst, expInst);            
+            if (spread) {
+                write_instruction__spo(inst, spread->line);                        
+            } else {
+                write_instruction__cas(inst, iter->line);                        
+            }
 
 
             if (iter->ttype == MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR)
                 iter = iter->next;                
-            nPairs++;
         }
-        if (nPairs == 0)
-            write_instruction__nob(inst, iter->line);
-        else
-            write_instruction__nso(inst, iter->line, nPairs);
         *src = iter->next; // skip } 
         return inst;
       }
