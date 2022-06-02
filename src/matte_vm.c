@@ -1262,7 +1262,6 @@ matteVM_t * matte_vm_create() {
     };
     const matteArray_t * emptyArr = matte_array_empty();
 
-    const matteString_t * object = MATTE_VM_STR_CAST(vm, "object");
     const matteString_t * push_names[] = {
         query_name,
         value
@@ -1286,11 +1285,11 @@ matteVM_t * matte_vm_create() {
 
     
     const matteString_t * findIndex_names[] = {
-        object,
+        query_name,
         value,
     };
     const matteString_t * is_names[] = {
-        object,
+        query_name,
         type,
     };
     const matteString_t * search_names[] = {
