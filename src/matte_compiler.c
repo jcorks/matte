@@ -1242,11 +1242,11 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '}');
         break;
       }
-
-      case MATTE_TOKEN_OBJECT_DEF_PROP: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
-        break;          
+      case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_WITH_SPECIFIER: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, ":::");
+        break;  
       }
+
 
       case MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
@@ -1301,10 +1301,16 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ')');
         break;          
       }
+
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "::");
         break;  
       }
+      case MATTE_TOKEN_GENERAL_SPECIFIER: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
+        break;          
+      }
+      
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<=");
         break;  
@@ -1312,10 +1318,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_INLINE: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<-");
         break;  
-      }
-      case MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
-        break;
       }
       case MATTE_TOKEN_FUNCTION_TYPESPEC: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "=>");
@@ -1336,10 +1338,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       }
       case MATTE_TOKEN_MATCH_END: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '}');
-        break; 
-      }
-      case MATTE_TOKEN_MATCH_IMPLIES: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
         break; 
       }
       case MATTE_TOKEN_MATCH_SEPARATOR: {
@@ -1497,6 +1495,10 @@ static matteString_t * matte_syntax_graph_node_get_string(
         }
         break;
       }
+      case MATTE_SYNTAX_GRAPH_NODE__TOKEN_ALIAS: {
+        matte_string_concat(message, matte_syntax_graph_get_token_name(GRAPHSRC, node->token.refs[1]));
+        break;
+      }
       case MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT: {
         matteSyntaxGraphRoot_t * root = matte_syntax_graph_get_root(GRAPHSRC, node->construct);
         matte_string_concat(message, root->name);
@@ -1624,6 +1626,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
       // We try each token in order. If it parses successfully,
       // we continue. If not, we try the next token.
       // If we exhaust all tokens, we have failed.
+      case MATTE_SYNTAX_GRAPH_NODE__TOKEN_ALIAS:
       case MATTE_SYNTAX_GRAPH_NODE__TOKEN: {
         #ifdef MATTE_DEBUG__COMPILER
             printf("WALKING: MATTE_SYNTAX_GRAPH_NODE__TOKEN: %s (next c == '%c')\n", matte_string_get_c_str(matte_syntax_graph_get_root(GRAPHSRC, constructID)->name), matte_tokenizer_peek_next(graph->tokenizer));
@@ -1650,6 +1653,11 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
             // normal case: consume text needed based on token
             } else {
                 newT = matte_tokenizer_next(graph->tokenizer, node->token.refs[i]);
+                
+                // set type to aliased type.
+                if (newT && node->type == MATTE_SYNTAX_GRAPH_NODE__TOKEN_ALIAS)
+                    newT->ttype = node->token.refs[1];
+
             }
 
 
@@ -1667,6 +1675,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
                     graph->last->next = newT;
                     graph->last = newT;
                 }
+                    
                 matte_table_clear(graph->tried);
                 #ifdef MATTE_DEBUG__COMPILER
                     level--;
@@ -2693,7 +2702,7 @@ static matteArray_t * compile_base_value(
 
             // special case: variable name is treated like a string for convenience
             } else if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME &&
-                (iter->next->next->ttype == MATTE_TOKEN_OBJECT_DEF_PROP ||
+                (iter->next->next->ttype == MATTE_TOKEN_GENERAL_SPECIFIER ||
                  iter->next->next->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR)
             ) {
                 
@@ -2718,7 +2727,7 @@ static matteArray_t * compile_base_value(
                 merge_instructions(inst, expInst);
             }
 
-            if (iter->ttype == MATTE_TOKEN_OBJECT_DEF_PROP) {
+            if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {
                 iter = iter->next; // skip : 
             }// else its part of the function constructor: LEAVE IT.
 
@@ -2775,7 +2784,11 @@ static matteArray_t * compile_base_value(
         return inst;
       }
 
-      case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
+      case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_WITH_SPECIFIER:
+        assert(!"Internal compiler error: Constructor with specifier should be replaced with a normal function constructor in parent context.");
+        break;
+              
+      case MATTE_TOKEN_FUNCTION_CONSTRUCTOR:  {
 
         matteFunctionBlock_t * fn = (matteFunctionBlock_t *)iter->text; // the sneaky IV in action....
         if (fn->typestrict) {
@@ -2981,9 +2994,16 @@ static matteArray_t * compile_function_call(
         uint32_t nameLineNum = iter->line;
         matteArray_t * exp;
         // usual case -> "name: expression"
-        if (iter->next->ttype == MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER) {           
+        if (iter->next->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {           
             iter = iter->next->next; // skip :    
             exp = compile_expression(g, block, functions, &iter);
+
+        // convenient case -> function constructors, omitting extra ":"
+        } else if (iter->next->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+            iter = iter->next; // skip just name
+            exp = compile_expression(g, block, functions, &iter);
+
+
         // convenient case -> "name" (which is also the expression)
         } else {
             int isLvalue; // nused
@@ -3163,7 +3183,9 @@ static matteArray_t * compile_match(
             }
             matchresult result;
             iter = iter->next; // skip the )
-            iter = iter->next; // skip the :
+                
+            if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER)
+                iter = iter->next; // skip the :
             result.line = iter->line;
             matteArray_t * inst = compile_expression(g, block, functions, &iter);
             if (!inst) {
