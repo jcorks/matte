@@ -114,6 +114,8 @@ struct matteHeap_t {
     matteValue_t specialString_bracketAccess;
     matteValue_t specialString_dotAccess;
     matteValue_t specialString_foreach;
+    matteValue_t specialString_keys;
+    matteValue_t specialString_values;
     matteValue_t specialString_name;
     matteValue_t specialString_inherits;
     
@@ -897,6 +899,10 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
 
     out->specialString_foreach.value.id = matte_string_heap_internalize_cstring(out->stringHeap, "foreach");
     out->specialString_foreach.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_keys.value.id = matte_string_heap_internalize_cstring(out->stringHeap, "keys");
+    out->specialString_keys.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_values.value.id = matte_string_heap_internalize_cstring(out->stringHeap, "values");
+    out->specialString_values.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_name.value.id = matte_string_heap_internalize_cstring(out->stringHeap, "name");
     out->specialString_name.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_inherits.value.id = matte_string_heap_internalize_cstring(out->stringHeap, "inherits");
@@ -2437,6 +2443,20 @@ matteValue_t matte_value_object_keys(matteHeap_t * heap, matteValue_t v) {
         return matte_heap_new_value(heap);
     }
     matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+
+    if (m->table.attribSet.binID) {
+        matteValue_t set = matte_value_object_access(heap, m->table.attribSet, heap->specialString_keys, 0);
+
+        if (set.binID) {
+            v = matte_vm_call(heap->vm, set, matte_array_empty(), matte_array_empty(), NULL);
+            if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+                matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "keys attribute MUST return an object."));
+                return matte_heap_new_value(heap);;
+            } else {
+                m = matte_bin_fetch(heap->tableHeap, v.value.id);
+            }
+        }    
+    }
     matteArray_t * keys = matte_array_create(sizeof(matteValue_t));
     matteValue_t val;
     // first number 
@@ -2541,6 +2561,21 @@ matteValue_t matte_value_object_values(matteHeap_t * heap, matteValue_t v) {
         return matte_heap_new_value(heap);
     }
     matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    if (m->table.attribSet.binID) {
+        matteValue_t set = matte_value_object_access(heap, m->table.attribSet, heap->specialString_values, 0);
+
+        if (set.binID) {
+            v = matte_vm_call(heap->vm, set, matte_array_empty(), matte_array_empty(), NULL);
+            if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+                matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "values attribute MUST return an object."));
+                return matte_heap_new_value(heap);
+            } else {
+                m = matte_bin_fetch(heap->tableHeap, v.value.id);
+            }
+        }    
+    }
+
+
     matteArray_t * vals = matte_array_create(sizeof(matteValue_t));
     matteValue_t val;
     // first number 
@@ -2802,8 +2837,8 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
 
         if (set.binID) {
             v = matte_vm_call(heap->vm, set, matte_array_empty(), matte_array_empty(), NULL);
-            if (v.binID != MATTE_VALUE_TYPE_FUNCTION) {
-                matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "foreach attribute MUST return a function."));
+            if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+                matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "foreach attribute MUST return an object."));
                 return;
             } else {
                 m = matte_bin_fetch(heap->functionHeap, v.value.id);

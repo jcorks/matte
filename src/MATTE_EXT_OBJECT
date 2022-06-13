@@ -144,6 +144,7 @@ static matteValue_t vm_ext_call__object__filter(matteVM_t * vm, matteValue_t fn,
     matte_value_object_push_lock(vm->heap, args[1]);
     
     matteValue_t out = matte_heap_new_value(vm->heap);
+    matte_value_into_new_object_ref(vm->heap, &out);
     matte_value_object_push_lock(vm->heap, out);
     
     matteArray_t names = MATTE_ARRAY_CAST(&vm->specialString_value, matteValue_t, 1);
@@ -157,7 +158,7 @@ static matteValue_t vm_ext_call__object__filter(matteVM_t * vm, matteValue_t fn,
         matteArray_t argsv = MATTE_ARRAY_CAST(&v, matteValue_t, 1);
 
         if (matte_value_as_boolean(vm->heap, matte_vm_call(vm, args[1], &argsv, &names, NULL))) {
-            matte_value_object_set_index_unsafe(vm->heap, out, ctout++, v);
+            matte_value_object_insert(vm->heap, out, ctout++, v);
         }
     }
     

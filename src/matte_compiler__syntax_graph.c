@@ -788,32 +788,42 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 
     ///////////////
     ///////////////
-    /// Function definition {...}
+    /// Function definition {...} OR <- {expression}
     ///////////////
     ///////////////
 
     matte_syntax_graph_add_construct_path(g, "", MATTE_SYNTAX_CONSTRUCT_FUNCTION_DEFINITION,
-        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_BEGIN),
-        matte_syntax_graph_node_split(
-            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+        matte_syntax_graph_node_split(                   
+            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_CONSTRUCTOR_INLINE),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_end(),
-            NULL,
+            NULL,        
 
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT),
+            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_BEGIN),
             matte_syntax_graph_node_split(
                 matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
-
                 matte_syntax_graph_node_end(),
                 NULL,
 
-                matte_syntax_graph_node_to_parent(2),
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT),
+                matte_syntax_graph_node_split(
+                    matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+
+                    matte_syntax_graph_node_end(),
+                    NULL,
+
+                    matte_syntax_graph_node_to_parent(2),
+                    NULL,
+                    NULL
+                ),
                 NULL,
                 NULL
             ),
             NULL,
             NULL
         ),
-        NULL 
+        NULL
     );
 
     ///////////////
@@ -825,7 +835,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
     // function
     matte_syntax_graph_add_construct_path(g, "", MATTE_SYNTAX_CONSTRUCT_NEW_FUNCTION,
         matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_CONSTRUCTOR),
-        matte_syntax_graph_node_split(
+        matte_syntax_graph_node_split(                   
             matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH),
             matte_syntax_graph_node_to_parent(2),
             NULL,

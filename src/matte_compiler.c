@@ -1309,6 +1309,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<=");
         break;  
       }
+      case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_INLINE: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<-");
+        break;  
+      }
       case MATTE_TOKEN_FUNCTION_PARAMETER_SPECIFIER: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
         break;
@@ -3990,9 +3994,26 @@ static matteFunctionBlock_t * compile_function_block(
             b->typestrict = matte_array_get_size(b->args) + 1;
         }
 
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR_INLINE) {
+            iter = iter->next;
+            matteArray_t * expInst = compile_expression(
+                g,
+                b,
+                functions,
+                &iter
+            );    
+            if (!expInst) {
+                goto L_FAIL;
+            }                      
+            merge_instructions(b->instructions, expInst);
+            *src = iter;
+            return b;                                
+        
+
+
         // most situations will require that the block begin '{' token 
-        // exists already. This will be true EXCEPT in the toplevel function call (root stub)
-        if (iter->ttype != MATTE_TOKEN_FUNCTION_BEGIN) {
+        // exists already. This will be true EXCEPT in the toplevel function call (root stub)        
+        } else if (iter->ttype != MATTE_TOKEN_FUNCTION_BEGIN) {
             matte_syntax_graph_print_compile_error(g, iter, "Missing function block begin brace. '{'");
             goto L_FAIL;
         }
