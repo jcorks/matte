@@ -2449,12 +2449,7 @@ matteValue_t matte_value_object_keys(matteHeap_t * heap, matteValue_t v) {
 
         if (set.binID) {
             v = matte_vm_call(heap->vm, set, matte_array_empty(), matte_array_empty(), NULL);
-            if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
-                matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "keys attribute MUST return an object."));
-                return matte_heap_new_value(heap);;
-            } else {
-                m = matte_bin_fetch(heap->tableHeap, v.value.id);
-            }
+            return matte_value_object_values(heap, v);
         }    
     }
     matteArray_t * keys = matte_array_create(sizeof(matteValue_t));
