@@ -1541,13 +1541,13 @@ static void matte_syntax_graph_print_error(
     matte_string_append_char(message, matte_tokenizer_peek_next(graph->tokenizer));
     matte_string_concat_printf(message, "' instead.");
 
-
-    graph->onError(
-        message,
-        matte_tokenizer_current_line(graph->tokenizer),
-        matte_tokenizer_current_character(graph->tokenizer),
-        graph->onErrorData
-    );
+    if (graph->onError)
+        graph->onError(
+            message,
+            matte_tokenizer_current_line(graph->tokenizer),
+            matte_tokenizer_current_character(graph->tokenizer),
+            graph->onErrorData
+        );
     matte_string_destroy(message);
 }
 
@@ -1861,7 +1861,8 @@ int matte_syntax_graph_continue(
 ) {
     if (!matte_syntax_graph_is_construct(GRAPHSRC, constructID)) {
         matteString_t * str = matte_string_create_from_c_str("Internal error (no such constrctID)");
-        graph->onError(str, 0, 0, graph->onErrorData);
+        if (graph->onError)
+            graph->onError(str, 0, 0, graph->onErrorData);
         matte_string_destroy(str);
         return 0;
     }
@@ -1956,12 +1957,13 @@ static void matte_syntax_graph_print_compile_error(
     const char * asciiMessage
 ) {
     matteString_t * message = matte_string_create_from_c_str("Compile Error: %s", asciiMessage);
-    graph->onError(
-        message,
-        t->line,
-        t->character,
-        graph->onErrorData
-    );
+    if (graph->onError)
+        graph->onError(
+            message,
+            t->line,
+            t->character,
+            graph->onErrorData
+        );
     matte_string_destroy(message);
 }
 
