@@ -1,4 +1,5 @@
 var MatteSourceAnalysis = null;
+var ApplyMatteColoringPre;
 try {
     MatteSourceAnalysis = Module.cwrap('matte_js_syntax_analysis', 'string', ['string']);
     
@@ -190,12 +191,24 @@ try {
         };
     }
 
-    var transformElement = function(el) {
+    var transformElement = function(el, searchTag) {
+
+        var tagLocation = -1;
+        if (searchTag != null) {
+            tagLocation = el.innerText.search(searchTag);
+            el.innerText = el.innerText.replace(searchTag, "");
+            
+            // for normal text
+            tagLocation++;
+        }
+
+        var analysis = MatteSourceAnalysis(el.innerText);
         el.style.backgroundColor = color_bg;
         el.style.margin = 'auto';
         el.style.padding = '10px';
-        var analysis = MatteSourceAnalysis(el.innerText);
-        console.log(analysis);
+
+        //console.log(analysis);
+        
 
         var analysisLines = analysis.split('\n');
         var lines = el.innerText.split('\n');
@@ -236,7 +249,7 @@ try {
                     var from = lineIter;
                     length = (parsed.char - lineIter) + parsed.str.length-1;
 
-                    console.log(parsed);
+                    //console.log(parsed);
 
                     var subunitText = lines[i].substr(from, length);
                     var subel = createSubElement(subunitText, parsed.comment, type2color(parsed.comment, parsedNext.comment), type2desc(parsed.comment));
@@ -254,10 +267,62 @@ try {
             el.appendChild(nl);
 
         }
+        
+        // if requested, need to find node+textIndex of where this innerText offset is.
+        if (tagLocation != -1) {    
+            var curIndex = 0;
+        
+            var searchRec = function(node) {
+                for(var i = 0; i < node.childNodes.length; ++i) {
+                    var child = node.childNodes[i];
 
+                    if (tagLocation >= curIndex &&
+                        tagLocation <  curIndex+child.innerText.length
+                    ) {
+                        console.log('@' + tagLocation + '/' + el.innerText.length + ':"' + child.innerText + '"->' + curIndex + ', ' + (curIndex+child.innerText.length));
+                        if (child.children.length) {
+                            return searchRec(child);
+                        } else {
+
+                            return {
+                                element : child,
+                                index : tagLocation-curIndex
+                            }
+                        }                       
+                    }
+                    curIndex += child.innerText.length;
+                }
+                
+                
+                var endNode = node.childNodes[node.childNodes.length-1];
+                return {
+                    element: endNode,
+                    index:endNode.innerText.length-1
+                }
+            };
+            
+            
+            var result = searchRec(el);
+            
+            // get the actual text node
+            if (result.element.nodeType == 3)
+                return result;
+            console.log(result.element.nodeType);
+                
+            for(var i = 0; i < result.element.childNodes.length; ++i) {
+                var child = result.element.childNodes[i];
+                console.log(child.nodeType);
+                
+                if (child.nodeType == 3) {
+                    result.element = child;
+                    return result;
+                }
+                    
+            }
+        }
         
     }
-
+    ApplyMatteColoringPre = transformElement;
 
     Module['onRuntimeInitialized'] = function() {
         var el = document.body.getElementsByTagName('pre');
@@ -265,8 +330,9 @@ try {
         for(var i = 0; i < el.length; ++i) {
             var p = el[i];
     
-            transformElement(p);
+            transformElement(p, null);
         }
+        
     }
 
 } catch(e) {
