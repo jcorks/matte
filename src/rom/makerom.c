@@ -54,6 +54,7 @@ int main() {
         "core/class.mt",      "Matte.Core.Class",
         "core/json.mt",       "Matte.Core.JSON",
         "core/eventsystem.mt","Matte.Core.EventSystem",
+        "core/introspect.mt","Matte.Core.Introspect",
         "core/core.mt",       "Matte.Core",
         #ifdef MATTE_USE_SYSTEM_EXTENSIONS
             "system/consoleio.mt",      "Matte.System.ConsoleIO",       

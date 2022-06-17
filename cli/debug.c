@@ -242,7 +242,7 @@ static int execCommand(matteVM_t * vm) {
                !strcmp(command, "p")) {
 
         matteString_t * src = matte_string_create();
-        matte_string_concat_printf(src, "return import(module:'$DEBUG').printObject(o:%s);", res);
+        matte_string_concat_printf(src, "return import(module:'Matte.Core.Introspect')(value:%s);", res);
 
 
         matteValue_t output = matte_vm_run_scoped_debug_source(
@@ -333,27 +333,6 @@ static void onDebugPrint(matteVM_t * vm, const matteString_t * str, void * ud) {
 }
 
 
-static void addUtils(matteVM_t * vm) {
-    uint32_t debugfile = matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, "$DEBUG"));
-    
-    uint32_t srcLen = 0;
-    uint8_t * src = dump_bytes("debug.mt", &srcLen);
-    
-    uint32_t bytecodeLen = 0;
-    uint8_t * bytecode = matte_compiler_run(src, srcLen, &bytecodeLen, NULL, NULL);
-    
-    matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-        matte_vm_get_heap(vm),
-        debugfile,
-        bytecode,
-        bytecodeLen
-    );
-    
-    matte_vm_add_stubs(vm, stubs);
-    matte_vm_run_fileid(vm, debugfile, matte_heap_new_value(matte_vm_get_heap(vm)), NULL);
-
-}
-
 
 int matte_debug(const char * input, char ** argv, int argc) {
     matte_t * m = matte_create();
@@ -400,7 +379,6 @@ int matte_debug(const char * input, char ** argv, int argc) {
     printf("Loading utils...");
     fflush(stdout);    
     breakpoints = matte_array_create(sizeof(breakpoint));
-    addUtils(vm);
 
 
     printf("Done.\n\n");
