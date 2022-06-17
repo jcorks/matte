@@ -24,7 +24,7 @@ loadExample = function(exampleName) {
         return text;
     }  
     
-    document.getElementById("editor-text-area").value = readTextFile('/test-drive/samples/'+exampleName+'.mt');
+    document.getElementById("editor-text-area").value = readTextFile('/matte/test-drive/samples/'+exampleName+'.mt');
     // pushes the draw to prism/live
     document.getElementById("editor-text-area").dispatchEvent(new InputEvent("input"));    
 };
