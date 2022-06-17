@@ -1,11 +1,11 @@
 MatteCompiler = Module.cwrap('matte_js_run', 'string', ['string']);
 
 runSource = function(){
-    var editor = document.getElementById("editor");
+    var editor = document.getElementById("editor-text-area");
     var outputArea = document.getElementById("output");
     
     
-    outputArea.innerText = MatteCompiler(editor.innerText);
+    outputArea.innerText = MatteCompiler(editor.value);
 };
 
 loadExample = function(exampleName) {

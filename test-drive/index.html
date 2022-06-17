@@ -9,7 +9,7 @@
 	<link rel="stylesheet" href="/test-drive/style.css">
 	<style>
 		body {
-		    background: black;
+		    background:#202020;
 		}
 	</style>
 	
@@ -24,30 +24,33 @@
 </textarea>
 </div>
 
-
-<div style="width:50%;height:90%;float:left;color:white;" id="output">
-<pre>
-
-
-</pre>
+<div style="width:50%;height:90%;float:left;background:#202020;color:white;">
+    <pre style="font-size:20px;padding-left:30px;">Output:</pre>
+    <pre style="font-size:14px;margin:30px;margin-bottom:0px;padding:4px;padding-bottom:0px;background:black;height:90%;border-left:#505080;border-left-style:solid;"><code style=""id="output">
+    
+    </code></pre>
 </div>
 
 <div style="height:10%">
     <!-- button area-->
 
-    <div style="float:left;width:50%;">
+    <div style="float:left;width:100%;">
 
-        <div style="float:left;width:50%;">
+        <div style="float:left;width:25%;">
             <button onclick="runSource();" style="width:100%;">Run</button>
         </div>
 
-        <div style="float:left;width:50%;">
+        <div style="float:left;width:25%;">
             <select style="width:100%;">
                 <option onclick="loadExample('welcome');">Welcome Example</option>
+                <option onclick="loadExample('recursion');">Recursion Example</option>
+                <option onclick="loadExample('objectspreading');">Spread Example</option>
                 <option onclick="loadExample('class');">Class Example</option>
             </select>  
         </div>
+        <pre style="color:white;font-size:12px;text-align:center;"> <a href="https://jcorks.github.io/matte/">Matte</a>: Online Compiler. Johnathan Corkery, 2022. Made with <a href="https://prismjs.com/">prism</a> and <a href="https://live.prismjs.com/">prism live</a>.</pre>
     </div>
+    
 </div>
 
 
