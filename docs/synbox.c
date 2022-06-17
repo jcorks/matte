@@ -158,13 +158,7 @@ const char * matte_js_run(const char * source) {
     matte_vm_set_import(vm, matte_js_run__import, NULL);
 
     int err = 0;
-
-    matteValue_t out = matte_js_run__eval(m, source, NULL, &err);
-    if (err)
-        return matte_string_get_c_str(matte_js_run__stdout);
-
-
-    matteValue_t v = matte_js_run__eval(m, "return import(module:'Matte.Core.Introspect')(value:import(module:'source'));", &out, &err);
+    matteValue_t v = matte_js_run__eval(m, "return import(module:'Matte.Core.Introspect')(value:import(module:'source'));", NULL, &err);
     if (err)
         return matte_string_get_c_str(matte_js_run__stdout);
 
@@ -175,7 +169,6 @@ const char * matte_js_run(const char * source) {
     );
 
     matte_heap_recycle(matte_vm_get_heap(vm), v);
-    matte_heap_recycle(matte_vm_get_heap(vm), out);
     matte_destroy(m);
     return matte_string_get_c_str(matte_js_run__stdout);
 }
