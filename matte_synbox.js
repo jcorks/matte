@@ -329,6 +329,7 @@ try {
     
         for(var i = 0; i < el.length; ++i) {
             var p = el[i];
+            if (p.id != 'doc-source') return;
     
             transformElement(p, null);
         }
