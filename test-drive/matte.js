@@ -8,7 +8,16 @@ runSource = function(){
     outputArea.innerText = MatteCompiler(editor.value);
 };
 
-loadExample = function(exampleName) {
+loadExample = function(index) {
+    var samples = [
+        'welcome',
+        'recursion',
+        'objectspreading',
+        'class'    
+    ];
+    
+    var exampleName = samples[index];
+
     var readTextFile = function (file) {
         var rawFile = new XMLHttpRequest();
         var text;
