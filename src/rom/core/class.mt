@@ -2,7 +2,12 @@
 
 @class ::(define, name, inherits, statics) {
 
-
+    @staticNames = {};
+    if (statics != empty)
+        foreach(in:statics, do:::(key, value) {
+            staticNames[key] = true;
+        });
+    @staticData = {...statics};
     @classinst = {define : define};
     when(classinst.define->type != Function) error(detail:'class must include a "define" function within its "info" specification');
     @classInherits = inherits;
@@ -180,13 +185,19 @@
         return instSet;
     };
     
+    staticNames.new = true;
+    
+    staticNames.type = true;
+    staticData.type = selftype;
 
+    staticNames.inherits = true;
+    staticData.inherits = classInherits;
     
     classinst->setAttributes(
         attributes : {
             '.' : {
                 get ::(key => String)  {
-                    when(key == 'new')::<={
+                    when (key == 'new') ::<={
                         when(poolCount > 0) ::<={
                             @out = pool[poolCount-1];
                             pool->remove(key:poolCount-1);
@@ -214,7 +225,7 @@
 
 
 
- 
+
                         @constructor = instSet.constructor;
 
                         if (recycle == true) ::<= {
@@ -234,14 +245,23 @@
                         when(constructor != empty) constructor;
                         return ::{return newinst;};
                     };
-                    when(key == 'inherits') classInherits;
-                    when(key == 'type') selftype;
 
-                    @:r = statics[key];
-                    when(r != empty) r;
+                    when(staticNames[key] != empty) staticData[key];
+                    error(detail:'No such member of the class object.');
+                },
+                
+                set ::(key, value) {
+                    when(staticNames[key] != empty) staticData[key] = value;
                     error(detail:'No such member of the class object.');
                 }
-            }
+            },
+            '[]' : {
+            },
+            
+            
+            foreach ::<- staticData,
+            keys ::<-staticData->keys,
+            values ::<- staticData->values
         }
     );
 
