@@ -128,8 +128,6 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_NOOP, "no-op built-in",
         MATTE_TOKEN_EXTERNAL_GATE, "Gate built-in",
         MATTE_TOKEN_EXTERNAL_FOREVER, "Forever built-in",
-        MATTE_TOKEN_EXTERNAL_FOR, "For built-in",
-        MATTE_TOKEN_EXTERNAL_FOREACH, "Foreach built-in",
         MATTE_TOKEN_EXTERNAL_MATCH, "Match built-in",
         MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION, "Get External Function built-in",
         MATTE_TOKEN_EXTERNAL_IMPORT, "Import built-in",
@@ -562,8 +560,6 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 
             MATTE_TOKEN_EXTERNAL_NOOP,
             MATTE_TOKEN_EXTERNAL_FOREVER,
-            MATTE_TOKEN_EXTERNAL_FOREACH,
-            MATTE_TOKEN_EXTERNAL_FOR,
             MATTE_TOKEN_EXTERNAL_MATCH,
             MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
             MATTE_TOKEN_EXTERNAL_IMPORT,

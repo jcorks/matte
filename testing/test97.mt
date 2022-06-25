@@ -6,14 +6,14 @@
 @out = '';
 
 listen(to:::{
-    for(in:[0, 1], do:1);
+    [0, 1]->for(do:1);
 }, onError:::(message){
     out = out + 'nofn';
 });
 
 
 listen(to:::{
-    for(in:[10, 4, 1], do:::{
+    [10, 4, 1]->for(do:::{
         out = out + 'a';
     });
 }, onError:::(message){
@@ -22,7 +22,7 @@ listen(to:::{
 
 
 listen(to:::{
-    for();
+    2->for(a:0);
 }, onError:::(message){
     out = out + 'nofn';
 });
@@ -30,7 +30,7 @@ listen(to:::{
 
 
 listen(to:::{
-    for(in:[5, 0, -1], do:::{
+    [5, 0, -1]->for(do:::{
         out = out + 'b';
     });
 }, onError:::(message){
@@ -38,7 +38,7 @@ listen(to:::{
 });
 
 listen(to:::{
-    for(in:0, do:::{
+    0->for(do:::{
     
     });
 }, onError:::(message){
@@ -48,7 +48,7 @@ listen(to:::{
 
 
 listen(to:::{
-    for(in:[0, 10], do:::(i){
+    [0, 10]->for(do:::(i){
         out = out + 'c';        
         when (i == 4) 10; 
     });
@@ -57,7 +57,7 @@ listen(to:::{
 });
 
 
-for(in:[0, 3, 1], do:::(i){
+[0, 3, 1]->for(do:::(i){
     out = out + 'd';        
 });
 

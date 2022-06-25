@@ -12,7 +12,7 @@
                     when (events->keycount != 0) error(data:'Interface is already defined.');
                     
                     // filter to ensure types of key/val pairs
-                    foreach(in:value, do:::(key => String, val => Function) {
+                    value->foreach(do:::(key => String, val => Function) {
                         events[key] = {
                             mainHandler : val,
                             handlers : [],
@@ -31,7 +31,7 @@
                 
                 @continue = listen(to:::{
                     when(ev.handlerCount == 0) true;
-                    for(in:[ev.handlerCount-1, 0], do:::(i) {
+                    [ev.handlerCount-1, 0]->for(do:::(i) {
                         // when handlers return false, we no longer propogate.           
                         when(!((ev.handlers[i])(detail:detail))) send(message:false);
                     });
@@ -43,7 +43,7 @@
                 when(continue == false) false;
                 
                 return (if (ev.mainHandler(detail:detail) != false) ::<= {
-                    for(in:[0, ev.hookCount], do:::(i) {
+                    [0, ev.hookCount]->for(do:::(i) {
                         (ev.hooks[i])(detail:detail);
                     });
                     return true;
@@ -78,7 +78,7 @@
             },
 
             installHooks ::(events => Object) {
-                foreach(in:events, do:::(index, ev) {
+                events->foreach(do:::(index, ev) {
                     this.installHook(event:ev.event, hook:ev.hook);
                 });
             },
@@ -86,7 +86,7 @@
             
             getKnownEvents ::{
                 @arr = [];
-                foreach(in:events, do:::(k, v) {
+                events->foreach(do:::(k, v) {
                     arr->push(value:k);
                 });
                 return arr;                
@@ -97,7 +97,7 @@
                 @: ev = events[event];
                 when(ev == empty) error(message:"Cannot uninstall hook for non-existent event "+ev);
                 listen(to:::{
-                    for(in:[0, ev.hookCount], do:::(i) {
+                    [0, ev.hookCount]->for(do:::(i) {
                         if (ev.hooks[i] == hook) ::<= { 
                             ev.hooks->remove(key:i);
                             ev.hookCount-=1;
@@ -111,7 +111,7 @@
                 @: ev = events[event];
                 when(ev == empty) error(data:"Cannot uninstall handler for non-existent event "+ev);
                 listen(to:::{
-                    for(in:[0, ev.handlerCount], do:::(i) {
+                    [0, ev.handlerCount]->for(do:::(i) {
                         if (ev.handlers[i] == handler) ::<= { 
                             ev.handlers->remove(key:i);
                             ev.handlerCount-=1;

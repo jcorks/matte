@@ -23,7 +23,7 @@
     return ::(string){
         @out = 0;
         @:len = string->length;
-        for(in:[0, len], do:::(i) {
+        [0, len]->for(do:::(i) {
             out += table[string->charAt(index:i)] * (2**(len - (i+1)));
         });
         return out;
@@ -90,7 +90,7 @@
                     
                     
                         @ostr = '[';
-                        foreach(in:obj, do:::(k, v){
+                        obj->foreach(do:::(k, v){
                             if (ostr != '[')::<={
                                 ostr = ostr+',';
                             };
@@ -100,7 +100,7 @@
                         return ostr;    
                     };
                     @ostr = '{';
-                    foreach(in:obj, do:::(k, v){
+                    obj->foreach(do:::(k, v){
                         if (ostr != '{')::{
                             ostr = ostr+',';
                         }();

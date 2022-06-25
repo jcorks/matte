@@ -51,7 +51,7 @@
     ) {
         str = '';
         @generationStr = gentable[generation%16];
-        for(in:[0, SWCA_WIDTH], do:::(i){
+        [0, SWCA_WIDTH]->for(do:::(i){
             str = str + (if(arr[i]) generationStr else ' ');
         });    
         return str;
@@ -63,7 +63,7 @@
 
 
 // initialize state
-for(in:[0, SWCA_WIDTH], do:::(i) {
+[0, SWCA_WIDTH]->for(do:::(i) {
     state[i] = false;
 });
 
@@ -79,7 +79,7 @@ state[SWCA_WIDTH/2] = true;
 forever(do:::{
     // get the full state every line.
     if (progress == SWCA_WIDTH)::<={
-        for(in:[0, SWCA_WIDTH], do:::(i) {
+        [0, SWCA_WIDTH]->for(do:::(i) {
             @next = getNextState(state:state, index:i);
             stateNext[i] = next;
         }); 

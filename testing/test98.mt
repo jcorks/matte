@@ -5,7 +5,7 @@
 @out = '';
 
 listen(to:::{
-    foreach(in:'aaa', do:::{
+    'aaa'->foreach(do:::{
     
     });
 }, onError:::(message){
@@ -15,7 +15,7 @@ listen(to:::{
 
 
 listen(to:::{
-    foreach(in:{}, do:'aaa');
+    {}->foreach(do:'aaa');
 }, onError:::(message){
     out = out + 'nofn';
 });
@@ -24,7 +24,7 @@ listen(to:::{
 
 
 listen(to:::{
-    foreach(in:{}, do:::{
+    {}->foreach(do:::{
         out = 'c';
     });
 }, onError:::(message){
@@ -36,7 +36,7 @@ listen(to:::{
 
 
 listen(to:::{
-    foreach(in:['a', 'b', 'c'], do:::(key => Number, val => String) {
+    ['a', 'b', 'c']->foreach(do:::(key => Number, val => String) {
         out = out + val;
     });
 }, onError:::(message){

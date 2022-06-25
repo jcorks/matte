@@ -76,7 +76,7 @@ return class(
 
         @idToWorker::(id) {
             return listen(to:::{
-                for(in:[0, workers.length], do:::(i){
+                [0, workers.length]->for(do:::(i){
                     if (workers[i].id == id) send(message:workers[i]);
                 });
 
@@ -102,7 +102,7 @@ return class(
         
         // state checking 
         @checkStates::{
-            foreach(in:workers, do:::(k, v) {
+            workers->foreach(do:::(k, v) {
                 v.updateState();
             });
         };

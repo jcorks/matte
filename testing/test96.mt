@@ -20,7 +20,7 @@ listen(to:::{
 
 listen(to:::{
     forever(do:::{
-        for(in:[0, 10], do:::{
+        [0, 10]->for(do:::{
 
         });
         send();

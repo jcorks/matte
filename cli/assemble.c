@@ -511,10 +511,6 @@ static void function_to_stub(FILE * f, uint32_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_NOOP;
                 } else if (!strcmp("forever", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_FOREVER;
-                } else if (!strcmp("for", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_FOR;
-                } else if (!strcmp("foreach", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_FOREACH;
                 } else if (!strcmp("import", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_IMPORT;
                 } else if (!strcmp("print", m)) {

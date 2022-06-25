@@ -6,24 +6,24 @@
 @a = 'This_is_a_string';
 
 @output = '';
-foreach(in:a->split(token:'_'), do:::(k, v) {
+a->split(token:'_')->foreach(do:::(k, v) {
     output = output + v;
 });
 
-foreach(in:a->split(token:' '), do:::(k, v) {
+a->split(token:' ')->foreach(do:::(k, v) {
     output = output + v;
 });
 
-foreach(in:a->split(token:'is'), do:::(k, v) {
+a->split(token:'is')->foreach(do:::(k, v) {
     output = output + v;
 });
 
 
-foreach(in:a->split(token:'This_is_a_string'), do:::(k, v) {
+a->split(token:'This_is_a_string')->foreach(do:::(k, v) {
     output = output + v;
 });
 
-foreach(in:a->split(token:'This'), do:::(k, v) {
+a->split(token:'This')->foreach(do:::(k, v) {
     output = output + v;
 });
 

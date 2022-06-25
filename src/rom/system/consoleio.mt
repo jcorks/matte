@@ -24,7 +24,7 @@ return class(
 
 
                 @o = format;
-                foreach(in:args, do:::(k, v){
+                args->foreach(do:::(k, v){
                     @:key = '$('+k+')';
                     o = o->replace(key:key, with:''+v);
                 });

@@ -3,7 +3,7 @@
 // Core: String (5)
 @:containsAny::(in, keys) {
     return listen(to:::{
-        foreach(in:keys, do:::(k, v) {
+        keys->foreach(do:::(k, v) {
             when(in->contains(key:v)) send(message:true);
         });
         return false;        

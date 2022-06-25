@@ -2,7 +2,7 @@ return ::(value) {
     @already = {};
     @pspace ::(level) {
         @str = '';
-        for(in:[0, level], do:::{
+        [0, level]->for(do:::{
             str = str + '  ';
         });
         return str;
@@ -22,7 +22,7 @@ return ::(value) {
                 @output = '(type => Object): {';
 
                 @multi = false;
-                foreach(in:obj, do:::(key, val) {                        
+                obj->foreach(do:::(key, val) {                        
                     output = output + (if (multi) ',\n' else '\n'); 
                     output = output + pspace(level:level+1)+(String(from:key))+' : '+poself(obj:val, level:level+1);
                     multi = true;

@@ -23,7 +23,7 @@
 };
 
 @out = '';
-foreach(in:B, do:::(key, v) {
+B->foreach(do:::(key, v) {
     out = out + v;
 });
 

@@ -7,7 +7,7 @@
 @iterCheck = 0;
 @n100 = listen(to:::{    
 
-    for(in:[0, 100], do:::(i) {
+    [0, 100]->for(do:::(i) {
         errMessage = errMessage + i;        
         when(i == 50) ::{
             iterCheck = i;

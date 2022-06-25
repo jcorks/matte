@@ -13,8 +13,8 @@
 
 @findPos =::(grid, len) {
     return listen(to:::{
-        for(in:[0, len], do:::(y){
-            for(in:[0, len], do:::(x) {
+        [0, len]->for(do:::(y){
+            [0, len]->for(do:::(x) {
                 if (grid[y][x] == 1) ::<={
                     send(message:{
                         x : x,

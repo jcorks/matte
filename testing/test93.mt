@@ -53,7 +53,7 @@ return 0;
 
 
     a.use();
-    for(in:[0, 10], do:::{
+    [0, 10]->for(do:::{
         b.use();
         d.use();
     });

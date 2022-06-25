@@ -166,11 +166,11 @@ when(parameters == empty || parameters.file == empty) ::<={
 
 @: dumphex ::(data => MemoryBuffer.type, onPageFinish => Function){
     line = '';
-    for(in:[0, BYTES_PER_LINE*2+BYTES_PER_LINE], do:::(i) {
+    [0, BYTES_PER_LINE*2+BYTES_PER_LINE]->for(do:::(i) {
         line = line + ' ';
     });    
     lineAsText = '';
-    for(in:[0, BYTES_PER_LINE*2], do:::(i) {
+    [0, BYTES_PER_LINE*2]->for(do:::(i) {
         lineAsText = lineAsText + ' ';
     });    
 
@@ -192,7 +192,7 @@ when(parameters == empty || parameters.file == empty) ::<={
             @lines = [];
 
         
-            for(in:[iterBytes, endPoint()], do:::(i) {
+            [iterBytes, endPoint()]->for(do:::(i) {
                 if (i%BYTES_PER_LINE == 0) ::<={
                     lines->push(value: '' + line + "      " + lineAsText + '\n');
                     iter = 0;
@@ -210,7 +210,7 @@ when(parameters == empty || parameters.file == empty) ::<={
             });
             
             if (iter%BYTES_PER_LINE) ::<= {
-                for(in:[iter, BYTES_PER_LINE], do:::(i){
+                [iter, BYTES_PER_LINE]->for(do:::(i){
                     @n = numberToHex(n:data[i]);
                     line = String.combine(strings:[line, '   ']);
 

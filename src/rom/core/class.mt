@@ -4,7 +4,7 @@
 
     @staticNames = {};
     if (statics != empty)
-        foreach(in:statics, do:::(key, value) {
+        statics->foreach(do:::(key, value) {
             staticNames[key] = true;
         });
     @staticData = {...statics};
@@ -16,7 +16,7 @@
     @selftype = if (classInherits != empty) ::<={
         @inheritset = [];
         @inheritCount = 0;
-        foreach(in:classInherits, do:::(k, v) {
+        classInherits->foreach(do:::(k, v) {
             inheritset[inheritCount] = v.type;
             inheritCount+=1;
         });
@@ -85,7 +85,7 @@
             interface.interface = {
                 isFunction : false,
                 set ::(value) {
-                    foreach(in:value, do:::(k => String, v) {
+                    value->foreach(do:::(k => String, v) {
                         if (v->type == Function) ::<= {
                             interface[k] = {
                                 isFunction : true,
@@ -147,7 +147,7 @@
                 
                 attributes : {
                     set ::(value) {
-                        foreach(in:value, do:::(k, v) {
+                        value->foreach(do:::(k, v) {
                             when(k->type == String && k == '.') empty; // skip 
                             attribs[k] = v;
                         }); 
@@ -166,7 +166,7 @@
         
         @runSelf = context;
         if (inherited != empty) ::<={
-            foreach(in:inherited, do:::(k, v) {
+            inherited->foreach(do:::(k, v) {
                 runSelf(instSetIn:instSet, classObj:v);            
             });
         };

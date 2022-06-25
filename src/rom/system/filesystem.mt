@@ -49,7 +49,7 @@ return class(
                     _directoryEnumerate();
                     @:ct = _directoryObjectCount();
                     @:files = [];
-                    for(in:[0, ct], do:::(i){
+                    [0, ct]->for(do:::(i){
                         files[i] = {
                             name : _directoryObjectName(a:i),
                             path : _directoryObjectPath(a:i), // full path

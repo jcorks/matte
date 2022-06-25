@@ -17,12 +17,12 @@ test->setAttributes(
 
 @out = '';
 
-foreach(in:test->keys, do:::(index, value) {
+test->keys->foreach(do:::(index, value) {
     out = out + value;
 });
 
 
-foreach(in:test->values, do:::(index, value) {
+test->values->foreach(do:::(index, value) {
     out = out + value;
 });
 

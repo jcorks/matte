@@ -7,7 +7,7 @@
 
 @strout = '';
 @c = [];
-for(in:[0, a->length], do:::(i) {
+[0, a->length]->for(do:::(i) {
     c[i] = a->charAt(index:i);
 });
 

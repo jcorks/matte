@@ -6,7 +6,7 @@
 
 
 @strout = '';
-for(in:[0, a->length], do:::(i){
+[0, a->length]->for(do:::(i){
     strout = strout + a->charCodeAt(index:i);
 });
 

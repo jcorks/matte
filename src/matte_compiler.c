@@ -795,14 +795,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "forever");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_FOR: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "for");
-        break;
-      }
-      case MATTE_TOKEN_EXTERNAL_FOREACH: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "foreach");
-        break;
-      }
       case MATTE_TOKEN_EXTERNAL_MATCH: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "match");
         break;
@@ -2570,11 +2562,6 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
-      case MATTE_TOKEN_EXTERNAL_FOREACH: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_FOREACH);
-        *src = iter->next;
-        return inst;
-      }
       case MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_GETEXTERNALFUNCTION);
         *src = iter->next;
@@ -2582,11 +2569,6 @@ static matteArray_t * compile_base_value(
       }
       case MATTE_TOKEN_EXTERNAL_FOREVER: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_FOREVER);
-        *src = iter->next;
-        return inst;
-      }
-      case MATTE_TOKEN_EXTERNAL_FOR: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_FOR);
         *src = iter->next;
         return inst;
       }
@@ -2881,6 +2863,8 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "filter")) return MATTE_QUERY__REDUCE;
     if (!strcmp(st, "any")) return MATTE_QUERY__ANY;
     if (!strcmp(st, "all")) return MATTE_QUERY__ALL;
+    if (!strcmp(st, "for")) return MATTE_QUERY__FOR;
+    if (!strcmp(st, "foreach")) return MATTE_QUERY__FOREACH;
     if (!strcmp(st, "type")) return MATTE_QUERY__TYPE;
     return -1;
 }
