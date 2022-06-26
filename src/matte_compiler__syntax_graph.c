@@ -354,6 +354,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
                 0
             ),
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_end(),    
             NULL,
 
@@ -363,6 +364,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 
             matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_end(),    
             NULL,
 
@@ -395,6 +397,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
                 0
             ),
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_end(),    
             NULL,
 
@@ -404,6 +407,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 
             matte_syntax_graph_node_token(MATTE_TOKEN_ASSIGNMENT),
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_end(),    
             NULL,
 

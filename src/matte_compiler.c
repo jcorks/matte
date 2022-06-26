@@ -284,6 +284,27 @@ uint8_t * matte_compiler_run(
 
 // walker;
 
+static int token_is_assignment_derived(matteTokenType_t t) {
+    switch(t) {
+      case MATTE_TOKEN_ASSIGNMENT:
+      case MATTE_TOKEN_ASSIGNMENT_ADD:
+      case MATTE_TOKEN_ASSIGNMENT_SUB:
+      case MATTE_TOKEN_ASSIGNMENT_MULT:
+      case MATTE_TOKEN_ASSIGNMENT_DIV:
+      case MATTE_TOKEN_ASSIGNMENT_MOD:
+      case MATTE_TOKEN_ASSIGNMENT_POW:
+      case MATTE_TOKEN_ASSIGNMENT_AND:
+      case MATTE_TOKEN_ASSIGNMENT_OR:
+      case MATTE_TOKEN_ASSIGNMENT_XOR:
+      case MATTE_TOKEN_ASSIGNMENT_BLEFT:
+      case MATTE_TOKEN_ASSIGNMENT_BRIGHT:
+        return 1;
+      default:;
+    }
+    return 0;
+}   
+
+
 static int utf8_next_char(uint8_t ** source) {
     uint8_t * iter = *source;
     int val = (*source)[0];
@@ -377,7 +398,8 @@ static void destroy_token(
 ) {
     if (t->ttype == MATTE_TOKEN_EXPRESSION_GROUP_BEGIN ||
         t->ttype == MATTE_TOKEN_EXTERNAL_GATE ||
-        t->ttype == MATTE_TOKEN_EXTERNAL_MATCH) {
+        t->ttype == MATTE_TOKEN_EXTERNAL_MATCH ||
+        token_is_assignment_derived(t->ttype)) {
         matte_array_destroy((matteArray_t*)t->text);
     } else if (t->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
         // is a pointer to a function block, so dont touch.
@@ -2768,6 +2790,8 @@ static matteArray_t * compile_base_value(
         return inst;
       }
 
+
+
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_WITH_SPECIFIER:
         assert(!"Internal compiler error: Constructor with specifier should be replaced with a normal function constructor in parent context.");
         break;
@@ -2806,6 +2830,12 @@ static matteArray_t * compile_base_value(
         return inst;
       }
       default:;
+        if (token_is_assignment_derived(iter->ttype)) {
+            matteArray_t * arr = (matteArray_t *)iter->text; // the sneaky V in action....
+            merge_instructions(inst, matte_array_clone(arr));
+            *src = iter->next;
+            return inst;
+        }              
         
     }
 
@@ -3260,25 +3290,7 @@ static matteArray_t * compile_match(
     return NULL;
 }
 
-static int token_is_assignment_derived(matteTokenType_t t) {
-    switch(t) {
-      case MATTE_TOKEN_ASSIGNMENT:
-      case MATTE_TOKEN_ASSIGNMENT_ADD:
-      case MATTE_TOKEN_ASSIGNMENT_SUB:
-      case MATTE_TOKEN_ASSIGNMENT_MULT:
-      case MATTE_TOKEN_ASSIGNMENT_DIV:
-      case MATTE_TOKEN_ASSIGNMENT_MOD:
-      case MATTE_TOKEN_ASSIGNMENT_POW:
-      case MATTE_TOKEN_ASSIGNMENT_AND:
-      case MATTE_TOKEN_ASSIGNMENT_OR:
-      case MATTE_TOKEN_ASSIGNMENT_XOR:
-      case MATTE_TOKEN_ASSIGNMENT_BLEFT:
-      case MATTE_TOKEN_ASSIGNMENT_BRIGHT:
-        return 1;
-      default:;
-    }
-    return 0;
-}   
+
 
 static int assignment_token_to_op_index(matteTokenType_t t) {
     switch(t) {
@@ -3464,7 +3476,7 @@ static matteArray_t * compile_expression(
                 goto L_FAIL;
             }
             break;
-          
+                      
           case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
             matteToken_t * start = iter; 
             iter = iter->next; // skip (
@@ -3494,6 +3506,35 @@ static matteArray_t * compile_expression(
           }
 
           default:;
+            // assignment operators follow the same "sneaky" pattern,
+            // where the post expression is always bound to the assignment 
+            // operator token through the text pointer.
+            if (token_is_assignment_derived(iter->ttype)) {
+                matteToken_t * start = iter; 
+                iter = iter->next; // skip =
+                matteArray_t * inst = compile_expression(g, block, functions, &iter);
+                if (!inst) {
+                    goto L_FAIL;
+                }
+                matteToken_t * end = iter;
+                
+                // to reference this expressions value, the string is REPLACED 
+                // with a pointer to the array.                
+                matte_string_destroy(start->text);   // VERY SNEAKY V
+                start->text = (matteString_t *)inst; // VERY SNEAKIER V
+                
+
+                // dispose of unneeded nodes since they were compiled.
+                iter = start->next;
+                matteToken_t * next;
+                while(iter != end) {
+                    next = iter->next;
+                    destroy_token(iter);            
+                    iter = next;
+                }
+                start->next = end;
+                break;
+            }
             iter = iter->next;
 
         }
@@ -3512,6 +3553,7 @@ static matteArray_t * compile_expression(
     // editing to do short circuiting 
     int hasandor = 0;
     matteExpressionNode_t * prev = NULL;
+    matteToken_t * last;
     while(iter->ttype != MATTE_TOKEN_MARKER_EXPRESSION_END) {
         int preOp = -1;
         int postOp = -1;
@@ -3522,7 +3564,6 @@ static matteArray_t * compile_expression(
             iter = iter->next;
         }
         line = iter->line;
-
 
         // by this point, all complex sub-expressions would have been 
         // reduced, so now we can just work with raw values
@@ -3538,6 +3579,20 @@ static matteArray_t * compile_expression(
             // operator first
             postOp = string_to_operator(iter->text, iter->ttype);
             iter = iter->next;
+            
+            
+        // for assignment-derived tokens, we want to reduce 
+        // the pattern 'lvalue [assignment] expression' into 
+        // on value that can be worked with on a normal basis.
+        //
+        // The reason assignment is special is because we dont actually know 
+        // its assignment (and what kind of assignment) until the lvalue is 
+        // established.
+        //
+        // when combining, the assignment operator already has 
+        // its operations packed within the assignment token.
+        // These are unpacked when compiling the token as a value,
+        // so we will do an extra compile and push it into the current node 
         } else if (token_is_assignment_derived(iter->ttype)) {
             if (!lvalue) {
                 matte_syntax_graph_print_compile_error(g, iter, "Assignment operator in expression requires writable value on left-hand side of the assignment.");
@@ -3559,7 +3614,7 @@ static matteArray_t * compile_expression(
             // Heres the fun part: lvalues are either
             // values that got reduced to a referrable OR an expression dot access OR a table lookup result.
             if (isSimpleReferrable) {
-                postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE + assignment_token_to_op_index(iter->ttype);        
+                //postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE + assignment_token_to_op_index(iter->ttype);        
                 if (undo.opcode != MATTE_OPCODE_PRF) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing referrable token. (internal error)");
                     goto L_FAIL;
@@ -3569,19 +3624,34 @@ static matteArray_t * compile_expression(
                     matte_syntax_graph_print_compile_error(g, iter, "Cannot assign new value to constant.");
                     goto L_FAIL;                    
                 }
+                // removed the referrable value, since thats already wrapped in the ARF
+                matte_array_set_size(valueInst, size-1);
+                write_instruction__arf(valueInst, line, *(uint32_t*)(undo.data), assignment_token_to_op_index(iter->ttype));
+                
             } else {
                 // for handling assignment for the dot access and the [] lookup, 
                 // the OLK instruction will be removed. This leaves both the 
                 // object AND the key on the stack (since OLK would normally consume both)
-                postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER + assignment_token_to_op_index(iter->ttype) + (*((uint32_t*)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0);
+                //postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER + assignment_token_to_op_index(iter->ttype) + (*((uint32_t*)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0);
                 matte_array_set_size(valueInst, size-1);
                 if (undo.opcode != MATTE_OPCODE_OLK) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing lookup token. (internal error)");
                     goto L_FAIL;
                 }
+                write_instruction__osn(valueInst, line, assignment_token_to_op_index(iter->ttype) + (*((uint32_t*)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0));                
+
+            }
+            
+            // basically wraps up the post-assignment expression
+            matteArray_t * assignExp = compile_value(g, block, functions, &iter, &lvalue);
+            if (!assignExp) {
+                goto L_FAIL;
             }
 
-            iter = iter->next;
+            
+            merge_instructions(assignExp, valueInst);
+            valueInst = assignExp;
+
         }
         matteExpressionNode_t * exp = new_expression_node(
             preOp,
@@ -3615,6 +3685,7 @@ static matteArray_t * compile_expression(
         // for 2-operand instructions, the first node is merged with the second node by 
         // putting instructions to compute it in order. 
         if (n->postOp > -1) {
+            /*
             if (n->postOp >= POST_OP_SYMBOLIC__ASSIGN_MEMBER) {
                 merge_instructions(n->next->value, n->value);
                 write_instruction__osn(n->next->value, n->next->line, n->postOp - POST_OP_SYMBOLIC__ASSIGN_MEMBER);                
@@ -3631,7 +3702,9 @@ static matteArray_t * compile_expression(
                 }
                 merge_instructions(n->next->value, n->value);
                 write_instruction__arf(n->next->value, n->next->line, referrable, n->postOp - POST_OP_SYMBOLIC__ASSIGN_REFERRABLE);
-            } else { // normal case.
+            } else 
+            */
+            { // normal case.
             
                 if (n->postOp == MATTE_OPERATOR_AND) {
                     // insert code to short circuit
@@ -3672,12 +3745,11 @@ static matteArray_t * compile_expression(
 
     if (len) {
         assert(matte_array_at(nodes, matteExpressionNode_t *, len-1)->postOp == -1);
+        merge_instructions(outInst, matte_array_at(nodes, matteExpressionNode_t *, len-1)->value);
+    } else {
+        // can be the case if the only expression nodes are assignment
     }
-    #ifdef MATTE_DEBUG
-        assert(len && "If len is 0, that means this expression has NO nodes. Which is definitely. Bad.");
-    #endif
 
-    merge_instructions(outInst, matte_array_at(nodes, matteExpressionNode_t *, len-1)->value);
 
     // and/or uses placeholders because we need the short circuiting behavior
     // which requires knowing how large the expression is in terms of 
