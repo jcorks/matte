@@ -3,7 +3,8 @@
 
 MATTE_EXT_FN(matte_consoleio__clear) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
-    printf("\x1b[2J");
+    printf("\x1b[3J");
+    printf("\x1b[0;0H");
     fflush(stdout);
     return matte_heap_new_value(heap);
 }
