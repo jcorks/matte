@@ -59,6 +59,14 @@ typedef enum {
 } matteVMDebugEvent_t;
 
 
+typedef  uint8_t * (*matteImportFunction_t)(
+    matteVM_t *,
+    const matteString_t * importPath,
+    uint32_t * preexistingFileID,
+    uint32_t * dataLength,
+    void * usrdata
+);
+
 #define MATTE_VM_DEBUG_FILE 0xfffffffe
 
 
@@ -77,15 +85,15 @@ void matte_vm_add_stubs(matteVM_t *, const matteArray_t *);
 // Sets the implementation for the import function.
 void matte_vm_set_import(
     matteVM_t * vm,
-    uint8_t * (*)(
-        matteVM_t *,
-        const matteString_t * importPath,
-        uint32_t * preexistingFileID,
-        uint32_t * dataLength,
-        void * usrdata
-    ),
+    matteImportFunction_t, 
     void * userData
 );
+
+
+// Returns the default call for import. This is useful when 
+// setting an user import that has behavior happen when importing 
+// but doesnt necessarily deviate from standard behavior.
+matteImportFunction_t matte_vm_get_default_import();
 
 
 // Expands a given filename as if it were from an import 

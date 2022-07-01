@@ -1,7 +1,7 @@
-<@>class = import(module:'Matte.Core.Class');
-<@>offset = Number(from:parameters.offset);
+@:class = import(module:'Matte.Core.Class');
+@:offset = Number(from:parameters.offset);
 
-return class(info:{
+return class(
     define :: (this) {
         // declare local variables
         @value0 = 0;
@@ -9,7 +9,8 @@ return class(info:{
         @value2 = 0;
     
         // constants
-        <@>constant = 1;
+        @:constant = 1;
+	breakpoint();
 
 
         this.constructor = ::(initial) {
@@ -38,4 +39,4 @@ return class(info:{
             }
         };
     }
-});
+);

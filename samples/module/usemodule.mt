@@ -1,4 +1,4 @@
-<@>TestModule = import(module:'module.mt', parameters:{offset:1000});
+@:TestModule = import(module:'module.mt', parameters:{offset:1000});
 
 
 @a = TestModule.new(initial:300);

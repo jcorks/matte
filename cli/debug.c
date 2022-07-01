@@ -333,6 +333,25 @@ static void onDebugPrint(matteVM_t * vm, const matteString_t * str, void * ud) {
 }
 
 
+static uint8_t * onImport(
+    matteVM_t * vm,
+    const matteString_t * importPath,
+    uint32_t * preexistingFileID,
+    uint32_t * dataLength,
+    void * usrdata
+) {
+    uint8_t * out = matte_vm_get_default_import()(
+        vm,
+        importPath,
+        preexistingFileID,
+        dataLength,
+        usrdata
+    );
+
+    split_lines(*preexistingFileID, out, *dataLength);
+    return out;
+}
+
 
 int matte_debug(const char * input, char ** argv, int argc) {
     matte_t * m = matte_create();
@@ -353,6 +372,12 @@ int matte_debug(const char * input, char ** argv, int argc) {
     lines = matte_table_create_hash_pointer();
     matte_table_insert_by_uint(lines, 0, matte_array_create(sizeof(matteString_t *)));
     split_lines(1, src, lenBytes);
+    
+    matte_vm_set_import(
+        vm,
+        onImport,
+        NULL
+    );
 
 
 

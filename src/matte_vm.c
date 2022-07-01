@@ -232,6 +232,9 @@ uint32_t matte_vm_get_new_file_id(matteVM_t * vm, const matteString_t * name) {
     return fileid;
 }
 
+matteImportFunction_t matte_vm_get_default_import() {
+    return vm_default_import;
+}
 
 uint32_t matte_vm_get_file_id_by_name(matteVM_t * vm, const matteString_t * name) {
     uint32_t * p = matte_table_find(vm->importPath2ID, name);   
