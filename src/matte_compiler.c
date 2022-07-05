@@ -1165,6 +1165,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
           case '=':
             c = utf8_next_char(&t->iter);
             switch(c) {
+              case '>':
               case '=':
                 t->character+=2;
                 t->backup = t->iter;
@@ -2307,6 +2308,7 @@ matteOperator_t string_to_operator(const matteString_t * s, matteTokenType_t hin
 
         case '=':
         switch(opopcode1) {
+            case '>': return MATTE_OPERATOR_TYPESPEC; break;
             case '=': return MATTE_OPERATOR_EQ; break;
             default:;
         }
@@ -2452,8 +2454,8 @@ static int op_to_precedence(int op) {
       case MATTE_OPERATOR_TERNARY:
       case MATTE_OPERATOR_TRANSFORM: // <> 2 operands
       case MATTE_OPERATOR_CARET: // ^ 2 operands
-
         return 13;
+
 
 
     }

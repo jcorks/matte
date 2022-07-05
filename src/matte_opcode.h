@@ -135,6 +135,7 @@ typedef enum {
     MATTE_OPERATOR_MODULO, // % 2 operands
     MATTE_OPERATOR_CARET, // ^ 2 operands
     MATTE_OPERATOR_NEGATE, // - 1 operand
+    MATTE_OPERATOR_TYPESPEC, // => 2 operands
 
     // special operators. They arent part of the OPR opcode
     MATTE_OPERATOR_ASSIGNMENT_NONE = 100,

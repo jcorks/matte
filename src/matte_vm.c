@@ -333,6 +333,7 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_NOTEQ:      return vm_operator__noteq       (vm, a, b);
       case MATTE_OPERATOR_MODULO:     return vm_operator__modulo      (vm, a, b);
       case MATTE_OPERATOR_CARET:      return vm_operator__caret       (vm, a, b);
+      case MATTE_OPERATOR_TYPESPEC:   return vm_operator__typespec    (vm, a, b);
 
       default:
         matte_vm_raise_error_cstring(vm, "unhandled OPR operator");                        
@@ -1004,6 +1005,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 case MATTE_OPERATOR_TRANSFORM:
                 case MATTE_OPERATOR_MODULO:
                 case MATTE_OPERATOR_CARET:
+                case MATTE_OPERATOR_TYPESPEC:
                 case MATTE_OPERATOR_NOTEQ: {
                     if (STACK_SIZE() < 2) {
                         matte_vm_raise_error_cstring(vm, "OPR operator requires 2 operands.");                        
