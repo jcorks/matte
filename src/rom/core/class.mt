@@ -59,11 +59,11 @@
                 get:: (key) {
                     @result = interface[key];
                     when(result == empty) 
-                        error(detail:'' +key+ " does not exist within this instance's class.");
+                        error(detail:'' +key+ " does not exist within " + selftype);
                                                     
                     when(result.isFunction) result.fn;
                     @get = result.get;
-                    when(get == empty) error(detail:'The attribute ' + key + ' is not readable.');
+                    when(get == empty) error(detail:'The attribute ' + key + ' is not readable within '  + selftype);
                     return get();
                 },
 
@@ -71,11 +71,11 @@
                 set:: (key, value) {
                     @result = interface[key];
                     when(result == empty) 
-                        error(detail:'' +key+ " does not exist within this instance's class.");
+                        error(detail:'' +key+ " does not exist within " + selftype);
                     
                     when(result.isFunction) error(detail:'Interface functions cannot be overwritten.');
                     @set = result.set;
-                    when(set == empty) error(detail:'The attribute ' + key + ' is not writable.');
+                    when(set == empty) error(detail:'The attribute ' + key + ' is not writable within' + selftype);
                     return set(value:value);
                 }
             };
@@ -247,12 +247,12 @@
                     };
 
                     when(staticNames[key] != empty) staticData[key];
-                    error(detail:'No such member of the class object.');
+                    error(detail:'No such member of the class ' + selftype);
                 },
                 
                 set ::(key, value) {
                     when(staticNames[key] != empty) staticData[key] = value;
-                    error(detail:'No such member of the class object.');
+                    error(detail:'No such member of the class ' +  selftype);
                 }
             },
             '[]' : {
