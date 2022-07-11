@@ -84,6 +84,7 @@
                 (Number): ''+obj,
                 (String): '\"'+cleanstring(in:obj)+'\"',
                 (Boolean): ''+obj,
+                (Empty): 'null',
                 (Object): ::{
                     // array case:
                     when (obj->keys->all(condition:isNumber)) ::<= {
@@ -204,7 +205,19 @@
                     return rawstr;
                 },
                 
-                
+                ('n'): ::<={
+                    return (if (iter.peek(index:1) == 'u' &&
+                                iter.peek(index:2) == 'l' &&
+                                iter.peek(index:3) == 'l') ::<={
+                        iter.skip();
+                        iter.skip();
+                        iter.skip();
+                        iter.skip();
+                        return empty;
+                    } else ::<={
+                        error(data:'Unrecognized token (expected null)');
+                    });
+                },           
                 
                 // true or false
                 ('t'): ::<={
