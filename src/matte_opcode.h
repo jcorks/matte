@@ -68,6 +68,11 @@ typedef enum {
     // special compilation.
     MATTE_OPCODE_PNR,
     
+    // Pushes the result of an listen expression.
+    // listen pops 2 functions off the stack and pushes 
+    // the result of the listen operation.
+    MATTE_OPCODE_LST,
+    
     // pushes a abuilt-in type object 
     // 
     // 0 -> empty 
@@ -164,7 +169,6 @@ typedef enum {
     MATTE_EXT_CALL_IMPORT,
     MATTE_EXT_CALL_PRINT,
     MATTE_EXT_CALL_SEND,
-    MATTE_EXT_CALL_LISTEN,
     MATTE_EXT_CALL_ERROR,
     MATTE_EXT_CALL_BREAKPOINT,
     

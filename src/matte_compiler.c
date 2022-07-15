@@ -879,10 +879,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "breakpoint");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_LISTEN: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "listen");
-        break;
-      }
       case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
         break;
@@ -1261,7 +1257,14 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, ":::");
         break;  
       }
-
+      case MATTE_TOKEN_LISTEN_START: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "([");
+        break;
+      }
+      case MATTE_TOKEN_LISTEN_END: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "])");
+        break;
+      }
 
       case MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
@@ -2581,11 +2584,6 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
-      case MATTE_TOKEN_EXTERNAL_LISTEN: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_LISTEN);
-        *src = iter->next;
-        return inst;
-      }
       case MATTE_TOKEN_EXTERNAL_ERROR: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_ERROR);
         *src = iter->next;
@@ -3099,6 +3097,50 @@ static matteToken_t * ff_skip_inner_array_static(matteToken_t * iter) {
     return iter;
 }
 
+// 
+// Listen is simply: 
+// push fn 
+// push fn 
+// lst
+static matteArray_t * compile_listen(
+    matteSyntaxGraphWalker_t * g, 
+    matteFunctionBlock_t * block,
+    matteArray_t * functions, 
+    matteToken_t ** src
+) {
+    matteToken_t * iter = *src;
+    matteArray_t * instOut = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+    iter = iter->next; // skip ([
+    
+    matteArray_t * inst = compile_expression(g, block, functions, &iter);
+    if (!inst) {
+        goto L_FAIL;
+    }
+    merge_instructions(instOut, inst);
+
+    iter = iter->next; // skip ])
+    if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {
+        iter = iter->next; // skip :
+
+        inst = compile_expression(g, block, functions, &iter);
+        if (!inst) {
+            goto L_FAIL;
+        }
+        merge_instructions(instOut, inst);
+        write_instruction__lst(instOut, iter->line);
+    } else {
+        write_instruction__nem(instOut, iter->line);
+        write_instruction__lst(instOut, iter->line);
+    }
+
+    return instOut;
+
+  L_FAIL:
+    matte_array_destroy(instOut);
+    return NULL;
+}
+
+
 // compiles the match statement. 
 // its not too bad! the general flow is this:
 // 1. push initial expression result
@@ -3346,6 +3388,29 @@ static matteArray_t * compile_expression(
             matteToken_t * end = iter;            
             matte_string_destroy(start->text);   // VERY SNEAKY III
             start->text = (matteString_t *)inst; // VERY SNEAKIER III
+            
+
+            // dispose of unneeded nodes since they were compiled.
+            iter = start->next;
+            matteToken_t * next;
+            while(iter != end) {
+                next = iter->next;
+                destroy_token(iter);            
+                iter = next;
+            }
+            start->next = end;
+            break;
+          }
+
+          case MATTE_TOKEN_LISTEN_START: {
+            matteToken_t * start = iter;
+            matteArray_t * inst = compile_listen(g, block, functions, &iter);
+            if (!inst) {
+                goto L_FAIL;
+            }
+            matteToken_t * end = iter;            
+            matte_string_destroy(start->text);   // VERY SNEAKY VI
+            start->text = (matteString_t *)inst; // VERY SNEAKIER VI
             
 
             // dispose of unneeded nodes since they were compiled.

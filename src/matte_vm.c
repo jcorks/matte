@@ -112,6 +112,10 @@ struct matteVM_t {
     matteValue_t specialString_message;
     matteValue_t specialString_previous;
     matteValue_t specialString_base;
+    
+    matteValue_t specialString_onerror;
+    matteValue_t specialString_onsend;
+    matteValue_t specialString_message;
 
 };
 
@@ -300,6 +304,89 @@ static matteBytecodeStub_t * vm_find_stub(matteVM_t * vm, uint32_t fileid, uint3
 }
 
 
+static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respObject) {
+    if (!matte_value_is_callable(vm->heap, v)) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen expressions require that the listened-to expression is a function. "));
+        return matte_heap_new_value(vm->heap);
+    }
+
+    if (respObject.binID != MATTE_VALUE_TYPE_OBJECT) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response expression is an object."));
+        return matte_heap_new_value(vm->heap);    
+    }
+    
+    
+    
+    
+    
+    matteValue onSend  = matte_value_object_access_direct(vm->heap, respObject, vm->specialString_onsend);
+    if (onSend.binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(onSend)) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onSend' attribute be a Function."));
+        return matte_heap_new_value(vm->heap);    
+    } else {
+        matte_value_object_push_lock(onSend);
+    }
+    matteValue onError = matte_value_object_access_direct(vm->heap, respObject, vm->specialString_onerror);
+    if (onError.binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(onError)) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onError' attribute be a Function."));
+        return matte_heap_new_value(vm->heap);    
+    }
+    
+    
+    matteValue_t out = matte_vm_call(vm, v, matte_array_empty(), matte_array_empty(), MATTE_VM_STR_CAST(vm, "listen"));
+    if (vm->pendingCatchable) {
+
+        matte_heap_recycle(vm->heap, out);            
+        matteValue_t catchable = vm->catchable;
+        vm->catchable.binID = 0;
+        vm->pendingCatchable = 0;
+
+
+        matteArray_t arr = MATTE_ARRAY_CAST(&catchable, matteValue_t, 1);
+        matteArray_t arrNames = MATTE_ARRAY_CAST(&vm->specialString_message, matteValue_t, 1);
+
+
+        // if the catchable exists, we either 
+        // 1) return this return value 
+        // 2) run a response function and return its result
+        if (!vm->pendingCatchableIsError && matte_value_is_callable(vm->heap, onSend)) {
+            out = matte_vm_call(vm, onSend, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (message)"));
+            matte_value_object_pop_lock(vm->heap, catchable);
+            matte_heap_recycle(vm->heap, catchable);
+            return out;
+        } if (vm->pendingCatchableIsError && matte_value_is_callable(vm->heap, args[2])) {
+            // the error is caught. Undo the error flag 
+            vm->pendingCatchableIsError = 0;
+            out = matte_vm_call(vm, onError, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (error)"));
+            matte_value_object_pop_lock(vm->heap, catchable);
+            matte_heap_recycle(vm->heap, catchable);
+            return out;
+        } */else {
+            if (vm->pendingCatchableIsError) {
+                // The error is uncaught, and must be handled properly before continuing.
+                vm->catchable = catchable;
+                vm->pendingCatchable = 1;
+            } else {
+                // OK, popped but not recycled. 
+                matte_value_object_pop_lock(vm->heap, catchable);           
+                return catchable;
+            }
+        }
+        
+        
+        
+        
+        
+        
+        
+    } else {
+        // OK, already new from vm_call
+        return out;        
+    }
+}
+
+
+
 #include "MATTE_OPERATORS"
 #include "MATTE_EXT_CALLS"
 
@@ -434,6 +521,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         switch(inst->opcode) {
           case MATTE_OPCODE_NOP:
             break;
+            
+          case MATTE_OPCODE_LST: {
+            matteValue_t v = vm_listen(vm, STACK_PEEK(1), STACK_PEEK(0));
+            STACK_POP_NORET();
+            STACK_POP_NORET();
+            STACK_PUSH(v);
+            break;
+          }
             
           case MATTE_OPCODE_PRF: {
             uint32_t referrable;
@@ -1203,6 +1298,13 @@ matteVM_t * matte_vm_create() {
     matte_value_into_string(vm->heap, &vm->specialString_parameters, MATTE_VM_STR_CAST(vm, "parameters"));
     vm->specialString_base = matte_heap_new_value(vm->heap);
     matte_value_into_string(vm->heap, &vm->specialString_base, MATTE_VM_STR_CAST(vm, "base"));
+
+
+    vm->specialString_onsend = matte_heap_new_value(vm->heap);
+    matte_value_into_string(vm->heap, &vm->specialString_onsend, MATTE_VM_STR_CAST(vm, "onSend"));
+    vm->specialString_onerror = matte_heap_new_value(vm->heap);
+    matte_value_into_string(vm->heap, &vm->specialString_onerror, MATTE_VM_STR_CAST(vm, "onError"));
+
     
     // add built in functions
     const matteString_t * forever_name = MATTE_VM_STR_CAST(vm, "do");
@@ -1234,11 +1336,7 @@ matteVM_t * matte_vm_create() {
     const matteString_t * type = MATTE_VM_STR_CAST(vm, "type");
     const matteString_t * message = MATTE_VM_STR_CAST(vm, "message");
     const matteString_t * detail = MATTE_VM_STR_CAST(vm, "detail");
-    const matteString_t * listen_names[] = {
-        MATTE_VM_STR_CAST(vm, "to"),
-        MATTE_VM_STR_CAST(vm, "onMessage"),
-        MATTE_VM_STR_CAST(vm, "onError")
-    };
+
     const matteString_t * name = MATTE_VM_STR_CAST(vm, "name");
     const matteString_t * value = MATTE_VM_STR_CAST(vm, "value");
     vm->specialString_value = matte_heap_new_value(vm->heap);
@@ -1351,7 +1449,6 @@ matteVM_t * matte_vm_create() {
 
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      &temp, vm_ext_call__print);
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_SEND,       &temp, vm_ext_call__send);
-    temp = MATTE_ARRAY_CAST(listen_names, matteString_t *, 3);vm_add_built_in(vm, MATTE_EXT_CALL_LISTEN,     &temp, vm_ext_call__listen);
     temp = MATTE_ARRAY_CAST(&detail, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_ERROR,      &temp, vm_ext_call__error);
 
     temp = MATTE_ARRAY_CAST(&name, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_GETEXTERNALFUNCTION, &temp, vm_ext_call__getexternalfunction);

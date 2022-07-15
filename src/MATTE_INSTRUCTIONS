@@ -102,6 +102,13 @@ static void write_instruction__spo(matteArray_t * insts, uint32_t lineNumber) {
     matte_array_push(insts, inst);    
 }
 
+static void write_instruction__lst(matteArray_t * insts, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_LST;
+    matte_array_push(insts, inst);    
+}
+
 
 static void write_instruction__cal(matteArray_t * insts, uint32_t lineNumber, uint32_t args) {
     matteBytecodeStubInstruction_t inst;

@@ -143,7 +143,6 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 
         MATTE_TOKEN_EXTERNAL_PRINT, "Print built-in",
         MATTE_TOKEN_EXTERNAL_SEND, "Send built-in",
-        MATTE_TOKEN_EXTERNAL_LISTEN, "Listen built-in",
         MATTE_TOKEN_EXTERNAL_ERROR, "Error built-in",
         MATTE_TOKEN_EXTERNAL_BREAKPOINT, "Breakpoint built-in",
         MATTE_TOKEN_EXPRESSION_GROUP_BEGIN, "Expression '('",
@@ -177,6 +176,9 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 
         MATTE_TOKEN_DECLARE, "Local Variable Declarator '@'",
         MATTE_TOKEN_DECLARE_CONST, "Local Constant Declarator '@:'",
+
+        MATTE_TOKEN_LISTEN_START, "Function Content Block '(['",
+        MATTE_TOKEN_FUNCTION_BEGIN, "Function Content Block '])'",
 
         MATTE_TOKEN_FUNCTION_BEGIN, "Function Content Block '{'",
         MATTE_TOKEN_FUNCTION_END,   "Function Content Block '}'",
@@ -317,6 +319,27 @@ static void generate_graph(matteSyntaxGraph_t * g) {
     /// Expression PostFix
     ///////////////
     ///////////////
+    
+    
+    matte_syntax_graph_add_construct_path(g, "Listen Expression", MATTE_SYNTAX_CONSTRUCT_POSTFIX,
+        matte_syntax_graph_node_token(MATTE_TOKEN_LISTEN_START),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_LISTEN_END),
+        matte_syntax_graph_node_split(
+            matte_syntax_graph_node_token(MATTE_TOKEN_GENERAL_SPECIFIER),                
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_end(),    
+            NULL,
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_end(),    
+            NULL,
+            NULL
+        ),
+        NULL
+    );
+
     
 
     matte_syntax_graph_add_construct_path(g, "Query Operator", MATTE_SYNTAX_CONSTRUCT_POSTFIX,
@@ -576,7 +599,6 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_TYPEFUNCTION,
             MATTE_TOKEN_EXTERNAL_PRINT,
             MATTE_TOKEN_EXTERNAL_SEND,
-            MATTE_TOKEN_EXTERNAL_LISTEN,
             MATTE_TOKEN_EXTERNAL_ERROR,
             MATTE_TOKEN_EXTERNAL_BREAKPOINT,
             0
