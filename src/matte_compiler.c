@@ -3118,6 +3118,11 @@ static matteArray_t * compile_listen(
     iter = iter->next; // skip [::]
 
     matteFunctionBlock_t * b = compile_function_block(g, block, functions, &iter);
+    if (!b) {
+        goto L_FAIL;
+    }
+
+    
     matte_array_push(functions, b);
     write_instruction__nfn(
         instOut, 

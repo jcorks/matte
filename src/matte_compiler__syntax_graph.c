@@ -452,7 +452,6 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_end(),    
             NULL,
-            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
             matte_syntax_graph_node_end(),    
             NULL,
             NULL
