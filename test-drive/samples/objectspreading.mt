@@ -24,8 +24,7 @@
 	"Kristin"
 ];
 
-foreach(
-	in:allNames, 
+allNames->foreach(
 	do:::(index, name) <- print(message:name)
 );
 

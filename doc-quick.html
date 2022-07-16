@@ -221,7 +221,7 @@ When called, functions that have arguments have values bound by name to argument
     // inline function syntax can be used to make it more readable and 
     // concise:
     
-    @:sqrt ::(value) <- value**2;
+    @:sqrt ::(value) <- value**0.5;
     
     // should print 4
     print(message:sqrt(value:16));
@@ -423,7 +423,8 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
 </br>
 <h3> 5.3 for</h3>
 
-In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is a list of numbers (the 'in' parameter), denoting the start value, end value, and optional iteration value. The second argument ('do') is a function to be called for each iteration. The function receives one value, which is the value of the for loop's iterator as a Number. <b>The argument for the 'do' parameter function can be any name of your choosing.</b>
+In Matte, <i>for</i> is a special query operation (see the Introspection section for more info about the query operator). 
+It accepts 1 argument, and works off an an existing array of numbers. The base array denotes the start value, end value, and optional iteration value. The argument ('do') is a function to be called for each iteration. The function receives one value, which is the value of the for loop's iterator as a Number. <b>The argument for the 'do' parameter function can be any name of your choosing.</b>
 
 <pre id="doc-source">
     // Basic for loop, iterates 10 times in a C-style manner using 0-based indices.
@@ -435,7 +436,7 @@ In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is
     // 2
     // 3
     //
-    for(in:[0, 4], do:::(i){
+    [0, 4]->for(do:::(i){
         print(message:i);
     });
 
@@ -449,7 +450,7 @@ In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is
     // 4
     // 6
     // 8
-    for(in:[0, 10, 2], do:::(i){
+    [0, 10, 2]->for(do:::(i){
         print(message:i);
     });
 </pre>
@@ -457,7 +458,7 @@ In Matte, <i>for</i> is a special function. It accepts 2 arguments. The first is
 </br>
 <h3> 5.4 foreach</h3>
 
-Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iteration. <i>foreach</i> iterates over an Object's keys and values. <b>The key and value arguments for the 'do' parameter function can be any names of your choosing. The first is always the key, and the second is always the value.</b>
+Similar to <i>for</i>, <i>foreach</i> is a special query function that allows for iteration. <i>foreach</i> iterates over an Object's keys and values. <b>The key and value arguments for the 'do' parameter function can be any names of your choosing. The first is always the key, and the second is always the value.</b>
 
 <pre id="doc-source">
     @object = ['a', 'b', 'c'];
@@ -468,7 +469,7 @@ Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iter
     // 1 -> b 
     // 2 -> c
     //
-    foreach(in:object, do:::(key, value){
+    object->foreach(do:::(key, value){
         print(message:'' + key + '->' + value);
     });
 </pre>
@@ -477,7 +478,7 @@ Similar to <i>for</i>, <i>foreach</i> is a special function that allows for iter
 
 <h3> 5.5 if</h3>
 
-The if expression in matte can be used to control or avoid computation of another expression. Unlike in other languages, <b>if and else only work with one expression. If you need multiple expressions, have your expression compute to a function or function expression.</b>
+The if expression in Matte can be used to control or avoid computation of another expression. Unlike in other languages, <b>if and else only work with one expression. If you need multiple expressions, have your expression compute to a function or function expression.</b>
 
 <pre id="doc-source">
     @myVal = false;
@@ -639,11 +640,11 @@ make sense in Matte.
 <br>
 <br>
 Instead, however, we have messaging. Messaging allows you to abandon a calling context to an 
-earlier context level. This is accomplished using <i>listen()</i> and <i>send()</i>
+earlier context level. This is accomplished using <i>Listen Functions (`[::]`)</i> and <i>send()</i>
 <br>
 <br>
-<i>listen()</i> accepts a function and will either return that functions result OR the result of 
-a <i>send()</i> call. For example:
+<i>Listen Functions</i> are similar to dash functions in that all inner statements are run immediately. However, it returns either the function's result OR the result of 
+a <i>send()</i> call. The Listen Function acts as a barrier for messages, much like how try / catch mechanisms work in other languages. For example:
 <br>
 <pre id="doc-source"> 
     // Assume we have a function that returns an Object with numbered 
@@ -652,43 +653,50 @@ a <i>send()</i> call. For example:
     @my2DArray = make100by100();
 
     
-    // listen takes the function (parameter: 'to') and runs it immediately.
-    @result = listen(to:::{
-        for(in:[0, 100], do:::(y) {
-            for(in:[0, 100], do:::(x) {
+    // The Listen Function syntax runs all statements immediately.
+    @result = [::] {
+        [0, 100]->for(do:::(y) {
+            [0, 100]->for(do:::(x) {
                 // If a true cell is found, all functions are stopped 
-                // up until the nearest listen(), carrying the expression 
+                // up until the nearest listen function, carrying the expression 
                 // 'Found!' with it.
                 when(my2DArray[x][y] == true) send(message:'Found!');
             });    
         });
         
-        // If send was not called, listen() just returns the result 
+        // If send was not called, the listen function just returns the result 
         // if its function.
         return 'Not found...';
-    });
+    };
 
 </pre>
 <br>
 
 Sometimes, its useful to respond to call a special function when any message is
 received rather than just getting the result of the <i>send</i>. This can be accomplished by 
-adding a second argument to the <i>listen</i>. When present and is a function, this 
-second function will ONLY be called when a message is received.
+adding a <i> handler clause </i> to the listen function. The handler clause is simple an object 
+that can provide functions to call in the case of messages.
+
+For normal messages, the property is "onSend", which is called when send is detected.
+The return value of a send handler is also the value that is returned from the listen 
+function overall, so the handler effectively supervises the entire listen function.
+
 <br>
 <pre id="doc-source">
-    listen(to:::{
-        for(in:[0, 100], do:::(y) {
-            for(in:[0, 100], do:::(x) {
+    [::]{
+        [0, 100]->for(do:::(y) {
+            [0, 100]->for(do:::(x) {
                 // If a true cell is found, all functions are stopped 
-                // up until the nearest listen(), carrying the expression 
+                // up until the nearest listen function, carrying the expression 
                 // 'Found!' with it.
                 when(my2DArray[x][y] == true) send(message:'Found!');
             });    
         });
-    }, onMessage:::(message) {
-        print(message:'A message was received: ' + message);
-    });
+    } : {
+        onSend:::(message) {
+            print(message:'A message was received: ' + message);
+        }
+    };
 </pre>
 
 <br>
@@ -703,15 +711,15 @@ loop can safely be broken:
 
 <pre id="doc-source">
     @counter = 0;
-    listen(to:::{
-        forever(func:::{
+    [::] {
+        forever(do:::{
             // when send is called, forever() is escaped.
             if(counter == 10) send();
 
             counter += 1;
             return true;
         });
-    });
+    };
 </pre>
 <br>
 <br>
@@ -743,15 +751,17 @@ Error catching is similar to catching regular messages with <i>send</i>:
 
 <pre id="doc-source">
     @errorExample :: {
-        listen(to:::{
+        [::] {
             print(message:"1");
             print(message:"2");
             error(detail:'Uh oh!');
             print(message:"3");
             print(message:"4");
-        }, onError:::(message) {        
-            print(message:"The following error was caught: " + message.data);
-        });
+        } : {
+            onError:::(message) {        
+                print(message:"The following error was caught: " + message.data);
+            }
+        };
     };
     
     // should print:
@@ -784,13 +794,15 @@ Error catching is similar to catching regular messages with <i>send</i>:
     };
     
     @mySafeFunction ::{
-        listen(func:::{    
+        [::] {    
             print(message:1);
             dangerousFunction();
             print(message:2);
-        }, onError:::(message){        
-            print(message:'Caught external error');
-        });
+        } : {
+            onError::(message){        
+                print(message:'Caught external error');
+            }
+        };
     };
 
     
@@ -1010,7 +1022,7 @@ Along with typical operator overloading, there exist a few special features that
     // will print:
     // a -> 100 
     // b -> 1000
-    foreach(in:secret, do:::(key, value) {
+    secret->foreach(do:::(key, value) {
         print(message:'' + key +' -> ' + value);
     });
 </pre>

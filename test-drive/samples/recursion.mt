@@ -8,6 +8,6 @@
    };
 };
   
-for(in:[0, 7], do:::(i) {
+[0, 7]->for(do:::(i) {
    print(message:fibonacci(n:i));
 });
