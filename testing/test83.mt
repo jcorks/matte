@@ -5,13 +5,15 @@
 @a = 'This is a string';
 
 @output = 'errorDidntHappen';
-listen(to:::{
+[::]{
     
     // should error out, not allowed.
     output = a->substr(from:'a', to:[]);    
-}, onError:::(message) {
-    output = 'a';
-});
+} : {
+    onError:::(message) {
+        output = 'a';
+    }
+};
 
 
 return '' + output + 

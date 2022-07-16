@@ -4,43 +4,43 @@
 
 @out = '';
 
-listen(to:::{
+[::]{
     'aaa'->foreach(do:::{
     
     });
-}, onError:::(message){
+}: { onError:::(message){
     out = out + 'noobj';
-});
+}};
 
 
 
-listen(to:::{
+[::]{
     {}->foreach(do:'aaa');
-}, onError:::(message){
+}: { onError:::(message){
     out = out + 'nofn';
-});
+}};
 
 
 
 
-listen(to:::{
+[::]{
     {}->foreach(do:::{
         out = 'c';
     });
-}, onError:::(message){
+}: { onError:::(message){
     out = out + 'norun';
-});
+}};
 
 
 
 
 
-listen(to:::{
+[::]{
     ['a', 'b', 'c']->foreach(do:::(key => Number, val => String) {
         out = out + val;
     });
-}, onError:::(message){
+}: { onError:::(message){
     out = out + 'norun';
-});
+}};
 
 return out;

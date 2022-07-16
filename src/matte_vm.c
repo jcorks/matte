@@ -115,7 +115,6 @@ struct matteVM_t {
     
     matteValue_t specialString_onerror;
     matteValue_t specialString_onsend;
-    matteValue_t specialString_message;
 
 };
 
@@ -310,28 +309,27 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
         return matte_heap_new_value(vm->heap);
     }
 
-    if (respObject.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (respObject.binID != MATTE_VALUE_TYPE_EMPTY && respObject.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response expression is an object."));
         return matte_heap_new_value(vm->heap);    
     }
     
     
+    matteValue_t * onSend = NULL;
+    matteValue_t * onError = NULL;    
     
-    
-    
-    matteValue onSend  = matte_value_object_access_direct(vm->heap, respObject, vm->specialString_onsend);
-    if (onSend.binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(onSend)) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onSend' attribute be a Function."));
-        return matte_heap_new_value(vm->heap);    
-    } else {
-        matte_value_object_push_lock(onSend);
+    if (respObject.binID != MATTE_VALUE_TYPE_EMPTY) {
+        onSend  = matte_value_object_access_direct(vm->heap, respObject, vm->specialString_onsend, 0);
+        if (onSend && onSend->binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->heap, *onSend)) {
+            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onSend' attribute be a Function."));
+            return matte_heap_new_value(vm->heap);    
+        }
+        onError = matte_value_object_access_direct(vm->heap, respObject, vm->specialString_onerror, 0);
+        if (onError && onError->binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->heap, *onError)) {
+            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onError' attribute be a Function."));
+            return matte_heap_new_value(vm->heap);    
+        }
     }
-    matteValue onError = matte_value_object_access_direct(vm->heap, respObject, vm->specialString_onerror);
-    if (onError.binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(onError)) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onError' attribute be a Function."));
-        return matte_heap_new_value(vm->heap);    
-    }
-    
     
     matteValue_t out = matte_vm_call(vm, v, matte_array_empty(), matte_array_empty(), MATTE_VM_STR_CAST(vm, "listen"));
     if (vm->pendingCatchable) {
@@ -349,19 +347,19 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
         // if the catchable exists, we either 
         // 1) return this return value 
         // 2) run a response function and return its result
-        if (!vm->pendingCatchableIsError && matte_value_is_callable(vm->heap, onSend)) {
-            out = matte_vm_call(vm, onSend, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (message)"));
+        if (!vm->pendingCatchableIsError && onSend) {
+            out = matte_vm_call(vm, *onSend, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (message)"));
             matte_value_object_pop_lock(vm->heap, catchable);
             matte_heap_recycle(vm->heap, catchable);
             return out;
-        } if (vm->pendingCatchableIsError && matte_value_is_callable(vm->heap, args[2])) {
+        } if (vm->pendingCatchableIsError && onError) {
             // the error is caught. Undo the error flag 
             vm->pendingCatchableIsError = 0;
-            out = matte_vm_call(vm, onError, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (error)"));
+            out = matte_vm_call(vm, *onError, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (error)"));
             matte_value_object_pop_lock(vm->heap, catchable);
             matte_heap_recycle(vm->heap, catchable);
             return out;
-        } */else {
+        } else {
             if (vm->pendingCatchableIsError) {
                 // The error is uncaught, and must be handled properly before continuing.
                 vm->catchable = catchable;

@@ -159,7 +159,7 @@
                 </context>
 
                 <context id="variable" style-ref="variable">
-                    <match extended="true">(@:|@|\[|\])</match>
+                    <match extended="true">(@:|@|\(\&lt;|&gt;\)|\[|\])</match>
                     <include>
                         <context id="var-name" sub-pattern="1" style-ref="variable"/>
                     </include>

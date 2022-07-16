@@ -5,29 +5,35 @@
 
 @output = '';
 
-listen(to:::{
+[::]{
     forever();
-}, onError:::(message) {
-    output = output + 'noarg';
-});
+} : {
+    onError:::(message) {
+        output = output + 'noarg';
+    }
+};
 
 
-listen(to:::{
+[::]{
     forever(do:'hi');
-}, onError:::(message){
-    output = output + 'nofn';
-});
+} : {
+    onError:::(message){
+        output = output + 'nofn';
+    }
+};
 
-listen(to:::{
+[::]{
     forever(do:::{
         [0, 10]->for(do:::{
 
         });
         send();
     });
-}, onError:::(message){
-    output = output + 'norun';
-});
+} : { 
+    onError:::(message){
+        output = output + 'norun';
+    }
+};
 
 
 

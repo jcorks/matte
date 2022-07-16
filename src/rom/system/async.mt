@@ -75,18 +75,18 @@ return class(
         };
 
         @idToWorker::(id) {
-            return listen(to:::{
+            return [::]{
                 [0, workers.length]->for(do:::(i){
                     if (workers[i].id == id) send(message:workers[i]);
                 });
 
                 // is parent
-            });
+            };
         };
 
         // message checking
         @checkMessages::{
-            listen(to:::{
+            [::]{
                 forever(do:::{
                     @nextm = _workernextmessage();
                     when(nextm != empty) ::<={
@@ -97,7 +97,7 @@ return class(
                     };
                     send();
                 });
-            });
+            };
         };
         
         // state checking 
@@ -154,13 +154,13 @@ return class(
                             };
                         });
                         
-                        listen(to:::{
+                        [::]{
                             forever(do:::{
                                 Time.sleep(milliseconds:50);
                                 asinstance.update();
                                 when(!waiting) send();
                             });
-                        });
+                        };
                         asinstance.update();
                     },
 

@@ -120,7 +120,7 @@
     decode ::(string) {
         
         @:trimSpace::(substr) {
-            listen(to:::{
+            [::]{
                 forever(do:::{
                     match(substr.peek(index:0)) {
                         // found whitespace. remove it and look again
@@ -130,7 +130,7 @@
                         default:send() // end loop
                     };   
                 });
-            });
+            };
         };
         @:iter = IterString.new(src:string);
         @decodeValue::{
@@ -143,7 +143,7 @@
                     // skip '"'
                     iter.skip();
                     @rawstr = '';
-                    listen(to:::{
+                    [::] {
                         forever(do:::{
                             match(iter.peek(index:0)) {
                                 // escape sequence
@@ -201,7 +201,7 @@
                                 }
                             };
                         });
-                    });
+                    };
                     return rawstr;
                 },
                 
@@ -254,7 +254,7 @@
                 // number
                 ('.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-'): ::<={
                     @rawnumstr = iter.next;
-                    listen(to:::{
+                    [::] {
                         forever(do:::{
                             return match(iter.peek(index:0)) {
                                 ('0', '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'E'): ::<={
@@ -265,7 +265,7 @@
                                 default: send()
                             };       
                         });
-                    });
+                    };
 
                     return Number.parse(string:rawnumstr);
                 },
@@ -285,7 +285,7 @@
                     @out = {};
 
                     // loop over "key": value,
-                    listen(to:::{
+                    [::] {
                         forever(do:::{
 
                             // get string
@@ -317,7 +317,7 @@
                                 }
                             };
                         });
-                    });
+                    };
 
                     return out;
                 },
@@ -338,7 +338,7 @@
                     @arr = [];
 
                     // loop over value,
-                    listen(to:::{
+                    [::]{
                         forever(do:::{
                             // get value
                             @res =  decodeValue(); 
@@ -360,7 +360,7 @@
                                 }
                             };
                         });
-                    });
+                    };
 
                     return arr;
                 },

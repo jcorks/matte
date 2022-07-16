@@ -1,5 +1,3 @@
-
-
 @class ::(define, name, inherits, statics) {
 
     @staticNames = {};

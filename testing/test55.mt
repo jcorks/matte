@@ -51,12 +51,15 @@
 
 
 @result = 'Unchanged';
-listen(to:::{
+[::]{
     result = a % b;
     result = '' + (a - b * 2);
-}, onError:::(message) {
+} : {
 
-});
+    onError:::(message) {
+
+    }
+};
 
 
 return result;

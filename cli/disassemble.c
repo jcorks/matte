@@ -205,9 +205,6 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                     case MATTE_EXT_CALL_SEND:
                         fprintf(fout, "send\n");
                         break;
-                    case MATTE_EXT_CALL_LISTEN:
-                        fprintf(fout, "print\n");
-                        break;
                     case MATTE_EXT_CALL_ERROR:
                         fprintf(fout, "error\n");
                         break;
@@ -251,6 +248,9 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
                 break;
             case MATTE_OPCODE_RET:
                 fprintf(fout, "ret\n");
+                break;            
+            case MATTE_OPCODE_LST:
+                fprintf(fout, "lst\n");
                 break;            
 
             case MATTE_OPCODE_SKP:          

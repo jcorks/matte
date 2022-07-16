@@ -15,11 +15,11 @@
 
 @out = '';
 
-listen(to:::{
+[::]{
     100->remove();
-}, onError:::(message){
+}: {onError:::(message){
     out = out + 'noobj';
-});
+}};
 
 
 testObj->remove(key:'hello');

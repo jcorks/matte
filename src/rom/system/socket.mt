@@ -301,7 +301,7 @@
 
                         // emit update disconnects or update.
                         @i = 0;
-                        listen(to:::{
+                        [::] {
                             forever(do:::{
                                 when(i == Object.length(of:clients)) send();
                                 
@@ -315,7 +315,7 @@
                                     Object.removeKey(from:clientIndex, key:idKey);                                
                                 };
                             });
-                        });                  
+                        };                  
                     }
                 };
             }
@@ -399,12 +399,14 @@
                         when(socket == empty) empty;
                         // raw mode
                         @err;
-                        listen(to:::{
+                        [::]{
                             _socket_client_update(a:socket);
-                        }, onError:::(message) {
-                            @:er = message;
-                            err = er;
-                        });
+                        } : { 
+                            onError:::(message) {
+                                @:er = message.detail;
+                                err = er;
+                            }
+                        };
 
                         @oldstate = state;
                         @newstate = _socket_client_get_state(a:socket);
@@ -453,11 +455,13 @@
                             mode = 0;
                         };
                         
-                        listen(to:::{
+                        [::] {
                             socket = _socket_client_create(a:address, b:port, c:0, d:mode, e:tls);
-                        }, onError:::(message){
-                            this.emit(event:'onConnectFail', detail:message.detail);
-                        });
+                        } : {
+                            onError:::(message){
+                                this.emit(event:'onConnectFail', detail:message.detail);
+                            }
+                        };
                     },
                     
                     disconnect::{

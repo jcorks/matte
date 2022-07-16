@@ -276,6 +276,17 @@ static void function_to_stub(FILE * f, uint32_t id) {
                     exit(1);
                 }               
             } else if (
+                oc0 == 'l' &&
+                oc1 == 's' &&
+                oc2 == 't'
+            ) {
+                inst->opcode = MATTE_OPCODE_LST;
+                if (sscanf(line, "%"SCNu32" nnm", &inst->line) != 1) {
+                    printf("ERROR on line %d: unrecognized nnm format. Syntax: [line] lst\n", lineN);
+                    exit(1);
+                }               
+            
+            } else if (
                 oc0 == 'n' &&
                 oc1 == 'b' &&
                 oc2 == 'l'
@@ -517,8 +528,6 @@ static void function_to_stub(FILE * f, uint32_t id) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_PRINT;
                 } else if (!strcmp("send", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_SEND;
-                } else if (!strcmp("listen", m)) {
-                    *(uint64_t*)inst->data = MATTE_EXT_CALL_LISTEN;
                 } else if (!strcmp("error", m)) {
                     *(uint64_t*)inst->data = MATTE_EXT_CALL_ERROR;
                 } else if (!strcmp("getExternalFunction", m)) {

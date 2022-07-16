@@ -12,7 +12,7 @@
 
 
 @findPos =::(grid, len) {
-    return listen(to:::{
+    return [::]{
         [0, len]->for(do:::(y){
             [0, len]->for(do:::(x) {
                 if (grid[y][x] == 1) ::<={
@@ -23,7 +23,7 @@
                 };
             });
         });
-    });
+    };
 };    
 
 @res = findPos(grid:a, len:5);

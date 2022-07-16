@@ -29,7 +29,7 @@
                 @: ev = events[event];
                 when(ev == empty) error(message:"Cannot emit event for non-existent event "+ev);
                 
-                @continue = listen(to:::{
+                @continue = [::] {
                     when(ev.handlerCount == 0) true;
                     [ev.handlerCount-1, 0]->for(do:::(i) {
                         // when handlers return false, we no longer propogate.           
@@ -37,7 +37,7 @@
                     });
                     
                     return true;
-                });
+                };
                 
                 // cancelled event. Don't call main handler or hooks.
                 when(continue == false) false;
@@ -96,7 +96,7 @@
             uninstallHook::(event => String, hook) {
                 @: ev = events[event];
                 when(ev == empty) error(message:"Cannot uninstall hook for non-existent event "+ev);
-                listen(to:::{
+                [::] {
                     [0, ev.hookCount]->for(do:::(i) {
                         if (ev.hooks[i] == hook) ::<= { 
                             ev.hooks->remove(key:i);
@@ -104,13 +104,13 @@
                             send();
                         };
                     });
-                });
+                };
             },
             
             uninstallHandler::(event => String, handler) {
                 @: ev = events[event];
                 when(ev == empty) error(data:"Cannot uninstall handler for non-existent event "+ev);
-                listen(to:::{
+                [::]{
                     [0, ev.handlerCount]->for(do:::(i) {
                         if (ev.handlers[i] == handler) ::<= { 
                             ev.handlers->remove(key:i);
@@ -118,7 +118,7 @@
                             send();
                         };
                     });
-                });
+                };
             }
             
             

@@ -5,7 +5,7 @@
 
 @errMessage = 0;
 @iterCheck = 0;
-@n100 = listen(to:::{    
+@n100 = [::]{    
 
     [0, 100]->for(do:::(i) {
         errMessage = errMessage + i;        
@@ -16,9 +16,11 @@
     });
 
     return 100;
-}, onError: ::(message){
-    errMessage = message.detail;
-});
+} : {
+    onError:::(message){
+        errMessage = message.detail;
+    }
+};
 return ''+n100 + errMessage + iterCheck;
 
 

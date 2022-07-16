@@ -3,32 +3,31 @@
 // Errors
 
 @errMessage;
-([
-    ::{
+[::]{
         error(detail:'Testing');
-    }
-]): {
+} : {
     onError:::(message) {
         errMessage = message.detail;
     }
 };
 
-([::{error();}]) : {
+[::]{
+    error();
+} : {
     onError:::(message) {
         errMessage = errMessage + String(from:message.detail == empty);
     }
 };
 
 
-listen(to:
-    ::{
-        listen();
-    }, 
-    
+[::] {
+        @:a = 2;
+        a();
+} : {  
     onError:::(message){
         errMessage = errMessage + 'failed!';
     }
-);
+};
 
 
 return errMessage;

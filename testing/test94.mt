@@ -6,7 +6,7 @@ return 0;
     print(message:'' + index + '@ ' + (getExternalFunction(name:"system_getticks")() - from));
 };
 
-listen(to:::{
+[::]{
     forever(do:::{
         @b = a/100;
         a+=1;
@@ -19,4 +19,4 @@ listen(to:::{
         
         return true;
     });
-});
+};

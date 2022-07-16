@@ -399,6 +399,7 @@ static void destroy_token(
     if (t->ttype == MATTE_TOKEN_EXPRESSION_GROUP_BEGIN ||
         t->ttype == MATTE_TOKEN_EXTERNAL_GATE ||
         t->ttype == MATTE_TOKEN_EXTERNAL_MATCH ||
+        t->ttype == MATTE_TOKEN_FUNCTION_LISTEN ||
         token_is_assignment_derived(t->ttype)) {
         matte_array_destroy((matteArray_t*)t->text);
     } else if (t->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
@@ -1257,15 +1258,12 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, ":::");
         break;  
       }
-      case MATTE_TOKEN_LISTEN_START: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "([");
-        break;
-      }
-      case MATTE_TOKEN_LISTEN_END: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "])");
-        break;
-      }
 
+      case MATTE_TOKEN_FUNCTION_LISTEN: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "[::]");
+        break;
+      }
+      
       case MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
         break;
@@ -1998,6 +1996,7 @@ static void ff_skip_inner_function(matteToken_t ** t) {
             *t = iter->next;
             return;
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR:
+          case MATTE_TOKEN_FUNCTION_LISTEN:
             ff_skip_inner_function(&iter);
             break;
           case MATTE_TOKEN_FUNCTION_END:
@@ -2795,6 +2794,12 @@ static matteArray_t * compile_base_value(
         return inst;
       }
 
+      case MATTE_TOKEN_FUNCTION_LISTEN: { 
+        matteArray_t * arr = (matteArray_t *)iter->text; // the sneaky VI in action....
+        merge_instructions(inst, matte_array_clone(arr));
+        *src = iter->next;
+        return inst;
+      }
 
 
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_WITH_SPECIFIER:
@@ -3110,19 +3115,20 @@ static matteArray_t * compile_listen(
 ) {
     matteToken_t * iter = *src;
     matteArray_t * instOut = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
-    iter = iter->next; // skip ([
-    
-    matteArray_t * inst = compile_expression(g, block, functions, &iter);
-    if (!inst) {
-        goto L_FAIL;
-    }
-    merge_instructions(instOut, inst);
+    iter = iter->next; // skip [::]
 
-    iter = iter->next; // skip ])
+    matteFunctionBlock_t * b = compile_function_block(g, block, functions, &iter);
+    matte_array_push(functions, b);
+    write_instruction__nfn(
+        instOut, 
+        iter->line,
+        b->stubID
+    );
+
     if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {
         iter = iter->next; // skip :
 
-        inst = compile_expression(g, block, functions, &iter);
+        matteArray_t * inst = compile_expression(g, block, functions, &iter);
         if (!inst) {
             goto L_FAIL;
         }
@@ -3132,7 +3138,7 @@ static matteArray_t * compile_listen(
         write_instruction__nem(instOut, iter->line);
         write_instruction__lst(instOut, iter->line);
     }
-
+    *src = iter;
     return instOut;
 
   L_FAIL:
@@ -3402,7 +3408,7 @@ static matteArray_t * compile_expression(
             break;
           }
 
-          case MATTE_TOKEN_LISTEN_START: {
+          case MATTE_TOKEN_FUNCTION_LISTEN: {
             matteToken_t * start = iter;
             matteArray_t * inst = compile_listen(g, block, functions, &iter);
             if (!inst) {
@@ -4179,7 +4185,8 @@ static matteFunctionBlock_t * compile_function_block(
     // next find all locals and static strings
     matteToken_t * funcStart = iter;
     while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
-        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR ||  
+            iter->ttype == MATTE_TOKEN_FUNCTION_LISTEN) {
             ff_skip_inner_function(&iter);
         } else if (iter->ttype == MATTE_TOKEN_DECLARE ||
             iter->ttype == MATTE_TOKEN_DECLARE_CONST) {

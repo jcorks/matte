@@ -1,7 +1,7 @@
 @:class = import(module:'Matte.Core.Class');
 @:EventSystem = import(module:'Matte.Core.EventSystem');
 
-return listen(to:::{
+return [::] {
     // Sends a message to the parent async manager
     // arg0: (string) message to send to parent
     @:_workersendmessage = getExternalFunction(name:"__matte_::asyncworker_send_message");
@@ -25,19 +25,21 @@ return listen(to:::{
                 },
                 
                 update :: {
-                    listen(to:::{
+                    [::]{
                         forever(do:::{
                             @:msg = _workercheckmessage();        
                             when(msg == empty) send();
                             this.emit(event:'onNewMessage', detail:msg);
                         });
-                    });
+                    };
                 }
                 
             };
         }
     ).new();
-}, onError:::(detail) {
-    error(detail:'Only workers are allowed to import the AsyncWorker module.');
-});
+} : {
+    onError:::(message) {
+        error(detail:'Only workers are allowed to import the AsyncWorker module.');
+    }
+};
 
