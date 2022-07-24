@@ -484,7 +484,7 @@ static const char * opcode_to_str(int oc) {
 #define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_value_object_pop_lock(vm->heap, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
 #define STACK_POP_NORET() matte_value_object_pop_lock(vm->heap, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
 #define STACK_PEEK(__n__) (matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1-(__n__)))
-#define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__); matte_value_object_push_lock(vm->heap, __v__);
+#define STACK_PUSH(__v__) matte_value_object_push_lock(vm->heap, __v__); matte_array_push(frame->valueStack, __v__);
 
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
     matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
@@ -566,11 +566,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
 
           case MATTE_OPCODE_NNM: {
-            double val;
-            memcpy(&val, inst->data, sizeof(double));
-            matteValue_t v = matte_heap_new_value(vm->heap);
-            matte_value_into_number(vm->heap, &v, val);
+            matteValue_t v = {};
+            v.binID = MATTE_VALUE_TYPE_NUMBER;
+            v.value.number = *((double*)(inst->data));
             STACK_PUSH(v);
+
             break;
           }
           case MATTE_OPCODE_NBL: {
@@ -581,8 +581,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
 
           case MATTE_OPCODE_NST: {
-            uint32_t stringID;
-            memcpy(&stringID, inst->data, sizeof(uint32_t));
+            uint32_t stringID = *((uint32_t*)inst->data);
 
             matteValue_t v = matte_bytecode_stub_get_string(frame->stub, stringID);
             if (!v.binID) {
@@ -1136,8 +1135,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                             a
                         );
                         STACK_POP_NORET();
-                        matte_heap_recycle(vm->heap, a);
                         STACK_PUSH(v);
+                        matte_heap_recycle(vm->heap, a);
                     }
                     break;                
                 }
@@ -1170,6 +1169,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             goto RELOOP;
         }
     }
+    
 
     // top of stack is output
     if (matte_array_get_size(frame->valueStack)) {
@@ -1183,6 +1183,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         }
         matte_value_object_pop_lock(vm->heap, matte_array_at(frame->valueStack, matteValue_t, len-1));
         matte_array_set_size(frame->valueStack, 0);
+
+        if (vm->pendingCatchable) 
+            return matte_heap_new_value(vm->heap);
+
         return output; // ok since not removed from normal value stack stuff
     } else {
         return matte_heap_new_value(vm->heap);
