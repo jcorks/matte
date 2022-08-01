@@ -242,6 +242,61 @@ static int import__path_canonicalize(matteString_t * path) {
 }
 
 #elif defined __WIN32__
+#include <windows.h>
+#include <direct.h>
+static matteString_t * import__getcwd_generic() {
+    char * path = malloc(PATH_MAX+1);
+    path[0] = 0;
+    _getcwd(path, PATH_MAX);
+    matteString_t * st = matte_string_create_from_c_str(path);
+    free(path);
+    return st;
+}
+
+static void import__path_append(matteString_t * path, const matteString_t * item) {
+    matte_string_concat_printf(path, "\\");
+    matte_string_concat(path, item);
+}
+
+static matteString_t * import__get_directory(const matteString_t * path) {
+    int i;
+    for(i = matte_string_get_length(path)-1; i >= 0; i--) {
+        if (matte_string_get_char(path, i) == '\\') {
+            return matte_string_clone(matte_string_get_substr(path, 0, i));
+        }
+    }
+    return matte_string_create();
+}
+
+static int import__is_canonical(const matteString_t * path) {
+    char * pathc = strdup(matte_string_get_c_str(path));
+    char * pathc_real = malloc(PATH_MAX+1);
+    pathc_real[0] = 0;
+    GetFullPathNameA(pathc, PATH_MAX, pathc_real, NULL);
+
+    int result = !strcmp(pathc, pathc_real);
+    free(pathc_real);
+    free(pathc);
+    return result;
+}
+
+static int import__path_canonicalize(matteString_t * path) {
+    char * pathc = strdup(matte_string_get_c_str(path));
+    char * pathc_real = malloc(PATH_MAX+1);
+    pathc_real[0] = 0;
+    int result;
+    if (GetFullPathNameA(pathc, PATH_MAX, pathc_real, NULL)) {
+        matte_string_clear(path);
+        matte_string_concat_printf(path, pathc_real);
+        result = 1;
+    } else {
+        result = 0;
+    }
+
+    free(pathc_real);
+    free(pathc);
+    return result;
+}
 
 #endif
 #else

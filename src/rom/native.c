@@ -13,6 +13,29 @@
 #ifdef __WIN32__
 #define MATTE_IS_WINDOWS
 
+//////////// put the includes needed for all of them here.
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <errno.h>
+#include <time.h> 
+#include <pthread.h>
+#include <windows.h>
+
+
+////////////
+#include "./system/winapi/shared.c"
+#include "./system/winapi/memorybuffer.c"
+#include "./system/winapi/consoleio.c"
+#include "./system/winapi/filesystem.c"
+#include "./system/winapi/socketio.c"
+#include "./system/winapi/time.c"
+#include "./system/winapi/utility.c"
+#include "./system/winapi/async.c"
+
+
 
 
 
