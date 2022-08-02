@@ -70,41 +70,47 @@ matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
     matte_value_into_new_object_ref(heap, &v);
 
     uint32_t i = 0;
-    matteString_t * allargs = matte_string_create();
-    for(i = 0; i < count; ++i) {
-        matte_string_concat_printf(allargs, "%s ", args[i]);        
-    }
+    uint32_t n = 0;
 
-    uint32_t len = matte_string_get_length(allargs);
+    uint32_t len;
     matteString_t * iter = matte_string_create();
     matteString_t * key = NULL;
-    for(i = 0; i < len; ++i) {
-        switch(matte_string_get_char(allargs, i)) {
-          case ' ':
-          case '\t':
-          case '\n':
-          case ':':
-            if (matte_string_get_length(iter)) {
-                if (!key) {
-                    key = iter;
-                    iter = matte_string_create();                    
-                } else {
-                    matteValue_t heapKey = matte_heap_new_value(heap);
-                    matteValue_t heapVal = matte_heap_new_value(heap);
+    int isName = 1;
+    for(n = 0; n < count; ++n) {
+        matteString_t * str = matte_string_create();
+        matte_string_concat_printf(str, "%s", args[n]);
+        len = matte_string_get_length(str);
 
-                    matte_value_into_string(heap, &heapKey, key);
-                    matte_value_into_string(heap, &heapVal, iter);
-
-                    matte_value_object_set(heap, v, heapKey, heapVal, 1);
-                    matte_string_destroy(key);
-                    matte_string_clear(iter);
-                    key = NULL;
+        for(i = 0; i < len; ++i) {
+          switch(matte_string_get_char(str, i)) {
+            case ':':
+                if (isName == 1 && matte_string_get_length(iter)) {
+                    isName = 0;
+                    if (!key) {
+                        key = iter;
+                        iter = matte_string_create();                    
+                    }                    break;
                 }
+            default:
+                matte_string_append_char(iter, matte_string_get_char(str, i));
             }
-            break;
-          default:
-            matte_string_append_char(iter, matte_string_get_char(allargs, i));
         }
+
+        if (isName == 0) {
+            matteValue_t heapKey = matte_heap_new_value(heap);
+            matteValue_t heapVal = matte_heap_new_value(heap);
+
+            matte_value_into_string(heap, &heapKey, key);
+            matte_value_into_string(heap, &heapVal, iter);
+
+            matte_value_object_set(heap, v, heapKey, heapVal, 1);
+            matte_string_destroy(key);
+            matte_string_clear(iter);
+            key = NULL;
+            isName = 1;
+        }
+        matte_string_destroy(str);
+
     }
     return v;
 }
