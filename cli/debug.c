@@ -113,6 +113,9 @@ static void printArea() {
     fflush(stdout);
 }
 
+static char ** INPUT_ARGV;
+static int  INPUT_ARGC;
+
 static int execCommand(matteVM_t * vm) {
     static char command[MESSAGE_LEN_MAX+1];
     char * res = prompt();
@@ -147,7 +150,7 @@ static int execCommand(matteVM_t * vm) {
                !strcmp(command, "r")) {
         if (!started) {
             started = 1;
-            matte_vm_run_fileid(vm, DEBUG_FILEID, parse_parameter_line(vm, res + strlen(command)), DEBUG_FILE);
+            matte_vm_run_fileid(vm, DEBUG_FILEID, parse_parameters(vm, INPUT_ARGV+3, INPUT_ARGC-3), DEBUG_FILE);
 
 
             printf("Execution complete.\n");
@@ -354,6 +357,8 @@ static uint8_t * onImport(
 
 
 int matte_debug(const char * input, char ** argv, int argc) {
+    INPUT_ARGV = argv;
+    INPUT_ARGC = argc;
     matte_t * m = matte_create();
     vm = matte_get_vm(m);
     DEBUG_FILE = matte_string_clone(MATTE_VM_STR_CAST(vm, input));

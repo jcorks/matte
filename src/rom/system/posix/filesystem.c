@@ -244,6 +244,45 @@ MATTE_EXT_FN(matte_filesystem__readbytes) {
 }
 
 
+MATTE_EXT_FN(matte_filesystem__remove) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, args[0]));
+    if (!str) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "readBytes() requires the first argument to be string coercible."));
+        return matte_heap_new_value(heap);
+    }
+
+    if (remove(matte_string_get_c_str(str)) != 0) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "remove() could not remove file."));
+    }
+    return matte_heap_new_value(heap);
+}
+
+
+MATTE_EXT_FN(matte_filesystem__getfullpath) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, args[0]));
+    if (!str) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "readBytes() requires the first argument to be string coercible."));
+        return matte_heap_new_value(heap);
+    }
+
+    char * canon = realpath(matte_string_get_c_str(str), NULL);
+    if (canon == NULL) {
+        free(canon);
+        return matte_heap_new_value(heap);
+    }
+    matteString_t * out = matte_string_create();
+    matte_string_concat_printf(out, "%s", canon);
+    free(canon);
+    matteValue_t outV = matte_heap_new_value(heap);
+    matte_value_into_string(heap, &outV, out);
+    return outV;
+}
+
+
 MATTE_EXT_FN(matte_filesystem__writestring) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
 
@@ -340,6 +379,8 @@ static void matte_system__filesystem(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_readbytes"), 1, matte_filesystem__readbytes, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writestring"), 2, matte_filesystem__writestring, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writebytes"), 2, matte_filesystem__writebytes, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_remove"), 1, matte_filesystem__remove, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_getfullpath"), 1, matte_filesystem__getfullpath, NULL);
     
     matte_vm_add_shutdown_callback(vm, matte_system__filesystem_cleanup, dirfiles);
 }

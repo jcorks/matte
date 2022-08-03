@@ -14,6 +14,8 @@
 @_readString = getExternalFunction(name:"__matte_::filesystem_readstring");
 @_writeString = getExternalFunction(name:"__matte_::filesystem_writestring");
 @_writeBytes = getExternalFunction(name:"__matte_::filesystem_writebytes");
+@_remove = getExternalFunction(name:"__matte_::filesystem_remove");
+@_getFullPath = getExternalFunction(name:"__matte_::filesystem_getfullpath");
 
 return class(
     name : 'Matte.System.Filesystem',
@@ -60,7 +62,12 @@ return class(
                 }
             },
             
-            
+            // Gets the full path of the given partial or full path
+            // from the cwd. 
+            // If no such path exists, empty is returned.
+            getFullPath ::(path) {
+                return _getFullPath(a:path);
+            },
 
             ///// file IO
 
@@ -88,6 +95,11 @@ return class(
             // on failure, throws an error.
             writeBytes ::(path, bytes => MemoryBuffer.type) {
                 _writeBytes(a:path, b:bytes.handle);
+            },
+            
+            // Attempts to remove the file at the given path.
+            remove ::(path) {
+                _remove(a:path);
             }
         
         };

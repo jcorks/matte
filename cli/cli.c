@@ -258,7 +258,7 @@ int main(int argc, char ** args) {
         );
         return 0;        
     } else if (!strcmp(tool, "debug")) {
-        if (argc != 3) {
+        if (argc < 3) {
             printf("Syntax: matte debug [file]\n");
             exit(1);
         }
