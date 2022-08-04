@@ -52,7 +52,13 @@
             },
             
             substr ::(from, to) {
-                str->substr(from, to);
+                return str->substr(from, to);
+            },
+            
+            nextString ::(count) {
+                @:out = str->substr(from:iter, to:iter+count);
+                iter += count;
+                return out;
             },
             
             next : {
@@ -142,14 +148,16 @@
                 ('\"'): ::<={
                     // skip '"'
                     iter.skip();
-                    @rawstr = '';
+                    @count = 0;
+                    @rawstr;
                     [::] {
                         forever(do:::{
-                            match(iter.peek(index:0)) {
+                            match(iter.peek(index:count)) {
                                 // escape sequence
-                                ('\\'): ::{
-                                    iter.skip();
-                                    match(iter.next) {
+                                ('\\'): ::<= {
+                                    count+=1;
+                                    match(iter.peek(index:count)) {
+                                        /*
                                         ('n'): ::<={
                                             rawstr = rawstr + '\n';
                                         },
@@ -162,9 +170,11 @@
                                         ('b'): ::<={
                                             rawstr = rawstr + '\b';
                                         },
+                                        */
                                         ('"'): ::<={
-                                            rawstr = rawstr + '"';
-                                        },
+                                            count += 1;
+                                        }
+                                        /*
                                         ('u'): ::<={
                                             @token = ' ';
                                             token = token->setCharCodeAt(
@@ -182,22 +192,38 @@
                                             iter.skip();
                                             iter.skip();
                                         },
+                                        
                                         ('\\'): ::<={
                                             rawstr = rawstr + '\\';
                                         },
 
                                         default: error(data:'Unknown escape sequence.')
+                                        */
                                     };
-                                }(),
+                                },
 
                                 // end of string 
                                 ('"'): ::<={
+                                    //iter.skip();
+                                    if (count == 0) ::<= {
+                                        rawstr = '';
+                                    } else ::<= {
+                                        rawstr = iter.nextString(count:count-1);
+                                        if (rawstr->contains(key:'\\')) ::<= {
+                                            rawstr = rawstr->replace(key:'\\n', with:'\n');
+                                            rawstr = rawstr->replace(key:'\\b', with:'\b');
+                                            rawstr = rawstr->replace(key:'\\r', with:'\r');
+                                            rawstr = rawstr->replace(key:'\\t', with:'\t');
+                                            rawstr = rawstr->replace(key:'\\\\', with:'\\');
+                                        };
+                                        iter.skip();
+                                    };
                                     iter.skip();
                                     send();
                                 },
 
                                 default: ::<={
-                                    rawstr = rawstr + iter.next;
+                                    count += 1;
                                 }
                             };
                         });

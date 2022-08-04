@@ -367,7 +367,6 @@ static matteString_t * consume_variable_name(uint8_t ** src) {
     return varname;
 }
 
-#define MAX_ASCII_BUFLEN 256
 
 struct matteTokenizer_t {
     uint8_t * backup;
@@ -376,7 +375,6 @@ struct matteTokenizer_t {
     uint32_t line;
     uint32_t character;
 
-    char asciiBuffer[MAX_ASCII_BUFLEN+1];
 };
 
 static matteToken_t * new_token(
@@ -702,7 +700,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 return NULL;            
                 
               case '\\': // escape character 
-                switch(utf8_next_char(&t->iter)) {
+                c = utf8_next_char(&t->iter);
+                switch(c) {
                   case 'n':
                     matte_string_append_char(text, '\n');
                     break;
@@ -726,9 +725,9 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                     break;
 
                   default:
-                    t->iter = t->backup;
-                    matte_string_destroy(text);
-                    return NULL;            
+                    matte_string_append_char(text, '\\');
+                    matte_string_append_char(text, c);
+                    break;            
                   
                 }    
                 break;           
@@ -1460,7 +1459,7 @@ matteSyntaxGraphWalker_t * matte_syntax_graph_walker_create(
     void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata),
     void * userdata
 ) {
-    matteSyntaxGraphWalker_t * out = calloc(1, sizeof(matteTokenizer_t));
+    matteSyntaxGraphWalker_t * out = calloc(1, sizeof(matteSyntaxGraphWalker_t));
     out->tokenizer = t;
     out->first = out->last = NULL;
     out->onError = onError;

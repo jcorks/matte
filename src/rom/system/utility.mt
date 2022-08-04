@@ -22,7 +22,7 @@ return class(
 
             /// Execute command in the environment shell
             run ::(command) {
-                _run(a:command);
+                return _run(a:command);
             }
         };
     }

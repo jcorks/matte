@@ -2855,7 +2855,7 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
                 matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "foreach attribute MUST return an object."));
                 return;
             } else {
-                m = matte_bin_fetch(heap->functionHeap, v.value.id);
+                m = matte_bin_fetch(heap->tableHeap, v.value.id);
             }
         }
     }
