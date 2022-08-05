@@ -30,7 +30,7 @@
     };
 };
 @:cleanstring ::(in) {
-    return in->replace(key:'"', with:'\\"');
+    return in->replace(key:'\\', with:'\\\\')->replace(key:'"', with:'\\"');
 }; 
 
 
@@ -152,26 +152,14 @@
                     @rawstr;
                     [::] {
                         forever(do:::{
+
                             match(iter.peek(index:count)) {
                                 // escape sequence
                                 ('\\'): ::<= {
                                     count+=1;
                                     match(iter.peek(index:count)) {
-                                        /*
-                                        ('n'): ::<={
-                                            rawstr = rawstr + '\n';
-                                        },
-                                        ('r'): ::<={
-                                            rawstr = rawstr + '\r';
-                                        },
-                                        ('t'): ::<={
-                                            rawstr = rawstr + '\t';
-                                        },
-                                        ('b'): ::<={
-                                            rawstr = rawstr + '\b';
-                                        },
-                                        */
-                                        ('"'): ::<={
+
+                                        ('"','\\'): ::<={
                                             count += 1;
                                         }
                                         /*
@@ -192,12 +180,6 @@
                                             iter.skip();
                                             iter.skip();
                                         },
-                                        
-                                        ('\\'): ::<={
-                                            rawstr = rawstr + '\\';
-                                        },
-
-                                        default: error(data:'Unknown escape sequence.')
                                         */
                                     };
                                 },
