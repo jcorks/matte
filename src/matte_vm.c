@@ -370,12 +370,7 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
                 return catchable;
             }
         }
-        
-        
-        
-        
-        
-        
+        return matte_heap_new_value(vm->heap);
         
     } else {
         // OK, already new from vm_call
@@ -1269,7 +1264,6 @@ static void vm_add_built_in(
 #include "MATTE_EXT_NUMBER"
 #include "MATTE_EXT_OBJECT"
 #include "MATTE_EXT_STRING"
-
 matteVM_t * matte_vm_create() {
     matteVM_t * vm = calloc(1, sizeof(matteVM_t));
 
