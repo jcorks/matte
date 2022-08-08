@@ -2899,7 +2899,7 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "findIndex")) return MATTE_QUERY__FINDINDEX;
     if (!strcmp(st, "isa")) return MATTE_QUERY__ISA;
     if (!strcmp(st, "map")) return MATTE_QUERY__MAP;
-    if (!strcmp(st, "filter")) return MATTE_QUERY__REDUCE;
+    if (!strcmp(st, "reduce")) return MATTE_QUERY__REDUCE;
     if (!strcmp(st, "any")) return MATTE_QUERY__ANY;
     if (!strcmp(st, "all")) return MATTE_QUERY__ALL;
     if (!strcmp(st, "for")) return MATTE_QUERY__FOR;
