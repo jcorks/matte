@@ -270,7 +270,6 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
     if (from >= m->size) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not set value in buffer: index out of range."));
         return matte_heap_new_value(heap);                   
-
     }
 
     m->buffer[from] = val;
@@ -279,8 +278,115 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
     return matte_heap_new_value(heap);
 }
 
+MATTE_EXT_FN(matte_ext__memory_buffer__read_primitive) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteValue_t a = args[0];
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
+    uint64_t offset = matte_value_as_number(heap, args[1]);
 
 
+    int byteSize = 1;
+    int primitive = matte_value_as_number(heap, args[2]);
+
+    switch(primitive) {
+      case 4:
+      case 0: byteSize = 1; break;
+      
+      case 1:
+      case 5: byteSize = 2; break;
+      
+      case 2:
+      case 6:
+      case 8: byteSize = 4; break;
+      
+      case 3:
+      case 7:
+      case 9: byteSize = 8; break;
+    };
+
+    if (offset+byteSize-1 >= m->size) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not read value: index out of range."));
+        return matte_heap_new_value(heap);                   
+    }
+
+
+
+
+    double val = 0; // best we can do. for now.
+    switch(primitive) {
+      case 0: val = (double)*((int8_t*) (m->buffer+offset)); break;
+      case 1: val = (double)*((int16_t*)(m->buffer+offset)); break;
+      case 2: val = (double)*((int32_t*)(m->buffer+offset)); break;
+      case 3: val = (double)*((int64_t*)(m->buffer+offset)); break;
+      case 4: val = (double)*((uint8_t*) (m->buffer+offset)); break;
+      case 5: val = (double)*((uint16_t*) (m->buffer+offset)); break;
+      case 6: val = (double)*((uint32_t*) (m->buffer+offset)); break;
+      case 7: val = (double)*((uint64_t*) (m->buffer+offset)); break;
+      case 8: val = (double)*((float*) (m->buffer+offset)); break;
+      case 9: val = (double)*((double*) (m->buffer+offset)); break;
+
+
+    }
+
+
+    matteValue_t out = matte_heap_new_value(heap);
+    matte_value_into_number(heap, &out, val);
+    return out;    
+}
+
+
+
+MATTE_EXT_FN(matte_ext__memory_buffer__write_primitive) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteValue_t a = args[0];
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(heap, a);
+    uint64_t offset = matte_value_as_number(heap, args[1]);
+    
+
+    int byteSize = 1;
+    int primitive = matte_value_as_number(heap, args[2]);
+
+    switch(primitive) {
+      case 4:
+      case 0: byteSize = 1; break;
+      
+      case 1:
+      case 5: byteSize = 2; break;
+      
+      case 2:
+      case 6:
+      case 8: byteSize = 4; break;
+      
+      case 3:
+      case 7:
+      case 9: byteSize = 8; break;
+    };
+
+    if (offset+byteSize-1 >= m->size) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not read value: index out of range."));
+        return matte_heap_new_value(heap);                   
+    }
+
+
+
+
+    double val = matte_value_as_number(heap, args[3]); // best we can do. for now.
+    switch(primitive) {
+      case 0: *((int8_t*) (m->buffer+offset)) = val; break;
+      case 1: *((int16_t*)(m->buffer+offset)) = val; break;
+      case 2: *((int32_t*)(m->buffer+offset)) = val; break;
+      case 3: *((int64_t*)(m->buffer+offset)) = val; break;
+      case 4: *((uint8_t*) (m->buffer+offset)) = val; break;
+      case 5: *((uint16_t*) (m->buffer+offset)) = val; break;
+      case 6: *((uint32_t*) (m->buffer+offset)) = val; break;
+      case 7: *((uint64_t*) (m->buffer+offset)) = val; break;
+      case 8: *((float*) (m->buffer+offset)) = val; break;
+      case 9: *((double*) (m->buffer+offset)) = val; break;
+    }
+
+
+    return matte_heap_new_value(heap);
+}
 
 
 
@@ -303,6 +409,8 @@ static void matte_system__memorybuffer(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_get_index"),     2, matte_ext__memory_buffer__get_index,  NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_set_index"),     3, matte_ext__memory_buffer__set_index,  NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_as_utf8"),       1, matte_ext__memory_buffer__as_utf8,    NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_write_primitive"),4, matte_ext__memory_buffer__write_primitive,    NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_read_primitive"), 3, matte_ext__memory_buffer__read_primitive,    NULL);
 
  
 }

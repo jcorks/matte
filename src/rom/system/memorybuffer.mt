@@ -9,9 +9,12 @@
 @:_mbuffer_remove = getExternalFunction(name:"__matte_::mbuffer_remove");
 @:_mbuffer_get_size = getExternalFunction(name:"__matte_::mbuffer_get_size");
 @:_mbuffer_as_utf8 = getExternalFunction(name:"__matte_::mbuffer_as_utf8");
-
+@:_mbuffer_read_primitive = getExternalFunction(name:'__matte_::mbuffer_read_primitive');
+@:_mbuffer_write_primitive = getExternalFunction(name:'__matte_::mbuffer_write_primitive');
 @:_mbuffer_get_index = getExternalFunction(name:"__matte_::mbuffer_get_index");
 @:_mbuffer_set_index = getExternalFunction(name:"__matte_::mbuffer_set_index");
+
+
 
 @:class = import(module:'Matte.Core.Class');
 @MemoryBuffer = class(
@@ -91,6 +94,8 @@
                 );
             },
             
+            
+
             // Frees the buffer and empties this buffer.
             release ::{
                 checkReleased(t:this);
@@ -128,7 +133,147 @@
                     length = value;         
                     _mbuffer_set_size(a:buffer, b:value);       
                 }
-            }
+            },
+            
+            
+    /*
+    primitives : {
+        0 -> i8
+        1 -> i16,
+        2 -> i32,
+        3 -> i64,
+        4 -> u8
+        5 -> u16
+        6 -> u32
+        7 -> u64
+        8 -> float,
+        9 -> double
+    }
+    */
+            readI8::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:0);
+            },
+
+            readI16::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:1);
+            },
+
+            readI32::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:2);
+            },
+
+            readI64::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:3);
+            },
+
+
+
+            readU8::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:4);
+            },
+
+            readU16::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:5);
+            },
+
+            readU32::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:6);
+            },
+
+            readU64::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:7);
+            },
+
+
+            readFloat32::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:8);
+            },
+
+            readFloat64::(offset) {
+                checkReleased(t:this);
+                return _mbuffer_read_primitive(a:buffer, b:offset, c:9);
+            },
+
+
+
+
+
+
+            writeI8::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:0, d:value);
+            },
+
+            writeI16::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:1, d:value);
+            },
+
+            writeI32::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:2, d:value);
+            },
+
+            writeI64::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:3, d:value);
+            },
+
+
+
+            writeU8::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:4, d:value);
+            },
+
+            writeU16::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:5, d:value);
+            },
+
+            writeU32::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:6, d:value);
+            },
+
+            writeU64::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:7, d:value);
+            },
+
+
+            writeFloat32::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:8, d:value);
+            },
+
+            writeFloat64::(offset, value) {
+                checkReleased(t:this);
+                return _mbuffer_write_primitive(a:buffer, b:offset, c:9, d:value);
+            },
+
+
+
+
+                        
+            
+            
+            
+            
+            
+            
+            
+            
+            
         };
         
         this.attributes = {
