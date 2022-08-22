@@ -1855,13 +1855,13 @@ void matte_value_print(matteHeap_t * heap, matteValue_t v) {
         printf("  Heap Type: OBJECT\n");
         printf("  Heap ID:   %d\n", v.value.id);
         matteObject_t * m = matte_bin_fetch(VALUE_TO_HEAP(heap, v), v.value.id);            
-        printf("  refct  :   %d\n", m->refcount);
-
         if (!m) {
             printf("  (WARNING: this refers to an object fully recycled.)\n");
             fflush(stdout);
             return;
         }
+        printf("  refct  :   %d\n", (int)m->refcount);
+
         if (QUERY_STATE(m, OBJECT_STATE__RECYCLED)) {
             printf("  (WARNING: this object is currently dormant.)\n") ;          
         }
@@ -2346,6 +2346,10 @@ void matte_value_object_pop_lock_(matteHeap_t * heap, matteValue_t v) {
             remove_root_node(heap, &heap->roots, m);        
             matte_heap_recycle(heap, v);
             heap->gcRequestStrength++;
+            if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)) {
+                ENABLE_STATE(m, OBJECT_STATE__IS_QUESTIONABLE);
+                matte_array_push(heap->questionableList, m);
+            }
         }
     }     
     #ifdef MATTE_DEBUG__HEAP    
@@ -3512,7 +3516,7 @@ static void object_cleanup(matteHeap_t * h) {
                 matteValue_t vl;
                 vl.binID = QUERY_STATE(m, OBJECT_STATE__IS_FUNCTION) ? MATTE_VALUE_TYPE_FUNCTION : MATTE_VALUE_TYPE_OBJECT;
                 vl.value.id = m->heapID;
-                matte_heap_track_out(h, vl, "<removal>", 0);
+                matte_heap_track_done(h, vl);
             }
         #endif
 
@@ -3838,19 +3842,6 @@ matteValue_t matte_heap_track_in(matteHeap_t * heap, matteValue_t val, const cha
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
 
     // reference is complete. REMOVE!!!
-    if (inst && !inst->refCount) {
-        matte_array_destroy(inst->historyLines);
-        matte_array_destroy(inst->historyIncr);
-        uint32_t i;
-        uint32_t len = matte_array_get_size(inst->historyFiles);
-        for(i = 0; i < len; ++i) {
-            free(matte_array_at(inst->historyFiles, char *, i));
-        }
-        matte_array_destroy(inst->historyFiles);
-        matte_table_remove_by_uint(heap_track_info->values[val.binID], val.value.id);
-        free(inst);
-        inst = NULL;
-    } 
 
     if (!inst) {
         inst = calloc(sizeof(MatteHeapTrackInfo_Instance), 1);
@@ -3896,8 +3887,9 @@ void matte_heap_track_out(matteHeap_t * heap, matteValue_t val, const char * fil
     if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_FUNCTION ||
                        val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
+        
     if (!inst) {
-        assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to distroy it.");
+        return;
     }
 
     char * fdup = strdup(file);
@@ -3906,7 +3898,7 @@ void matte_heap_track_out(matteHeap_t * heap, matteValue_t val, const char * fil
     matte_array_push(inst->historyLines, line);
     matte_array_push(inst->historyIncr, t);
 
-
+    /*
     if (inst->refCount == 0) {
         printf("---REFCOUNT NEGATIVE DETECTED---\n");
         if (inst->refid.binID == MATTE_VALUE_TYPE_OBJECT || inst->refid.binID == MATTE_VALUE_TYPE_FUNCTION)
@@ -3928,14 +3920,45 @@ void matte_heap_track_out(matteHeap_t * heap, matteValue_t val, const char * fil
         printf("---REFCOUNT NEGATIVE DETECTED---\n");
         assert(!"Negative refcount means something is getting rid of a value after it has been disposed.");
     }
-
-    inst->refCount--;
+    */
+    if (inst->refCount) inst->refCount--;
     
         
-    if (inst->refCount == 0) {
-        heap_track_info->resolved++;
-        heap_track_info->unresolved--;
+
+}
+
+
+void matte_heap_track_done(matteHeap_t * heap, matteValue_t val) {
+    if (!heap_track_info) {
+        matte_heap_track_initialize();
     }
+    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_FUNCTION ||
+                       val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
+    if (!inst) {
+        assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to distroy it.");
+    }
+
+    char * fdup = strdup("<REMOVED>");
+    int t = 0;
+    matte_array_push(inst->historyFiles, fdup);
+    matte_array_push(inst->historyLines, t);
+    matte_array_push(inst->historyIncr, t);
+
+    inst->refCount = 0;
+
+    matte_array_destroy(inst->historyLines);
+    matte_array_destroy(inst->historyIncr);
+    uint32_t i;
+    uint32_t len = matte_array_get_size(inst->historyFiles);
+    for(i = 0; i < len; ++i) {
+        free(matte_array_at(inst->historyFiles, char *, i));
+    }
+    matte_array_destroy(inst->historyFiles);
+    matte_table_remove_by_uint(heap_track_info->values[val.binID], val.value.id);
+    free(inst);
+    inst = NULL;
+
 
 }
 
@@ -3943,7 +3966,11 @@ void matte_heap_track_out(matteHeap_t * heap, matteValue_t val, const char * fil
 // 
 int matte_heap_report(matteHeap_t * heap) {
     if (!heap_track_info) return 0;
-    if (!heap_track_info->unresolved) return 0;
+    
+    if (matte_table_is_empty(heap_track_info->values[MATTE_VALUE_TYPE_FUNCTION]) &&
+        matte_table_is_empty(heap_track_info->values[MATTE_VALUE_TYPE_OBJECT]))   return 0;
+    
+    
 
     printf("+---- Matte Heap Value Tracker ----+\n");
     printf("|     UNFREED VALUES DETECTED      |\n");
