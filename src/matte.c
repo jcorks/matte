@@ -3,6 +3,7 @@
 #include <stdlib.h>
 struct matte_t {
     matteVM_t * vm;
+    void * userdata;
 };
 
 
@@ -20,4 +21,12 @@ matteVM_t * matte_get_vm(matte_t * m) {
 void matte_destroy(matte_t * m) {
     matte_vm_destroy(m->vm);
     free(m);
+}
+
+void * matte_get_user_data(matte_t * m) {
+    return m->userdata;
+}
+
+void matte_set_user_data(matte_t * m, void * d) {
+    m->userdata = d;
 }

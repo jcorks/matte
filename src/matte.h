@@ -12,5 +12,9 @@ void matte_destroy(matte_t *);
 
 matteVM_t * matte_get_vm(matte_t *);
 
+void matte_set_user_data(matte_t *, void *);
+
+void * matte_get_user_data(matte_t *);
+
 
 #endif
