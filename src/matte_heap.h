@@ -81,6 +81,9 @@ void matte_value_into_new_object_array_ref(matteHeap_t *, matteValue_t * v, cons
 
 void matte_value_into_new_function_ref(matteHeap_t *, matteValue_t *, matteBytecodeStub_t *);
 
+// Like regular functions exept they are ignored in garbage collection.
+void matte_value_into_new_external_function_ref(matteHeap_t *, matteValue_t *, matteBytecodeStub_t *);
+
 void matte_value_into_new_typed_function_ref(matteHeap_t *, matteValue_t *, matteBytecodeStub_t * stub, const matteArray_t * args);
 
 

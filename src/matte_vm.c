@@ -1256,8 +1256,7 @@ static void vm_add_built_in(
     matte_array_at(vm->extStubs, matteBytecodeStub_t *, index) = out;
 
     matteValue_t func = {};
-    matte_value_into_new_function_ref(vm->heap, &func, out);
-    matte_value_object_push_lock(vm->heap, func);
+    matte_value_into_new_external_function_ref(vm->heap, &func, out);
     matte_array_at(vm->extFuncs, matteValue_t, index) = func;
 }
 
@@ -1531,6 +1530,8 @@ void matte_vm_destroy(matteVM_t * vm) {
     matte_array_destroy(vm->cleanupFunctionSets);
     if (vm->pendingCatchable) {
         matte_value_object_pop_lock(vm->heap, vm->catchable);
+        matte_heap_recycle(vm->heap, vm->catchable);
+        vm->catchable.binID = 0;
     }
     
 
@@ -1548,9 +1549,6 @@ void matte_vm_destroy(matteVM_t * vm) {
     }
 
     len = matte_array_get_size(vm->extFuncs);
-    for(i = 0; i < len; ++i) {
-        matte_value_object_pop_lock(vm->heap, matte_array_at(vm->extFuncs, matteValue_t, i));
-    }
     matte_array_destroy(vm->extFuncs);
 
 
@@ -2234,6 +2232,7 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     vm->catchable = info;
     vm->pendingCatchable = 1;
     vm->pendingCatchableIsError = 1;
+    matte_value_object_push_lock(vm->heap, info);
     if (!vm->stacksize) {
         vm->errorLastFile = 0;
         vm->errorLastLine = -1;
@@ -2247,8 +2246,6 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
                 vm->debugData                   
             );
         }
-        matte_heap_recycle(vm->heap, vm->catchable);
-        vm->catchable.binID = 0;
         return;
     }
 
@@ -2263,7 +2260,6 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     vm->errorLastFile = matte_bytecode_stub_get_file_id(framesrc.stub);
 
     
-    matte_value_object_push_lock(vm->heap, info);
     
     if (vm->debug) {
         matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, 0);

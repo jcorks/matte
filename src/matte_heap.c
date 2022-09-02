@@ -184,6 +184,9 @@ enum {
     
     // whether the object is suspected of being unreachable
     OBJECT_STATE__IS_QUESTIONABLE = 16,    
+    
+    // when external, is ignored for garbage collection
+    OBJECT_STATE__IS_ETERNAL = 32
 
 };
 
@@ -304,7 +307,7 @@ static void remove_root_node(matteHeap_t * h, matteObject_t ** root, matteObject
 }
 
 static void matte_object_mark_remove(matteHeap_t * heap, matteObject_t * m) {
-    if (!QUERY_STATE(m, OBJECT_STATE__TO_REMOVE) && !m->rootState && m->refcount == 0) {
+    if (!QUERY_STATE(m, OBJECT_STATE__TO_REMOVE) && !m->rootState && m->refcount == 0  && !QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
 
         matte_array_push(heap->toRemove, m);
         ENABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
@@ -427,7 +430,7 @@ static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteO
     if (!child->refcount) 
         matte_object_mark_remove(h, child);
 
-    if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
+    if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE) && !QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
         ENABLE_STATE(child, OBJECT_STATE__IS_QUESTIONABLE);       
         matte_array_push(h->questionableList, child);
     }
@@ -1650,7 +1653,7 @@ void matte_value_into_new_typed_function_ref_(matteHeap_t * heap, matteValue_t *
     d->function.types = matte_array_clone(args);
 }
 
-void matte_value_into_new_function_ref_(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub) {
+static void matte_value_into_new_function_ref_real(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub, int external) {
     matte_heap_recycle(heap, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_heap_bin_add_function(heap->bin);
@@ -1658,6 +1661,9 @@ void matte_value_into_new_function_ref_(matteHeap_t * heap, matteValue_t * v, ma
     d->function.stub = stub;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
 
+    if (external) {
+        ENABLE_STATE(d, OBJECT_STATE__IS_ETERNAL);
+    }
 
 
     // claim captures immediately.
@@ -1717,6 +1723,20 @@ void matte_value_into_new_function_ref_(matteHeap_t * heap, matteValue_t * v, ma
         }
     }
 }
+
+void matte_value_into_new_function_ref_(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub) {
+    matte_value_into_new_function_ref_real(
+        heap, v, stub, 0
+    );
+    
+}
+void matte_value_into_new_external_function_ref(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub) {
+    matte_value_into_new_function_ref_real(
+        heap, v, stub, 1
+    );
+}
+
+
 
 
 matteValue_t * matte_value_object_array_at_unsafe(matteHeap_t * heap, matteValue_t v, uint32_t index) {
@@ -2395,7 +2415,7 @@ void matte_value_object_pop_lock_(matteHeap_t * heap, matteValue_t v) {
         if (m->rootState == 0) {
             remove_root_node(heap, &heap->roots, m);        
             heap->gcRequestStrength++;
-            if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)) {
+            if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)  && !QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
                 ENABLE_STATE(m, OBJECT_STATE__IS_QUESTIONABLE);
                 matte_array_push(heap->questionableList, m);
             }
@@ -3296,7 +3316,7 @@ void matte_heap_recycle_(
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_heap_bin_fetch(heap->bin, v.value.id);
         if (!m) return;
-        if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)) {
+        if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)  && !QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
             ENABLE_STATE(m, OBJECT_STATE__IS_QUESTIONABLE);       
             matte_array_push(heap->questionableList, m);
         }
@@ -3387,7 +3407,6 @@ static void update_all_root_children(matteHeap_t * h, matteObject_t * root) {
         matte_array_set_size(h->checkRootsStack, size);
             
         
-        if (o->checkID == h->checkID && o != root) continue;        
         if (IS_FUNCTION_OBJECT(o)) {
             size+=update_all_root_children__push_value(h, o->function.origin);
             size+=update_all_root_children__push_value(h, o->function.origin_referrable);
@@ -3468,8 +3487,9 @@ static void check_cycles(matteHeap_t * h) {
     for(i = 0; i < matte_array_get_size(h->questionableList); ++i) {
         matteObject_t * o = matte_array_at(h->questionableList, matteObject_t *, i);
 
-        if (o->heapID == 3)
+        if (o->heapID == 17)
             printf("here\n");
+
 
         DISABLE_STATE(o, OBJECT_STATE__IS_QUESTIONABLE);
         if (QUERY_STATE(o, OBJECT_STATE__RECYCLED)) continue; // whoops, already dead
@@ -3503,8 +3523,10 @@ static void object_cleanup(matteHeap_t * h) {
     uint32_t i;
     for(i = 0; i < len; ++i) {        
         matteObject_t * m = matte_array_at(toRemove, matteObject_t *, i);
-        if (m->heapID == 3)
-            printf("here\n");
+        #ifdef MATTE_DEBUG__HEAP
+            assert(!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL));
+        #endif
+            
         DISABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
         if (m->checkID == h->checkID && QUERY_STATE(m, OBJECT_STATE__REACHES_ROOT)) continue;
         if (m->rootState) continue;
@@ -4006,8 +4028,11 @@ matteValue_t matte_heap_track_in(matteHeap_t * heap, matteValue_t val, const cha
     if (!heap_track_info) {
         matte_heap_track_initialize();
     }
-    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return val;
+    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return val;    
+    matteObject_t * o = matte_heap_bin_fetch(heap->bin, val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return val;
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
+
 
     // reference is complete. REMOVE!!!
 
@@ -4035,7 +4060,11 @@ void matte_heap_track_neutral(matteHeap_t * heap, matteValue_t val, const char *
         matte_heap_track_initialize();
     }
     if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    matteObject_t * o = matte_heap_bin_fetch(heap->bin, val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return;
+
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
+
 
     char * fdup = strdup(file);
     int t = 2;
@@ -4052,6 +4081,9 @@ void matte_heap_track_out(matteHeap_t * heap, matteValue_t val, const char * fil
         matte_heap_track_initialize();
     }
     if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    matteObject_t * o = matte_heap_bin_fetch(heap->bin, val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return;
+
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
         
     if (!inst) {
@@ -4099,6 +4131,9 @@ void matte_heap_track_done(matteHeap_t * heap, matteValue_t val) {
         matte_heap_track_initialize();
     }
     if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    matteObject_t * o = matte_heap_bin_fetch(heap->bin, val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return;
+
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
     if (!inst) {
         assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to distroy it.");

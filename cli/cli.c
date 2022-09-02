@@ -64,7 +64,7 @@ static void unhandledError(
 ) {
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteValue_t s = matte_value_object_access_string(matte_vm_get_heap(vm), val, MATTE_VM_STR_CAST(vm, "summary"));
-        if (s.binID) {
+        if (s.binID && s.binID == MATTE_VALUE_TYPE_STRING) {
             
             printf(
                 "Unhandled error: %s\n", 
@@ -75,12 +75,14 @@ static void unhandledError(
         }
     }
     
-    printf(
-        "Unhandled error (%s, line %d)\n", 
-        matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), 
-        lineNumber
-    );
-    fflush(stdout);
+    if (matte_vm_get_script_name_by_id(vm, file)) {
+        printf(
+            "Unhandled error (%s, line %d)\n", 
+            matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), 
+            lineNumber
+        );
+        fflush(stdout);
+    };
 }
 
 static void onDebugPrint(matteVM_t * vm, const matteString_t * str, void * ud) {
@@ -112,7 +114,7 @@ static void matte_js_run__unhandled_error(
 ) {
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteValue_t s = matte_value_object_access_string(matte_vm_get_heap(vm), val, MATTE_VM_STR_CAST(vm, "summary"));
-        if (s.binID) {
+        if (s.binID && s.binID == MATTE_VALUE_TYPE_STRING) {
             
             matte_string_concat_printf(
                 matte_js_run__stdout,            
