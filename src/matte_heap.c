@@ -307,10 +307,12 @@ static void remove_root_node(matteHeap_t * h, matteObject_t ** root, matteObject
 }
 
 static void matte_object_mark_remove(matteHeap_t * heap, matteObject_t * m) {
-    if (!QUERY_STATE(m, OBJECT_STATE__TO_REMOVE) && !m->rootState && m->refcount == 0  && !QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
+    if (!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
+        if (!QUERY_STATE(m, OBJECT_STATE__TO_REMOVE) && !m->rootState && m->refcount == 0) {
 
-        matte_array_push(heap->toRemove, m);
-        ENABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
+            matte_array_push(heap->toRemove, m);
+            ENABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
+        }
     }
 }
 
@@ -430,9 +432,11 @@ static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteO
     if (!child->refcount) 
         matte_object_mark_remove(h, child);
 
-    if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE) && !QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
-        ENABLE_STATE(child, OBJECT_STATE__IS_QUESTIONABLE);       
-        matte_array_push(h->questionableList, child);
+    if (!QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
+        if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
+            ENABLE_STATE(child, OBJECT_STATE__IS_QUESTIONABLE);       
+            matte_array_push(h->questionableList, child);
+        }
     }
     
     
@@ -2415,9 +2419,11 @@ void matte_value_object_pop_lock_(matteHeap_t * heap, matteValue_t v) {
         if (m->rootState == 0) {
             remove_root_node(heap, &heap->roots, m);        
             heap->gcRequestStrength++;
-            if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)  && !QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
-                ENABLE_STATE(m, OBJECT_STATE__IS_QUESTIONABLE);
-                matte_array_push(heap->questionableList, m);
+            if (!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
+                if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)) {
+                    ENABLE_STATE(m, OBJECT_STATE__IS_QUESTIONABLE);
+                    matte_array_push(heap->questionableList, m);
+                }
             }
         }
     }     
@@ -3316,9 +3322,11 @@ void matte_heap_recycle_(
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_heap_bin_fetch(heap->bin, v.value.id);
         if (!m) return;
-        if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)  && !QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
-            ENABLE_STATE(m, OBJECT_STATE__IS_QUESTIONABLE);       
-            matte_array_push(heap->questionableList, m);
+        if (!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
+            if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)) {
+                ENABLE_STATE(m, OBJECT_STATE__IS_QUESTIONABLE);       
+                matte_array_push(heap->questionableList, m);
+            }
         }
     } 
     
@@ -3386,6 +3394,8 @@ static int update_all_root_children__push_value(matteHeap_t * h, matteValue_t va
 
 
 static void update_all_root_children(matteHeap_t * h, matteObject_t * root) {
+    if (root->checkID == h->checkID) return;
+
     matte_array_set_size(h->checkRootsStack, 0);
     matte_array_push(h->checkRootsStack, root);
 
