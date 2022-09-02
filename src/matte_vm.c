@@ -966,9 +966,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         isBracket
                     );
                 }
-                if (refH.binID)     
+                if (refH.binID) { 
                     matte_heap_recycle(vm->heap, refH); 
-                    
+                }
                 STACK_POP_NORET();
                 STACK_POP_NORET();
                 STACK_POP_NORET();

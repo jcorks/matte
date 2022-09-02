@@ -430,15 +430,12 @@ static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteO
 
     if (child->refcount) {
         child->refcount--; 
-    }
-    
-    if (child->refcount == 0) {
         if (!QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
             if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
                 ENABLE_STATE(child, OBJECT_STATE__IS_QUESTIONABLE);       
                 matte_array_push(h->questionableList, child);
             }
-        }    
+        } 
     }
     
 }
@@ -3321,7 +3318,7 @@ void matte_heap_recycle_(
 #endif    
 ) {
     
-    if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+    /*if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_heap_bin_fetch(heap->bin, v.value.id);
         if (!m) return;
         if (!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
@@ -3330,7 +3327,7 @@ void matte_heap_recycle_(
                 matte_array_push(heap->questionableList, m);
             }
         }
-    } 
+    }*/
     
     
 }
@@ -3741,7 +3738,8 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
     if (h->gcLocked) return;
 
 
-    if (!h->shutdown && h->gcRequestStrength < CREATED_COUNT) return;
+    //if (!h->shutdown && h->gcRequestStrength < CREATED_COUNT) return;
+    if (!h->shutdown && matte_array_get_size(h->questionableList) < 2048) return;
     h->gcLocked = 1;
     h->gcRequestStrength = 0;
 
@@ -3873,12 +3871,16 @@ matteObject_t * matte_heap_bin_fetch(matteHeapBin_t * heap, uint32_t id) {
     // function (is even)
     if (IS_FUNCTION_ID(id)) {
         id /= 2;
-        if (id >= matte_array_get_size(heap->functions)) return NULL;
+        #ifdef MATTE_DEBUG__HEAP
+            assert(id < matte_array_get_size(heap->functions));
+        #endif
         return matte_array_at(heap->functions, matteObject_t *, id);
     // is object
     } else {
         id /= 2;
-        if (id >= matte_array_get_size(heap->tables)) return NULL;
+        #ifdef MATTE_DEBUG__HEAP
+            assert(id < matte_array_get_size(heap->tables));
+        #endif
         return matte_array_at(heap->tables, matteObject_t *, id);    
     }
 }
@@ -3888,7 +3890,9 @@ matteObject_t * matte_heap_bin_fetch_function(matteHeapBin_t * heap, uint32_t id
         assert(IS_FUNCTION_ID(id));
     #endif
     id /= 2;
-    if (id >= matte_array_get_size(heap->functions)) return NULL;
+    #ifdef MATTE_DEBUG__HEAP
+        assert(id < matte_array_get_size(heap->functions));
+    #endif
     return matte_array_at(heap->functions, matteObject_t *, id);
 }
 
@@ -3897,14 +3901,18 @@ matteObject_t * matte_heap_bin_fetch_table(matteHeapBin_t * heap, uint32_t id) {
         assert(!IS_FUNCTION_ID(id));
     #endif
     id /= 2;
-    if (id >= matte_array_get_size(heap->tables)) return NULL;
+    #ifdef MATTE_DEBUG__HEAP
+        assert (id < matte_array_get_size(heap->tables));
+    #endif
     return matte_array_at(heap->tables, matteObject_t *, id);
 }
 
 void matte_heap_bin_recycle(matteHeapBin_t * heap, uint32_t id) {
     // function (is even)
     if (IS_FUNCTION_ID(id)) {
-        if (id/2 >= matte_array_get_size(heap->functions)) return;
+        #ifdef MATTE_DEBUG__HEAP
+            assert (id/2 < matte_array_get_size(heap->functions));
+        #endif
         matte_array_push(heap->deadFunctions, id);
     // is object
     } else {

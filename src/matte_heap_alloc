@@ -71,7 +71,7 @@ void matte_heap_recycle_(matteHeap_t *, matteValue_t);
 #define matte_value_into_copy(__HEAP__, __VAL__, __OTHER__) matte_value_into_copy_(__HEAP__, __VAL__, __OTHER__); 
 #define matte_value_object_push_lock(__HEAP__, __VAL__) matte_value_object_push_lock_(__HEAP__, __VAL__);
 #define matte_value_object_pop_lock(__HEAP__, __VAL__) matte_value_object_pop_lock_(__HEAP__, __VAL__);
-#define matte_heap_recycle(__HEAP__, __VAL__); matte_heap_recycle_(__HEAP__, __VAL__)
+#define matte_heap_recycle(__HEAP__, __VAL__) (__HEAP__),(__VAL__);
 #endif
 
 void matte_value_into_new_external_function_ref(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub);
