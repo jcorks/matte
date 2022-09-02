@@ -27,9 +27,11 @@ typedef enum {
     MATTE_VALUE_TYPE_NUMBER,
     MATTE_VALUE_TYPE_STRING,
     MATTE_VALUE_TYPE_OBJECT,
-    MATTE_VALUE_TYPE_FUNCTION,
     MATTE_VALUE_TYPE_TYPE
 } matteValue_Type_t;
+
+
+#define matte_value_is_function(__V__) ((__V__).binID == MATTE_VALUE_TYPE_OBJECT && ((__V__).value.id/2)*2 == (__V__.value.id))
 
 
 // a value object.
@@ -202,7 +204,10 @@ matteValue_t matte_value_object_access_string(matteHeap_t *, matteValue_t, const
 // temporary number object Bracket ([]) access is emulated. 
 matteValue_t matte_value_object_access_index(matteHeap_t *, matteValue_t, uint32_t);
 
-
+// Convenience function. Removes all number'keyed methods from the 
+// object table, resetting the key count back to zero for number keys.
+// the value is assumed to be a table object.
+void matte_value_object_clear_number_keys_unsafe(matteHeap_t *, matteValue_t);
 
 // If the value is an object, returns a new object with numbered 
 // keys pointing to the keys of the original objects. If not an object,

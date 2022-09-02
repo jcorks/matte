@@ -135,8 +135,8 @@ void matte_vm_find_in_stack(matteVM_t * vm, uint32_t id) {
         uint32_t n = 0;
         for(n = 0; n < matte_array_get_size(frame->valueStack); ++n) {
             matteValue_t v = matte_array_at(frame->valueStack, matteValue_t, n);
-            if ((v.binID == MATTE_VALUE_TYPE_FUNCTION || v.binID == MATTE_VALUE_TYPE_OBJECT) && v.value.id == id) {
-                printf("@ stackframe %d, valuestack %d: %s\n", i, n, v.binID == MATTE_VALUE_TYPE_FUNCTION ? "(function)" : "(object)");
+            if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+                printf("@ stackframe %d, valuestack %d\n", i, n);
             }
         }
     }
@@ -1060,7 +1060,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             STACK_PUSH(output);
             // re-insert the base as "base"
-            if (output.binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (matte_value_is_function(output)) {
                 STACK_PUSH(o);
                 STACK_PUSH(vm->specialString_base);
             } 
@@ -1529,7 +1529,9 @@ void matte_vm_destroy(matteVM_t * vm) {
         f.fn(vm, f.data);
     }
     matte_array_destroy(vm->cleanupFunctionSets);
-    
+    if (vm->pendingCatchable) {
+        matte_value_object_pop_lock(vm->heap, vm->catchable);
+    }
     
 
     matteTableIter_t * iter = matte_table_iter_create();
@@ -1737,7 +1739,7 @@ matteValue_t matte_vm_call(
                     matteValue_t v = matte_array_at(args, matteValue_t, i);
                     matte_array_at(argsReal, matteValue_t, n) = v;
                     // sicne this function doesn't use a referrable, we need to set roots manually.
-                    if (v.binID == MATTE_VALUE_TYPE_OBJECT || v.binID == MATTE_VALUE_TYPE_FUNCTION) {
+                    if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
                         matte_value_object_push_lock(vm->heap, v);
                     }
 
@@ -1792,8 +1794,7 @@ matteValue_t matte_vm_call(
         len = matte_array_get_size(argsReal);
         for(i = 0; i < len; ++i) {
             int bid = matte_array_at(argsReal, matteValue_t, i).binID;
-            if (bid == MATTE_VALUE_TYPE_OBJECT ||
-                bid == MATTE_VALUE_TYPE_FUNCTION) {
+            if (bid == MATTE_VALUE_TYPE_OBJECT) {
                 matte_value_object_pop_lock(vm->heap, matte_array_at(argsReal, matteValue_t, i));
             }
             matte_heap_recycle(vm->heap, matte_array_at(argsReal, matteValue_t, i));
@@ -2220,10 +2221,6 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
     matte_value_into_string(vm->heap, &key, MATTE_VM_STR_CAST(vm, "detail"));
     matte_value_object_set(vm->heap, out, key, detail, 0);    
 
-    matte_heap_recycle(vm->heap, val);
-    matte_heap_recycle(vm->heap, key);
-    matte_heap_recycle(vm->heap, callstack);
-
     return out;
 }
 
@@ -2250,7 +2247,8 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
                 vm->debugData                   
             );
         }
-
+        matte_heap_recycle(vm->heap, vm->catchable);
+        vm->catchable.binID = 0;
         return;
     }
 

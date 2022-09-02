@@ -183,7 +183,7 @@ when(parameters == empty || parameters.file == empty) ::<={
         return iterBytes+BYTES_PER_PAGE;
     };
 
-    listen(to:::{
+    [::] {
         forever(do:::{
             @iter = 0;
             @lineIter = 0;
@@ -230,7 +230,7 @@ when(parameters == empty || parameters.file == empty) ::<={
             
             when(iterBytes >= data.size) send();
         });
-    });
+    };
 
 };
 
