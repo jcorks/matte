@@ -428,17 +428,18 @@ static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteO
     #endif
 
 
-    if (child->refcount) child->refcount--; 
-    if (!child->refcount) 
-        matte_object_mark_remove(h, child);
-
-    if (!QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
-        if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
-            ENABLE_STATE(child, OBJECT_STATE__IS_QUESTIONABLE);       
-            matte_array_push(h->questionableList, child);
-        }
+    if (child->refcount) {
+        child->refcount--; 
     }
     
+    if (child->refcount == 0) {
+        if (!QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
+            if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
+                ENABLE_STATE(child, OBJECT_STATE__IS_QUESTIONABLE);       
+                matte_array_push(h->questionableList, child);
+            }
+        }    
+    }
     
 }
 
@@ -1667,6 +1668,7 @@ static void matte_value_into_new_function_ref_real(matteHeap_t * heap, matteValu
 
     if (external) {
         ENABLE_STATE(d, OBJECT_STATE__IS_ETERNAL);
+        d->rootState = 999;
     }
 
 
@@ -3382,8 +3384,9 @@ static int update_all_root_children__push_value(matteHeap_t * h, matteValue_t va
         return 0;
     
     matteObject_t * o = matte_heap_bin_fetch(h->bin,  val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return 0;
     if (o->checkID == h->checkID) return 0;
-        
+            
 
     o->checkID = h->checkID;
     ENABLE_STATE(o, OBJECT_STATE__REACHES_ROOT);
@@ -3496,9 +3499,6 @@ static void check_cycles(matteHeap_t * h) {
     uint32_t i;
     for(i = 0; i < matte_array_get_size(h->questionableList); ++i) {
         matteObject_t * o = matte_array_at(h->questionableList, matteObject_t *, i);
-
-        if (o->heapID == 17)
-            printf("here\n");
 
 
         DISABLE_STATE(o, OBJECT_STATE__IS_QUESTIONABLE);
@@ -3769,6 +3769,7 @@ static void * create_table() {
     #ifdef MATTE_DEBUG__HEAP
         out->parents = matte_array_create(sizeof(matteValue_t));
     #endif
+    CREATED_COUNT++;
     return out;
 }
 
@@ -3782,6 +3783,7 @@ static void * create_function() {
 
     out->function.captures = matte_array_create(sizeof(CapturedReferrable_t));
     out->function.types = NULL;
+    CREATED_COUNT++;
     return out;
 }
 
@@ -3855,10 +3857,7 @@ matteObject_t * matte_heap_bin_add_table(matteHeapBin_t * heap) {
     if (deadSize == 0) {
         matteObject_t * o = create_table();
         o->heapID = matte_array_get_size(heap->tables) * 2 + 1;
-        matte_array_push(heap->tables, o);
-        
-        if (o->heapID == 7)
-            printf("here\n");        
+        matte_array_push(heap->tables, o);        
         return o;
     } else {
         uint32_t id = matte_array_at(heap->deadTables, uint32_t, deadSize-1);
