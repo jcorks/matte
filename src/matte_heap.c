@@ -61,6 +61,24 @@ void matte_heap_bin_recycle(matteHeapBin_t *, uint32_t id);
 void matte_heap_bin_destroy(matteHeapBin_t *);
 
 
+
+
+typedef struct matteObjectPool_t matteObjectPool_t;
+
+matteObjectPool_t * matte_pool_create(void*(*)(), void (*)(void *));
+
+void matte_pool_destroy(matteObjectPool_t *);
+
+// returns a pre-allocated instance else
+// returns a new instance from the first creation argument (create function)
+void * matte_pool_fetch(matteObjectPool_t *);
+
+// returns a reference to be return by an additional fetch.
+void matte_pool_recycle(matteObjectPool_t *, void *);
+
+
+
+
 #define IS_FUNCTION_ID(__ID__) (((__ID__)/2)*2 == (__ID__))
 #define IS_FUNCTION_OBJECT(__OBJ__) (((__OBJ__)->heapID/2)*2 == (__OBJ__)->heapID)
 
@@ -73,6 +91,7 @@ enum {
 
 struct matteHeap_t {    
     matteHeapBin_t * bin;
+    matteObjectPool_t * keyvalues_numberPool; // for number-keyed arrays.
     matteArray_t * valueHeap;
     matteArray_t * valueHeap_refs;
     matteArray_t * checkRootsStack;
@@ -260,19 +279,25 @@ struct matteObject_t{
 
 
 
-static void print_list(matteObject_t * root, matteHeap_t * h) {
-    matteObject_t * r = root;
+static void print_list(matteHeap_t * h) {
+    matteObject_t * r = h->roots;
+    uint32_t count = 0;
     while(r) {
-        printf("{%d}-", r->heapID);
+
+        //printf("{%d}-", r->heapID);
+        count += 1;
         r = r->nextRoot;
+        if (count > 10000)
+            printf("whats up\n");
+
     }
-    printf("|\n");
+    //printf("|\n");
+    printf("!!!!!!!!!!%d\n", count);
 }
 
 static void push_root_node(matteHeap_t * h, matteObject_t ** root, matteObject_t * m) {
     m->nextRoot = NULL;
     m->prevRoot = NULL;
-    //print_list(h);
     if (!*root)
         *root = m;
     else {
@@ -280,7 +305,6 @@ static void push_root_node(matteHeap_t * h, matteObject_t ** root, matteObject_t
         (*root)->prevRoot = m;
         *root = m;
     }
-    //print_list(h);
 
 }
 
@@ -428,13 +452,20 @@ static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteO
     #endif
 
 
-    if (child->refcount) {
+    if (child->refcount)
         child->refcount--; 
+        
+    // absolutely ready for cleanup
+    if (!child->refcount && !child->rootState) {
         if (!QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
-            if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
+            /*if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
                 ENABLE_STATE(child, OBJECT_STATE__IS_QUESTIONABLE);       
                 matte_array_push(h->questionableList, child);
-            }
+            }*/
+            if (!QUERY_STATE(child, OBJECT_STATE__TO_REMOVE)) {
+                matte_array_push(h->toRemove, child);
+                ENABLE_STATE(child, OBJECT_STATE__TO_REMOVE);
+            }            
         } 
     }
     
@@ -534,7 +565,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
             matte_heap_recycle(heap, out);
             return NULL;
         }
-        if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));
+        if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_pool_fetch(heap->keyvalues_numberPool);
         uint32_t index = (uint32_t)key.value.number;
         if (index >= matte_array_get_size(m->table.keyvalues_number)) {
             uint32_t currentLen = matte_array_get_size(m->table.keyvalues_number);
@@ -711,13 +742,20 @@ static void add_table_refs(
     }
 }
 
+static void * keyvalues_number_create() {
+    return matte_array_create(sizeof(matteValue_t));
+}
 
+void keyvalues_number_destroy(void * obj) {
+    matte_array_destroy(obj);
+}
 
 
 matteHeap_t * matte_heap_create(matteVM_t * vm) {
     matteHeap_t * out = calloc(1, sizeof(matteHeap_t));
     out->vm = vm;
     out->bin = matte_heap_bin_create();
+    out->keyvalues_numberPool = matte_pool_create(keyvalues_number_create, keyvalues_number_destroy);
     out->valueHeap = matte_array_create(sizeof(matteValue_t*));
     out->valueHeap_refs = matte_array_create(sizeof(matteValue_t*));
     out->typecode2data = matte_array_create(sizeof(MatteTypeData));
@@ -833,6 +871,7 @@ void matte_heap_destroy(matteHeap_t * h) {
     #endif
 
     matte_heap_bin_destroy(h->bin);
+    matte_pool_destroy(h->keyvalues_numberPool);
     uint32_t i;
     uint32_t len = matte_array_get_size(h->typecode2data);
     for(i = 0; i < len; ++i) {
@@ -1553,7 +1592,7 @@ void matte_value_into_new_object_array_ref_(matteHeap_t * heap, matteValue_t * v
     uint32_t i;
     uint32_t len = matte_array_get_size(args);
 
-    if (!d->table.keyvalues_number) d->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));
+    if (!d->table.keyvalues_number) d->table.keyvalues_number = matte_pool_fetch(heap->keyvalues_numberPool);
     matte_array_set_size(d->table.keyvalues_number, len);
     for(i = 0; i < len; ++i) {
         matteValue_t val = matte_heap_new_value(heap);
@@ -3111,7 +3150,7 @@ void matte_value_object_insert(
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(heap, m, &val);
     }
-    if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));
+    if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_pool_fetch(heap->keyvalues_numberPool);
     matte_array_insert(
         m->table.keyvalues_number,
         index,
@@ -3393,7 +3432,7 @@ static int update_all_root_children__push_value(matteHeap_t * h, matteValue_t va
 }
 
 
-static void update_all_root_children(matteHeap_t * h, matteObject_t * root) {
+static void update_all_root_children(matteHeap_t * h, matteObject_t * root, matteTableIter_t * iter) {
     if (root->checkID == h->checkID) return;
 
     matte_array_set_size(h->checkRootsStack, 0);
@@ -3403,7 +3442,6 @@ static void update_all_root_children(matteHeap_t * h, matteObject_t * root) {
     ENABLE_STATE(root, OBJECT_STATE__REACHES_ROOT);
     DISABLE_STATE(root, OBJECT_STATE__TO_REMOVE);
 
-    matteTableIter_t * iter = matte_table_iter_create();        
 
 
 
@@ -3478,17 +3516,19 @@ static void update_all_root_children(matteHeap_t * h, matteObject_t * root) {
            
         }
     }
-    matte_table_iter_destroy(iter);
 }
 
 static void check_cycles(matteHeap_t * h) {
     h->checkID++;    
     matteObject_t * root = h->roots;
-    
+    matteTableIter_t * iter = matte_table_iter_create();        
+    //print_list(h);
+
     while(root) {
-        update_all_root_children(h, root);
+        update_all_root_children(h, root, iter);
         root = root->nextRoot;
     }
+    matte_table_iter_destroy(iter);
     
     
     // now mark for removal ALL that are not reachable by root.
@@ -3644,6 +3684,8 @@ static void object_cleanup(matteHeap_t * h) {
                     object_unlink_parent_value(h, m, &matte_array_at(m->table.keyvalues_number, matteValue_t, n));                
                 }
                 matte_array_set_size(m->table.keyvalues_number, 0);
+                matte_pool_recycle(h->keyvalues_numberPool, m->table.keyvalues_number);
+                m->table.keyvalues_number = NULL;
             }
 
             if (m->table.keyvalues_string && !matte_table_is_empty(m->table.keyvalues_string)) {
@@ -3739,7 +3781,7 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
 
 
     //if (!h->shutdown && h->gcRequestStrength < CREATED_COUNT) return;
-    if (!h->shutdown && matte_array_get_size(h->questionableList) < 2048) return;
+    if (!h->shutdown && matte_array_get_size(h->questionableList) < 256) return;
     h->gcLocked = 1;
     h->gcRequestStrength = 0;
 
@@ -3945,6 +3987,52 @@ void matte_heap_bin_destroy(matteHeapBin_t * heap) {
     free(heap);
 }
 
+
+
+
+
+struct matteObjectPool_t {
+    matteArray_t * pool;
+    void * (*create)();
+    void (*destroy)(void*);
+};
+
+matteObjectPool_t * matte_pool_create(void*(*cr)(), void (*ds)(void *)) {
+    matteObjectPool_t * out = calloc(1, sizeof(matteObjectPool_t));
+    out->create = cr;
+    out->destroy = ds;
+    out->pool = matte_array_create(sizeof(void *));
+    return out;
+}
+
+
+
+void matte_pool_destroy(matteObjectPool_t * p) {
+    uint32_t i;
+    for(i = 0; i < matte_array_get_size(p->pool); ++i) {
+        p->destroy(matte_array_at(p->pool, void *, i));
+    }
+    matte_array_destroy(p->pool);
+    free(p);
+}
+
+// returns a pre-allocated instance else
+// returns a new instance from the first creation argument (create function)
+void * matte_pool_fetch(matteObjectPool_t * p) {
+    uint32_t size = matte_array_get_size(p->pool);
+    if (size) {
+        void * obj = matte_array_at(p->pool, void *, size-1);
+        matte_array_set_size(p->pool, size-1);
+        return obj;
+    }
+    
+    return p->create();
+}
+
+// returns a reference to be return by an additional fetch.
+void matte_pool_recycle(matteObjectPool_t * p, void * obj) {
+    matte_array_push(p->pool, obj);
+}
 
  
 

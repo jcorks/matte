@@ -1154,22 +1154,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         
     }
 
-    // it's VERY important that the restart condition is not run when 
-    // pendingCatchable is true, as the stack value top does not correspond
-    // to anything meaningful
-    if (frame->restartCondition && !vm->pendingCatchable) {
-        matteValue_t v = (matte_array_get_size(frame->valueStack) ? matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1) : matte_heap_new_value(vm->heap));
-        if (frame->restartCondition(vm, frame, v, frame->restartConditionData)) {
-            frame->pc = 0;
-            goto RELOOP;
-        }
-    }
-    
 
+    
+    matteValue_t output;
     // top of stack is output
     if (matte_array_get_size(frame->valueStack)) {
         
-        matteValue_t output = matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1);
+        output = matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1);
         uint32_t i;
         uint32_t len = matte_array_get_size(frame->valueStack);
         for(i = 0; i < len-1; ++i) { 
@@ -1180,15 +1171,23 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         matte_array_set_size(frame->valueStack, 0);
 
         if (vm->pendingCatchable) 
-            return matte_heap_new_value(vm->heap);
-
-        return output; // ok since not removed from normal value stack stuff
+            output = matte_heap_new_value(vm->heap);
+        
+        // ok since not removed from normal value stack stuff
     } else {
-        return matte_heap_new_value(vm->heap);
+        output = matte_heap_new_value(vm->heap);
     }
 
-
-
+    // it's VERY important that the restart condition is not run when 
+    // pendingCatchable is true, as the stack value top does not correspond
+    // to anything meaningful
+    if (frame->restartCondition && !vm->pendingCatchable) {
+        if (frame->restartCondition(vm, frame, output, frame->restartConditionData)) {
+            frame->pc = 0;
+            goto RELOOP;
+        }
+    }
+    return output;
 }
 
 #define WRITE_BYTES(__T__, __VAL__) matte_array_push_n(arr, &(__VAL__), sizeof(__T__));
