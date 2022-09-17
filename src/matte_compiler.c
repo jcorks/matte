@@ -624,11 +624,27 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
               case '7':
               case '8':
               case '9':
-              case 'e':
-              case 'E':
-              case '.':
                 matte_string_append_char(out, c);
                 break;
+
+
+              case '.':
+              case 'x':
+              case 'e':
+              case 'E':
+              case 'X': {
+                // these CANNOT be the leading char
+                if (matte_string_get_length(out) > 0) {
+                    matte_string_append_char(out, c);
+                } else {
+                    t->iter = prev;
+                    isDone = 1;                
+                }
+                break;
+                
+              }
+                
+
               default:
                 t->iter = prev;
                 isDone = 1;
@@ -636,6 +652,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             }
         }
         double f;
+        uint32_t fhex;
         if (sscanf(matte_string_get_c_str(out), "%lf", &f) == 1) {
             t->character+=matte_string_get_length(out);
             t->backup = t->iter;
@@ -646,7 +663,19 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 currentCh,
                 ty
             );
+        } else if (sscanf(matte_string_get_c_str(out), "%x", &fhex) == 1) {
+            t->character+=matte_string_get_length(out);
+            t->backup = t->iter;
+
+            return new_token(
+                out, //xfer ownership
+                currentLine,
+                currentCh,
+                ty
+            );
+        
         } else {
+                
             matte_string_destroy(out);
             t->iter = t->backup;
             return NULL;
@@ -2541,8 +2570,12 @@ static matteArray_t * compile_base_value(
 
       case MATTE_TOKEN_LITERAL_NUMBER: {
         double val = 0.0;
-        sscanf(matte_string_get_c_str(iter->text), "%lf", &val);
-        write_instruction__nnm(inst, iter->line, val);
+        uint32_t valh = 0;
+        if (sscanf(matte_string_get_c_str(iter->text), "%lf", &val)) {
+            write_instruction__nnm(inst, iter->line, val); 
+        } else if (sscanf(matte_string_get_c_str(iter->text), "%x", &valh)) {            
+            write_instruction__nnm(inst, iter->line, valh); 
+        }
         *src = iter->next;
         return inst;
       }
