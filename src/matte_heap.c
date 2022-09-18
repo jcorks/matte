@@ -452,23 +452,32 @@ static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteO
     #endif
 
 
-    if (child->refcount)
+
+
+    if (child->refcount) {
         child->refcount--; 
-        
-    // absolutely ready for cleanup
-    if (!child->refcount && !child->rootState) {
         if (!QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
-            /*if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
+            if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
                 ENABLE_STATE(child, OBJECT_STATE__IS_QUESTIONABLE);       
                 matte_array_push(h->questionableList, child);
-            }*/
-            if (!QUERY_STATE(child, OBJECT_STATE__TO_REMOVE)) {
-                matte_array_push(h->toRemove, child);
-                ENABLE_STATE(child, OBJECT_STATE__TO_REMOVE);
-            }            
+            }
         } 
     }
-    
+
+    /*
+        if (child->refcount)
+            child->refcount--; 
+        
+    // absolutely ready for cleanup
+        if (!child->refcount && !child->rootState) {
+            if (!QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
+                if (!QUERY_STATE(child, OBJECT_STATE__TO_REMOVE)) {
+                    matte_array_push(h->toRemove, child);
+                    ENABLE_STATE(child, OBJECT_STATE__TO_REMOVE);
+                }            
+            } 
+        }
+    */
 }
 
 static void object_unlink_parent_child_only_all(matteHeap_t * h, matteObject_t * parent, matteObject_t * child) {
