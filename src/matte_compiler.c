@@ -2979,7 +2979,18 @@ static matteArray_t * compile_value(
                 write_instruction__olk(inst, iter->line, 0);
                 *lvalue = 1;
                 iter = iter->next;
-            } else {
+            } else if (iter->ttype == MATTE_TOKEN_ASSIGNMENT) {
+                matteArray_t * arr = (matteArray_t *)iter->text; // the sneaky V in action....
+                if (!arr) {
+                    matte_array_destroy(inst);
+                    return NULL;
+                }
+                iter->text = matte_array_create(1);
+                iter = iter->next; // skip =
+                merge_instructions(inst, arr); // push argument
+                write_instruction__oas(inst, iter->line);
+            } else {                
+            
                 matte_syntax_graph_print_compile_error(g, iter, "Dot accessor expects variable name-style member to access as a string.");
                 matte_array_destroy(inst);
                 return NULL;               

@@ -3167,6 +3167,28 @@ void matte_value_object_insert(
     );
 }
 
+void matte_value_object_set_table(matteHeap_t * heap, matteValue_t v, matteValue_t srcTable) {
+    if (srcTable.binID != MATTE_VALUE_TYPE_OBJECT) {
+        matte_vm_raise_error_cstring(heap->vm, "Cannot use object set assignment syntax something that isnt an object.");
+        return;
+    }
+
+    matteValue_t keys = matte_value_object_keys(heap, srcTable);
+    matte_value_object_push_lock(heap, keys);
+    
+    uint32_t len = matte_value_object_get_key_count(heap, keys);
+    uint32_t i;
+    for(i = 0; i < len; ++i) {
+        matteValue_t * key = matte_value_object_array_at_unsafe(heap, keys, i);
+        matteValue_t val = matte_value_object_access(heap, srcTable, *key, 1); // bracket source
+        
+        matte_value_object_set(heap, v, *key, val, 0); // dot target
+    } 
+
+    matte_value_object_pop_lock(heap, keys);
+}
+
+
 const matteValue_t * matte_value_object_set(matteHeap_t * heap, matteValue_t v, matteValue_t key, matteValue_t value, int isBracket) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(heap->vm, "Cannot set property on something that isnt an object.");

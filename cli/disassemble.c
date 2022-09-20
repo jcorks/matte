@@ -246,6 +246,9 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
             case MATTE_OPCODE_CPY:
                 fprintf(fout, "cpy\n");
                 break;
+            case MATTE_OPCODE_OAS:
+                fprintf(fout, "oas\n");
+                break;
             case MATTE_OPCODE_RET:
                 fprintf(fout, "ret\n");
                 break;            

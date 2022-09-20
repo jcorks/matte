@@ -227,3 +227,10 @@ static void write_instruction__pto(matteArray_t * insts, uint32_t lineNumber, ui
     matte_array_push(insts, inst);
 }
 
+static void write_instruction__oas(matteArray_t * insts, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_OAS;
+    matte_array_push(insts, inst);
+}
+

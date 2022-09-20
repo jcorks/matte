@@ -411,6 +411,17 @@ static void function_to_stub(FILE * f, uint32_t id) {
 
             } else if (
                 oc0 == 'o' &&
+                oc1 == 'a' &&
+                oc2 == 's'
+            ) {
+                inst->opcode = MATTE_OPCODE_OAS;
+                if (sscanf(line, "%"SCNu32" oas", &inst->line) != 1) {
+                    printf("ERROR on line %d: unrecognized oas format. Syntax: [line] oas\n", lineN);
+                    exit(1);                                
+                }                
+
+            } else if (
+                oc0 == 'o' &&
                 oc1 == 'p' &&
                 oc2 == 'r'
             ) {

@@ -242,6 +242,14 @@ void matte_value_object_foreach(matteHeap_t *, matteValue_t object, matteValue_t
 // invokes assigner if present
 const matteValue_t * matte_value_object_set(matteHeap_t *, matteValue_t, matteValue_t key, matteValue_t value, int isBracket);
 
+
+// Performs a matte_value_object_set() with dot access for each 
+// key-value pair in srcTable. If srcTable is not a table, an error is raised.
+//
+void matte_value_object_set_table(matteHeap_t *, matteValue_t, matteValue_t srcTable);
+
+
+
 // Given that the value is an object, DIRECTLY sets a numbered-index value, bypassing 
 // the attribute overrides and any safety checks. Only use if you know what youre doing.
 void matte_value_object_set_index_unsafe(matteHeap_t *, matteValue_t, uint32_t i, matteValue_t value);

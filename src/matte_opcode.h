@@ -108,6 +108,12 @@ typedef enum {
     // spread operator: object 
     // pops the top of the stack and pushes all keys and values of the object.
     MATTE_OPCODE_SPO,
+    
+    // Object: Assign Set 
+    // Allows for many assignments at once to an object using the 
+    // dot operator. The syntax is operand.{static object};
+    // The first operand is pushed to the top of the stack.
+    MATTE_OPCODE_OAS
 
 } matteOpcode_t;
 

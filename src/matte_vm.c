@@ -1046,6 +1046,18 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             break;
           }
+          
+          case MATTE_OPCODE_OAS: {
+            matteValue_t src  = STACK_PEEK(0);
+            matteValue_t dest = STACK_PEEK(1);
+            
+            matte_value_object_set_table(vm->heap, dest, src);
+            
+            
+            STACK_POP_NORET();
+            matte_heap_recycle(vm->heap, src);
+            break;
+          }
 
           case MATTE_OPCODE_ASP: {
             uint32_t count = *(uint32_t*)inst->data;
