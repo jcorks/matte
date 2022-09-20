@@ -32,6 +32,7 @@ void matte_heap_track_neutral(matteHeap_t *, matteValue_t, const char *, int);
 // 
 int matte_heap_report(matteHeap_t *);
 void matte_heap_recycle_(matteHeap_t *, matteValue_t, const char *, int line);
+void matte_heap_track_done(matteHeap_t * heap, matteValue_t val);
 
 
 
@@ -49,8 +50,8 @@ void matte_heap_recycle_(matteHeap_t *, matteValue_t, const char *, int line);
 // already inc by matte_value_into_new_function
 #define matte_value_into_new_typed_function_ref(__HEAP__, __VAL__, __MSTUB__, __MARR0__) matte_value_into_new_typed_function_ref_(__HEAP__, __VAL__, __MSTUB__, __MARR0__); matte_heap_track_neutral(__HEAP__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_copy(__HEAP__, __VAL__, __OTHER__) matte_value_into_copy_(__HEAP__, __VAL__, __OTHER__);matte_heap_track_neutral(__HEAP__, *(__VAL__), __FILE__, __LINE__);
-#define matte_value_object_push_lock(__HEAP__, __VAL__) matte_value_object_push_lock_(__HEAP__, __VAL__); if ((__VAL__).binID == MATTE_VALUE_TYPE_OBJECT||(__VAL__).binID == MATTE_VALUE_TYPE_FUNCTION) matte_heap_track_in_lock(__HEAP__, (__VAL__), __FILE__, __LINE__);
-#define matte_value_object_pop_lock(__HEAP__, __VAL__) matte_value_object_pop_lock_(__HEAP__, __VAL__); if ((__VAL__).binID == MATTE_VALUE_TYPE_OBJECT||(__VAL__).binID == MATTE_VALUE_TYPE_FUNCTION) matte_heap_track_out_lock(__HEAP__, (__VAL__), __FILE__, __LINE__);
+#define matte_value_object_push_lock(__HEAP__, __VAL__) matte_value_object_push_lock_(__HEAP__, __VAL__); if ((__VAL__).binID == MATTE_VALUE_TYPE_OBJECT) matte_heap_track_in_lock(__HEAP__, (__VAL__), __FILE__, __LINE__);
+#define matte_value_object_pop_lock(__HEAP__, __VAL__) matte_value_object_pop_lock_(__HEAP__, __VAL__); if ((__VAL__).binID == MATTE_VALUE_TYPE_OBJECT) matte_heap_track_out_lock(__HEAP__, (__VAL__), __FILE__, __LINE__);
 #define matte_heap_recycle(__HEAP__, __VAL__) matte_heap_recycle_(__HEAP__, __VAL__, __FILE__, __LINE__); 
 #else 
 void matte_heap_recycle_(matteHeap_t *, matteValue_t);
@@ -70,5 +71,8 @@ void matte_heap_recycle_(matteHeap_t *, matteValue_t);
 #define matte_value_into_copy(__HEAP__, __VAL__, __OTHER__) matte_value_into_copy_(__HEAP__, __VAL__, __OTHER__); 
 #define matte_value_object_push_lock(__HEAP__, __VAL__) matte_value_object_push_lock_(__HEAP__, __VAL__);
 #define matte_value_object_pop_lock(__HEAP__, __VAL__) matte_value_object_pop_lock_(__HEAP__, __VAL__);
-#define matte_heap_recycle(__HEAP__, __VAL__); matte_heap_recycle_(__HEAP__, __VAL__)
+#define matte_heap_recycle(__HEAP__, __VAL__) (__HEAP__),(__VAL__);
 #endif
+
+void matte_value_into_new_external_function_ref(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub);
+

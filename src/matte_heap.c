@@ -1,5 +1,4 @@
 #include "matte_heap.h"
-#include "matte_bin.h"
 #include "matte_table.h"
 #include "matte_array.h"
 #include "matte_string.h"
@@ -33,8 +32,55 @@ typedef struct {
 typedef struct matteObject_t matteObject_t;
 
 
-#define VALUE_TO_HEAP(__H__, __V__) ((__V__).binID == MATTE_VALUE_TYPE_OBJECT ? (__H__)->tableHeap : (__H__)->functionHeap)
-#define VALUE_PTR_TO_HEAP(__H__, __V__) ((__V__)->binID == MATTE_VALUE_TYPE_OBJECT ? (__H__)->tableHeap : (__H__)->functionHeap)
+
+
+typedef struct matteHeapBin_t matteHeapBin_t;
+
+// creates a new heap bin, which holds and generates in-memory 
+// object references. Instead of being freed, the bin acts as 
+// an object pool, holding references to functions and tables.
+// functions always have even heapIDs, and tables always odd
+static matteHeapBin_t * matte_heap_bin_create();
+
+// Fetches a free table object.
+matteObject_t * matte_heap_bin_add_table(matteHeapBin_t *);
+
+// Fetches a free function object.
+matteObject_t * matte_heap_bin_add_function(matteHeapBin_t *);
+
+// fetches the object from the given ID, returning NULL if there is no such object.
+matteObject_t * matte_heap_bin_fetch(matteHeapBin_t *, uint32_t id);
+
+matteObject_t * matte_heap_bin_fetch_function(matteHeapBin_t * heap, uint32_t id);
+matteObject_t * matte_heap_bin_fetch_table(matteHeapBin_t * heap, uint32_t id);
+
+
+// recycles an object.
+void matte_heap_bin_recycle(matteHeapBin_t *, uint32_t id);
+
+void matte_heap_bin_destroy(matteHeapBin_t *);
+
+
+
+
+typedef struct matteObjectPool_t matteObjectPool_t;
+
+matteObjectPool_t * matte_pool_create(void*(*)(), void (*)(void *));
+
+void matte_pool_destroy(matteObjectPool_t *);
+
+// returns a pre-allocated instance else
+// returns a new instance from the first creation argument (create function)
+void * matte_pool_fetch(matteObjectPool_t *);
+
+// returns a reference to be return by an additional fetch.
+void matte_pool_recycle(matteObjectPool_t *, void *);
+
+
+
+
+#define IS_FUNCTION_ID(__ID__) (((__ID__)/2)*2 == (__ID__))
+#define IS_FUNCTION_OBJECT(__OBJ__) (((__OBJ__)->heapID/2)*2 == (__OBJ__)->heapID)
 
 enum {
     ROOT_AGE__YOUNG,
@@ -44,12 +90,12 @@ enum {
 
 
 struct matteHeap_t {    
-    matteBin_t * tableHeap;
-    matteBin_t * functionHeap;
+    matteHeapBin_t * bin;
+    matteObjectPool_t * keyvalues_numberPool; // for number-keyed arrays.
     matteArray_t * valueHeap;
     matteArray_t * valueHeap_refs;
     matteArray_t * checkRootsStack;
-    
+    matteArray_t * questionableList;
     
     uint16_t gcLocked;
     int pathCheckedPool;
@@ -146,17 +192,21 @@ enum {
     // object is waiting in a bin for reuse.
     OBJECT_STATE__RECYCLED = 1,
 
-    // whether the object is a function
-    OBJECT_STATE__IS_FUNCTION = 2,
-
     // whether currently the object reaches a root instance
-    OBJECT_STATE__REACHES_ROOT = 4,
+    OBJECT_STATE__REACHES_ROOT = 2,
     // whether the object is an "old" root.
     // 
-    OBJECT_STATE__IS_OLD_ROOT = 8,
+    OBJECT_STATE__IS_OLD_ROOT = 4,
 
     // whether the object is going to be removed
-    OBJECT_STATE__TO_REMOVE = 16,    
+    OBJECT_STATE__TO_REMOVE = 8,
+    
+    // whether the object is suspected of being unreachable
+    OBJECT_STATE__IS_QUESTIONABLE = 16,    
+    
+    // when external, is ignored for garbage collection
+    OBJECT_STATE__IS_ETERNAL = 32
+
 };
 
 #define ENABLE_STATE(__o__, __s__) ((__o__)->state |= (__s__))
@@ -168,22 +218,10 @@ struct matteObject_t{
     // any user data. Defaults to null
     void * userdata;
     
-    // when refs are associated with other references,
-    // a list of currently-active parents (owners of this ref) and 
-    // children (the refs that consider this ref an owner) are 
-    // maintained.
-    //
-    // Arrays of uint32_t, objectIDs to other objects.
-    // references to non-objects are NOT maintained.
-    //
-    // Parents keep children references alive. Children "rely on" parents 
-    // for their references
-    matteArray_t * refChildren;
-    matteArray_t * refParents;
 
     //matteTable_t * refChildren;
     //matteTable_t * refParents;
-
+    uint64_t refcount;
     // id within sorted heap.
     uint32_t heapID;
     uint16_t rootState;
@@ -194,6 +232,10 @@ struct matteObject_t{
     
     void (*nativeFinalizer)(void * objectUserdata, void * functionUserdata);
     void * nativeFinalizerData;
+    
+    #ifdef MATTE_DEBUG__HEAP
+        matteArray_t * parents;
+    #endif
 
     
     union {
@@ -201,8 +243,7 @@ struct matteObject_t{
             // keys -> matteValue_t
             matteTable_t * keyvalues_string;
             matteArray_t * keyvalues_number;
-            matteTable_t * keyvalues_table;
-            matteTable_t * keyvalues_functs;
+            matteTable_t * keyvalues_object;
             matteValue_t keyvalue_true;
             matteValue_t keyvalue_false;
             matteTable_t * keyvalues_types;
@@ -235,25 +276,28 @@ struct matteObject_t{
     };
 
 };
-typedef struct {
-    matteObject_t * ref;
-    uint32_t linkcount;
-} MatteHeapParentChildLink;
 
 
-static void print_list(matteObject_t * root, matteHeap_t * h) {
-    matteObject_t * r = root;
+
+static void print_list(matteHeap_t * h) {
+    matteObject_t * r = h->roots;
+    uint32_t count = 0;
     while(r) {
-        printf("{%d}-", r->heapID);
+
+        //printf("{%d}-", r->heapID);
+        count += 1;
         r = r->nextRoot;
+        if (count > 10000)
+            printf("whats up\n");
+
     }
-    printf("|\n");
+    //printf("|\n");
+    printf("!!!!!!!!!!%d\n", count);
 }
 
 static void push_root_node(matteHeap_t * h, matteObject_t ** root, matteObject_t * m) {
     m->nextRoot = NULL;
     m->prevRoot = NULL;
-    //print_list(h);
     if (!*root)
         *root = m;
     else {
@@ -261,7 +305,6 @@ static void push_root_node(matteHeap_t * h, matteObject_t ** root, matteObject_t
         (*root)->prevRoot = m;
         *root = m;
     }
-    //print_list(h);
 
 }
 
@@ -286,6 +329,17 @@ static void remove_root_node(matteHeap_t * h, matteObject_t ** root, matteObject
 
 
 }
+
+static void matte_object_mark_remove(matteHeap_t * heap, matteObject_t * m) {
+    if (!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
+        if (!QUERY_STATE(m, OBJECT_STATE__TO_REMOVE) && !m->rootState && m->refcount == 0) {
+
+            matte_array_push(heap->toRemove, m);
+            ENABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
+        }
+    }
+}
+
 
 #define HEAP_VALUE_POINTER_BLOCK_SIZE 2048
 static matteValue_t * heap_new_value_pointer(matteHeap_t * h) {
@@ -349,14 +403,9 @@ static matteValue_t * object_lookup(matteHeap_t * heap, matteObject_t * m, matte
         }
       }
       
-      case MATTE_VALUE_TYPE_FUNCTION:{     
-        if (!m->table.keyvalues_functs) return NULL;      
-        return matte_table_find_by_uint(m->table.keyvalues_functs, key.value.id);
-      }
-
       case MATTE_VALUE_TYPE_OBJECT: {           
-        if (!m->table.keyvalues_table) return NULL;
-        return matte_table_find_by_uint(m->table.keyvalues_table, key.value.id);
+        if (!m->table.keyvalues_object) return NULL;
+        return matte_table_find_by_uint(m->table.keyvalues_object, key.value.id);
       }
       
       case MATTE_VALUE_TYPE_TYPE: {
@@ -374,100 +423,65 @@ static matteValue_t * object_lookup(matteHeap_t * heap, matteObject_t * m, matte
 
 
 static void object_link_parent(matteHeap_t * h, matteObject_t * parent, matteObject_t * child) {
-    uint32_t i;
-    uint32_t lenP = matte_array_get_size(parent->refChildren);
-    uint32_t lenC = matte_array_get_size(child->refParents);
+    #ifdef MATTE_DEBUG__HEAP
+        matteValue_t v;
+        v.binID = MATTE_VALUE_TYPE_OBJECT;
+        v.value.id = parent->heapID;
+        matte_array_push(child->parents, v);
+    #endif
 
-
-    MatteHeapParentChildLink * iter = matte_array_get_data(parent->refChildren);
-    for(i = 0; i < lenP; ++i, ++iter) {
-        if (iter->ref == child) {
-            iter->linkcount++;
-
-            iter = matte_array_get_data(child->refParents);            
-            for(i = 0; i < lenC; ++i, ++iter) {
-                if (iter->ref == parent) {
-                    iter->linkcount++;
-                    return;                
-                }
-            }
-
-            return;            
-        }
-    }
-    
-    if (parent->rootState && !matte_array_get_size(parent->refChildren))
-        push_root_node(h, &h->roots, parent);
-
-    
-    
-    matte_array_set_size(parent->refChildren, lenP+1);
-    iter = &matte_array_at(parent->refChildren, MatteHeapParentChildLink, lenP);
-    iter->linkcount = 1;
-    iter->ref = child;
-
-    matte_array_set_size(child->refParents, lenC+1);
-    iter = &matte_array_at(child->refParents, MatteHeapParentChildLink, lenC);
-    iter->linkcount = 1;
-    iter->ref = parent;
-    
-    
-    
-
-    //void * p = matte_table_find_by_uint(parent->refChildren, child->heapID);
-    //matte_table_insert_by_uint(child->refParents,   parent->heapID, p+1);
-    //matte_table_insert_by_uint(parent->refChildren, child->heapID,  p+1);
+    child->refcount++;
 }
 
 static void object_unlink_parent(matteHeap_t * h, matteObject_t * parent, matteObject_t * child) {
-    uint32_t i, n;
-    uint32_t lenP = matte_array_get_size(parent->refChildren);
-    uint32_t lenC = matte_array_get_size(child->refParents);
+    if (child == NULL) return; // when? only when root check early refcount = 0 forced cleanup?
 
-    MatteHeapParentChildLink * iter = matte_array_get_data(parent->refChildren);
-    for(i = 0; i < lenP; ++i, ++iter) {
-        if (iter->ref == child) {
 
-            MatteHeapParentChildLink * iterO = matte_array_get_data(child->refParents);            
-            for(n = 0; n < lenC; ++n, ++iterO) {
-                if (iterO->ref == parent) {
-                                           
-                    if (iter->linkcount == 1) {
-                        matte_array_remove(parent->refChildren, i);
-                        matte_array_remove(child->refParents, n);
-                        
-                        if (!matte_array_get_size(parent->refChildren)) {
-                            remove_root_node(h, &h->roots, parent);
-                        }
-                        
-                    } else {
-                        iter->linkcount--;
-                        iterO->linkcount--;
-                    }
-                    return;                
-                }
+    #ifdef MATTE_DEBUG__HEAP
+        uint32_t i;
+        int found = 0;
+        for(i = 0; i < matte_array_get_size(child->parents); ++i) {
+            if (matte_array_at(child->parents, matteValue_t, i).value.id == parent->heapID) {
+                matte_array_remove(child->parents, i);
+                found = 1;
+                break;            
             }
-
-            return;            
         }
+        
+        assert(found);
+    #endif
+
+
+
+
+    if (child->refcount) {
+        child->refcount--; 
+        if (!QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
+            if (!QUERY_STATE(child, OBJECT_STATE__IS_QUESTIONABLE)) {
+                ENABLE_STATE(child, OBJECT_STATE__IS_QUESTIONABLE);       
+                matte_array_push(h->questionableList, child);
+            }
+        } 
     }
-
-
 
     /*
-
-    void * p = matte_table_find_by_uint(parent->refChildren, child->heapID);
-    if (p == (void*)0x1) {
-        matte_table_remove_by_uint(child->refParents, parent->heapID);
-        matte_table_remove_by_uint(parent->refChildren, child->heapID);
-    } else {
-        matte_table_insert_by_uint(child->refParents,   parent->heapID, p-1);
-        matte_table_insert_by_uint(parent->refChildren, child->heapID,  p-1);
-    }
+        if (child->refcount)
+            child->refcount--; 
+        
+    // absolutely ready for cleanup
+        if (!child->refcount && !child->rootState) {
+            if (!QUERY_STATE(child, OBJECT_STATE__IS_ETERNAL)) {
+                if (!QUERY_STATE(child, OBJECT_STATE__TO_REMOVE)) {
+                    matte_array_push(h->toRemove, child);
+                    ENABLE_STATE(child, OBJECT_STATE__TO_REMOVE);
+                }            
+            } 
+        }
     */
 }
 
 static void object_unlink_parent_child_only_all(matteHeap_t * h, matteObject_t * parent, matteObject_t * child) {
+    /*
     uint32_t n;
     uint32_t lenC = matte_array_get_size(child->refParents);
 
@@ -479,19 +493,14 @@ static void object_unlink_parent_child_only_all(matteHeap_t * h, matteObject_t *
             return;                
         }
     }
-
-
-    /*
-    void * p = matte_table_find_by_uint(parent->refChildren, child->heapID);
-    if (p == (void*)0x1) {
-        matte_table_remove_by_uint(child->refParents, parent->heapID);
-    } else {
-        matte_table_insert_by_uint(child->refParents,   parent->heapID, p-1);
-    }
     */
+
+
+
 }
 
 static void object_unlink_parent_parent_only_all(matteHeap_t * h, matteObject_t * parent, matteObject_t * child) {
+    /*
     uint32_t i;
     uint32_t lenP = matte_array_get_size(parent->refChildren);
 
@@ -504,43 +513,47 @@ static void object_unlink_parent_parent_only_all(matteHeap_t * h, matteObject_t 
             }
             return;                
         }
-    }
-
-    /*
-    void * p = matte_table_find_by_uint(parent->refChildren, child->heapID);
-    if (p == (void*)0x1) {
-        matte_table_remove_by_uint(parent->refChildren, child->heapID);
-    } else {
-        matte_table_insert_by_uint(parent->refChildren, child->heapID,  p-1);
     }*/
 }
 
 
-static void object_link_parent_value(matteHeap_t * heap, matteObject_t * parent, const matteValue_t * child) {
-    object_link_parent(heap, parent,  matte_bin_fetch(VALUE_PTR_TO_HEAP(heap, child), child->value.id));
+static void object_link_parent_value_(matteHeap_t * heap, matteObject_t * parent, const matteValue_t * child) {
+    object_link_parent(heap, parent, matte_heap_bin_fetch(heap->bin, child->value.id));
 }
 
-static void object_unlink_parent_value(matteHeap_t * heap, matteObject_t * parent, const matteValue_t * child) {
-    object_unlink_parent(heap, parent,  matte_bin_fetch(VALUE_PTR_TO_HEAP(heap, child), child->value.id));
+static void object_unlink_parent_value_(matteHeap_t * heap, matteObject_t * parent, const matteValue_t * child) {
+    if (child->binID != MATTE_VALUE_TYPE_OBJECT) return;
+    object_unlink_parent(heap, parent, matte_heap_bin_fetch(heap->bin, child->value.id));
 }
+
+#ifdef MATTE_DEBUG__HEAP
+#define object_link_parent_value(__HEAP__, __PARENT__, __CHILD__) (matte_heap_track_in_lock(__HEAP__, *(__CHILD__), __FILE__, __LINE__)); object_link_parent_value_(__HEAP__, __PARENT__, __CHILD__);
+#define object_unlink_parent_value(__HEAP__, __PARENT__, __CHILD__) (matte_heap_track_out_lock(__HEAP__, *(__CHILD__), __FILE__, __LINE__)); object_unlink_parent_value_(__HEAP__, __PARENT__, __CHILD__);
+#else
+#define object_link_parent_value(__HEAP__, __PARENT__, __CHILD__) object_link_parent_value_(__HEAP__, __PARENT__, __CHILD__);
+#define object_unlink_parent_value(__HEAP__, __PARENT__, __CHILD__)  object_unlink_parent_value_(__HEAP__, __PARENT__, __CHILD__);
+
+#endif
 
 
 static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, matteValue_t key, matteValue_t val) {
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_copy(heap, &out, val);
 
+    if (key.binID == MATTE_VALUE_TYPE_EMPTY) return NULL;
+
+
     // track reference
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT || val.binID == MATTE_VALUE_TYPE_FUNCTION) {    
+    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(heap, m, &val);
     }
 
     switch(key.binID) {
-      case MATTE_VALUE_TYPE_EMPTY: return NULL; // SHOULD NEVER ENTER. if it would, memory leak.
       case MATTE_VALUE_TYPE_STRING: {
         if (!m->table.keyvalues_string) m->table.keyvalues_string = matte_table_create_hash_pointer();
         matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
         if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT || value->binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, value);
             }
             matte_heap_recycle(heap, *value);
@@ -561,7 +574,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
             matte_heap_recycle(heap, out);
             return NULL;
         }
-        if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));
+        if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_pool_fetch(heap->keyvalues_numberPool);
         uint32_t index = (uint32_t)key.value.number;
         if (index >= matte_array_get_size(m->table.keyvalues_number)) {
             uint32_t currentLen = matte_array_get_size(m->table.keyvalues_number);
@@ -574,7 +587,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
         }
 
         matteValue_t * newV = &matte_array_at(m->table.keyvalues_number, matteValue_t, index);
-        if (newV->binID == MATTE_VALUE_TYPE_OBJECT || newV->binID == MATTE_VALUE_TYPE_FUNCTION) {
+        if (newV->binID == MATTE_VALUE_TYPE_OBJECT) {
             object_unlink_parent_value(heap, m, newV);
         }
 
@@ -586,7 +599,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
       case MATTE_VALUE_TYPE_BOOLEAN: {
 
         if (key.value.boolean) {
-            if (m->table.keyvalue_true.binID == MATTE_VALUE_TYPE_OBJECT || m->table.keyvalue_true.binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (m->table.keyvalue_true.binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, &m->table.keyvalue_true);
             }
 
@@ -594,7 +607,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
             m->table.keyvalue_true = out;            
             return &m->table.keyvalue_true;
         } else {
-            if (m->table.keyvalue_false.binID == MATTE_VALUE_TYPE_OBJECT || m->table.keyvalue_false.binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (m->table.keyvalue_false.binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, &m->table.keyvalue_false);
             }
 
@@ -604,29 +617,12 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
         }
       }
       
-      case MATTE_VALUE_TYPE_FUNCTION: {           
-        if (!m->table.keyvalues_functs) m->table.keyvalues_functs = matte_table_create_hash_pointer();
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_functs, key.value.id);
-        if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT || value->binID == MATTE_VALUE_TYPE_FUNCTION) {
-                object_unlink_parent_value(heap, m, value);
-            }
-            matte_heap_recycle(heap, *value);
-            *value = out;
-            return value;
-        } else {
-            object_link_parent_value(heap, m, &key);
-            value = heap_new_value_pointer(heap);
-            *value = out;
-            matte_table_insert_by_uint(m->table.keyvalues_functs, key.value.id, value);
-            return value;
-        }
-      }           
+     
       case MATTE_VALUE_TYPE_OBJECT: {   
-        if (!m->table.keyvalues_table) m->table.keyvalues_table = matte_table_create_hash_pointer();        
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_table, key.value.id);
+        if (!m->table.keyvalues_object) m->table.keyvalues_object = matte_table_create_hash_pointer();        
+        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_object, key.value.id);
         if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT || value->binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, value);
             }
             matte_heap_recycle(heap, *value);
@@ -636,7 +632,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
             object_link_parent_value(heap, m, &key);
             value = heap_new_value_pointer(heap);
             *value = out;
-            matte_table_insert_by_uint(m->table.keyvalues_table, key.value.id, value);
+            matte_table_insert_by_uint(m->table.keyvalues_object, key.value.id, value);
             return value;
         }
       }
@@ -645,7 +641,7 @@ static matteValue_t * object_put_prop(matteHeap_t * heap, matteObject_t * m, mat
         if (!m->table.keyvalues_types) m->table.keyvalues_types = matte_table_create_hash_pointer();
         matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_types, key.value.id);
         if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT || value->binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, value);
             }
             matte_heap_recycle(heap, *value);
@@ -700,64 +696,6 @@ static matteValue_t object_get_access_operator(matteHeap_t * heap, matteObject_t
 
 static uint32_t CREATED_COUNT = 1;
 
-static void * create_table() {
-    matteObject_t * out = calloc(1, sizeof(matteObject_t));
-    //out->refChildren = matte_table_create_hash_pointer();
-    //out->refParents = matte_table_create_hash_pointer();
-    out->refChildren = matte_array_create(sizeof(MatteHeapParentChildLink));
-    out->refParents = matte_array_create(sizeof(MatteHeapParentChildLink));
-
-    out->table.keyvalues_string = NULL;//matte_table_create_hash_pointer();
-    out->table.keyvalues_types  = NULL;//matte_table_create_hash_pointer();
-    out->table.keyvalues_number = NULL;//matte_array_create(sizeof(matteValue_t));
-    out->table.keyvalues_table = NULL;//matte_table_create_hash_pointer();
-    out->table.keyvalues_functs = NULL;//matte_table_create_hash_pointer();
-    out->table.keyvalue_true.binID = 0;
-    out->table.keyvalue_false.binID = 0;       
-    DISABLE_STATE(out, OBJECT_STATE__IS_FUNCTION);
-    CREATED_COUNT++;
-    return out;
-}
-
-static void * create_function() {
-    matteObject_t * out = calloc(1, sizeof(matteObject_t));
-    //out->refChildren = matte_table_create_hash_pointer();
-    //out->refParents = matte_table_create_hash_pointer();
-    out->refChildren = matte_array_create(sizeof(MatteHeapParentChildLink));
-    out->refParents = matte_array_create(sizeof(MatteHeapParentChildLink));
-
-    out->function.captures = matte_array_create(sizeof(CapturedReferrable_t));
-    out->function.types = NULL;
-    ENABLE_STATE(out, OBJECT_STATE__IS_FUNCTION);
-    CREATED_COUNT++;
-
-    return out;
-}
-
-
-
-static void destroy_object(void * d) {
-    matteObject_t * out = d;
-
-    if (QUERY_STATE(out, OBJECT_STATE__IS_FUNCTION)) {
-        matte_array_destroy(out->function.captures);
-    
-    } else {
-
-        if (out->table.keyvalues_string) matte_table_destroy(out->table.keyvalues_string);
-        if (out->table.keyvalues_types)  matte_table_destroy(out->table.keyvalues_types);
-        if (out->table.keyvalues_table)  matte_table_destroy(out->table.keyvalues_table);
-        if (out->table.keyvalues_functs) matte_table_destroy(out->table.keyvalues_functs);
-        if (out->table.keyvalues_number) matte_array_destroy(out->table.keyvalues_number);
-    }
-
-
-    //matte_table_destroy(out->refParents);
-    //matte_table_destroy(out->refChildren);
-    matte_array_destroy(out->refParents);
-    matte_array_destroy(out->refChildren);
-    free(out);
-}
 
 
 static char * BUILTIN_NUMBER__NAMES[] = {
@@ -813,18 +751,25 @@ static void add_table_refs(
     }
 }
 
+static void * keyvalues_number_create() {
+    return matte_array_create(sizeof(matteValue_t));
+}
 
+void keyvalues_number_destroy(void * obj) {
+    matte_array_destroy(obj);
+}
 
 
 matteHeap_t * matte_heap_create(matteVM_t * vm) {
     matteHeap_t * out = calloc(1, sizeof(matteHeap_t));
     out->vm = vm;
-    out->tableHeap = matte_bin_create(create_table, destroy_object);
-    out->functionHeap = matte_bin_create(create_function, destroy_object);
+    out->bin = matte_heap_bin_create();
+    out->keyvalues_numberPool = matte_pool_create(keyvalues_number_create, keyvalues_number_destroy);
     out->valueHeap = matte_array_create(sizeof(matteValue_t*));
     out->valueHeap_refs = matte_array_create(sizeof(matteValue_t*));
     out->typecode2data = matte_array_create(sizeof(MatteTypeData));
     out->checkRootsStack = matte_array_create(sizeof(matteObject_t*));
+    out->questionableList = matte_array_create(sizeof(matteObject_t*));
     out->routePather = matte_array_create(sizeof(void*));
     out->routeIter = matte_table_iter_create();
     //out->verifiedRoot = matte_table_create_hash_pointer();
@@ -923,7 +868,8 @@ matteHeap_t * matte_heap_create(matteVM_t * vm) {
 void matte_heap_destroy(matteHeap_t * h) {
 
     h->shutdown = 1;
-    while(matte_array_get_size(h->toRemove)) {
+    while(matte_array_get_size(h->toRemove) ||
+          matte_array_get_size(h->questionableList)) {
         h->cooldown = 0;
         matte_heap_garbage_collect(h);
     }
@@ -933,8 +879,8 @@ void matte_heap_destroy(matteHeap_t * h) {
     assert(matte_heap_report(h) == 0);
     #endif
 
-    matte_bin_destroy(h->tableHeap);
-    matte_bin_destroy(h->functionHeap);
+    matte_heap_bin_destroy(h->bin);
+    matte_pool_destroy(h->keyvalues_numberPool);
     uint32_t i;
     uint32_t len = matte_array_get_size(h->typecode2data);
     for(i = 0; i < len; ++i) {
@@ -952,6 +898,7 @@ void matte_heap_destroy(matteHeap_t * h) {
     matte_table_destroy(h->type_object_methods);
     matte_table_destroy(h->type_string_methods);
     matte_array_destroy(h->checkRootsStack);    
+    matte_array_destroy(h->questionableList);
     heap_free_value_pointers(h);
     matte_array_destroy(h->toRemove);
     free(h);
@@ -1594,8 +1541,8 @@ matteValue_t matte_value_query(matteHeap_t * heap, matteValue_t * v, matteQuery_
 void matte_value_into_new_object_ref_(matteHeap_t * heap, matteValue_t * v) {
     matte_heap_recycle(heap, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
-    matteObject_t * d = matte_bin_add(heap->tableHeap, &v->value.id);
-    d->heapID = v->value.id;
+    matteObject_t * d = matte_heap_bin_add_table(heap->bin);
+    v->value.id = d->heapID;
     d->table.typecode = heap->type_object.value.id;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
 }
@@ -1604,8 +1551,8 @@ void matte_value_into_new_object_ref_(matteHeap_t * heap, matteValue_t * v) {
 void matte_value_into_new_object_ref_typed_(matteHeap_t * heap, matteValue_t * v, matteValue_t typeobj) {
     matte_heap_recycle(heap, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
-    matteObject_t * d = matte_bin_add(heap->tableHeap, &v->value.id);
-    d->heapID = v->value.id;
+    matteObject_t * d = matte_heap_bin_add_table(heap->bin);
+    v->value.id = d->heapID;
     if (typeobj.binID != MATTE_VALUE_TYPE_TYPE) {        
         matteString_t * str = matte_string_create_from_c_str("Cannot instantiate object without a Type. (given value is of type %s)", matte_value_string_get_string_unsafe(heap, matte_value_type_name(heap, matte_value_get_type(heap, typeobj))));
         matte_vm_raise_error_string(heap->vm, str);
@@ -1621,8 +1568,8 @@ void matte_value_into_new_object_ref_typed_(matteHeap_t * heap, matteValue_t * v
 void matte_value_into_new_object_literal_ref_(matteHeap_t * heap, matteValue_t * v, const matteArray_t * arr) {
     matte_heap_recycle(heap, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
-    matteObject_t * d = matte_bin_add(heap->tableHeap, &v->value.id);
-    d->heapID = v->value.id;
+    matteObject_t * d = matte_heap_bin_add_table(heap->bin);
+    v->value.id = d->heapID;
     d->table.typecode = heap->type_object.value.id;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
     matte_value_object_push_lock(heap, *v);
@@ -1645,8 +1592,8 @@ void matte_value_into_new_object_literal_ref_(matteHeap_t * heap, matteValue_t *
 void matte_value_into_new_object_array_ref_(matteHeap_t * heap, matteValue_t * v, const matteArray_t * args) {
     matte_heap_recycle(heap, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
-    matteObject_t * d = matte_bin_add(heap->tableHeap, &v->value.id);
-    d->heapID = v->value.id;
+    matteObject_t * d = matte_heap_bin_add_table(heap->bin);
+    v->value.id = d->heapID;
     d->table.typecode = heap->type_object.value.id;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
     matte_value_object_push_lock(heap, *v);
@@ -1654,13 +1601,13 @@ void matte_value_into_new_object_array_ref_(matteHeap_t * heap, matteValue_t * v
     uint32_t i;
     uint32_t len = matte_array_get_size(args);
 
-    if (!d->table.keyvalues_number) d->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));
+    if (!d->table.keyvalues_number) d->table.keyvalues_number = matte_pool_fetch(heap->keyvalues_numberPool);
     matte_array_set_size(d->table.keyvalues_number, len);
     for(i = 0; i < len; ++i) {
         matteValue_t val = matte_heap_new_value(heap);
         matte_value_into_copy(heap, &val, matte_array_at(args, matteValue_t, i));
         matte_array_at(d->table.keyvalues_number, matteValue_t, i) = val;
-        if (val.binID == MATTE_VALUE_TYPE_OBJECT || val.binID == MATTE_VALUE_TYPE_FUNCTION) {
+        if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
             object_link_parent_value(heap, d, &val);
         }
     }
@@ -1670,8 +1617,8 @@ void matte_value_into_new_object_array_ref_(matteHeap_t * heap, matteValue_t * v
 }
 
 matteValue_t matte_value_frame_get_named_referrable(matteHeap_t * heap, matteVMStackFrame_t * vframe, matteValue_t name) {
-    if (vframe->context.binID != MATTE_VALUE_TYPE_FUNCTION) return matte_heap_new_value(heap);
-    matteObject_t * m = matte_bin_fetch(heap->functionHeap, vframe->context.value.id);
+    if (!(IS_FUNCTION_ID(vframe->context.value.id))) return matte_heap_new_value(heap);
+    matteObject_t * m = matte_heap_bin_fetch_function(heap->bin, vframe->context.value.id);
     if (!m->function.stub) return matte_heap_new_value(heap);
     // claim captures immediately.
     uint32_t i;
@@ -1686,7 +1633,7 @@ matteValue_t matte_value_frame_get_named_referrable(matteHeap_t * heap, matteVMS
     matteValue_t out = matte_heap_new_value(heap);
 
     while(context.binID) {
-        matteObject_t * origin = matte_bin_fetch(heap->functionHeap, context.value.id);
+        matteObject_t * origin = matte_heap_bin_fetch_function(heap->bin, context.value.id);
         #if MATTE_DEBUG__HEAP
             printf("Looking in args..\n");
         #endif
@@ -1752,18 +1699,22 @@ void matte_value_into_new_typed_function_ref_(matteHeap_t * heap, matteValue_t *
     }
     
     matte_value_into_new_function_ref(heap, v, stub);
-    matteObject_t * d = matte_bin_fetch(heap->functionHeap, v->value.id);
+    matteObject_t * d = matte_heap_bin_fetch_function(heap->bin, v->value.id);
     d->function.types = matte_array_clone(args);
 }
 
-void matte_value_into_new_function_ref_(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub) {
+static void matte_value_into_new_function_ref_real(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub, int external) {
     matte_heap_recycle(heap, *v);
-    v->binID = MATTE_VALUE_TYPE_FUNCTION;
-    matteObject_t * d = matte_bin_add(heap->functionHeap, &v->value.id);
-    d->heapID = v->value.id;
+    v->binID = MATTE_VALUE_TYPE_OBJECT;
+    matteObject_t * d = matte_heap_bin_add_function(heap->bin);
+    v->value.id = d->heapID;
     d->function.stub = stub;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
 
+    if (external) {
+        ENABLE_STATE(d, OBJECT_STATE__IS_ETERNAL);
+        d->rootState = 999;
+    }
 
 
     // claim captures immediately.
@@ -1797,13 +1748,13 @@ void matte_value_into_new_function_ref_(matteHeap_t * heap, matteValue_t * v, ma
         matteValue_t contextReferrable = frame.referrable;
 
         while(context.binID) {
-            matteObject_t * origin = matte_bin_fetch(heap->functionHeap, context.value.id);
+            matteObject_t * origin = matte_heap_bin_fetch_function(heap->bin, context.value.id);
             if (matte_bytecode_stub_get_id(origin->function.stub) == capturesRaw[i].stubID) {
                 CapturedReferrable_t ref;
                 ref.referrableSrc = matte_heap_new_value(heap);
                 matte_value_into_copy(heap, &ref.referrableSrc, contextReferrable);
-                if (contextReferrable.binID == MATTE_VALUE_TYPE_OBJECT || contextReferrable.binID == MATTE_VALUE_TYPE_FUNCTION)
-                    object_link_parent_value(heap, d, &contextReferrable);
+                if (contextReferrable.binID == MATTE_VALUE_TYPE_OBJECT)
+                    object_link_parent_value(heap, d, &ref.referrableSrc);
 
                 ref.index = capturesRaw[i].referrable;
 
@@ -1824,9 +1775,23 @@ void matte_value_into_new_function_ref_(matteHeap_t * heap, matteValue_t * v, ma
     }
 }
 
+void matte_value_into_new_function_ref_(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub) {
+    matte_value_into_new_function_ref_real(
+        heap, v, stub, 0
+    );
+    
+}
+void matte_value_into_new_external_function_ref(matteHeap_t * heap, matteValue_t * v, matteBytecodeStub_t * stub) {
+    matte_value_into_new_function_ref_real(
+        heap, v, stub, 1
+    );
+}
+
+
+
 
 matteValue_t * matte_value_object_array_at_unsafe(matteHeap_t * heap, matteValue_t v, uint32_t index) {
-    matteObject_t * d = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * d = matte_heap_bin_fetch_table(heap->bin, v.value.id);
     return &matte_array_at(d->table.keyvalues_number, matteValue_t, index);
 }
 
@@ -1840,16 +1805,16 @@ const matteString_t * matte_value_string_get_string_unsafe(matteHeap_t * heap, m
 
 
 matteBytecodeStub_t * matte_value_get_bytecode_stub(matteHeap_t * heap, matteValue_t v) {
-    if (v.binID == MATTE_VALUE_TYPE_FUNCTION) {
-        matteObject_t * m = matte_bin_fetch(heap->functionHeap, v.value.id);
+    if (v.binID == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
+        matteObject_t * m = matte_heap_bin_fetch_function(heap->bin, v.value.id);
         return m->function.stub;
     }
     return NULL;
 }
 
 matteValue_t * matte_value_get_captured_value(matteHeap_t * heap, matteValue_t v, uint32_t index) {
-    if (v.binID == MATTE_VALUE_TYPE_FUNCTION) {
-        matteObject_t * m = matte_bin_fetch(heap->functionHeap, v.value.id);
+    if (v.binID == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
+        matteObject_t * m = matte_heap_bin_fetch_function(heap->bin, v.value.id);
         if (index >= matte_array_get_size(m->function.captures)) return NULL;
         CapturedReferrable_t referrable = matte_array_at(m->function.captures, CapturedReferrable_t, index);
         return matte_value_object_array_at_unsafe(heap, referrable.referrableSrc, referrable.index);
@@ -1858,8 +1823,8 @@ matteValue_t * matte_value_get_captured_value(matteHeap_t * heap, matteValue_t v
 }
 
 void matte_value_set_captured_value(matteHeap_t * heap, matteValue_t v, uint32_t index, matteValue_t val) {
-    if (v.binID == MATTE_VALUE_TYPE_FUNCTION) {
-        matteObject_t * m = matte_bin_fetch(heap->functionHeap, v.value.id);
+    if (v.binID == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
+        matteObject_t * m = matte_heap_bin_fetch_function(heap->bin, v.value.id);
         if (index >= matte_array_get_size(m->function.captures)) return;
 
         CapturedReferrable_t referrable = matte_array_at(m->function.captures, CapturedReferrable_t, index);
@@ -1871,58 +1836,83 @@ void matte_value_set_captured_value(matteHeap_t * heap, matteValue_t v, uint32_t
 }
 
 #ifdef MATTE_DEBUG
-void matte_heap_object_print_children(matteHeap_t * h, uint32_t id) {
-    matteObject_t * m =  matte_bin_fetch(h->tableHeap, id);
-    if (!m) {
-        printf("{cannot print children: is not table?}\n");
-        return;
-    }
 
-    /*
-    matteTableIter_t * iter = matte_table_iter_create();
-    for(
-        matte_table_iter_start(iter, m->refChildren);
-        !matte_table_iter_is_end(iter);
-        matte_table_iter_proceed(iter)
-    ) {
-        uint32_t nc = matte_table_iter_get_key_uint(iter);
-    */
-    uint32_t i;
-    uint32_t len = matte_array_get_size(m->refChildren);
-    for(i = 0; i < len; ++i) {
-        uint32_t nc = matte_array_at(m->refChildren, MatteHeapParentChildLink, i).ref->heapID;
-        printf("  {%d}", nc);
-        printf("\n");
 
-    }
-    //matte_table_iter_destroy(iter);
+static void print_object_children__print_value(const char * role, matteValue_t v) {
+    if (v.binID == MATTE_VALUE_TYPE_OBJECT)
+        printf(" - %s: %d\n", role, v.value.id);
+    else 
+        printf(" - %s: [plain value] \n", role, v.value.id);
 }
+static void print_object_children(matteHeap_t * h, matteObject_t * o) {
+    matteTableIter_t * iter = matte_table_iter_create();        
 
-void matte_heap_object_print_parents(matteHeap_t * h, uint32_t id) {
-    matteObject_t * m =  matte_bin_fetch(h->tableHeap, id);
-    if (!m) {
-        printf("{cannot print parents: is not table?}\n");
-        return;
-    }
-    /*
-    matteTableIter_t * iter = matte_table_iter_create();
-    int n;
-    for(
-        matte_table_iter_start(iter, m->refParents);
-        !matte_table_iter_is_end(iter);
-        matte_table_iter_proceed(iter)
-    ) {
-    */
     uint32_t i;
-    uint32_t len = matte_array_get_size(m->refParents);
-    for(i = 0; i < len; ++i) {
+    uint32_t n;
+    
+    if (IS_FUNCTION_OBJECT(o)) {
 
-        uint32_t nc = matte_array_at(m->refParents, MatteHeapParentChildLink, i).ref->heapID;
-        printf("  {%d}", nc);
-        printf("\n");
+        print_object_children__print_value("function origin", o->function.origin);
+        print_object_children__print_value("function origin referrable", o->function.origin_referrable);
+        uint32_t subl = matte_array_get_size(o->function.captures);
+        // should be unlinked already because of above
+        for(n = 0; n < subl; ++n) {
+            print_object_children__print_value("function capture", matte_array_at(o->function.captures, CapturedReferrable_t, n).referrableSrc);
+        }
+    } else {
+        if (o->table.attribSet.binID) {
+            print_object_children__print_value("attrib set", o->table.attribSet);
+        }
 
+
+        if (o->table.keyvalue_true.binID) {
+            print_object_children__print_value("key [true]", o->table.keyvalue_true);
+        }
+        if (o->table.keyvalue_false.binID) {
+            print_object_children__print_value("key [false]",o->table.keyvalue_false);                
+        }
+        if (o->table.keyvalues_number && matte_array_get_size(o->table.keyvalues_number)) {
+            uint32_t subl = matte_array_get_size(o->table.keyvalues_number);
+            for(n = 0; n < subl; ++n) {
+                print_object_children__print_value("key [number]", matte_array_at(o->table.keyvalues_number, matteValue_t, n));                
+            }
+        }
+
+        if (o->table.keyvalues_string && !matte_table_is_empty(o->table.keyvalues_string)) {
+            for(matte_table_iter_start(iter, o->table.keyvalues_string);
+                matte_table_iter_is_end(iter) == 0;
+                matte_table_iter_proceed(iter)
+            ) {
+                matteValue_t * v = matte_table_iter_get_value(iter);
+                print_object_children__print_value("key [string]", *v);
+
+            }
+        }
+        
+        if (o->table.keyvalues_types && !matte_table_is_empty(o->table.keyvalues_types)) {
+
+            for(matte_table_iter_start(iter, o->table.keyvalues_types);
+                matte_table_iter_is_end(iter) == 0;
+                matte_table_iter_proceed(iter)
+            ) {
+                matteValue_t * v = matte_table_iter_get_value(iter);
+                print_object_children__print_value("key [type]", *v);
+            }
+        }
+        if (o->table.keyvalues_object && !matte_table_is_empty(o->table.keyvalues_object)) {
+            for(matte_table_iter_start(iter, o->table.keyvalues_object);
+                matte_table_iter_is_end(iter) == 0;
+                matte_table_iter_proceed(iter)
+            ) {
+                matteValue_t * v = matte_table_iter_get_value(iter);
+                print_object_children__print_value("key [object]", *v);
+
+            }
+        }
+        
     }
-    //matte_table_iter_destroy(iter);
+    matte_table_iter_destroy(iter);
+
 }
 
 
@@ -1948,27 +1938,41 @@ void matte_value_print(matteHeap_t * heap, matteValue_t v) {
       case MATTE_VALUE_TYPE_TYPE: 
         printf("  Heap Type: TYPE\n");
         printf("  Value:     %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, v))));
-        break;
-      case MATTE_VALUE_TYPE_FUNCTION: 
-        printf("  [FUNCTION]\n");
-    
+        break;    
       case MATTE_VALUE_TYPE_OBJECT: {
-        printf("  Heap Type: OBJECT\n");
+        printf("  Heap Type: OBJECT %s\n", IS_FUNCTION_ID(v.value.id) ? "(Function)" : "(table)");
         printf("  Heap ID:   %d\n", v.value.id);
-        matteObject_t * m = matte_bin_fetch(VALUE_TO_HEAP(heap, v), v.value.id);            
+        matteObject_t * m = matte_heap_bin_fetch(heap->bin, v.value.id);            
         if (!m) {
             printf("  (WARNING: this refers to an object fully recycled.)\n");
             fflush(stdout);
             return;
         }
+        printf("  checkID:   %d (%s)\n", m->checkID, (m->checkID == heap->checkID) ? "reaches root valid" : "does not match heap, reaches root is invalid");
+        printf("  refct  :   %d\n", (int)m->refcount);
+
         if (QUERY_STATE(m, OBJECT_STATE__RECYCLED)) {
             printf("  (WARNING: this object is currently dormant.)\n") ;          
         }
         printf("  RootLock:  %d\n", m->rootState);
-        printf("  Parents?   %s\n", !matte_array_get_size(m->refParents) ? "false" : "true");
-        matte_heap_object_print_parents(heap, m->heapID);
-        printf("  Children?  %s\n", !matte_array_get_size(m->refChildren) ? "false" : "true");
-        matte_heap_object_print_children(heap, m->heapID);
+        printf("  State   :  %d\n", m->state);
+        #ifdef MATTE_DEBUG__HEAP
+            printf("  Parents : "); 
+            uint32_t i;
+            for(i = 0; i < matte_array_get_size(m->parents); ++i) {
+                printf("%d ", matte_array_at(m->parents, matteValue_t, i).value.id);
+            }
+            printf("\n");
+        #endif
+        
+        printf("  Children:\n");
+        print_object_children(heap, m);
+        
+
+        //printf("  Parents?   %s\n", !matte_array_get_size(m->refParents) ? "false" : "true");
+        //matte_heap_object_print_parents(heap, m->heapID);
+        //printf("  Children?  %s\n", !matte_array_get_size(m->refChildren) ? "false" : "true");
+        //matte_heap_object_print_children(heap, m->heapID);
         /*{
             printf("  String Values:\n");
             matteObject_t * m = matte_bin_fetch(heap->sortedHeaps[MATTE_VALUE_TYPE_OBJECT], v.value.id);            
@@ -2004,11 +2008,11 @@ void matte_value_print_from_id(matteHeap_t * heap, uint32_t bin, uint32_t v) {
 #endif
 
 void matte_value_object_set_native_finalizer(matteHeap_t * heap, matteValue_t v, void (*fb)(void * objectUserdata, void * functionUserdata), void * functionUserdata) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT && v.binID != MATTE_VALUE_TYPE_FUNCTION) {
-        matte_vm_raise_error_cstring(heap->vm, "Tried to set native finalizer on a non-object/non-function value.");
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+        matte_vm_raise_error_cstring(heap->vm, "Tried to set native finalizer on a non-object value.");
         return;
     }
-    matteObject_t * m = matte_bin_fetch(VALUE_TO_HEAP(heap, v), v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch(heap->bin, v.value.id);
     m->nativeFinalizer = fb;
     m->nativeFinalizerData = functionUserdata;        
 }
@@ -2016,14 +2020,14 @@ void matte_value_object_set_native_finalizer(matteHeap_t * heap, matteValue_t v,
 
 void matte_value_object_set_userdata(matteHeap_t * heap, matteValue_t v, void * userData) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+        matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
         m->userdata = userData;
     }
 }
 
 void * matte_value_object_get_userdata(matteHeap_t * heap, matteValue_t v) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+        matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
         return m->userdata;
     }
     return NULL;
@@ -2050,12 +2054,13 @@ double matte_value_as_number(matteHeap_t * heap, matteValue_t v) {
         matte_vm_raise_error_cstring(heap->vm, "Cannot convert string value into a number.");
         return 0;
       }
-       case MATTE_VALUE_TYPE_FUNCTION: 
-        matte_vm_raise_error_cstring(heap->vm, "Cannot convert function value into a number.");
-        return 0;
 
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+        if (IS_FUNCTION_ID(v.value.id)) {
+            matte_vm_raise_error_cstring(heap->vm, "Cannot convert function value into a number.");
+            return 0;        
+        }
+        matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
         matteValue_t operator = object_get_conv_operator(heap, m, heap->type_number.value.id);
         if (operator.binID) {            
             double num = matte_value_as_number(heap, matte_vm_call(heap->vm, operator, matte_array_empty(), matte_array_empty(), NULL));
@@ -2101,14 +2106,14 @@ matteValue_t matte_value_as_string(matteHeap_t * heap, matteValue_t v) {
         return v;
       }
       
-      case MATTE_VALUE_TYPE_FUNCTION: { 
-        matte_vm_raise_error_cstring(heap->vm, "Cannot convert function into a string.");
-        return heap->specialString_empty;
-      }
 
 
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+        if (IS_FUNCTION_ID(v.value.id)) {
+            matte_vm_raise_error_cstring(heap->vm, "Cannot convert function into a string.");
+            return heap->specialString_empty;        
+        }
+        matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
         matteValue_t operator = object_get_conv_operator(heap, m, heap->type_string.value.id);
         if (operator.binID) {
             matteValue_t result = matte_vm_call(heap->vm, operator, matte_array_empty(), matte_array_empty(), NULL);
@@ -2163,18 +2168,10 @@ matteValue_t matte_value_to_type(matteHeap_t * heap, matteValue_t v, matteValue_
         break;
       }
 
-      case 6: {
-        if (v.binID == MATTE_VALUE_TYPE_FUNCTION) {
-            matte_value_into_copy(heap, &out, v);
-            break;
-        } else {
-            matte_vm_raise_error_cstring(heap->vm, "Cannot convert value to Function type.");        
-        }
-      }
 
 
       case 5: {
-        if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+        if (v.binID == MATTE_VALUE_TYPE_OBJECT && !IS_FUNCTION_ID(v.value.id)) {
             matte_value_into_copy(heap, &out, v);
             break;
         } else {
@@ -2182,6 +2179,16 @@ matteValue_t matte_value_to_type(matteHeap_t * heap, matteValue_t v, matteValue_
         }
       
       }
+      
+      case 6: {
+        if (v.binID == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
+            matte_value_into_copy(heap, &out, v);
+            break;
+        } else {
+            matte_vm_raise_error_cstring(heap->vm, "Cannot convert value to Function type.");        
+        }
+      }
+      
       
       default:;// TODO: custom types.
       
@@ -2207,12 +2214,11 @@ int matte_value_as_boolean(matteHeap_t * heap, matteValue_t v) {
         // non-empty value
         return 1;
       }
-      case MATTE_VALUE_TYPE_FUNCTION: {
-        // non-empty
-        return 1;              
-      }
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+        if (IS_FUNCTION_ID(v.value.id))
+            return 1;              
+            
+        matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
         matteValue_t operator = object_get_conv_operator(heap, m, heap->type_boolean.value.id);
         if (operator.binID) {
             matteValue_t r = matte_vm_call(heap->vm, operator, matte_array_empty(), matte_array_empty(), NULL);
@@ -2232,13 +2238,14 @@ int matte_value_as_boolean(matteHeap_t * heap, matteValue_t v) {
 // returns whether the value is callable.
 int matte_value_is_callable(matteHeap_t * heap, matteValue_t v) {
     if (v.binID == MATTE_VALUE_TYPE_TYPE) return 1;
-    if (v.binID != MATTE_VALUE_TYPE_FUNCTION) return 0;
-    matteObject_t * m = matte_bin_fetch(heap->functionHeap, v.value.id);
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return 0;
+    if (!IS_FUNCTION_ID(v.value.id)) return 0;
+    matteObject_t * m = matte_heap_bin_fetch_function(heap->bin, v.value.id);
     return 1 + (m->function.types != NULL); 
 }
 
 int matte_value_object_function_pre_typecheck_unsafe(matteHeap_t * heap, matteValue_t v, const matteArray_t * arr) {
-    matteObject_t * m = matte_bin_fetch(heap->functionHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_function(heap->bin, v.value.id);
     uint32_t i;
     uint32_t len = matte_array_get_size(arr);
 
@@ -2268,7 +2275,7 @@ int matte_value_object_function_pre_typecheck_unsafe(matteHeap_t * heap, matteVa
 }
 
 void matte_value_object_function_post_typecheck_unsafe(matteHeap_t * heap, matteValue_t v, matteValue_t ret) {
-    matteObject_t * m = matte_bin_fetch(heap->functionHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_function(heap->bin, v.value.id);
     if (!matte_value_isa(heap, ret, matte_array_at(m->function.types, matteValue_t, matte_array_get_size(m->function.types) - 1))) {
         matteString_t * err = matte_string_create_from_c_str(
             "Return value (type: %s) is not of required type %s.",
@@ -2292,7 +2299,14 @@ matteValue_t matte_value_object_access(matteHeap_t * heap, matteValue_t v, matte
         return matte_heap_new_value(heap);        
       }
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+        if (IS_FUNCTION_ID(v.value.id)) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Functions do not have members."
+            );
+            matte_vm_raise_error_string(heap->vm, err);
+            return matte_heap_new_value(heap);        
+        }
+        matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
         matteValue_t accessor = object_get_access_operator(heap, m, isBracketAccess, 1);
         if (accessor.binID) {
             matteValue_t args[1] = {
@@ -2380,7 +2394,15 @@ matteValue_t * matte_value_object_access_direct(matteHeap_t * heap, matteValue_t
         return matte_vm_get_external_builtin_function_as_value(heap->vm, out);
       }
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+        if (IS_FUNCTION_ID(v.value.id)) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Cannot access member of type Function (Functions do not have members).",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, matte_value_type_name(heap, matte_value_get_type(heap, v))))
+            );
+            matte_vm_raise_error_string(heap->vm, err);
+            return NULL; //matte_heap_new_value(heap);        
+        }
+        matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
         matteValue_t accessor = object_get_access_operator(heap, m, isBracketAccess, 1);
         if (accessor.binID) {
             return NULL;
@@ -2425,11 +2447,10 @@ matteValue_t matte_value_object_access_index(matteHeap_t * heap, matteValue_t v,
 
 
 void matte_value_object_push_lock_(matteHeap_t * heap, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT && v.binID != MATTE_VALUE_TYPE_FUNCTION) return;
-    matteObject_t * m = matte_bin_fetch(VALUE_TO_HEAP(heap, v), v.value.id);
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
+    matteObject_t * m = matte_heap_bin_fetch(heap->bin, v.value.id);
     if (m->rootState == 0) {
-        if (matte_array_get_size(m->refChildren))
-            push_root_node(heap, &heap->roots, m);
+        push_root_node(heap, &heap->roots, m);
     }
     m->rootState++;
     #ifdef MATTE_DEBUG__HEAP    
@@ -2438,16 +2459,19 @@ void matte_value_object_push_lock_(matteHeap_t * heap, matteValue_t v) {
 }
 
 void matte_value_object_pop_lock_(matteHeap_t * heap, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT && v.binID != MATTE_VALUE_TYPE_FUNCTION) return;
-    matteObject_t * m = matte_bin_fetch(VALUE_TO_HEAP(heap, v), v.value.id);
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
+    matteObject_t * m = matte_heap_bin_fetch(heap->bin, v.value.id);
     if (m->rootState) {
         m->rootState--;
         if (m->rootState == 0) {
-            if (matte_array_get_size(m->refChildren)) {
-                remove_root_node(heap, &heap->roots, m);        
-            }
-            matte_heap_recycle(heap, v);
+            remove_root_node(heap, &heap->roots, m);        
             heap->gcRequestStrength++;
+            if (!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
+                if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)) {
+                    ENABLE_STATE(m, OBJECT_STATE__IS_QUESTIONABLE);
+                    matte_array_push(heap->questionableList, m);
+                }
+            }
         }
     }     
     #ifdef MATTE_DEBUG__HEAP    
@@ -2461,7 +2485,7 @@ matteValue_t matte_value_object_keys(matteHeap_t * heap, matteValue_t v) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return matte_heap_new_value(heap);
     }
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
 
     if (m->table.attribSet.binID) {
         matteValue_t set = matte_value_object_access(heap, m->table.attribSet, heap->specialString_keys, 0);
@@ -2499,12 +2523,12 @@ matteValue_t matte_value_object_keys(matteHeap_t * heap, matteValue_t v) {
 
 
     // object 
-    if (m->table.keyvalues_table && !matte_table_is_empty(m->table.keyvalues_table)) {
+    if (m->table.keyvalues_object && !matte_table_is_empty(m->table.keyvalues_object)) {
         matteTableIter_t * iter = matte_table_iter_create();
-        matte_table_iter_start(iter, m->table.keyvalues_table);
+        matte_table_iter_start(iter, m->table.keyvalues_object);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             matteValue_t key;
-            matteObject_t * current = matte_bin_fetch(heap->tableHeap, matte_table_iter_get_key_uint(iter));
+            matteObject_t * current = matte_heap_bin_fetch_table(heap->bin, matte_table_iter_get_key_uint(iter));
             key.binID = MATTE_VALUE_TYPE_OBJECT;
             key.value.id = current->heapID;
             #ifdef MATTE_DEBUG__HEAP
@@ -2515,21 +2539,7 @@ matteValue_t matte_value_object_keys(matteHeap_t * heap, matteValue_t v) {
         matte_table_iter_destroy(iter);
     }
 
-    if (m->table.keyvalues_functs && !matte_table_is_empty(m->table.keyvalues_functs)) {
-        matteTableIter_t * iter = matte_table_iter_create();
-        matte_table_iter_start(iter, m->table.keyvalues_functs);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
-            matteValue_t key;
-            matteObject_t * current = matte_bin_fetch(heap->functionHeap, matte_table_iter_get_key_uint(iter));
-            key.binID = MATTE_VALUE_TYPE_FUNCTION;
-            key.value.id = current->heapID;
-            #ifdef MATTE_DEBUG__HEAP
-                matte_heap_track_in(heap, key, "object.keys()", 0);
-            #endif
-            matte_array_push(keys, key);    
-        }
-        matte_table_iter_destroy(iter);
-    }
+
 
 
     // true 
@@ -2574,7 +2584,7 @@ matteValue_t matte_value_object_values(matteHeap_t * heap, matteValue_t v) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return matte_heap_new_value(heap);
     }
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
     if (m->table.attribSet.binID) {
         matteValue_t set = matte_value_object_access(heap, m->table.attribSet, heap->specialString_values, 0);
 
@@ -2584,7 +2594,7 @@ matteValue_t matte_value_object_values(matteHeap_t * heap, matteValue_t v) {
                 matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "values attribute MUST return an object."));
                 return matte_heap_new_value(heap);
             } else {
-                m = matte_bin_fetch(heap->tableHeap, v.value.id);
+                m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
             }
         }    
     }
@@ -2617,9 +2627,9 @@ matteValue_t matte_value_object_values(matteHeap_t * heap, matteValue_t v) {
 
 
     // object 
-    if (m->table.keyvalues_table && !matte_table_is_empty(m->table.keyvalues_table)) {
+    if (m->table.keyvalues_object && !matte_table_is_empty(m->table.keyvalues_object)) {
         matteTableIter_t * iter = matte_table_iter_create();
-        matte_table_iter_start(iter, m->table.keyvalues_table);
+        matte_table_iter_start(iter, m->table.keyvalues_object);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             val = matte_heap_new_value(heap);
             matte_value_into_copy(heap, &val, *(matteValue_t *)matte_table_iter_get_value(iter));
@@ -2627,16 +2637,7 @@ matteValue_t matte_value_object_values(matteHeap_t * heap, matteValue_t v) {
         }
         matte_table_iter_destroy(iter);
     }
-    if (m->table.keyvalues_functs && !matte_table_is_empty(m->table.keyvalues_functs)) {
-        matteTableIter_t * iter = matte_table_iter_create();
-        matte_table_iter_start(iter, m->table.keyvalues_functs);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
-            val = matte_heap_new_value(heap);
-            matte_value_into_copy(heap, &val, *(matteValue_t *)matte_table_iter_get_value(iter));
-            matte_array_push(vals, val);    
-        }
-        matte_table_iter_destroy(iter);
-    }
+
 
 
     // true 
@@ -2679,7 +2680,7 @@ uint32_t matte_value_object_get_number_key_count(matteHeap_t * heap, matteValue_
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return 0;
     }
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
     return m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
 }
 
@@ -2688,7 +2689,7 @@ uint32_t matte_value_object_get_key_count(matteHeap_t * heap, matteValue_t v) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return 0;
     }
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
     uint32_t total = 
         (m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0) +
         (m->table.keyvalue_true.binID?1:0) +
@@ -2705,23 +2706,15 @@ uint32_t matte_value_object_get_key_count(matteHeap_t * heap, matteValue_t v) {
     }
 
 
-    if (m->table.keyvalues_table && !matte_table_is_empty(m->table.keyvalues_table)) {
+    if (m->table.keyvalues_object && !matte_table_is_empty(m->table.keyvalues_object)) {
         matteTableIter_t * iter = matte_table_iter_create();
-        matte_table_iter_start(iter, m->table.keyvalues_table);
+        matte_table_iter_start(iter, m->table.keyvalues_object);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             total++;
         }
         matte_table_iter_destroy(iter);
     }
 
-    if (m->table.keyvalues_functs && !matte_table_is_empty(m->table.keyvalues_functs)) {
-        matteTableIter_t * iter = matte_table_iter_create();
-        matte_table_iter_start(iter, m->table.keyvalues_functs);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
-            total++;
-        }
-        matte_table_iter_destroy(iter);
-    }
 
     
     if (m->table.keyvalues_types && !matte_table_is_empty(m->table.keyvalues_types)) {
@@ -2744,7 +2737,7 @@ void matte_value_object_remove_key_string(matteHeap_t * heap, matteValue_t v, co
 
 void matte_value_object_remove_key(matteHeap_t * heap, matteValue_t v, matteValue_t key) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
     switch(key.binID) {
       case MATTE_VALUE_TYPE_EMPTY: return;
       case MATTE_VALUE_TYPE_STRING: {
@@ -2752,7 +2745,7 @@ void matte_value_object_remove_key(matteHeap_t * heap, matteValue_t v, matteValu
         matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
         if (value) {
             matte_table_remove_by_uint(m->table.keyvalues_string, key.value.id);
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT || value->binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, value);                
             }
             matte_heap_recycle(heap, *value);
@@ -2766,7 +2759,7 @@ void matte_value_object_remove_key(matteHeap_t * heap, matteValue_t v, matteValu
         matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_types, key.value.id);
         if (value) {
             matte_table_remove_by_uint(m->table.keyvalues_types, key.value.id);
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT || value->binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, value);                
             }
             matte_heap_recycle(heap, *value);
@@ -2784,7 +2777,7 @@ void matte_value_object_remove_key(matteHeap_t * heap, matteValue_t v, matteValu
             return;
         }
         matteValue_t * value = &matte_array_at(m->table.keyvalues_number, matteValue_t, index);
-        if (value->binID == MATTE_VALUE_TYPE_OBJECT || value->binID == MATTE_VALUE_TYPE_FUNCTION) {
+        if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
             object_unlink_parent_value(heap, m, value);                
         }
 
@@ -2796,13 +2789,13 @@ void matte_value_object_remove_key(matteHeap_t * heap, matteValue_t v, matteValu
       case MATTE_VALUE_TYPE_BOOLEAN: {
 
         if (key.value.boolean) {
-            if (m->table.keyvalue_true.binID == MATTE_VALUE_TYPE_OBJECT || m->table.keyvalue_true.binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (m->table.keyvalue_true.binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, &m->table.keyvalue_true);                
             }
             matte_heap_recycle(heap, m->table.keyvalue_true);
             m->table.keyvalue_true = matte_heap_new_value(heap);            
         } else {
-            if (m->table.keyvalue_false.binID == MATTE_VALUE_TYPE_OBJECT || m->table.keyvalue_false.binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (m->table.keyvalue_false.binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, &m->table.keyvalue_false);                
             }
             matte_heap_recycle(heap, m->table.keyvalue_false);
@@ -2811,29 +2804,17 @@ void matte_value_object_remove_key(matteHeap_t * heap, matteValue_t v, matteValu
         return;
       }
       
-      case MATTE_VALUE_TYPE_FUNCTION: {
-        if (!m->table.keyvalues_functs) return;           
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_functs, key.value.id);
-        if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT || value->binID == MATTE_VALUE_TYPE_FUNCTION) {
-                object_unlink_parent_value(heap, m, value);                
-            }
-            object_link_parent_value(heap, m, &key);
-            matte_heap_recycle(heap, *value);
-            matte_table_remove_by_uint(m->table.keyvalues_functs, key.value.id);
-        }
-        return;
-      }          
+   
       case MATTE_VALUE_TYPE_OBJECT: {           
-        if (!m->table.keyvalues_table) return;
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_table, key.value.id);
+        if (!m->table.keyvalues_object) return;
+        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_object, key.value.id);
         if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT || value->binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(heap, m, value);                
             }
             object_link_parent_value(heap, m, &key);
             matte_heap_recycle(heap, *value);
-            matte_table_remove_by_uint(m->table.keyvalues_table, key.value.id);
+            matte_table_remove_by_uint(m->table.keyvalues_object, key.value.id);
         }
         return;
       }
@@ -2843,7 +2824,7 @@ void matte_value_object_remove_key(matteHeap_t * heap, matteValue_t v, matteValu
 
 void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t func) {
     // 
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
 
     // foreach operator
     if (m->table.attribSet.binID) {
@@ -2855,7 +2836,7 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
                 matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "foreach attribute MUST return an object."));
                 return;
             } else {
-                m = matte_bin_fetch(heap->tableHeap, v.value.id);
+                m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
             }
         }
     }
@@ -2919,10 +2900,10 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
 
 
     // object 
-    if (m->table.keyvalues_table && !matte_table_is_empty(m->table.keyvalues_table)) {
+    if (m->table.keyvalues_object && !matte_table_is_empty(m->table.keyvalues_object)) {
         args[0].binID = MATTE_VALUE_TYPE_OBJECT;
         matteTableIter_t * iter = matte_table_iter_create();
-        matte_table_iter_start(iter, m->table.keyvalues_table);
+        matte_table_iter_start(iter, m->table.keyvalues_object);
         for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
             args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
             args[0].value.id = matte_table_iter_get_key_uint(iter);
@@ -2935,22 +2916,7 @@ void matte_value_object_foreach(matteHeap_t * heap, matteValue_t v, matteValue_t
         }
         matte_table_iter_destroy(iter);
     }
-    if (m->table.keyvalues_functs && !matte_table_is_empty(m->table.keyvalues_functs)) {
-        args[0].binID = MATTE_VALUE_TYPE_FUNCTION;
-        matteTableIter_t * iter = matte_table_iter_create();
-        matte_table_iter_start(iter, m->table.keyvalues_functs);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
-            args[1] = *(matteValue_t*)matte_table_iter_get_value(iter);
-            args[0].value.id = matte_table_iter_get_key_uint(iter);
-            matte_value_object_push_lock(heap, args[1]);
-            matte_value_object_push_lock(heap, args[0]);
-            matte_array_push(keys, args[0]);
-            matte_array_push(values, args[1]);
 
-
-        }
-        matte_table_iter_destroy(iter);
-    }
     // true 
     if (m->table.keyvalue_true.binID) {
         matte_value_into_boolean(heap, &args[0], 1);
@@ -3015,7 +2981,7 @@ matteValue_t matte_value_subset(matteHeap_t * heap, matteValue_t v, uint32_t fro
 
     switch(v.binID) {
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+        matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
 
 
         uint32_t curlen = m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
@@ -3051,7 +3017,7 @@ matteValue_t matte_value_subset(matteHeap_t * heap, matteValue_t v, uint32_t fro
 }
 
 matteValue_t matte_value_object_array_to_string_unsafe(matteHeap_t * heap, matteValue_t v) {
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
 
     matteString_t * str = matte_string_create();
     uint32_t len = m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
@@ -3088,7 +3054,7 @@ void matte_value_object_set_attributes(matteHeap_t * heap, matteValue_t v, matte
         return;    
     }
     
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
     if (m->table.attribSet.binID) {
         object_unlink_parent_value(heap, m, &m->table.attribSet);
         matte_heap_recycle(heap, m->table.attribSet);
@@ -3100,7 +3066,7 @@ void matte_value_object_set_attributes(matteHeap_t * heap, matteValue_t v, matte
 }
 
 const matteValue_t * matte_value_object_get_attributes_unsafe(matteHeap_t * heap, matteValue_t v) {
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
     if (m->table.attribSet.binID) return &m->table.attribSet;
     return NULL;
 }
@@ -3137,7 +3103,7 @@ static int matte_value_object_sort__cmp(
 void matte_value_object_sort_unsafe(matteHeap_t * heap, matteValue_t v, matteValue_t less) {
 
 
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
 
     uint32_t len = m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
     if (len < 1) return;
@@ -3184,16 +3150,16 @@ void matte_value_object_insert(
     uint32_t index, 
     matteValue_t val
 ) {
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
 
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return;
     }
 
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT || val.binID == MATTE_VALUE_TYPE_FUNCTION) {    
+    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(heap, m, &val);
     }
-    if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));
+    if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_pool_fetch(heap->keyvalues_numberPool);
     matte_array_insert(
         m->table.keyvalues_number,
         index,
@@ -3210,7 +3176,7 @@ const matteValue_t * matte_value_object_set(matteHeap_t * heap, matteValue_t v, 
         matte_vm_raise_error_cstring(heap->vm, "Cannot set property with an empty key");
         return NULL;
     }
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
     matteValue_t assigner = object_get_access_operator(heap, m, isBracket, 0);
     if (assigner.binID) {
         matteValue_t args[2] = {
@@ -3238,16 +3204,16 @@ const matteValue_t * matte_value_object_set(matteHeap_t * heap, matteValue_t v, 
 }
 
 void matte_value_object_set_index_unsafe(matteHeap_t * heap, matteValue_t v, uint32_t index, matteValue_t val) {
-    matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
     matteValue_t * newV = &matte_array_at(m->table.keyvalues_number, matteValue_t, index);
     matteValue_t out = matte_heap_new_value(heap);
     matte_value_into_copy(heap, &out, val);
 
     // track reference
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT || val.binID == MATTE_VALUE_TYPE_FUNCTION) {
+    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
         object_link_parent_value(heap, m, &val);
     }
-    if (newV->binID == MATTE_VALUE_TYPE_OBJECT || newV->binID == MATTE_VALUE_TYPE_FUNCTION) {
+    if (newV->binID == MATTE_VALUE_TYPE_OBJECT) {
         object_unlink_parent_value(heap, m, newV);
     }
 
@@ -3271,7 +3237,6 @@ void matte_value_into_copy_(matteHeap_t * heap, matteValue_t * to, matteValue_t 
         *to = from;
         return;
 
-      case MATTE_VALUE_TYPE_FUNCTION:
       case MATTE_VALUE_TYPE_OBJECT: {
         if (to->binID    == from.binID &&
             to->value.id == from.value.id
@@ -3372,9 +3337,10 @@ matteValue_t matte_value_get_type(matteHeap_t * heap, matteValue_t v) {
       case MATTE_VALUE_TYPE_NUMBER: return heap->type_number;
       case MATTE_VALUE_TYPE_STRING: return heap->type_string;
       case MATTE_VALUE_TYPE_TYPE: return heap->type_type;
-      case MATTE_VALUE_TYPE_FUNCTION: return heap->type_function;
       case MATTE_VALUE_TYPE_OBJECT: {
-        matteObject_t * m = matte_bin_fetch(heap->tableHeap, v.value.id);
+        if (IS_FUNCTION_ID(v.value.id))
+            return heap->type_function;
+        matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
         matteValue_t out;
         out.binID = MATTE_VALUE_TYPE_TYPE;
         out.value.id = m->table.typecode;
@@ -3385,7 +3351,6 @@ matteValue_t matte_value_get_type(matteHeap_t * heap, matteValue_t v) {
     // error out?
     return heap->type_empty;
 }
-
 
 
 
@@ -3401,14 +3366,17 @@ void matte_heap_recycle_(
 #endif    
 ) {
     
-    if (v.binID == MATTE_VALUE_TYPE_OBJECT || v.binID == MATTE_VALUE_TYPE_FUNCTION) {
-        matteObject_t * m = matte_bin_fetch(VALUE_TO_HEAP(heap, v), v.value.id);
+    /*if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+        matteObject_t * m = matte_heap_bin_fetch(heap->bin, v.value.id);
         if (!m) return;
-        if (!QUERY_STATE(m, OBJECT_STATE__TO_REMOVE) && !m->rootState) {
-            matte_array_push(heap->toRemove, m);
-            ENABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
+        if (!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
+            if (!QUERY_STATE(m, OBJECT_STATE__IS_QUESTIONABLE)) {
+                ENABLE_STATE(m, OBJECT_STATE__IS_QUESTIONABLE);       
+                matte_array_push(heap->questionableList, m);
+            }
         }
-    } 
+    }*/
+    
     
 }
 
@@ -3416,13 +3384,11 @@ void matte_heap_recycle_(
 
 static void print_state_bits(matteObject_t * m) {
     printf(
-        "OBJECT_STATE__IS_FUNCTION: %d\n"
         "OBJECT_STATE__IS_OLD_ROOT: %d\n"
         "OBJECT_STATE__REACHES_ROOT:%d\n"
         "OBJECT_STATE__RECYCLED:    %d\n"
         "OBJECT_STATE__TO_REMOVE:   %d\n",
 
-        QUERY_STATE(m, OBJECT_STATE__IS_FUNCTION),
         QUERY_STATE(m, OBJECT_STATE__IS_OLD_ROOT),
         QUERY_STATE(m, OBJECT_STATE__REACHES_ROOT),
         QUERY_STATE(m, OBJECT_STATE__RECYCLED),
@@ -3430,7 +3396,174 @@ static void print_state_bits(matteObject_t * m) {
     );        
 }
 
+////
+////
+////
+//    CYCLE CHECK
 
+/*
+    - list of all ROOTS 
+    - list of all SUSPECTED cycles (those orphaned by roots recently)
+    
+    
+    1. traverse all roots and tag each reachable with the "REACHES_ROOT" tag 
+       also updating the generation to make the iterations generation to 
+       make the reaches root tag reliable
+       
+    2. (fn search) for each suspected cycle value:
+        - if it REACHES_ROOT this generation, skip 
+        - if it has been visited this cycle, cycle confirmed
+        - set visited to true and match generation 
+        - foreach child value 
+            - search(child)
+        
+    
+
+
+
+
+*/
+
+static int update_all_root_children__push_value(matteHeap_t * h, matteValue_t val) {
+    if (val.binID != MATTE_VALUE_TYPE_OBJECT)
+        return 0;
+    
+    matteObject_t * o = matte_heap_bin_fetch(h->bin,  val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return 0;
+    if (o->checkID == h->checkID) return 0;
+            
+
+    o->checkID = h->checkID;
+    ENABLE_STATE(o, OBJECT_STATE__REACHES_ROOT);
+    DISABLE_STATE(o, OBJECT_STATE__TO_REMOVE);
+    matte_array_push(h->checkRootsStack, o);
+    return 1;
+}
+
+
+static void update_all_root_children(matteHeap_t * h, matteObject_t * root, matteTableIter_t * iter) {
+    if (root->checkID == h->checkID) return;
+
+    matte_array_set_size(h->checkRootsStack, 0);
+    matte_array_push(h->checkRootsStack, root);
+
+    root->checkID = h->checkID;
+    ENABLE_STATE(root, OBJECT_STATE__REACHES_ROOT);
+    DISABLE_STATE(root, OBJECT_STATE__TO_REMOVE);
+
+
+
+
+
+    uint32_t i;
+    uint32_t n;
+    uint32_t size = 1;
+    while(matte_array_get_size(h->checkRootsStack)) {
+        matteObject_t * o = matte_array_at(h->checkRootsStack, matteObject_t *, size-1);
+        size--;
+        matte_array_set_size(h->checkRootsStack, size);
+            
+        
+        if (IS_FUNCTION_OBJECT(o)) {
+            size+=update_all_root_children__push_value(h, o->function.origin);
+            size+=update_all_root_children__push_value(h, o->function.origin_referrable);
+            uint32_t subl = matte_array_get_size(o->function.captures);
+            // should be unlinked already because of above
+            for(n = 0; n < subl; ++n) {
+                size+=update_all_root_children__push_value(h, matte_array_at(o->function.captures, CapturedReferrable_t, n).referrableSrc);
+            }
+        } else {
+            if (o->table.attribSet.binID) {
+                size+=update_all_root_children__push_value(h, o->table.attribSet);
+            }
+
+
+            if (o->table.keyvalue_true.binID) {
+                size+=update_all_root_children__push_value(h, o->table.keyvalue_true);
+            }
+            if (o->table.keyvalue_false.binID) {
+                size+=update_all_root_children__push_value(h, o->table.keyvalue_false);                
+            }
+            if (o->table.keyvalues_number && matte_array_get_size(o->table.keyvalues_number)) {
+                uint32_t subl = matte_array_get_size(o->table.keyvalues_number);
+                for(n = 0; n < subl; ++n) {
+                    size+=update_all_root_children__push_value(h, matte_array_at(o->table.keyvalues_number, matteValue_t, n));                
+                }
+            }
+
+            if (o->table.keyvalues_string && !matte_table_is_empty(o->table.keyvalues_string)) {
+                for(matte_table_iter_start(iter, o->table.keyvalues_string);
+                    matte_table_iter_is_end(iter) == 0;
+                    matte_table_iter_proceed(iter)
+                ) {
+                    matteValue_t * v = matte_table_iter_get_value(iter);
+                    size+=update_all_root_children__push_value(h, *v);
+
+                }
+            }
+            
+            if (o->table.keyvalues_types && !matte_table_is_empty(o->table.keyvalues_types)) {
+
+                for(matte_table_iter_start(iter, o->table.keyvalues_types);
+                    matte_table_iter_is_end(iter) == 0;
+                    matte_table_iter_proceed(iter)
+                ) {
+                    matteValue_t * v = matte_table_iter_get_value(iter);
+                    size+=update_all_root_children__push_value(h, *v);
+                }
+            }
+            if (o->table.keyvalues_object && !matte_table_is_empty(o->table.keyvalues_object)) {
+                for(matte_table_iter_start(iter, o->table.keyvalues_object);
+                    matte_table_iter_is_end(iter) == 0;
+                    matte_table_iter_proceed(iter)
+                ) {
+                    matteValue_t * v = matte_table_iter_get_value(iter);
+                    size+=update_all_root_children__push_value(h, *v);
+
+                }
+            }
+           
+        }
+    }
+}
+
+static void check_cycles(matteHeap_t * h) {
+    h->checkID++;    
+    matteObject_t * root = h->roots;
+    matteTableIter_t * iter = matte_table_iter_create();        
+    //print_list(h);
+
+    while(root) {
+        update_all_root_children(h, root, iter);
+        root = root->nextRoot;
+    }
+    matte_table_iter_destroy(iter);
+    
+    
+    // now mark for removal ALL that are not reachable by root.
+    // handles cycles!
+    uint32_t i;
+    for(i = 0; i < matte_array_get_size(h->questionableList); ++i) {
+        matteObject_t * o = matte_array_at(h->questionableList, matteObject_t *, i);
+
+
+        DISABLE_STATE(o, OBJECT_STATE__IS_QUESTIONABLE);
+        if (QUERY_STATE(o, OBJECT_STATE__RECYCLED)) continue; // whoops, already dead
+        if (QUERY_STATE(o, OBJECT_STATE__REACHES_ROOT) && o->checkID == h->checkID) continue;
+
+        
+        // object not reachable. destroy.
+        if (!QUERY_STATE(o, OBJECT_STATE__TO_REMOVE)) {
+            matte_array_push(h->toRemove, o);
+            ENABLE_STATE(o, OBJECT_STATE__TO_REMOVE);
+        }
+    }
+    
+    matte_array_set_size(h->questionableList, 0);
+}
+////
+////
+////
 
 static void object_cleanup(matteHeap_t * h) {
     matteTableIter_t * iter = matte_table_iter_create();
@@ -3446,10 +3579,15 @@ static void object_cleanup(matteHeap_t * h) {
     uint32_t i;
     for(i = 0; i < len; ++i) {        
         matteObject_t * m = matte_array_at(toRemove, matteObject_t *, i);
+        #ifdef MATTE_DEBUG__HEAP
+            assert(!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL));
+        #endif
+            
         DISABLE_STATE(m, OBJECT_STATE__TO_REMOVE);
         if (m->checkID == h->checkID && QUERY_STATE(m, OBJECT_STATE__REACHES_ROOT)) continue;
         if (m->rootState) continue;
         if (QUERY_STATE(m, OBJECT_STATE__RECYCLED)) continue;
+        
         cleanedUP++;
         #ifdef MATTE_DEBUG__HEAP
 
@@ -3457,15 +3595,15 @@ static void object_cleanup(matteHeap_t * h) {
 
             {
                 matteValue_t vl;
-                vl.binID = QUERY_STATE(m, OBJECT_STATE__IS_FUNCTION) ? MATTE_VALUE_TYPE_FUNCTION : MATTE_VALUE_TYPE_OBJECT;
+                vl.binID = MATTE_VALUE_TYPE_OBJECT;
                 vl.value.id = m->heapID;
-                matte_heap_track_out(h, vl, "<removal>", 0);
+                matte_heap_track_done(h, vl);
             }
         #endif
 
-
         ENABLE_STATE(m, OBJECT_STATE__RECYCLED);
 
+        /*
         if (matte_array_get_size(m->refChildren)) {
             matteValue_t v;
             v.binID = MATTE_VALUE_TYPE_OBJECT;
@@ -3501,51 +3639,62 @@ static void object_cleanup(matteHeap_t * h) {
             }
             matte_array_set_size(m->refParents, 0);
         }
+        */
 
 
-
-        if (QUERY_STATE(m, OBJECT_STATE__IS_FUNCTION)) {
+        if (IS_FUNCTION_OBJECT(m)) {
             m->function.stub = NULL;
             uint32_t n;
             uint32_t subl = matte_array_get_size(m->function.captures);
             // should be unlinked already because of above
             for(n = 0; n < subl; ++n) {
+                object_unlink_parent_value(h, m, &matte_array_at(m->function.captures, CapturedReferrable_t, n).referrableSrc);
+
                 matte_heap_recycle(h, matte_array_at(m->function.captures, CapturedReferrable_t, n).referrableSrc);
             }
             matte_array_set_size(m->function.captures, 0);
+            object_unlink_parent_value(h, m, &m->function.origin);
+            object_unlink_parent_value(h, m, &m->function.origin_referrable);            
+
             matte_heap_recycle(h, m->function.origin);
             m->function.origin.binID = 0;
+
             matte_heap_recycle(h, m->function.origin_referrable);
             m->function.origin_referrable.binID = 0;
             if (m->function.types) {
                 matte_array_destroy(m->function.types);
             }
             m->function.types = NULL;
-            matte_bin_recycle(h->functionHeap, m->heapID);
+            matte_heap_bin_recycle(h->bin, m->heapID);
         
         } else {
 
             if (m->table.attribSet.binID) {
                 //matte_heap_recycle(h, m->table.attribSet);
+                object_unlink_parent_value(h, m, &m->table.attribSet);
                 m->table.attribSet.binID = 0;
             }
 
 
             if (m->table.keyvalue_true.binID) {
                 //matte_heap_recycle(h, m->table.keyvalue_true);
+                object_unlink_parent_value(h, m, &m->table.keyvalue_true);
                 m->table.keyvalue_true.binID = 0;
             }
             if (m->table.keyvalue_false.binID) {
                 //matte_heap_recycle(h, m->table.keyvalue_false);
+                object_unlink_parent_value(h, m, &m->table.keyvalue_false);                
                 m->table.keyvalue_false.binID = 0;
             }
             if (m->table.keyvalues_number && matte_array_get_size(m->table.keyvalues_number)) {
-                //uint32_t n;
-                //uint32_t subl = matte_array_get_size(m->table.keyvalues_number);
-                //for(n = 0; n < subl; ++n) {
-                //    matte_heap_recycle(h, matte_array_at(m->table.keyvalues_number, matteValue_t, n));
-                //}
+                uint32_t n;
+                uint32_t subl = matte_array_get_size(m->table.keyvalues_number);
+                for(n = 0; n < subl; ++n) {
+                    object_unlink_parent_value(h, m, &matte_array_at(m->table.keyvalues_number, matteValue_t, n));                
+                }
                 matte_array_set_size(m->table.keyvalues_number, 0);
+                matte_pool_recycle(h->keyvalues_numberPool, m->table.keyvalues_number);
+                m->table.keyvalues_number = NULL;
             }
 
             if (m->table.keyvalues_string && !matte_table_is_empty(m->table.keyvalues_string)) {
@@ -3555,6 +3704,8 @@ static void object_cleanup(matteHeap_t * h) {
                 ) {
                     matteValue_t * v = matte_table_iter_get_value(iter);
                     //matte_heap_recycle(h, *v);
+                    object_unlink_parent_value(h, m, v);                
+
                     heap_recycle_value_pointer(h, v);
 
                 }
@@ -3569,34 +3720,26 @@ static void object_cleanup(matteHeap_t * h) {
                 ) {
                     matteValue_t * v = matte_table_iter_get_value(iter);
                     //matte_heap_recycle(h, *v);
+                    object_unlink_parent_value(h, m, v);                      
                     heap_recycle_value_pointer(h, v);
                 }
                 matte_table_clear(m->table.keyvalues_types);
             }
-            if (m->table.keyvalues_table && !matte_table_is_empty(m->table.keyvalues_table)) {
-                for(matte_table_iter_start(iter, m->table.keyvalues_table);
+            if (m->table.keyvalues_object && !matte_table_is_empty(m->table.keyvalues_object)) {
+                for(matte_table_iter_start(iter, m->table.keyvalues_object);
                     matte_table_iter_is_end(iter) == 0;
                     matte_table_iter_proceed(iter)
                 ) {
                     matteValue_t * v = matte_table_iter_get_value(iter);
                     //matte_heap_recycle(h, *v);
+                    object_unlink_parent_value(h, m, v);  
                     heap_recycle_value_pointer(h, v);
                 }
-                matte_table_clear(m->table.keyvalues_table);
+                matte_table_clear(m->table.keyvalues_object);
             }
-            
-            if (m->table.keyvalues_functs && !matte_table_is_empty(m->table.keyvalues_functs)) {
-                for(matte_table_iter_start(iter, m->table.keyvalues_functs);
-                    matte_table_iter_is_end(iter) == 0;
-                    matte_table_iter_proceed(iter)
-                ) {
-                    matteValue_t * v = matte_table_iter_get_value(iter);
-                    //matte_heap_recycle(h, *v);
-                    heap_recycle_value_pointer(h, v);
-                }
-                matte_table_clear(m->table.keyvalues_functs);
-            }
-            matte_bin_recycle(h->tableHeap, m->heapID);
+
+            matte_heap_bin_recycle(h->bin, m->heapID);
+
         }
         if (m->nativeFinalizer) {
             m->nativeFinalizer(m->userdata, m->nativeFinalizerData);
@@ -3640,77 +3783,265 @@ void matte_heap_pop_lock_gc(matteHeap_t * h) {
 #define UNOWNED_COUNT_COLLECT_GARBAGE 10000
 #define OLD_CYCLE_COUNT_LIMIT   7
 
-void check_roots(matteHeap_t * h, matteObject_t ** rootSrc) {
-    if (!*rootSrc) return;
-    matteArray_t * stack = h->checkRootsStack;
-    matte_array_set_size(stack, 0);
-    uint32_t i;
-    uint32_t len;
 
-    matteObject_t * root = *rootSrc;        
-    uint32_t roots = 0;
-    int checked = 0;
-    uint32_t locked = 0;
-    while(root) {
-        roots++;
-        
-        uint32_t ssize = 1;
-        
-        root->checkID = h->checkID;
-        matteObject_t * n = root->nextRoot;;
-        
-        
-
-        matte_array_push(stack, root);
-
-
-        while(ssize) {
-            ssize--;
-            matteObject_t * obj = matte_array_at(stack, matteObject_t *, ssize);            
-            matte_array_set_size(stack, ssize);
-                            
-            ENABLE_STATE(obj, OBJECT_STATE__REACHES_ROOT);
-            checked++;
-
-
-            len = matte_array_get_size(obj->refChildren);
-            for(i = 0; i < len; ++i) {
-                MatteHeapParentChildLink * link = &matte_array_at(obj->refChildren, MatteHeapParentChildLink, i);
-                if (link->ref->checkID != h->checkID) {
-                    link->ref->checkID = h->checkID;
-                    matte_array_push(stack, link->ref);
-                    ssize++;
-                }
-            }
-        }
-        matte_array_set_size(stack, 0);
-        root = n;
-    }
-    #ifdef MATTE_DEBUG__HEAP
-    printf("Roots: %d, checked %d, locked: %d\n", roots, checked, locked);
-    #endif
-
-}
 
 void matte_heap_garbage_collect(matteHeap_t * h) {
     if (h->gcLocked) return;
 
-    if (!h->shutdown && h->gcRequestStrength < CREATED_COUNT) return;
+
+    //if (!h->shutdown && h->gcRequestStrength < CREATED_COUNT) return;
+    if (!h->shutdown && matte_array_get_size(h->questionableList) < 256) return;
     h->gcLocked = 1;
     h->gcRequestStrength = 0;
-    h->checkID++;
+
     // Generational GC:
     // first cycle across the oldest roots occasionally
-
-
-    check_roots(h, &h->roots);
+    check_cycles(h);
     object_cleanup(h);    
+
     h->gcOldCycle++;
     h->gcLocked = 0;
     //h->cooldown++;
 }
 
+static void * create_table() {
+    matteObject_t * out = calloc(1, sizeof(matteObject_t));
+    //out->refChildren = matte_array_create(sizeof(MatteHeapParentChildLink));
+    //out->refParents = matte_array_create(sizeof(MatteHeapParentChildLink));
 
+    out->table.keyvalues_string = NULL;//matte_table_create_hash_pointer();
+    out->table.keyvalues_types  = NULL;//matte_table_create_hash_pointer();
+    out->table.keyvalues_number = NULL;//matte_array_create(sizeof(matteValue_t));
+    out->table.keyvalues_object = NULL;//matte_table_create_hash_pointer();
+    out->table.keyvalue_true.binID = 0;
+    out->table.keyvalue_false.binID = 0;   
+    #ifdef MATTE_DEBUG__HEAP
+        out->parents = matte_array_create(sizeof(matteValue_t));
+    #endif
+    CREATED_COUNT++;
+    return out;
+}
+
+static void * create_function() {
+    matteObject_t * out = calloc(1, sizeof(matteObject_t));
+    //out->refChildren = matte_array_create(sizeof(MatteHeapParentChildLink));
+    //out->refParents = matte_array_create(sizeof(MatteHeapParentChildLink));
+    #ifdef MATTE_DEBUG__HEAP
+        out->parents = matte_array_create(sizeof(matteValue_t));
+    #endif
+
+    out->function.captures = matte_array_create(sizeof(CapturedReferrable_t));
+    out->function.types = NULL;
+    CREATED_COUNT++;
+    return out;
+}
+
+
+
+static void destroy_object(void * d) {
+    matteObject_t * out = d;
+    #ifdef MATTE_DEBUG__HEAP
+        matte_array_destroy(out->parents);
+    #endif
+
+    if (IS_FUNCTION_OBJECT(out)) {
+        matte_array_destroy(out->function.captures);
+    
+    } else {
+
+        if (out->table.keyvalues_string) matte_table_destroy(out->table.keyvalues_string);
+        if (out->table.keyvalues_types)  matte_table_destroy(out->table.keyvalues_types);
+        if (out->table.keyvalues_object)  matte_table_destroy(out->table.keyvalues_object);
+        if (out->table.keyvalues_number) matte_array_destroy(out->table.keyvalues_number);
+    }
+
+
+    //matte_array_destroy(out->refParents);
+    //matte_array_destroy(out->refChildren);
+    free(out);
+}
+
+struct matteHeapBin_t {
+    matteArray_t * functions;
+    matteArray_t * tables;
+    
+    matteArray_t * deadFunctions;
+    matteArray_t * deadTables;
+};
+
+
+
+
+
+matteHeapBin_t * matte_heap_bin_create() {
+    matteHeapBin_t * heap = calloc(1, sizeof(matteHeapBin_t));
+    
+    heap->functions = matte_array_create(sizeof(matteObject_t *));
+    heap->tables    = matte_array_create(sizeof(matteObject_t *));
+
+    heap->deadFunctions = matte_array_create(sizeof(uint32_t));
+    heap->deadTables    = matte_array_create(sizeof(uint32_t));
+    
+    return heap;
+}
+
+matteObject_t * matte_heap_bin_add_function(matteHeapBin_t * heap) {
+    uint32_t deadSize = matte_array_get_size(heap->deadFunctions);
+    if (deadSize == 0) {
+        matteObject_t * o = create_function();
+        o->heapID = matte_array_get_size(heap->functions) * 2;
+        matte_array_push(heap->functions, o);
+        return o;
+    } else {
+        uint32_t id = matte_array_at(heap->deadFunctions, uint32_t, deadSize-1);
+        matte_array_set_size(heap->deadFunctions, deadSize-1);
+        matteObject_t * o = matte_array_at(heap->functions, matteObject_t *, (id)/2);
+        o->heapID = id;
+        return o;
+    }
+}
+
+matteObject_t * matte_heap_bin_add_table(matteHeapBin_t * heap) {
+    uint32_t deadSize = matte_array_get_size(heap->deadTables);
+    if (deadSize == 0) {
+        matteObject_t * o = create_table();
+        o->heapID = matte_array_get_size(heap->tables) * 2 + 1;
+        matte_array_push(heap->tables, o);        
+        return o;
+    } else {
+        uint32_t id = matte_array_at(heap->deadTables, uint32_t, deadSize-1);
+        matte_array_set_size(heap->deadTables, deadSize-1);
+        matteObject_t * o = matte_array_at(heap->tables, matteObject_t *, (id)/2);
+        o->heapID = id;
+        return o;
+    }
+
+}
+
+matteObject_t * matte_heap_bin_fetch(matteHeapBin_t * heap, uint32_t id) {
+    // function (is even)
+    if (IS_FUNCTION_ID(id)) {
+        id /= 2;
+        #ifdef MATTE_DEBUG__HEAP
+            assert(id < matte_array_get_size(heap->functions));
+        #endif
+        return matte_array_at(heap->functions, matteObject_t *, id);
+    // is object
+    } else {
+        id /= 2;
+        #ifdef MATTE_DEBUG__HEAP
+            assert(id < matte_array_get_size(heap->tables));
+        #endif
+        return matte_array_at(heap->tables, matteObject_t *, id);    
+    }
+}
+
+matteObject_t * matte_heap_bin_fetch_function(matteHeapBin_t * heap, uint32_t id) {
+    #ifdef MATTE_DEBUG__HEAP
+        assert(IS_FUNCTION_ID(id));
+    #endif
+    id /= 2;
+    #ifdef MATTE_DEBUG__HEAP
+        assert(id < matte_array_get_size(heap->functions));
+    #endif
+    return matte_array_at(heap->functions, matteObject_t *, id);
+}
+
+matteObject_t * matte_heap_bin_fetch_table(matteHeapBin_t * heap, uint32_t id) {
+    #ifdef MATTE_DEBUG__HEAP
+        assert(!IS_FUNCTION_ID(id));
+    #endif
+    id /= 2;
+    #ifdef MATTE_DEBUG__HEAP
+        assert (id < matte_array_get_size(heap->tables));
+    #endif
+    return matte_array_at(heap->tables, matteObject_t *, id);
+}
+
+void matte_heap_bin_recycle(matteHeapBin_t * heap, uint32_t id) {
+    // function (is even)
+    if (IS_FUNCTION_ID(id)) {
+        #ifdef MATTE_DEBUG__HEAP
+            assert (id/2 < matte_array_get_size(heap->functions));
+        #endif
+        matte_array_push(heap->deadFunctions, id);
+    // is object
+    } else {
+        if (id/2 >= matte_array_get_size(heap->tables)) return;
+        matte_array_push(heap->deadTables, id);
+    }
+}
+
+void matte_heap_bin_destroy(matteHeapBin_t * heap) {
+    uint32_t i;
+    matteObject_t ** iter = (matteObject_t **)matte_array_get_data(heap->functions);
+     
+    uint32_t size = matte_array_get_size(heap->functions);
+    for(i = 0; i < size; ++i) {
+        destroy_object(iter[i]);
+    }
+
+
+    iter = (matteObject_t **)matte_array_get_data(heap->tables);
+     
+    size = matte_array_get_size(heap->tables);
+    for(i = 0; i < size; ++i) {
+        destroy_object(iter[i]);
+    }
+
+    matte_array_destroy(heap->tables);
+    matte_array_destroy(heap->functions);
+    matte_array_destroy(heap->deadFunctions);
+    matte_array_destroy(heap->deadTables);
+    free(heap);
+}
+
+
+
+
+
+struct matteObjectPool_t {
+    matteArray_t * pool;
+    void * (*create)();
+    void (*destroy)(void*);
+};
+
+matteObjectPool_t * matte_pool_create(void*(*cr)(), void (*ds)(void *)) {
+    matteObjectPool_t * out = calloc(1, sizeof(matteObjectPool_t));
+    out->create = cr;
+    out->destroy = ds;
+    out->pool = matte_array_create(sizeof(void *));
+    return out;
+}
+
+
+
+void matte_pool_destroy(matteObjectPool_t * p) {
+    uint32_t i;
+    for(i = 0; i < matte_array_get_size(p->pool); ++i) {
+        p->destroy(matte_array_at(p->pool, void *, i));
+    }
+    matte_array_destroy(p->pool);
+    free(p);
+}
+
+// returns a pre-allocated instance else
+// returns a new instance from the first creation argument (create function)
+void * matte_pool_fetch(matteObjectPool_t * p) {
+    uint32_t size = matte_array_get_size(p->pool);
+    if (size) {
+        void * obj = matte_array_at(p->pool, void *, size-1);
+        matte_array_set_size(p->pool, size-1);
+        return obj;
+    }
+    
+    return p->create();
+}
+
+// returns a reference to be return by an additional fetch.
+void matte_pool_recycle(matteObjectPool_t * p, void * obj) {
+    matte_array_push(p->pool, obj);
+}
 
  
 
@@ -3738,7 +4069,6 @@ static MatteHeapTrackInfo * heap_track_info = NULL;
 static void matte_heap_track_initialize() {
     heap_track_info = calloc(1, sizeof(MatteHeapTrackInfo));
     heap_track_info->values[MATTE_VALUE_TYPE_OBJECT] = matte_table_create_hash_pointer();
-    heap_track_info->values[MATTE_VALUE_TYPE_FUNCTION] = matte_table_create_hash_pointer();
 
 }
 
@@ -3755,11 +4085,8 @@ static const char * get_track_heap_symbol(int i) {
 static void matte_heap_track_print(matteHeap_t * heap, uint32_t id) {
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[MATTE_VALUE_TYPE_OBJECT], id);
     if (!inst) {
-        inst = matte_table_find_by_uint(heap_track_info->values[MATTE_VALUE_TYPE_FUNCTION], id);
-        if (!inst) {
-            printf("No such object / value.\n");
-            return;
-        }
+        printf("No such object / value.\n");
+        return;
     }
 
     matte_value_print(heap, inst->refid);
@@ -3815,24 +4142,13 @@ matteValue_t matte_heap_track_in(matteHeap_t * heap, matteValue_t val, const cha
     if (!heap_track_info) {
         matte_heap_track_initialize();
     }
-    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_FUNCTION ||
-                       val.binID == MATTE_VALUE_TYPE_OBJECT)) return val;
+    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return val;    
+    matteObject_t * o = matte_heap_bin_fetch(heap->bin, val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return val;
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
 
+
     // reference is complete. REMOVE!!!
-    if (inst && !inst->refCount) {
-        matte_array_destroy(inst->historyLines);
-        matte_array_destroy(inst->historyIncr);
-        uint32_t i;
-        uint32_t len = matte_array_get_size(inst->historyFiles);
-        for(i = 0; i < len; ++i) {
-            free(matte_array_at(inst->historyFiles, char *, i));
-        }
-        matte_array_destroy(inst->historyFiles);
-        matte_table_remove_by_uint(heap_track_info->values[val.binID], val.value.id);
-        free(inst);
-        inst = NULL;
-    } 
 
     if (!inst) {
         inst = calloc(sizeof(MatteHeapTrackInfo_Instance), 1);
@@ -3857,9 +4173,12 @@ void matte_heap_track_neutral(matteHeap_t * heap, matteValue_t val, const char *
     if (!heap_track_info) {
         matte_heap_track_initialize();
     }
-    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_FUNCTION ||
-                       val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    matteObject_t * o = matte_heap_bin_fetch(heap->bin, val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return;
+
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
+
 
     char * fdup = strdup(file);
     int t = 2;
@@ -3875,11 +4194,14 @@ void matte_heap_track_out(matteHeap_t * heap, matteValue_t val, const char * fil
     if (!heap_track_info) {
         matte_heap_track_initialize();
     }
-    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_FUNCTION ||
-                       val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    matteObject_t * o = matte_heap_bin_fetch(heap->bin, val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return;
+
     MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
+        
     if (!inst) {
-        assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to distroy it.");
+        return;
     }
 
     char * fdup = strdup(file);
@@ -3888,7 +4210,7 @@ void matte_heap_track_out(matteHeap_t * heap, matteValue_t val, const char * fil
     matte_array_push(inst->historyLines, line);
     matte_array_push(inst->historyIncr, t);
 
-
+    /*
     if (inst->refCount == 0) {
         printf("---REFCOUNT NEGATIVE DETECTED---\n");
         if (inst->refid.binID == MATTE_VALUE_TYPE_OBJECT || inst->refid.binID == MATTE_VALUE_TYPE_FUNCTION)
@@ -3910,14 +4232,47 @@ void matte_heap_track_out(matteHeap_t * heap, matteValue_t val, const char * fil
         printf("---REFCOUNT NEGATIVE DETECTED---\n");
         assert(!"Negative refcount means something is getting rid of a value after it has been disposed.");
     }
-
-    inst->refCount--;
+    */
+    if (inst->refCount) inst->refCount--;
     
         
-    if (inst->refCount == 0) {
-        heap_track_info->resolved++;
-        heap_track_info->unresolved--;
+
+}
+
+
+void matte_heap_track_done(matteHeap_t * heap, matteValue_t val) {
+    if (!heap_track_info) {
+        matte_heap_track_initialize();
     }
+    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    matteObject_t * o = matte_heap_bin_fetch(heap->bin, val.value.id);
+    if (QUERY_STATE(o, OBJECT_STATE__IS_ETERNAL)) return;
+
+    MatteHeapTrackInfo_Instance * inst = matte_table_find_by_uint(heap_track_info->values[val.binID], val.value.id);
+    if (!inst) {
+        assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to distroy it.");
+    }
+
+    char * fdup = strdup("<REMOVED>");
+    int t = 0;
+    matte_array_push(inst->historyFiles, fdup);
+    matte_array_push(inst->historyLines, t);
+    matte_array_push(inst->historyIncr, t);
+
+    inst->refCount = 0;
+
+    matte_array_destroy(inst->historyLines);
+    matte_array_destroy(inst->historyIncr);
+    uint32_t i;
+    uint32_t len = matte_array_get_size(inst->historyFiles);
+    for(i = 0; i < len; ++i) {
+        free(matte_array_at(inst->historyFiles, char *, i));
+    }
+    matte_array_destroy(inst->historyFiles);
+    matte_table_remove_by_uint(heap_track_info->values[val.binID], val.value.id);
+    free(inst);
+    inst = NULL;
+
 
 }
 
@@ -3925,12 +4280,14 @@ void matte_heap_track_out(matteHeap_t * heap, matteValue_t val, const char * fil
 // 
 int matte_heap_report(matteHeap_t * heap) {
     if (!heap_track_info) return 0;
-    if (!heap_track_info->unresolved) return 0;
+    
+    if (matte_table_is_empty(heap_track_info->values[MATTE_VALUE_TYPE_OBJECT]))   return 0;
+    
+    
 
     printf("+---- Matte Heap Value Tracker ----+\n");
     printf("|     UNFREED VALUES DETECTED      |\n");
     printf("Object values:\n"); matte_heap_report_val(heap, heap_track_info->values[MATTE_VALUE_TYPE_OBJECT]);
-    printf("Function values:\n"); matte_heap_report_val(heap, heap_track_info->values[MATTE_VALUE_TYPE_FUNCTION]);
     printf("|                                  |\n");
     printf("+----------------------------------+\n\n");
 

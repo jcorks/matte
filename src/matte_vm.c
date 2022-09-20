@@ -135,8 +135,8 @@ void matte_vm_find_in_stack(matteVM_t * vm, uint32_t id) {
         uint32_t n = 0;
         for(n = 0; n < matte_array_get_size(frame->valueStack); ++n) {
             matteValue_t v = matte_array_at(frame->valueStack, matteValue_t, n);
-            if ((v.binID == MATTE_VALUE_TYPE_FUNCTION || v.binID == MATTE_VALUE_TYPE_OBJECT) && v.value.id == id) {
-                printf("@ stackframe %d, valuestack %d: %s\n", i, n, v.binID == MATTE_VALUE_TYPE_FUNCTION ? "(function)" : "(object)");
+            if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+                printf("@ stackframe %d, valuestack %d\n", i, n);
             }
         }
     }
@@ -966,9 +966,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         isBracket
                     );
                 }
-                if (refH.binID)     
+                if (refH.binID) { 
                     matte_heap_recycle(vm->heap, refH); 
-                    
+                }
                 STACK_POP_NORET();
                 STACK_POP_NORET();
                 STACK_POP_NORET();
@@ -1060,7 +1060,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             STACK_PUSH(output);
             // re-insert the base as "base"
-            if (output.binID == MATTE_VALUE_TYPE_FUNCTION) {
+            if (matte_value_is_function(output)) {
                 STACK_PUSH(o);
                 STACK_PUSH(vm->specialString_base);
             } 
@@ -1154,22 +1154,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         
     }
 
-    // it's VERY important that the restart condition is not run when 
-    // pendingCatchable is true, as the stack value top does not correspond
-    // to anything meaningful
-    if (frame->restartCondition && !vm->pendingCatchable) {
-        matteValue_t v = (matte_array_get_size(frame->valueStack) ? matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1) : matte_heap_new_value(vm->heap));
-        if (frame->restartCondition(vm, frame, v, frame->restartConditionData)) {
-            frame->pc = 0;
-            goto RELOOP;
-        }
-    }
-    
 
+    
+    matteValue_t output;
     // top of stack is output
     if (matte_array_get_size(frame->valueStack)) {
         
-        matteValue_t output = matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1);
+        output = matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1);
         uint32_t i;
         uint32_t len = matte_array_get_size(frame->valueStack);
         for(i = 0; i < len-1; ++i) { 
@@ -1180,15 +1171,23 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         matte_array_set_size(frame->valueStack, 0);
 
         if (vm->pendingCatchable) 
-            return matte_heap_new_value(vm->heap);
-
-        return output; // ok since not removed from normal value stack stuff
+            output = matte_heap_new_value(vm->heap);
+        
+        // ok since not removed from normal value stack stuff
     } else {
-        return matte_heap_new_value(vm->heap);
+        output = matte_heap_new_value(vm->heap);
     }
 
-
-
+    // it's VERY important that the restart condition is not run when 
+    // pendingCatchable is true, as the stack value top does not correspond
+    // to anything meaningful
+    if (frame->restartCondition && !vm->pendingCatchable) {
+        if (frame->restartCondition(vm, frame, output, frame->restartConditionData)) {
+            frame->pc = 0;
+            goto RELOOP;
+        }
+    }
+    return output;
 }
 
 #define WRITE_BYTES(__T__, __VAL__) matte_array_push_n(arr, &(__VAL__), sizeof(__T__));
@@ -1256,8 +1255,7 @@ static void vm_add_built_in(
     matte_array_at(vm->extStubs, matteBytecodeStub_t *, index) = out;
 
     matteValue_t func = {};
-    matte_value_into_new_function_ref(vm->heap, &func, out);
-    matte_value_object_push_lock(vm->heap, func);
+    matte_value_into_new_external_function_ref(vm->heap, &func, out);
     matte_array_at(vm->extFuncs, matteValue_t, index) = func;
 }
 
@@ -1529,7 +1527,11 @@ void matte_vm_destroy(matteVM_t * vm) {
         f.fn(vm, f.data);
     }
     matte_array_destroy(vm->cleanupFunctionSets);
-    
+    if (vm->pendingCatchable) {
+        matte_value_object_pop_lock(vm->heap, vm->catchable);
+        matte_heap_recycle(vm->heap, vm->catchable);
+        vm->catchable.binID = 0;
+    }
     
 
     matteTableIter_t * iter = matte_table_iter_create();
@@ -1546,9 +1548,6 @@ void matte_vm_destroy(matteVM_t * vm) {
     }
 
     len = matte_array_get_size(vm->extFuncs);
-    for(i = 0; i < len; ++i) {
-        matte_value_object_pop_lock(vm->heap, matte_array_at(vm->extFuncs, matteValue_t, i));
-    }
     matte_array_destroy(vm->extFuncs);
 
 
@@ -1737,7 +1736,7 @@ matteValue_t matte_vm_call(
                     matteValue_t v = matte_array_at(args, matteValue_t, i);
                     matte_array_at(argsReal, matteValue_t, n) = v;
                     // sicne this function doesn't use a referrable, we need to set roots manually.
-                    if (v.binID == MATTE_VALUE_TYPE_OBJECT || v.binID == MATTE_VALUE_TYPE_FUNCTION) {
+                    if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
                         matte_value_object_push_lock(vm->heap, v);
                     }
 
@@ -1792,8 +1791,7 @@ matteValue_t matte_vm_call(
         len = matte_array_get_size(argsReal);
         for(i = 0; i < len; ++i) {
             int bid = matte_array_at(argsReal, matteValue_t, i).binID;
-            if (bid == MATTE_VALUE_TYPE_OBJECT ||
-                bid == MATTE_VALUE_TYPE_FUNCTION) {
+            if (bid == MATTE_VALUE_TYPE_OBJECT) {
                 matte_value_object_pop_lock(vm->heap, matte_array_at(argsReal, matteValue_t, i));
             }
             matte_heap_recycle(vm->heap, matte_array_at(argsReal, matteValue_t, i));
@@ -2220,10 +2218,6 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
     matte_value_into_string(vm->heap, &key, MATTE_VM_STR_CAST(vm, "detail"));
     matte_value_object_set(vm->heap, out, key, detail, 0);    
 
-    matte_heap_recycle(vm->heap, val);
-    matte_heap_recycle(vm->heap, key);
-    matte_heap_recycle(vm->heap, callstack);
-
     return out;
 }
 
@@ -2237,6 +2231,7 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     vm->catchable = info;
     vm->pendingCatchable = 1;
     vm->pendingCatchableIsError = 1;
+    matte_value_object_push_lock(vm->heap, info);
     if (!vm->stacksize) {
         vm->errorLastFile = 0;
         vm->errorLastLine = -1;
@@ -2250,7 +2245,6 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
                 vm->debugData                   
             );
         }
-
         return;
     }
 
@@ -2265,7 +2259,6 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     vm->errorLastFile = matte_bytecode_stub_get_file_id(framesrc.stub);
 
     
-    matte_value_object_push_lock(vm->heap, info);
     
     if (vm->debug) {
         matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, 0);

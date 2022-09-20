@@ -183,7 +183,7 @@ when(parameters == empty || parameters.file == empty) ::<={
         return iterBytes+BYTES_PER_PAGE;
     };
 
-    [::]{
+    [::] {
         forever(do:::{
             @iter = 0;
             @lineIter = 0;

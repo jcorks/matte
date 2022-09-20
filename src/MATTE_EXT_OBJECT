@@ -115,7 +115,7 @@ static matteValue_t vm_ext_call__object__get_attributes(matteVM_t * vm, matteVal
 
 static matteValue_t vm_ext_call__object__sort(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_object(vm, args)) return matte_heap_new_value(vm->heap);
-    if (args[1].binID != MATTE_VALUE_TYPE_FUNCTION) {
+    if (!matte_value_is_function(args[1])) {
         matte_vm_raise_error_cstring(vm, "A function comparator is required for sorting.");        
         return matte_heap_new_value(vm->heap);
 
@@ -354,8 +354,8 @@ static matteValue_t vm_ext_call__object__for(matteVM_t * vm, matteValue_t fn, co
     matteValue_t v = args[1];
     matteValue_t params = args[0];
     
-    if (v.binID != MATTE_VALUE_TYPE_FUNCTION) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'for' requires the first argument to be an Object."));    
+    if (!matte_value_is_function(v)) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'for' requires the second argument to be a function."));    
         return matte_heap_new_value(vm->heap);
     }
     matteValue_t a = matte_value_object_access_index(vm->heap, params, 0);

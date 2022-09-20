@@ -473,17 +473,6 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
         );
         break;
 
-      case MATTE_VALUE_TYPE_FUNCTION: {
-        if (b.binID == MATTE_VALUE_TYPE_FUNCTION) {
-            matte_value_into_boolean(vm->heap, 
-                &result, 
-                a.value.id == b.value.id 
-            );
-        } else {            
-            matte_vm_raise_error_cstring(vm, "== operator with Function and non-function is undefined.");            
-        }
-        break;
-      }
 
       case MATTE_VALUE_TYPE_OBJECT: {
         if (object_has_operator(vm, a, "==")) {
@@ -557,17 +546,6 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
         );
         break;
       
-      case MATTE_VALUE_TYPE_FUNCTION: {
-        if (b.binID == MATTE_VALUE_TYPE_FUNCTION) {
-            matte_value_into_boolean(vm->heap, 
-                &result, 
-                a.value.id != b.value.id 
-            );
-        } else {            
-            matte_vm_raise_error_cstring(vm, "!= operator with Function and non-function is undefined.");            
-        }
-        break;
-      }
       
       case MATTE_VALUE_TYPE_OBJECT: {
         if (object_has_operator(vm, a, "!=")) {
