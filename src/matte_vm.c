@@ -1375,6 +1375,12 @@ matteVM_t * matte_vm_create() {
         query_name,
         value
     };
+
+    const matteString_t * insert_names[] = {
+        query_name,
+        MATTE_VM_STR_CAST(vm, "at"),
+        value,
+    };
     
     const matteString_t * comparator = MATTE_VM_STR_CAST(vm, "comparator");
     const matteString_t * sort_names[] = {
@@ -1487,7 +1493,7 @@ matteVM_t * matte_vm_create() {
 
     // QUERY: OBJECT 
     temp = MATTE_ARRAY_CAST(push_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__PUSH,     &temp, vm_ext_call__object__push);    
-    temp = MATTE_ARRAY_CAST(push_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__INSERT,     &temp, vm_ext_call__object__insert);    
+    temp = MATTE_ARRAY_CAST(insert_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__INSERT,     &temp, vm_ext_call__object__insert);    
     temp = MATTE_ARRAY_CAST(removeKey_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REMOVE,     &temp, vm_ext_call__object__remove);    
     temp = MATTE_ARRAY_CAST(setAttributes_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SETATTRIBUTES,     &temp, vm_ext_call__object__set_attributes);    
     temp = MATTE_ARRAY_CAST(sort_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SORT,     &temp, vm_ext_call__object__sort);    
