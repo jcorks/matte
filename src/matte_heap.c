@@ -2389,6 +2389,7 @@ matteValue_t * matte_value_object_access_direct(matteHeap_t * heap, matteValue_t
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, key))
             );
             matte_vm_raise_error_string(heap->vm, err);
+            matte_string_destroy(err);
             return NULL;
         }
         return matte_vm_get_external_builtin_function_as_value(heap->vm, out);
@@ -3588,8 +3589,8 @@ static void check_cycles(matteHeap_t * h) {
 ////
 
 static void object_cleanup(matteHeap_t * h) {
-    matteTableIter_t * iter = matte_table_iter_create();
     if (!matte_array_get_size(h->toRemove)) return;
+    matteTableIter_t * iter = matte_table_iter_create();
 
 
     matteArray_t * toRemove = h->toRemove;
