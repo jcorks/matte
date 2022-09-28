@@ -7,7 +7,7 @@
 #include "native.h"
 
 
-
+#include "./core/json.c"
 #ifdef MATTE_USE_SYSTEM_EXTENSIONS
 
 #ifdef __WIN32__
@@ -86,6 +86,8 @@
 
 
 void matte_bind_native_functions(matteVM_t * vm) {
+    matte_system__json(vm);
+
     matte_system__consoleio(vm);
     matte_system__filesystem(vm);
     matte_system__memorybuffer(vm);
@@ -101,6 +103,9 @@ void matte_bind_native_functions(matteVM_t * vm) {
 
 #else 
 void matte_bind_native_functions(matteVM_t * vm) {
+    matte_system__json(vm);
+
+
 }
 #endif
 
