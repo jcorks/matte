@@ -1,7 +1,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-
+#include <float.h>
+#include <inttypes.h>
+#include <math.h>
 
 static void encode_value__clean_string(matteString_t * str) {
     uint32_t len = matte_string_get_length(str);
@@ -31,8 +33,12 @@ static matteString_t * encode_value(matteHeap_t * heap, matteValue_t val) {
         return matte_string_create_from_c_str("%s", matte_value_as_boolean(heap, val) == 1 ? "true" : "false");
         
     
-      case MATTE_VALUE_TYPE_NUMBER:
-        return matte_string_create_from_c_str("%g", matte_value_as_number(heap, val));
+      case MATTE_VALUE_TYPE_NUMBER: 
+        if (fabs(val.value.number - (int64_t)val.value.number) < DBL_EPSILON) {
+            return matte_string_create_from_c_str("%"PRId64"", (int64_t)val.value.number);                
+        } else {
+            return matte_string_create_from_c_str("%.15g", val.value.number);        
+        }
 
       case MATTE_VALUE_TYPE_STRING: {
         matteString_t * clean = matte_string_clone(matte_value_string_get_string_unsafe(heap, val));
