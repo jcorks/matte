@@ -108,6 +108,7 @@
             appendByte ::(val => Number){
                 checkReleased(t:this);
                 _mbuffer_append_byte(a:buffer, b:val);
+                length += 1;
             },
             
             utf8 : {
