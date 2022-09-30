@@ -111,7 +111,7 @@ static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_
 
     uint32_t * id = matte_table_find(vm->externalFunctions, str);
     if (!id) {
-        matteString_t * strerr = matte_string_create_from_c_str("%s", "getExternalFunction() was unable to find an externa function of the name: ");
+        matteString_t * strerr = matte_string_create_from_c_str("%s", "getExternalFunction() was unable to find an external function of the name: ");
         matte_string_concat(strerr, str);
         matte_vm_raise_error_string(vm, strerr);
         matte_string_destroy(strerr);

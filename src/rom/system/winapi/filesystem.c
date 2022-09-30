@@ -170,7 +170,9 @@ MATTE_EXT_FN(matte_filesystem__setcwd) {
         return matte_heap_new_value(heap);
     }
     if (chdir(matte_string_get_c_str(str)) == -1) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not update the path (change directory failed)"));        
+        matteString_t * err = matte_string_create_from_c_str("Could not update the path to %s", matte_string_get_c_str(str));
+        matte_vm_raise_error_string(vm, err);
+        matte_string_destroy(err);
         return matte_heap_new_value(heap);
     }
     return matte_heap_new_value(heap);
@@ -179,7 +181,7 @@ MATTE_EXT_FN(matte_filesystem__setcwd) {
 MATTE_EXT_FN(matte_filesystem__cwdup) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     if (chdir("..") == -1) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not update the path (change directory failed)"));        
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Could not update the path above (change directory failed)"));        
     }
     return matte_heap_new_value(heap);
 }
