@@ -290,9 +290,9 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
             
             // skip :
             iter->index++;
-            iter_trim_space(iter);
 
             matteValue_t value = decode_value(vm, heap, iter);
+            iter_trim_space(iter);
             
             matte_value_object_set(heap, out, key, value, 1);
             
