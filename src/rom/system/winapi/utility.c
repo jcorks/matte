@@ -29,7 +29,7 @@ MATTE_EXT_FN(matte_utility__exit) {
 MATTE_EXT_FN(matte_utility__os) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t v = matte_heap_new_value(heap);
-    matte_value_into_string(heap, &v, MATTE_VM_STR_CAST(vm, "unix-like"));
+    matte_value_into_string(heap, &v, MATTE_VM_STR_CAST(vm, "windows"));
     return v;
 }
 
