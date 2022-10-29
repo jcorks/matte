@@ -1513,6 +1513,7 @@ matteVM_t * matte_vm_create() {
     // QUERY: STRING 
     
     temp = MATTE_ARRAY_CAST(search_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SEARCH,     &temp, vm_ext_call__string__search);    
+    temp = MATTE_ARRAY_CAST(search_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SEARCH_ALL,     &temp, vm_ext_call__string__search_all);    
     temp = MATTE_ARRAY_CAST(search_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__CONTAINS,     &temp, vm_ext_call__string__contains);    
     temp = MATTE_ARRAY_CAST(replace_names, matteString_t *, 4);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REPLACE,     &temp, vm_ext_call__string__replace);    
     temp = MATTE_ARRAY_CAST(search_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__COUNT,     &temp, vm_ext_call__string__count);    

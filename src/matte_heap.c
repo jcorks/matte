@@ -1241,6 +1241,15 @@ matteValue_t matte_value_query(matteHeap_t * heap, matteValue_t * v, matteQuery_
         }
         return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SEARCH);
       }
+      case MATTE_QUERY__SEARCH_ALL: {
+        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * str = matte_string_create_from_c_str("searchAll requires base value to be a string.");
+            matte_vm_raise_error_string(heap->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(heap->vm, MATTE_EXT_CALL__QUERY__SEARCH_ALL);
+      }
       case MATTE_QUERY__CONTAINS: {
         if (v->binID != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("contains requires base value to be a string.");

@@ -2927,6 +2927,7 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "scan")) return MATTE_QUERY__SCAN;
     if (!strcmp(st, "length")) return MATTE_QUERY__LENGTH;
     if (!strcmp(st, "search")) return MATTE_QUERY__SEARCH;
+    if (!strcmp(st, "searchAll")) return MATTE_QUERY__SEARCH_ALL;
     if (!strcmp(st, "contains")) return MATTE_QUERY__CONTAINS;
     if (!strcmp(st, "replace")) return MATTE_QUERY__REPLACE;
     if (!strcmp(st, "count")) return MATTE_QUERY__COUNT;

@@ -55,6 +55,48 @@ static matteValue_t vm_ext_call__string__search(matteVM_t * vm, matteValue_t fn,
     return out;      
 }
 
+static matteValue_t vm_ext_call__string__search_all(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
+
+    matteHeap_t * heap = vm->heap;
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, args[0]);
+    
+    matteValue_t newlV = matte_value_as_string(heap, args[1]);
+    if (newlV.binID != MATTE_VALUE_TYPE_STRING) { // already error
+        return matte_heap_new_value(heap);
+    }
+    const matteString_t * other = matte_value_string_get_string_unsafe(heap, newlV);
+    matteValue_t out = matte_heap_new_value(heap);    
+    
+    uint32_t i, n;
+    uint32_t len = matte_string_get_length(str);
+    uint32_t lenOther = matte_string_get_length(other);
+
+    matteArray_t * results = matte_array_create(sizeof(matteValue_t));
+    if (!lenOther || lenOther > len) {
+        matte_value_into_number(heap, &out, -1);
+        return out;      
+    }
+    for(i = 0; i < len - (lenOther-1); ++i) {
+        for(n = 0; n < lenOther && i+n < len; ++n) {
+            if (matte_string_get_char(str, i+n) !=
+                matte_string_get_char(other, n)) {
+                break;
+            }
+        }
+        
+        if (n == lenOther) {
+            matte_value_into_number(heap, &out, i);
+            matte_array_push(results, out);
+            out = matte_heap_new_value(heap);
+        }
+    }
+        
+    matte_value_into_new_object_array_ref(heap, &out, results);
+    matte_array_destroy(results);
+    return out;      
+}
+
 static matteValue_t vm_ext_call__string__contains(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_string(vm, args)) return matte_heap_new_value(vm->heap);
     matteHeap_t * heap = vm->heap;
