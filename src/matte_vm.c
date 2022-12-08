@@ -2248,12 +2248,13 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
 
     matteValue_t info = vm_info_new_object(vm, val);
     vm->catchable = info;
-    vm->pendingCatchable = 1;
-    vm->pendingCatchableIsError = 1;
     matte_value_object_push_lock(vm->heap, info);
     if (!vm->stacksize) {
         vm->errorLastFile = 0;
         vm->errorLastLine = -1;
+        vm->pendingCatchable = 1;
+        vm->pendingCatchableIsError = 1;
+
         if (vm->debug) {     
             vm->debug(
                 vm,
@@ -2295,6 +2296,9 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
             vm->debugData                   
         );
     }
+    vm->pendingCatchable = 1;
+    vm->pendingCatchableIsError = 1;
+    
 }
 
 void matte_vm_raise_error_string(matteVM_t * vm, const matteString_t * str) {

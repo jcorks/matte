@@ -29,54 +29,41 @@
 // Clients are EventSystems, meaning they mostly 
 // are interacted with via events and responses to 
 // those events.
-client.installHooks(events:[
+client.installHooks(events:{
     // When attempting to connect to a server and the connection 
     // is established, the onConnectSuccess event is fired.
-    {
-        event:'onConnectSuccess', 
-        hook::(detail){
-            ConsoleIO.println(message:'Successfully connected.');
-            
-            // Since we were able to connect, lets send some data 
-            // to the server.
-            sendDataString(client:client, str:'ping!');
-        }
+    'onConnectSuccess':::(detail){
+        ConsoleIO.println(message:'Successfully connected.');
+        
+        // Since we were able to connect, lets send some data 
+        // to the server.
+        sendDataString(client:client, str:'ping!');
     },
     
     // When attempting to connect to a server and the connection 
     // could not be established, the onConnectFail event is fired.
-    {
-        event:'onConnectFail', 
-        hook ::(detail => String) {
-            ConsoleIO.println(message:'Connection failed: ' + detail);
-        }
+    'onConnectFail':::(detail => String) {
+        ConsoleIO.println(message:'Connection failed: ' + detail);
     },
 
     // When an existing connection is broken, this event fires.
-    {
-        event:'onDisconnect', 
-        hook::(detail){
-            ConsoleIO.println(message:'Disconnected');
-        }
+    'onDisconnect':::(detail){
+        ConsoleIO.println(message:'Disconnected');
     },
     
     // When the connected server sends data, this event fires,
     // sending with it a MemoryBuffer containing the data.
-    {
-        event:'onIncomingData', 
-        hook::(detail) {
-        
-            // Lets assume that the data incoming is plain text and print it
-            @:data = detail;
-            @str = '';
-            for(in:[0, data.size], do:::(i) {
-                str = str + ' ';
-                str = str->setCharCodeAt(index:i, value:data[i]);
-            });
-            ConsoleIO.println(message:'Message from server: ' + str);
-        }
+    'onIncomingData':::(detail) {        
+        // Lets assume that the data incoming is plain text and print it
+        @:data = detail;
+        @str = '';
+        for(in:[0, data.size], do:::(i) {
+            str = str + ' ';
+            str = str->setCharCodeAt(index:i, value:data[i]);
+        });
+        ConsoleIO.println(message:'Message from server: ' + str);
     }
-]);
+});
 
 
 // Once the events are set, we can now 

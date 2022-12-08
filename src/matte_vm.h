@@ -125,6 +125,12 @@ matteValue_t matte_vm_import(
 // A function object is created as the toplevel for the 
 // root stub functional; the function is then run.
 //
+// Optionally, an importPath may be provided, which can 
+// be used a current directory for any import() calls within this 
+// fileid. Once the function returns, the import path is 
+// popped from the import path stack.
+//
+//
 // This is equivalent to pushing the args onto the stack and 
 // inserting a CAL instruction.
 matteValue_t matte_vm_run_fileid(

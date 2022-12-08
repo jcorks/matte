@@ -78,8 +78,8 @@
             },
 
             installHooks ::(events => Object) {
-                events->foreach(do:::(index, ev) {
-                    this.installHook(event:ev.event, hook:ev.hook);
+                events->foreach(do:::(event, hook) {
+                    this.installHook(event:event, hook:hook);
                 });
             },
 

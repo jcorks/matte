@@ -56,39 +56,33 @@ server.installHook(event:'onNewClient', hook:::(detail){
     print(message:'Server: ' + client.address + ' has connected.');
 
 
-    client.installHooks(events:[
+    client.installHooks(events:{
 
         // The onDisconnect event fires when the client is 
         // detected as lost by the OS.
-        {
-            event: 'onDisconnect', 
-            hook::(detail){
-                print(message:'Server: ' + client.address + ' has disconnected');    
-            }
+        'onDisconnect':::(detail){
+            print(message:'Server: ' + client.address + ' has disconnected');    
         },
         
 
         // The onIncomingData event fires when data has successfully 
         // been received from the client.
-        {
-            event:'onIncomingData', 
-            hook::(detail) {
+        'onIncomingData':::(detail) {
             
-                // Lets assume the data is string data and print it.
-                @:data = detail;
-                @str = '';
-                for(in:[0, data.size], do:::(i) {
-                    str = str + ' ';
-                    str = str->setCharCodeAt(index:i, value:data[i]);
-                });
+            // Lets assume the data is string data and print it.
+            @:data = detail;
+            @str = '';
+            for(in:[0, data.size], do:::(i) {
+                str = str + ' ';
+                str = str->setCharCodeAt(index:i, value:data[i]);
+            });
 
-                print(message:'Server: ' + client.address + ' has sent ' + data.size + 'bytes :' + str);        
+            print(message:'Server: ' + client.address + ' has sent ' + data.size + 'bytes :' + str);        
 
-                // and send back a string to the client
-                sendDataString(client:client, str:'pong!');
-            }
+            // and send back a string to the client
+            sendDataString(client:client, str:'pong!');
         }
-    ]);
+    });
 });
 
 // Now that the events are setup, lets setup a 
