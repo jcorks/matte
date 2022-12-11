@@ -9,7 +9,7 @@
         this.interface = {
             events : {
                 set ::(value) {
-                    when (events->keycount != 0) error(data:'Interface is already defined.');
+                    when (events->keycount != 0) error(detail:'Interface is already defined.');
                     
                     // filter to ensure types of key/val pairs
                     value->foreach(do:::(key => String, val => Function) {
@@ -27,7 +27,7 @@
             // emits a specific event.
             emit::(event => String, detail) {
                 @: ev = events[event];
-                when(ev == empty) error(message:"Cannot emit event for non-existent event "+ev);
+                when(ev == empty) error(detail:"Cannot emit event for non-existent event "+ev);
                 
                 @continue = [::] {
                     when(ev.handlerCount == 0) true;
@@ -61,7 +61,7 @@
             // event system.
             installHandler ::(event => String, handler => Function) {
                 @: ev = events[ev];
-                when(ev == empty) error(message:"Cannot install handler for non-existent event "+event);
+                when(ev == empty) error(detail:"Cannot install handler for non-existent event "+event);
                 
                 ev.handlers[ev.handlerCount] = handler;
                 ev.handlerCount += 1;
@@ -71,7 +71,7 @@
 
             installHook ::(event => String, hook => Function) {
                 @: ev = events[event];
-                when(ev == empty) error(message:"Cannot install hook for non-existent event "+event);
+                when(ev == empty) error(detail:"Cannot install hook for non-existent event "+event);
                 
                 ev.hooks[ev.hookCount] = hook;
                 ev.hookCount += 1;
@@ -95,7 +95,7 @@
             
             uninstallHook::(event => String, hook) {
                 @: ev = events[event];
-                when(ev == empty) error(message:"Cannot uninstall hook for non-existent event "+ev);
+                when(ev == empty) error(detail:"Cannot uninstall hook for non-existent event "+ev);
                 [::] {
                     [0, ev.hookCount]->for(do:::(i) {
                         if (ev.hooks[i] == hook) ::<= { 
@@ -109,7 +109,7 @@
             
             uninstallHandler::(event => String, handler) {
                 @: ev = events[event];
-                when(ev == empty) error(data:"Cannot uninstall handler for non-existent event "+ev);
+                when(ev == empty) error(detail:"Cannot uninstall handler for non-existent event "+ev);
                 [::]{
                     [0, ev.handlerCount]->for(do:::(i) {
                         if (ev.handlers[i] == handler) ::<= { 
