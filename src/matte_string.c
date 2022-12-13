@@ -212,19 +212,21 @@ const matteString_t * matte_string_get_substr(
         assert(to < s->len);
     #endif
 
-    if (to < from) {
-        uint32_t temp = to;
-        to = from;
-        from = temp;
-    }
 
     if (!s->lastSubstr) {
         ((matteString_t *)s)->lastSubstr = matte_string_create();
     }
+
     if (s->lastSubstr->cstrtemp) {
         free(s->lastSubstr->cstrtemp);
         s->lastSubstr->cstrtemp = NULL;
     }
+    // invalid
+    if (to < from) {
+        s->lastSubstr->len = 0;
+        return s->lastSubstr;        
+    }
+
 
     uint32_t len = (to - from) + 1;
     if (s->lastSubstr->alloc <= len) {
