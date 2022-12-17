@@ -543,6 +543,29 @@ void matte_table_iter_destroy(matteTableIter_t * t) {
 }
 
 
+
+inline static void find_next(matteTableIter_t * t) {
+    // iter points to next in bucket
+    if (t->current)
+        return;
+
+    
+    // need to move to next buckt
+    uint32_t i = t->currentBucketID+1;
+    uint32_t len = t->src->nBuckets;
+    matteTableEntry_t ** iter = t->src->buckets+i; 
+    for(; i < len; ++i, iter++) {
+        if (*iter) {
+            t->current = *iter;
+            t->currentBucketID = i;
+            return;
+        }        
+    }
+
+    t->current = NULL;
+    t->isEnd = TRUE;
+}
+
 void matte_table_iter_start(matteTableIter_t * t, matteTable_t * src) {
     #ifdef MATTE_DEBUG
         assert(t && "matteTableIter_t pointer cannot be NULL.");
@@ -553,8 +576,9 @@ void matte_table_iter_start(matteTableIter_t * t, matteTable_t * src) {
     t->current = src->buckets[0];
     t->isEnd = 0;
     
+    
     if (!t->current)
-        matte_table_iter_proceed(t);  
+        find_next(t);
 
 }
 
@@ -564,27 +588,8 @@ void matte_table_iter_proceed(matteTableIter_t * t) {
     #endif
     if (t->isEnd) return;
     
-    if (t->current) {
-        t->current = t->current->next;
-
-        // iter points to next in bucket
-        if (t->current)
-            return;
-    }
-
-    
-    // need to move to next buckt
-    uint32_t i = t->currentBucketID+1;
-    for(; i < t->src->nBuckets; ++i) {
-        if (t->src->buckets[i]) {
-            t->current = t->src->buckets[i];
-            t->currentBucketID = i;
-            return;
-        }        
-    }
-
-    t->current = NULL;
-    t->isEnd = TRUE;
+    t->current = t->current->next;
+    find_next(t);
 }
 
 int matte_table_iter_is_end(const matteTableIter_t * t) {
