@@ -3822,7 +3822,8 @@ void matte_heap_garbage_collect(matteHeap_t * h) {
 
 
     //if (!h->shutdown && h->gcRequestStrength < CREATED_COUNT) return;
-    if (!h->shutdown && matte_array_get_size(h->questionableList) < 256) return;
+    //if (!h->shutdown && matte_array_get_size(h->questionableList) < 256) return;
+    if (!h->shutdown && matte_array_get_size(h->questionableList) < 10000) return;
     h->gcLocked = 1;
     h->gcRequestStrength = 0;
 
