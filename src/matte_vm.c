@@ -111,6 +111,7 @@ struct matteVM_t {
     int pendingCatchable;
     int pendingCatchableIsError;
     int errorLastLine;
+    int userGCFreeze;
     uint32_t errorLastFile;
 
 
@@ -1510,6 +1511,9 @@ matteVM_t * matte_vm_create() {
     // OBJECTS
     temp = MATTE_ARRAY_CAST(type_names, matteString_t *, 2);  vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__NEWTYPE,     &temp, vm_ext_call__object__newtype);    
     temp = MATTE_ARRAY_CAST(&type, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__INSTANTIATE,     &temp, vm_ext_call__object__instantiate);    
+    temp = *emptyArr;                                   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__FREEZEGC,    &temp, vm_ext_call__object__freeze_gc);    
+    temp = *emptyArr;                                   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__THAWGC,    &temp, vm_ext_call__object__thaw_gc);    
+    temp = *emptyArr;                                   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__GARBAGECOLLECT,    &temp, vm_ext_call__object__garbage_collect);    
 
     
     

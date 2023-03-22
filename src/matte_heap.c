@@ -753,6 +753,9 @@ static int BUILTIN_STRING__IDS[] = {
 static char * BUILTIN_OBJECT__NAMES[] = {
     "newType",
     "instantiate",
+    "freezeGC",
+    "thawGC",
+    "garbageCollect",
     NULL
 };
 
@@ -760,6 +763,9 @@ static char * BUILTIN_OBJECT__NAMES[] = {
 static int BUILTIN_OBJECT__IDS[] = {
     MATTE_EXT_CALL__OBJECT__NEWTYPE,
     MATTE_EXT_CALL__OBJECT__INSTANTIATE,
+    MATTE_EXT_CALL__OBJECT__FREEZEGC,
+    MATTE_EXT_CALL__OBJECT__THAWGC,
+    MATTE_EXT_CALL__OBJECT__GARBAGECOLLECT
 };
 
 

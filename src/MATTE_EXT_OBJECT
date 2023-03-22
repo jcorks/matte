@@ -236,6 +236,31 @@ static matteValue_t vm_ext_call__object__instantiate(matteVM_t * vm, matteValue_
     return out;
 }
 
+static matteValue_t vm_ext_call__object__freeze_gc(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!vm->userGCFreeze) {
+        matte_heap_push_lock_gc(vm->heap);
+        vm->userGCFreeze = 1;
+    }
+}
+
+
+static matteValue_t vm_ext_call__object__thaw_gc(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (vm->userGCFreeze) {
+        matte_heap_pop_lock_gc(vm->heap);
+        vm->userGCFreeze = 0;
+    }
+}
+
+static matteValue_t vm_ext_call__object__garbage_collect(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (vm->userGCFreeze) {
+        matte_heap_pop_lock_gc(vm->heap);
+    }
+    matte_heap_garbage_collect(vm->heap);
+    if (vm->userGCFreeze) {
+        matte_heap_push_lock_gc(vm->heap);
+    }
+}
+
 static matteValue_t vm_ext_call__object__is(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t out = {};
     matte_value_into_boolean(vm->heap, &out, matte_value_isa(vm->heap, args[0], args[1]));
