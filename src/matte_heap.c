@@ -3195,11 +3195,11 @@ void matte_value_object_insert(
     uint32_t index, 
     matteValue_t val
 ) {
-    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
-
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return;
     }
+
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
 
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(heap, m, &val);

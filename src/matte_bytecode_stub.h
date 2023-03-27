@@ -112,7 +112,7 @@ typedef struct {
     // Line number for the parsed instruction
     int32_t lineNumber;
     // The opcode of the 
-    int32_t  opcode;
+    uint8_t  opcode;
     uint8_t  data[8];
 } matteBytecodeStubInstruction_t;
 

@@ -110,7 +110,7 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
     uint32_t opcodeCount = CHOMP(uint32_t);
     for(i = 0; i < opcodeCount; ++i) {
         uint32_t lineNumber = CHOMP(uint32_t);
-        int32_t  opcode = CHOMP(int32_t);        
+        int32_t  opcode = CHOMP(uint8_t);        
         uint32_t a;
         uint32_t b;
         InstructionData data = CHOMP(InstructionData);

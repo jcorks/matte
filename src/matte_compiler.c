@@ -3886,14 +3886,14 @@ static matteArray_t * compile_expression(
                     // instead and replace it after the expression has ended.
                     matteBytecodeStubInstruction_t marker;
                     marker.lineNumber = n->line;
-                    marker.opcode = 0xffff;
+                    marker.opcode = 0xff;
                     marker.data[0] = 1;
                     matte_array_push(n->value, marker);
                     hasandor = 1;
                 } else if (n->postOp == MATTE_OPERATOR_OR) {
                     matteBytecodeStubInstruction_t marker;
                     marker.lineNumber = n->line;
-                    marker.opcode = 0xffff;
+                    marker.opcode = 0xff;
                     marker.data[0] = 2;
                     matte_array_push(n->value, marker);                    
                     hasandor = 1;
@@ -3931,7 +3931,7 @@ static matteArray_t * compile_expression(
         uint32_t len = matte_array_get_size(outInst);
         for(i = 0; i < len; ++i) {
             matteBytecodeStubInstruction_t * inst = &matte_array_at(outInst, matteBytecodeStubInstruction_t, i);
-            if (inst->opcode == 0xffff) {
+            if (inst->opcode == 0xff) {
                 switch(inst->data[0]) {
                   case 1: {// AND 
                     inst->opcode = MATTE_OPCODE_SCA;
@@ -4418,7 +4418,12 @@ void * matte_function_block_array_to_bytecode(
 
         nInst = matte_array_get_size(block->instructions);
         WRITE_BYTES(uint32_t, nInst);
-        WRITE_NBYTES(nInst * sizeof(matteBytecodeStubInstruction_t), matte_array_get_data(block->instructions));
+        for(n = 0; n < nInst; ++n) {
+            matteBytecodeStubInstruction_t * inst = &matte_array_at(block->instructions, matteBytecodeStubInstruction_t, n);
+            WRITE_BYTES(uint32_t, inst->lineNumber);
+            WRITE_BYTES(uint8_t, inst->opcode);
+            WRITE_NBYTES(8, inst->data);        
+        }
 
         function_block_destroy(block);
     }

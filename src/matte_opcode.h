@@ -194,7 +194,7 @@ typedef enum {
     
     // special operator state flag for OSN instructions.
     // TODO: better method maybe? 
-    MATTE_OPERATOR_STATE_BRACKET = 2048,
+    MATTE_OPERATOR_STATE_BRACKET = 200,
 } matteOperator_t;
 
 

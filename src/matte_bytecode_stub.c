@@ -138,7 +138,11 @@ static matteBytecodeStub_t * bytes_to_stub(matteHeap_t * heap, uint32_t fileID, 
     ADVANCE(uint32_t, out->instructionCount);
     if (out->instructionCount) {
         out->instructions = calloc(sizeof(matteBytecodeStubInstruction_t), out->instructionCount);    
-        ADVANCEN(sizeof(matteBytecodeStubInstruction_t)*out->instructionCount, out->instructions[0]);
+        for(i = 0; i < out->instructionCount; ++i) {
+            ADVANCE(uint32_t, out->instructions[i].lineNumber);
+            ADVANCE(uint8_t,  out->instructions[i].opcode);
+            ADVANCEN(8, out->instructions[i].data[0]);
+        }
     }
 
     // complete linkage for NFN instructions

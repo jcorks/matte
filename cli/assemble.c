@@ -113,7 +113,7 @@ static void function_to_stub(FILE * f, uint32_t id) {
     int stringsSet = FALSE;
     typedef struct {
         uint32_t line;
-        int32_t opcode;
+        uint8_t opcode;
         uint8_t data[8];
     } instruction;
 
@@ -247,7 +247,11 @@ static void function_to_stub(FILE * f, uint32_t id) {
             free(captures);
 
             fwrite(&instructionsCount, 1, sizeof(uint32_t), out);
-            fwrite(instructions, instructionsCount, sizeof(instruction), out);
+            for(i = 0; i < instructionsCount; ++i) {
+                fwrite(&instructions[i].line, 1, sizeof(uint32_t), out);
+                fwrite(&instructions[i].opcode, 1, sizeof(uint8_t), out);
+                fwrite(instructions[i].data, 8, sizeof(uint8_t), out);
+            }
             free(instructions);
 
             printf("Assembled fn %5d: args?%3d locals?%3d strings?%5d captures?%5d.Ops: %d\n",
