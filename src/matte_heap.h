@@ -303,14 +303,6 @@ void matte_value_object_remove_key(matteHeap_t *, matteValue_t, matteValue_t key
 void matte_value_object_remove_key_string(matteHeap_t *, matteValue_t, const matteString_t *);
 
 
-// Given a value to an Object, creates a new string from the number 
-// keys of the object. All number keys are searched in order.
-// The function only succeeds correctly if ALL valid number keys are 
-// number values. A string object is always created and returned.
-// NOTE: the value is assumed to be an object. Hence the "unsafe".
-matteValue_t matte_value_object_array_to_string_unsafe(matteHeap_t *, matteValue_t);
-
-
 // uniquely identifies the type (nonzero). Returns 0 if bad.
 uint32_t matte_value_type_get_typecode(matteValue_t);
 

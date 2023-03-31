@@ -3061,26 +3061,6 @@ matteValue_t matte_value_subset(matteHeap_t * heap, matteValue_t v, uint32_t fro
     return out;
 }
 
-matteValue_t matte_value_object_array_to_string_unsafe(matteHeap_t * heap, matteValue_t v) {
-    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
-
-    matteString_t * str = matte_string_create();
-    uint32_t len = m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
-    uint32_t i;
-    for(i = 0; i < len; ++i) {
-        matteValue_t * vn = &matte_array_at(m->table.keyvalues_number, matteValue_t, i);        
-        if (vn->binID == MATTE_VALUE_TYPE_NUMBER) {
-            matte_string_append_char(
-                str,
-                (uint32_t)vn->value.number
-            );
-        }
-    }
-    matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_string(heap, &out, str);
-    matte_string_destroy(str);
-    return out;
-}
 
 
 void matte_value_object_set_attributes(matteHeap_t * heap, matteValue_t v, matteValue_t opObject) {
