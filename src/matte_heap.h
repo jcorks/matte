@@ -260,6 +260,14 @@ uint32_t matte_value_object_get_number_key_count(matteHeap_t *, matteValue_t);
 // whose keys are above the given index, those key-values are pushed up.
 void matte_value_object_insert(matteHeap_t *, matteValue_t, uint32_t key, matteValue_t val);
 
+// Efficient case of matte_value_object_insert with key == object keycount
+void matte_value_object_push(
+    matteHeap_t * heap, 
+    matteValue_t v, 
+    matteValue_t val
+);
+
+
 // Sorts the number key contents of the 
 void matte_value_object_sort_unsafe(matteHeap_t *, matteValue_t, matteValue_t less);
 // attempts to run a VM call for each key-value pair within the object.

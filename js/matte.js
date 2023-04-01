@@ -36,6 +36,11 @@ const Matte = {
                         iter += 4;
                         return out;
                     },
+                    chompDouble : function() {
+                        const out = Float64Array(bytecode.slice(iter, iter+8)[0];
+                        iter += 4;
+                        return out;
+                    },
                     
                     chompString : function() {
                         const size = bytes.chompUInt32();
@@ -107,10 +112,15 @@ const Matte = {
                         stub.instruction[i] = {
                             lineNumber : bytes.chompUInt32(),
                             opcode     : bytes.chompUInt8(),
-                            data       : bytes.chompBytes(8)
+                            data       : bytes.chompDouble(),
                         };
+                        
+                        if (stub.instruction[n].opcode == MATTE_OPCODE_NFN)
+                            stub.instruction[n].nfnFileID = fileID;
                     }
                     stub.endByte = bytes.iter;
+
+
                     return stub;
                 }
                 
@@ -648,7 +658,7 @@ const Matte = {
                         }
                         const accessor = objectGetAccessOperator(value, isBracket, 1);
                         if (accessor.binID) {
-                            return vm.call(accessor, [key], [heap_specialString_key]);
+                            return vm.callFunction(accessor, [key], [heap_specialString_key]);
                         } else {
                             return objectLookup(value, key);
                         }
@@ -850,6 +860,13 @@ const Matte = {
                     if (value.data.kv_number == undefined) value.data.kv_number = [];
                     value.data.kv_number.splice(plainIndex, 0, v);
                 },
+
+                valueObjectPush : function(value, plainIndex, v) {
+                    if (value.binID != TYPE.OBJECT) return;
+                    if (value.data.kv_number == undefined) value.data.kv_number = [];
+                    value.data.kv_number.push(v);
+                },
+
                 
                 valueObjectSortUnsafe : function(value, lessFnValue) {
                     if (value.data.kv_number == undefined) return;
@@ -862,7 +879,7 @@ const Matte = {
                     ];
                     
                     vals.sort(function(a, b) {
-                        return heap.valueAsNumber(vm.call(lessFnValue, [a, b], names));
+                        return heap.valueAsNumber(vm.callFunction(lessFnValue, [a, b], names));
                     });
                 },
                 
@@ -871,7 +888,7 @@ const Matte = {
                     if (value.data.table_attribSet) {
                         const set = heap.valueObjectAccess(value.data.table_attribSet, heap_specialString_foreach, 0);
                         if (set.binID) {
-                            const v = vm.call(set, [], []);
+                            const v = vm.callFunction(set, [], []);
                             if (binID != TYPE.OBJECT) {
                                 vm.raiseErrorString("foreach attribute MUST return an object.");
                                 return;
@@ -890,7 +907,7 @@ const Matte = {
                     const values = valueObjectValues(value);
    
                     for(var i = 0; i < keys.length; ++i) {
-                        vm.call(func, [keys[i], values[i]], names);
+                        vm.callFunction(func, [keys[i], values[i]], names);
                     }
                 },
                 
@@ -907,7 +924,7 @@ const Matte = {
                     
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
                     if (assigner.binID) {
-                        const r = vm.call(assigner, [key, v], [heap_specialString_key, heap_specialString_value]);
+                        const r = vm.callFunction(assigner, [key, v], [heap_specialString_key, heap_specialString_value]);
                         if (r.binID == TYPE.BOOLEAN && r.data) {
                             return;
                         }
@@ -1526,16 +1543,318 @@ const Matte = {
         
         var vm;
         vm = function(){
+            const vm_opcodes = {
+                // no operation
+                MATTE_OPCODE_NOP : 0,
+                
+                
+                // push referrable onto value stack of current frame.
+                MATTE_OPCODE_PRF : 1,
+                // push empty 
+                MATTE_OPCODE_NEM : 2,
+                // push new number,
+                MATTE_OPCODE_NNM : 3,
+                // push new boolean,
+                MATTE_OPCODE_NBL : 4,
+                // push new string
+                MATTE_OPCODE_NST : 5,
+                // push new empty object
+                MATTE_OPCODE_NOB : 6,
+                // push new function from a compiled stub
+                MATTE_OPCODE_NFN : 7,
 
+                // costructor object assignment
+                // with an object, key, and value,
+                // assigns bypassing normal assignment 
+                // checks. The object is left on the stack 
+                // afterwards.
+                MATTE_OPCODE_CAS : 8,
+                
+                // costructor array assignment
+                // with an array and value,
+                // assigns bypassing normal assignment 
+                // checks. The object is left on the stack 
+                // afterwards.
+                MATTE_OPCODE_CAA : 9,    
+                
+
+                // push a new callstack from the given function object.
+                MATTE_OPCODE_CAL : 10,
+                // assign value to a referrable 
+                MATTE_OPCODE_ARF : 11,
+                // assign object member
+                MATTE_OPCODE_OSN : 12,
+                // lookup member
+                MATTE_OPCODE_OLK : 13,
+
+                // general purpose operator code.
+                MATTE_OPCODE_OPR : 14,
+                
+                // call c / built-in function
+                MATTE_OPCODE_EXT : 15,
+
+                // pop values from the stack
+                MATTE_OPCODE_POP : 16,
+                // copys top value on the stack.
+                MATTE_OPCODE_CPY : 17,
+
+                // return;
+                MATTE_OPCODE_RET : 18,
+                
+                // skips PC forward if conditional is false. used for when conditional return
+                MATTE_OPCODE_SKP : 19 ,
+                // skips PC forward always.
+                MATTE_OPCODE_ASP : 20,
+                // pushes a named referrable at runtime.
+                // performance heavy; is not used except for 
+                // special compilation.
+                MATTE_OPCODE_PNR : 21,
+                
+                // Pushes the result of an listen expression.
+                // listen pops 2 functions off the stack and pushes 
+                // the result of the listen operation.
+                MATTE_OPCODE_LST : 22,
+                
+                // pushes a abuilt-in type object 
+                // 
+                // 0 -> empty 
+                // 1 -> boolean 
+                // 2 -> number 
+                // 3 -> string 
+                // 4 -> object
+                // 5 -> type (type of the type object) 
+                // 6 -> any (not physically in code, just for the vm)
+                MATTE_OPCODE_PTO : 23,
+                
+                
+                // indicates to the VM that the next NFN is 
+                // a strict function.
+                MATTE_OPCODE_SFS : 24,
+
+                // Indicates a query
+                MATTE_OPCODE_QRY : 25,
+
+
+                // Shhort circuit: &&
+                // Peek the top. If false, skip by given count
+                MATTE_OPCODE_SCA : 26,
+
+                // Shhort circuit: OR
+                // Peek the top. If true, skip by given count
+                MATTE_OPCODE_SCO : 27,
+
+                // spread operator: array.
+                // pops the top of the stack and push all values of the object.
+                MATTE_OPCODE_SPA : 28,
+
+                // spread operator: object 
+                // pops the top of the stack and pushes all keys and values of the object.
+                MATTE_OPCODE_SPO : 29,
+                
+                // Object: Assign Set 
+                // Allows for many assignments at once to an object using the 
+                // dot operator. The syntax is operand.{static object};
+                // The first operand is pushed to the top of the stack.
+                MATTE_OPCODE_OAS  : 30           
+            
+            };
+            
+            const vm_operator = {
+                MATTE_OPERATOR_ADD : 0, // + 2 operands
+                MATTE_OPERATOR_SUB : 1, // - 2 operands
+                MATTE_OPERATOR_DIV : 2, // / 2 operands
+                MATTE_OPERATOR_MULT : 3, // * 2 operands
+                MATTE_OPERATOR_NOT : 4, // ! 1 operand
+                MATTE_OPERATOR_BITWISE_OR : 5, // | 2 operands
+                MATTE_OPERATOR_OR : 6, // || 2 operands
+                MATTE_OPERATOR_BITWISE_AND : 7, // & 2 operands
+                MATTE_OPERATOR_AND : 8, // && 2 operands
+                MATTE_OPERATOR_SHIFT_LEFT : 9, // << 2 operands
+                MATTE_OPERATOR_SHIFT_RIGHT : 10, // >> 2 operands
+                MATTE_OPERATOR_POW : 11, // ** 2 operands
+                MATTE_OPERATOR_EQ : 12, // == 2 operands
+                MATTE_OPERATOR_BITWISE_NOT : 13, // ~ 1 operand
+                MATTE_OPERATOR_POINT : 14, // -> 2 operands
+                MATTE_OPERATOR_POUND : 15, // # 1 operand
+                MATTE_OPERATOR_TERNARY : 16, // ? 2 operands
+                MATTE_OPERATOR_TOKEN : 17, // $ 1 operand
+                MATTE_OPERATOR_GREATER : 18, // > 2 operands
+                MATTE_OPERATOR_LESS : 19, // < 2 operands
+                MATTE_OPERATOR_GREATEREQ : 20, // >= 2 operands
+                MATTE_OPERATOR_LESSEQ : 21, // <= 2 operands
+                MATTE_OPERATOR_TRANSFORM : 22, // <> 2 operands
+                MATTE_OPERATOR_NOTEQ : 23, // != 2 operands
+                MATTE_OPERATOR_MODULO : 24, // % 2 operands
+                MATTE_OPERATOR_CARET : 25, // ^ 2 operands
+                MATTE_OPERATOR_NEGATE : 26, // - 1 operand
+                MATTE_OPERATOR_TYPESPEC : 27, // => 2 operands
+
+                // special operators. They arent part of the OPR opcode
+                MATTE_OPERATOR_ASSIGNMENT_NONE : 100,
+                MATTE_OPERATOR_ASSIGNMENT_ADD : 101,
+                MATTE_OPERATOR_ASSIGNMENT_SUB : 102,
+                MATTE_OPERATOR_ASSIGNMENT_MULT : 103,
+                MATTE_OPERATOR_ASSIGNMENT_DIV : 104,
+                MATTE_OPERATOR_ASSIGNMENT_MOD : 105,
+                MATTE_OPERATOR_ASSIGNMENT_POW : 106,
+                MATTE_OPERATOR_ASSIGNMENT_AND : 107,
+                MATTE_OPERATOR_ASSIGNMENT_OR : 108,
+                MATTE_OPERATOR_ASSIGNMENT_XOR : 109,
+                MATTE_OPERATOR_ASSIGNMENT_BLEFT : 110,
+                MATTE_OPERATOR_ASSIGNMENT_BRIGHT : 111,
+                
+                
+                // special operator state flag for OSN instructions.
+                // TODO: better method maybe? 
+                MATTE_OPERATOR_STATE_BRACKET : 200,
+            
+            };
+            const vm_operatorFunc = [];
+            
+            
+            
             const vm_imports = [];
             const vm_stubIndex = {};
             const vm_fileIDPool = 10;
-            const vm_runFileID = function(fileID) {
-                
-            };
             const vm_precomputed = {}; // matte_vm.c: imported
             const vm_specialString_parameters = heap.createString('parameters');
+            const vm_specialString_onsend = heap.createString('onSend');
+            const vm_specialString_onerror = heap.createString('onError');
+            const vm_specialString_message = heap.createString('message');
+            const vm_specialString_value = heap.createString('value');
+            const vm_externalFunctionIndex = []; // all external functions
+            const vm_externalFunctions = {}; // name -> id in index
+            const vm_callstack = [];
+            const vm_opcodesSwitch = [];
+            const vm_valueStack = [];
+
             var vm_pendingCatchable = false;
+            var vm_pendingRestartCondition = false;
+            var vm_stacksize = 0;
+            var vm_frame;
+
+            const vm_stackframeGetReferrable(i, referrableID) {
+                i = vm_stacksize - 1 - i;
+                if (i >= vm_stacksize) {
+                    vm.raiseErrorString("Invalid stackframe requested in referrable query.");
+                    return undefined;
+                }
+                
+                if (referrableID < vm_callstack[i].referrableSize) {
+                    return heap.valueObjectArrayAtUnsafe(vm_callstack[i].referrable, referrableID);
+                } else {
+                    const ref = heap.valueGetCapturedValue(vm_callstack[i].context, referrableID - vm_callstack[i].referrableSize);
+                    if (!ref) {
+                        vm.raiseErrorString("Invalid referrable");
+                        return undefined;
+                    }
+                    return ref;
+                }
+            };
+
+
+            const vm_listen = function(v, respObject) {
+                if (!heap.valueIsCallable(v)) {
+                    vm.raiseErrorString("Listen expressions require that the listened-to expression is a function. ");
+                    return heap.createEmpty();
+                }
+                
+                if (respObject.binID != heap.TYPE.EMPTY && respObject.binID != heap.TYPE.OBJECT) {
+                    vm.raiseErrorString("Listen requires that the response expression is an object.");
+                    return heap.createEmpty();                    
+                }
+                
+                var onSend;
+                var onError;
+                if (respObject.binID != heap.TYPE.EMPTY) {
+                    onSend = heap.valueObjectAccessDirect(respObject, vm_specailString_onsend, 0);
+                    if (onSend && onSend.binID != heap.TYPE.EMPTY && !heap.valueIsCallable(onSend)) {
+                        vm.raiseErrorString("Listen requires that the response object's 'onSend' attribute be a Function.");
+                        return heap.createEmpty();                                            
+                    }
+                    onError = heap.valueObjectAccessDirect(respObject, vm_specailString_onerror, 0);
+                    if (onError && onError.binID != heap.TYPE.EMPTY && !heap.valueIsCallable(onError)) {
+                        vm.raiseErrorString("Listen requires that the response object's 'onError' attribute be a Function.");
+                        return heap.createEmpty();                                            
+                    }
+                }
+                
+                var out = vm.callFunction(v, [], []);
+                if (vm_pendingCatchable) {
+                    const catchable = vm_catchable;
+                    vm_catchable.binID = 0;
+                    vm_pendingCatchable = 0;
+                    
+                    if (vm.pendingCatchableIsError && onSend) {
+                        return vm.callFunction(onSend, [catchable], [vm_specialString_message]);
+                    }
+                    
+                    if (vm_pendingCatchableIsError && onError) {
+                        vm_pendingCatchableIsError = 0;
+                        return vm.callFunction(onError, [catchable], [vm_specialString_message]);
+                    } else {
+                        if (vm_pendingCatchableIsError) {
+                            vm_catchable = catchable;
+                            vm_pendingCatchable = 1;
+                        } else {
+                            return catchable
+                        }
+                    }
+                    return heap.createEmpty(); // shouldnt get here
+                } else {
+                    return out;
+                }
+            };
+            
+
+            const vm_pushFrame = function() {
+                vm_stacksize ++;
+                var frame;
+                if (vm_callstack.length < vm_stacksize) {
+                    while(vm_callstack.length < vm_stacksize) {
+                        vm_callstack.push({});
+                    }
+                    frame = vm_callstack[vm_stacksize-1];
+                    frame.pc = 0;
+                    frame.prettyName = "";
+                    frame.context = heap.createEmpty();
+                    frame.stub = null;
+                    frame.valueStack = []
+                } else {
+                    frame = vm_callstack[vm_stacksize-1];
+                    frame.stub = null;
+                    frame.prettyName = "";
+                    frame.callstack.length = 0;
+                    frame.pc = 0;
+                }
+                
+                if (vm_pendingRestartCondition) {
+                    frame.restartCondition = vm_pendingRestartCondition;
+                    frame.restartConditionData = vm_pendingRestartConditionData;
+                } else {
+                    frame.restartCondition = null;
+                    frame.restartConditionData = null;
+                }
+                return frame;
+            };
+            
+            const vm_findStub = function(fileid, stubid) {
+                return (vm_stubIndex[fileid])[stubid];
+            };
+            
+            const vm_executableLoop = function() {
+                vm_frame = vm_callstack[vm_stacksize-1];
+                var inst;
+                var instCount = frame.stub.instructionCount;
+                vm_sfsCount = 0;
+
+                // tucked with RELOOP
+                while(true) {while(frame.pc < instCount) {
+                    inst = stub.isntructions[frame.pc++];
+                    vm_opcodeSwitch[inst.opcode](inst);
+                }}
+
+            };
             return {
                 // controls the heap
                 heap : heap,
@@ -1655,25 +1974,25 @@ const Matte = {
                     const stub = vm_stubIndex[fileid];
                     if (stub == undefined) {
                         vm.raiseErrorString('Script has no toplevel context to run');
-                        return heap.createValue();
+                        return heap.createEmpty();
                     }
                     const func = heap.createFunction(stub);
-                    const result = vm.call(func, [parameters], [vm_specialString_parameters]);
+                    const result = vm.callFunction(func, [parameters], [vm_specialString_parameters]);
                     vm_precomputed[fileid] = result;
                     return result;
                 },
                 
-                call : function(func, args, argNames) {
-                    if (vm_pendingCatchable) return heap.createValue();
+                callFunction : function(func, args, argNames) {
+                    if (vm_pendingCatchable) return heap.createEmpty();
                     const callable = heap.valueIsCallable(func);
                     if (callable == 0) {
                         vm.raiseErrorString("Error: cannot call non-function value ");
-                        return heap.createValue();
+                        return heap.createEmpty();
                     }
                     
                     if (args.length != argNames.length) {
                         vm.raiseErrorString("VM call as mismatching arguments and parameter names.");
-                        return heap.createValue();                        
+                        return heap.createEmpty();                        
                     }
                     
                     if (func.binID == heap.TYPE.TYPE) {
@@ -1684,7 +2003,7 @@ const Matte = {
                             return heap.valueToType(args[0], func);
                         } else {
                             vm.raiseErrorString("Type conversion failed (no value given to convert).");
-                            return heap.createValue();
+                            return heap.createEmpty();
                         }
                     }
                     
@@ -1692,7 +2011,127 @@ const Matte = {
                     //external function 
                     const stub = heap.valueGetBytecodeStub(func);
                     if (stub.fileID == 0) {
-                        const external = stub
+                        const external = stub.stubID;
+                        if (external >= vm_externalFunctionIndex.length) {
+                            return heap.createEmpty();
+                        }
+                        
+                        const set = vm_externalFunctionIndex[external];
+                        const argsReal = [];
+                        const lenReal = args.length;
+                        const len = stub.argCount;
+                        
+                        
+                        for(var i = 0; i < lenReal; ++i) {
+                            for(var n = 0; n < len; ++n) {
+                                if (stub.argNames[n] == argNames[i].data) {
+                                    argsReal[n] = args[i];
+                                    break;
+                                }
+                            }
+                            
+                            if (n == len) {
+                                var str;
+                                if (len) {
+                                    str = "Could not bind requested parameter: '"+argNames[i].data+"'.\n Bindable parameters for this function: ";
+                                } else {
+                                    str = "Could not bind requested parameter: '"+argNames[i].data+"'.\n (no bindable parameters for this function)";                                
+                                }
+                                
+                                for(n = 0; n < len; ++n) {
+                                    str += " \"" + stub.argNames[n] + "\" ";
+                                }
+                                
+                                vm.raiseErrorString(str);
+                                return heap.createEmpty();
+                            }
+                        }
+                        
+                        var result;
+                        if (callable == 2) {
+                            const ok = heap.valueObjectFunctionPreTypeCheckUnsafe(func, argsReal);
+                            if (ok) 
+                                result = set.userFunction(func, argsReal, set.userData);
+                            heap.valueObjectFunctionPostTypeCheckUnsafe(func, result);
+                        } else {
+                            result = set.userFunction(func, argsReal, set.userData);                        
+                        }
+                        return result;
+
+                    // non-external call
+                    } else {
+                        const argsReal = [];
+                        const lenReal = args.length;
+                        var   len = stub.argCount;
+                        const referrables = [];
+                        
+                        for(var i = 0; i < lenReal; ++i) {
+                            for(var n = 0; n < len; ++n) {
+                                if (stub.argNames[n] == argNames[i].data) {
+                                    referrables[n+1] = args[i];
+                                    break;
+                                }
+                            }
+                            
+                            if (n == len) {
+                                var str;
+                                if (len) {
+                                    str = "Could not bind requested parameter: '"+argNames[i].data+"'.\n Bindable parameters for this function: ";
+                                } else {
+                                    str = "Could not bind requested parameter: '"+argNames[i].data+"'.\n (no bindable parameters for this function)";                                
+                                }
+                                
+                                for(n = 0; n < len; ++n) {
+                                    str += " \"" + stub.argNames[n] + "\" ";
+                                }
+                                
+                                vm.raiseErrorString(str);
+                                return heap.createEmpty();
+                            }
+                        }
+                        
+                        var ok = 1;
+                        if (callable == 2 && len) {
+                            const arr = referrables.slice(1, len); 
+                            ok = heap.valueObjectFunctionPreTypeCheckUnsafe(d, arr);
+                        }
+                        len = stub.localCount;
+                        for(var i = 0; i < len; ++i) {
+                            referrables.push(heap.createEmpty());
+                        }
+                        const frame = vm_pushFrame();
+                        frame.context = func;
+                        frame.stub = stub;
+                        referrables[0] = func;
+                        frame.referrable = heap.createObjectArray(referrables);
+                        frame.referrableSize = referrables.length;
+                        
+                        var result;
+                        if (callable == 2) {
+                            if (ok) {
+                                result = vm_executionLoop(vm);
+                            } 
+                            if (!vm_pendingCatchable)
+                                heap.valueObjectFunctionPostTypeCheckUnsafe(func, result);
+                        } else {
+                            result = vm_executionLoop(vm);
+                        }
+                        
+                        if (!vm_stacksize && vm_pendingCatchable) {
+                            if (vm_unhandled) {
+                                vm_unhandled(
+                                    vm_errorLastFile,
+                                    vm_errorLastLine,
+                                    vm_catchable,
+                                    vm_unhandledData
+                                );
+                            }
+                            vm_catchable = heap.createEmpty();
+                            vm_pendingCatchable = 0;
+                            vm_pendingCatchableIsError = 0
+                            return heap.createEmpty();
+                        }
+                        return result;
                     }
                 }
                 
@@ -1701,6 +2140,449 @@ const Matte = {
                 // and returns a ByteArray
                 onImport : onImport
             };
+            
+            
+            
+            // implement operators 
+            /////////////////////////////////////////////////////////////////
+            const vm_badOperator = function(op, value) {
+                vm.raiseErrorString(
+                    op + " operator on value of type " + heap.valueTypeName(heap.valueGetType(value)) + " is undefined."
+                );
+            };
+            
+            const vm_objectHasOperator = function(a, op) {
+                const opSrc = heap.valueObjectGetAttributesUnsafe(a);
+                if (opSrc == undefined)
+                    return false;
+                
+                return heap.valueObjectAccessString(opSrc, heap.createString(op)).binID != 0;
+            };
+            
+            const vm_runObjectOperator2(a, op, b) {
+                const opSrc = heap.valueObjectGetAttributesUnsafe(a);
+                if (opSrc == undefined) {
+                    vm.raiseErrorString(op + ' operator on object without operator overloading is undefined.');
+                    return heap.createValue;
+                } else {
+                    const oper = heap.valueObjectAccessString(opSrc, heap.createString(op));
+                    return vm.callFunction(
+                        oper,
+                        [b],
+                        [vm_specialString_value]
+                    );
+                }                
+            };
+            
+            
+            const vm_runObjectOperator1(a, op) {
+                const opSrc = heap.valueObjectGetAttributesUnsafe(a);
+                if (opSrc == undefined) {
+                    vm.raiseErrorString(op + ' operator on object without operator overloading is undefined.');
+                    return heap.createValue;
+                } else {
+                    const oper = heap.valueObjectAccessString(opSrc, heap.createString(op));
+                    return vm.callFunction(
+                        oper,
+                        [],
+                        []
+                    );
+                }                
+            };          
+            
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_ADD] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.NUMBER:
+                    return heap.createNumber(a.data + heap.valueAsNumber(b).data);
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "+=", b);
+                  default:
+                    vm_badOperator("+=", a);
+                    return heap.createEmpty();
+                }
+            };
+            
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_SUB] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.NUMBER:
+                    return heap.createNumber(a.data - heap.valueAsNumber(b).data);
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "-=", b);
+                  default:
+                    vm_badOperator("-=", a);
+                    return heap.createEmpty();
+                }
+            };
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_DIV] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.NUMBER:
+                    return heap.createNumber(a.data / heap.valueAsNumber(b).data);
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "/=", b);
+                  default:
+                    vm_badOperator("/=", a);
+                    return heap.createEmpty();
+                }
+            };            
+            
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_MULT] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.NUMBER:
+                    return heap.createNumber(a.data * heap.valueAsNumber(b).data);
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "*=", b);
+                  default:
+                    vm_badOperator("*=", a);
+                    return heap.createEmpty();
+                }
+            };            
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_MOD] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.NUMBER:
+                    return heap.createNumber(a.data % heap.valueAsNumber(b).data);
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "%=", b);
+                  default:
+                    vm_badOperator("%=", a);
+                    return heap.createEmpty();
+                }
+            };                 
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_POW] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.NUMBER:
+                    return heap.createNumber(Math.pow(a.data, heap.valueAsNumber(b).data));
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "**=", b);
+                  default:
+                    vm_badOperator("**=", a);
+                    return heap.createEmpty();
+                }
+            };                 
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_AND] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "&=", b);
+                  default:
+                    vm_badOperator("&=", a);
+                    return heap.createEmpty();
+                }
+            };                 
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_OR] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "|=", b);
+                  default:
+                    vm_badOperator("|=", a);
+                    return heap.createEmpty();
+                }
+            };                 
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_XOR] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "^=", b);
+                  default:
+                    vm_badOperator("^=", a);
+                    return heap.createEmpty();
+                }
+            };                 
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_BLEFT] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, "<<=", b);
+                  default:
+                    vm_badOperator("<<=", a);
+                    return heap.createEmpty();
+                }
+            };                 
+
+            vm_operatorFunc[vm_opcodes.MATTE_OPERATOR_ASSIGNMENT_BRIGHT] = function(a, b) {
+                switch(a.binID) {
+                  case heap.TYPE.OBJECT:
+                    return vm_runObjectOperator2(a, ">>=", b);
+                  default:
+                    vm_badOperator(">>=", a);
+                    return heap.createEmpty();
+                }
+            };                 
+
+            
+            
+            
+            // implement opcodes:
+            ////////////////////////////////////////////////////////////////
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_NOP]] = function(inst){};
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_LST]] = function(inst){
+                const v = vm_listen(vm_valueStack[vm_valueStack.length-2], vm_valueStack[vm_valueStack.length-1]);
+                vm_valueStack.pop(); 
+                vm_valueStack.pop(); 
+                vm_valueStack.push(v); 
+            };
+            
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_PRF]] = function(inst) {
+                const v = vm_stackframeGetReferrable(0, Math.floor(inst.data));
+                if (v) {
+                    vm_valueStack.push(v);
+                }
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_PNR]] = function(inst) {
+                throw new Error("TODO"); // or not, DEBUG
+            };
+            
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_NEM]] = function(inst) {
+                vm_valueStack.push(heap.createEmpty());
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_NNM]] = function(inst) {
+                vm_valueStack.push(heap.createNumber(inst.data));
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_NBL]] = function(inst) {
+                vm_valueStack.push(heap.createBoolean(Math.floor(inst.data) == 0.0));
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_NST]] = function(inst) {
+                vm_valueStack.push(heap.createString(vm_frame.stub.strings[Math.floor(inst->data)]));
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_NST]] = function(inst) {
+                vm_valueStack.push(heap.createObject());
+            };
+            
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_SFS]] = function(inst) {
+                vm_sfsCount = inst.data;
+                // the fallthrough
+                vm_opcodes[MATTE_OPCODE_NFN](frame.stub.instructions[frame.pc++]);   
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_NFN]] = function(inst) {
+                const stub = vm_findStub(inst.nfnFileID, inst.data);
+                if (stub == undefined) {
+                    vm.raiseErrorString("NFN opcode data referenced non-existent stub (either parser error OR bytecode was reused erroneously)");
+                    return;
+                }
+                
+                if (vm_sfsCount) {
+                    if (vm_valueStack.length < vm_sfsCount) {
+                        vm.raiseErrorString("VM internal error: too few values on stack to service SFS opcode!");
+                        return;
+                    }
+                    
+                    const vals = [];
+                    for(var i = 0; i < vm_sfsCount; ++i) {
+                        vals[vm_sfsCount - i - 1] = vm_valueStack[vm_valueStack.length-1-i];
+                    }
+                    const v = heap.createTypedFunction(stub, vals);
+                    vm_sfsCount = 0;
+                    vm_valueStack.push(v);
+                } else {
+                    vm_valueStack.push(heap.createFunction(stub));
+                }
+            };
+            
+            
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_CAA]] = function(inst) {
+                if (vm_valueStack.length < 2) {
+                    vm.raiseErrorString("VM error: missing object - value pair for constructor push");
+                    return;
+                }
+                const obj = vm_valueStack[vm_valueStack.length-2];
+                heap.valueObjectPush(obj, vm_valueStack[vm_valueStack.length-1]);
+                vm_valueStack.pop();
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_CAS]] = function(inst) {
+                if (vm_valueStack.length < 3) {
+                    vm.raiseErrorString("VM error: missing object - value pair for constructor push");
+                    return;
+                }
+                const obj = vm_valueStack[vm_valueStack.length-3];
+                heap.valueObjectSet(obj, vm_valueStack[vm_valueStack.length-2], vm_valueStack[vm_valueStack.length-1], 1);
+                vm_valueStack.pop();
+                vm_valueStack.pop();
+            };
+            
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_SPA]] = function(inst) {
+                if (vm_valueStack.length < 2) {
+                    vm.raiseErrorString("VM error: tried to prepare key-value pairs for object construction, but there are an odd number of items on the stack.");
+                    return;
+                }
+                const p = vm_valueStack.pop();
+                const target = vm_valueStack[vm_valueStack.length-1];
+                const len = heap.valueObjectGetNumberKeyCount(p);
+                var keylen = heap.valueObjectGetNumberKeyCount(p);
+                for(var i = 0; i < len; ++i) {
+                    heap.valueObjectInsert(
+                        target, 
+                        keylen++,
+                        heap.valueObjectAccessIndex(p, i)
+                    );
+                }   
+            };
+            
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_SPO]] = function(inst) {
+                if (vm_valueStack.length < 2) {
+                    vm.raiseErrorString("VM error: tried to prepare key-value pairs for object construction, but there are an odd number of items on the stack.");
+                    return;
+                }
+                
+                const p = vm_valueStack.pop();
+                const keys = heap.valueObjectKeys(p);
+                const vals = heap.valueObjectValues(p);
+                
+                const target = vm_valueStack[vm_valueStack.length-1];
+                const len = heap.valueObjectGetNumberKeyCount(keys);
+                for(var i = 0; i < len; ++i) {
+                    heap.valueObjectSet(
+                        target,
+                        heap.valueObjectAccessDirect(keys, i),
+                        heap.valueObjectAccessDirect(vals, i),
+                        1
+                    );
+                }
+            };
+            
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_PTO]] = function(inst) {
+                var v;
+                switch(Math.floor(inst.data)) {
+                  case 0: v = heap.getEmptyType(); break;
+                  case 1: v = heap.getBooleanType(); break;
+                  case 2: v = heap.getNumberType(); break;
+                  case 3: v = heap.getStringType(); break;
+                  case 4: v = heap.getObjectType(); break;
+                  case 5: v = heap.getFunctionType(); break;
+                  case 6: v = heap.getTypeType(); break;
+                  case 7: v = heap.getAnyType(); break;
+                }
+                vm_valueStack.push(v);
+            };
+            
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_CAL]] = function(inst) {
+                if (vm_valueStack.length < 0) {
+                    vm.raiseErrorString("VM error: tried to prepare arguments for a call, but insufficient arguments on the stack.");
+                    return;
+                }
+                const args = [];
+                const argNames = [];
+                
+                const stackSize = vm_valueStack.length;
+                const key = vm_valueStack[vm_valueStack.length-1];
+                
+                if (stackSize > 2 && key.binID == heap.TYPE.STRING) {
+                    while(i < stackSize && key.binID == heap.TYPE.STRING) {
+                        argNames.push(key);
+                        i++;
+                        key = vm_valueStack[vm_valueStack.length - 1 - i];
+                        args.push(key);
+                        i++;
+                        key = vm_valueStack[vm_valueStack.length - 1 - i];
+                    }
+                }
+                
+                const argCount = args.length;
+                
+                if (i == stackSize) {
+                    vm.raiseErrorString("VM error: tried to prepare arguments for a call, but insufficient arguments on the stack.");         
+                    return;
+                }
+                
+                const func = vm_valueStack[vm_valueStack.length - 1 - i];
+                const result = vm.callFunction(func, args, argNames);
+                
+                for(i = 0; i < argCount; ++i) {
+                    vm_valueStack.pop();
+                    vm_valueStack.pop();
+                }
+                vm_valueStack.push(result);
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_ARF]] = function(inst) {
+                if (vm_valueStack.length < 1) {
+                    vm.raiseErrorString("VM error: tried to prepare arguments for referrable assignment, but insufficient arguments on the stack.");
+                    return;
+                }
+                
+                const refn = inst.data % 0xffffffff;
+                const op = Math.floor(inst->data / 0xffffffff);
+                
+                const ref = vm_stackframeGetReferrable(0, refn);
+                if (ref) {
+                    const v = vm_valueStack[vm_valueStack.length-1];
+                    var vOut;
+                    switch(op + vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE) {
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE:
+                        vOut = v;
+                        break;
+                        
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_ADD:
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_SUB:
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_MULT:
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_DIV: 
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_MOD:
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_POW:
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_AND:
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_OR: 
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_XOR: 
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT: 
+                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT: 
+                        vOut = vm_operatorFunc[op + vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE](ref, v); 
+                        break;
+                        
+                      default:
+                        vOut = heap.createEmpty();
+                        vm.raiseErrorString("VM error: tried to access non-existent referrable operation (corrupt bytecode?).");
+                    }
+                    if (vOut.binID == heap.TYPE.OBJECT) {    
+                        // already in its proper place: simply mutates object.            
+                    } else {
+                        matte_vm_stackframe_set_referrable(vm, 0, refn, vOut);                    
+                    }
+                    vm_valueStack.pop();
+                    vm_valueStack.push(vOut);
+
+                } else {
+                    vm.raiseErrorString("VM error: tried to access non-existent referrable.");
+                }
+            };
+            
+            
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_POP]] = function(inst) {
+                var popCount = inst.data;
+                while(popCount > 0 && vm_valueStack.length > 0) {
+                    vm_valueStack.pop();
+                    popCount--;
+                }
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_CPY]] = function(inst) {
+                if (vm_valueStack.length == 0) {
+                    vm.raiseErrorString("VM error: cannot CPY with empty stack");
+                }
+                
+                vm_valueStack.push(vm_valueStack[vm_valueStack.length-1]);
+            };
+
+            vm_opcodeSwitch[vm_opcodes[MATTE_OPCODE_OSN]] = function(inst) {
+                if (vm_valueStack.length < 3) {
+                    
+                }
+            };
+
+            
+            
+            
+            
+
         }();
         
         

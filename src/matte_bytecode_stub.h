@@ -113,7 +113,8 @@ typedef struct {
     int32_t lineNumber;
     // The opcode of the 
     uint8_t  opcode;
-    uint8_t  data[8];
+    double   data;
+    int32_t  nfnFileID;
 } matteBytecodeStubInstruction_t;
 
 // Gets all instructions held by the stub.

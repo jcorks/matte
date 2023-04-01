@@ -141,7 +141,7 @@ static matteBytecodeStub_t * bytes_to_stub(matteHeap_t * heap, uint32_t fileID, 
         for(i = 0; i < out->instructionCount; ++i) {
             ADVANCE(uint32_t, out->instructions[i].lineNumber);
             ADVANCE(uint8_t,  out->instructions[i].opcode);
-            ADVANCEN(8, out->instructions[i].data[0]);
+            ADVANCE(double,   out->instructions[i].data);
         }
     }
 
@@ -149,7 +149,7 @@ static matteBytecodeStub_t * bytes_to_stub(matteHeap_t * heap, uint32_t fileID, 
     // This will help other instances know the originating
     for(i = 0; i < out->instructionCount; ++i) {
         if (out->instructions[i].opcode == MATTE_OPCODE_NFN) {
-            *((uint32_t*)(&out->instructions[i].data[0])) = fileID;
+            out->instructions[i].nfnFileID = fileID;
         }
     }
     return out;    

@@ -3192,6 +3192,28 @@ void matte_value_object_insert(
     );
 }
 
+
+void matte_value_object_push(
+    matteHeap_t * heap, 
+    matteValue_t v, 
+    matteValue_t val
+) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+        return;
+    }
+
+    matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
+
+    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
+        object_link_parent_value(heap, m, &val);
+    }
+    if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_pool_fetch(heap->keyvalues_numberPool);
+    matte_array_push(
+        m->table.keyvalues_number,
+        val
+    );
+}
+
 void matte_value_object_set_table(matteHeap_t * heap, matteValue_t v, matteValue_t srcTable) {
     if (srcTable.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(heap->vm, "Cannot use object set assignment syntax something that isnt an object.");

@@ -3789,13 +3789,13 @@ static matteArray_t * compile_expression(
                     goto L_FAIL;
                 }
                 
-                if (is_referrable_const(block, *(uint32_t*)(undo.data))) {
+                if (is_referrable_const(block, (uint32_t)(undo.data))) {
                     matte_syntax_graph_print_compile_error(g, iter, "Cannot assign new value to constant.");
                     goto L_FAIL;                    
                 }
                 // removed the referrable value, since thats already wrapped in the ARF
                 matte_array_set_size(valueInst, size-1);
-                write_instruction__arf(valueInst, line, *(uint32_t*)(undo.data), assignment_token_to_op_index(iter->ttype));
+                write_instruction__arf(valueInst, line, (uint32_t)(undo.data), assignment_token_to_op_index(iter->ttype));
                 
             } else {
                 // for handling assignment for the dot access and the [] lookup, 
@@ -3807,7 +3807,7 @@ static matteArray_t * compile_expression(
                     matte_syntax_graph_print_compile_error(g, iter, "Missing lookup token. (internal error)");
                     goto L_FAIL;
                 }
-                write_instruction__osn(valueInst, line, assignment_token_to_op_index(iter->ttype) + (*((uint32_t*)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0));                
+                write_instruction__osn(valueInst, line, assignment_token_to_op_index(iter->ttype) + (((uint32_t)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0));                
 
             }
             
@@ -3887,14 +3887,14 @@ static matteArray_t * compile_expression(
                     matteBytecodeStubInstruction_t marker;
                     marker.lineNumber = n->line;
                     marker.opcode = 0xff;
-                    marker.data[0] = 1;
+                    marker.data = 1;
                     matte_array_push(n->value, marker);
                     hasandor = 1;
                 } else if (n->postOp == MATTE_OPERATOR_OR) {
                     matteBytecodeStubInstruction_t marker;
                     marker.lineNumber = n->line;
                     marker.opcode = 0xff;
-                    marker.data[0] = 2;
+                    marker.data = 2;
                     matte_array_push(n->value, marker);                    
                     hasandor = 1;
                 }
@@ -3932,17 +3932,17 @@ static matteArray_t * compile_expression(
         for(i = 0; i < len; ++i) {
             matteBytecodeStubInstruction_t * inst = &matte_array_at(outInst, matteBytecodeStubInstruction_t, i);
             if (inst->opcode == 0xff) {
-                switch(inst->data[0]) {
+                switch((int)inst->data) {
                   case 1: {// AND 
                     inst->opcode = MATTE_OPCODE_SCA;
                     uint32_t skipAmt = len - i - 1;
-                    memcpy(inst->data, &skipAmt, sizeof(uint32_t));                    
+                    inst->data = skipAmt;                    
                     break;
                   }
                   case 2: {// OLD
                     inst->opcode = MATTE_OPCODE_SCO;
                     uint32_t skipAmt = len - i - 1;
-                    memcpy(inst->data, &skipAmt, sizeof(uint32_t));                    
+                    inst->data = skipAmt;  
                     break;
                   }
 
@@ -4383,7 +4383,6 @@ void * matte_function_block_array_to_bytecode(
     uint32_t nInst;
     uint32_t nStrings;
 
-    assert(sizeof(matteBytecodeStubInstruction_t) == sizeof(uint32_t) + sizeof(int32_t) + sizeof(uint64_t));
     uint8_t tag[] = {
         'M', 'A', 'T', 0x01, 0x06, 'B', 0x1
     };
@@ -4422,7 +4421,7 @@ void * matte_function_block_array_to_bytecode(
             matteBytecodeStubInstruction_t * inst = &matte_array_at(block->instructions, matteBytecodeStubInstruction_t, n);
             WRITE_BYTES(uint32_t, inst->lineNumber);
             WRITE_BYTES(uint8_t, inst->opcode);
-            WRITE_NBYTES(8, inst->data);        
+            WRITE_BYTES(double, inst->data);        
         }
 
         function_block_destroy(block);
