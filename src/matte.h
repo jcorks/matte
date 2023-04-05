@@ -34,16 +34,65 @@ DEALINGS IN THE SOFTWARE.
 typedef struct matte_t matte_t;
 typedef struct matteVM_t matteVM_t;
 
+#include "matte_heap.h"
 
+
+// Creates a new Matte isntance
 matte_t * matte_create();
 
+// Destroys a Matte instance
 void matte_destroy(matte_t *);
 
+
+
+
+
+// Connects default IO wrappers for many of 
+// Matte's VM features, making it much more 
+// convenient to set up the most common 
+// runtime options
+void matte_use_default_io(
+    // The function to handle needed input 
+    // from the user. If no input is ready, NULL can be 
+    // returned, and the input function will be called again.
+    // If NULL, stdin is used.
+    char * (*input) (),       
+    
+    // The function to handle needed output to inform 
+    // the user.
+    // If NULL, stdout is used.    
+    void   (*output)(const char *),
+
+    // whether to enable debugging in the VM. If enabled, 
+    // the matte instance will provide default debug handlers    
+    int isDebug
+);  
+
+
+// Adds an external C function for use within the VM.
+// This follows the semantics of matte_vm_set_external_function()
+// but is more convenient.
+void matte_add_external_function(
+    // The embedding
+    matte_t *, 
+    const char * name, 
+    matteValue_t (*)(matteVM_t *, matteValue_t fn, const matteValue_t * args, void * userData),
+    void *,
+    ... 
+);
+
+// Convenience function that runs the given source or bytecode.
+// Internally, it is given a unique name, compiled (if detected as needed), and
+// runs the new fileID immediately
+matteValue_t matte_run_source(matte_t *, const char * source);
+
+
+// Nicely prints a value.
+const char * matte_print_value(matte_t *, matteValue_t);
+
+
+
+
 matteVM_t * matte_get_vm(matte_t *);
-
-void matte_set_user_data(matte_t *, void *);
-
-void * matte_get_user_data(matte_t *);
-
 
 #endif

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>
+            Testing Page
+	</title>
+        <style>
+            body {margin: 0;}
+        </style>
+    </head>
+    <body>
+    <script src="../matte.js"></script>
+    <script> 
+        const readBinary = function(name, onLoad) {
+            const req = new XMLHttpRequest();
+            req.open("GET", name, true);
+            req.responseType = "arraybuffer";
+
+            req.onload = (event) => {
+                const arrayBuffer = req.response; // Note: not req.responseText
+                if (arrayBuffer) {
+                    onLoad(arrayBuffer);
+                };
+            }
+            req.send(null);
+        };
+    
+
+        const readText = function(name, onLoad) {
+            const req = new XMLHttpRequest();
+            req.open("GET", name, true);
+            req.responseType = "text";
+
+            req.onload = (event) => {
+                onLoad(req.responseText);
+            }
+            req.send(null);
+        };
+    
+    
+        const matte = Matte.newVM(
+            function()  {
+                // nothing yet
+            },
+            
+            function(value) {
+                console.log(value);
+            }
+        );
+        
+        const fileCount = 110;
+        var counter = 1;
+        const runTest = function() {
+            var result;
+            readBinary('/browser_test/test'+counter+'.mt.bytes', function(array) {
+                result = matte.runBytecode(array, null, 'test'+counter+'.mt');
+
+                readText('/browser_test/test'+counter+'.out', function(text) {
+                    text = text.replaceAll(' ', '');
+                    text = text.replaceAll('\n', '');
+                    if (matte.heap.valueAsString(result).data == text) {
+                        counter++;
+                        if (counter >= fileCount) {
+                            console.log("Tests complete! All pass.");
+                        } else 
+                            runTest();
+                    } else {
+                        throw new Error('Test ' + counter + ' failed! Expected [' + text + '], but received [' + matte.heap.valueAsString(result).data + ']');
+                    }
+                });                
+            });
+        };  
+        runTest();      
+        
+        
+    </script>
+    </body>
+</html>
+

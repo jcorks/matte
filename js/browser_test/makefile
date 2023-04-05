@@ -1,0 +1,53 @@
+all:
+	cd ../../cli && make -f ./makefile_unix
+	cp ../../testing/*.out ./
+	cd ../../cli && ./matte compile ../testing/test1.mt ../js/browser_test/test1.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test2.mt ../js/browser_test/test2.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test3.mt ../js/browser_test/test3.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test4.mt ../js/browser_test/test4.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test5.mt ../js/browser_test/test5.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test6.mt ../js/browser_test/test6.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test7.mt ../js/browser_test/test7.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test8.mt ../js/browser_test/test8.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test9.mt ../js/browser_test/test9.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test10.mt ../js/browser_test/test10.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test11.mt ../js/browser_test/test11.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test12.mt ../js/browser_test/test12.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test13.mt ../js/browser_test/test13.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test14.mt ../js/browser_test/test14.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test15.mt ../js/browser_test/test15.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test16.mt ../js/browser_test/test16.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test17.mt ../js/browser_test/test17.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test18.mt ../js/browser_test/test18.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test19.mt ../js/browser_test/test19.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test20.mt ../js/browser_test/test20.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test21.mt ../js/browser_test/test21.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test22.mt ../js/browser_test/test22.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test23.mt ../js/browser_test/test23.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test24.mt ../js/browser_test/test24.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test25.mt ../js/browser_test/test25.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test26.mt ../js/browser_test/test26.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test27.mt ../js/browser_test/test27.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test28.mt ../js/browser_test/test28.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test29.mt ../js/browser_test/test29.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test30.mt ../js/browser_test/test30.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test31.mt ../js/browser_test/test31.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test32.mt ../js/browser_test/test32.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test33.mt ../js/browser_test/test33.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test34.mt ../js/browser_test/test34.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test35.mt ../js/browser_test/test35.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test36.mt ../js/browser_test/test36.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test37.mt ../js/browser_test/test37.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test38.mt ../js/browser_test/test38.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test39.mt ../js/browser_test/test39.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test40.mt ../js/browser_test/test40.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test41.mt ../js/browser_test/test41.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test42.mt ../js/browser_test/test42.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test43.mt ../js/browser_test/test43.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test44.mt ../js/browser_test/test44.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test45.mt ../js/browser_test/test45.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test46.mt ../js/browser_test/test46.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test47.mt ../js/browser_test/test47.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test48.mt ../js/browser_test/test48.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test49.mt ../js/browser_test/test49.mt.bytes
+
