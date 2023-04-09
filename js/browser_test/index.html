@@ -37,41 +37,72 @@
             }
             req.send(null);
         };
+       
     
     
         const matte = Matte.newVM(
-            function()  {
-                // nothing yet
+            function(name)  {
             },
             
             function(value) {
                 console.log(value);
             }
         );
-        
+
+
+
+        const initialModules = [
+            'Matte.Core.Class'
+        ];
+        var modsLeft = initialModules.length;
+
+        var testList = 57;
         const fileCount = 110;
-        var counter = 1;
+        var lock = false;;
         const runTest = function() {
             var result;
-            readBinary('/browser_test/test'+counter+'.mt.bytes', function(array) {
-                result = matte.runBytecode(array, null, 'test'+counter+'.mt');
+            lock = true;
+            const test = testList++;
+            readBinary('/browser_test/test'+test+'.mt.bytes', function(array) {
+                console.log('Performing test ' + test + '...');
+                result = matte.runBytecode(array, null, 'test'+test+'.mt');
 
-                readText('/browser_test/test'+counter+'.out', function(text) {
+                readText('/browser_test/test'+test+'.out', function(text) {
                     text = text.replaceAll(' ', '');
                     text = text.replaceAll('\n', '');
                     if (matte.heap.valueAsString(result).data == text) {
-                        counter++;
-                        if (counter >= fileCount) {
+                        if (test >= fileCount) {
                             console.log("Tests complete! All pass.");
-                        } else 
-                            runTest();
+                        }
                     } else {
-                        throw new Error('Test ' + counter + ' failed! Expected [' + text + '], but received [' + matte.heap.valueAsString(result).data + ']');
+                        throw new Error('Test ' + test + ' failed! Expected [' + text + '], but received [' + matte.heap.valueAsString(result).data + ']');
                     }
+                    lock = false;
                 });                
             });
-        };  
-        runTest();      
+        };
+        var task = setInterval(function() {
+            if (initialModules.length) {             
+                const mod = initialModules.pop(); 
+                readBinary(mod, function(data) {
+                    console.log('Loading ' + mod);
+                    matte.import(mod, null, data);
+                    modsLeft--;
+                });
+            } 
+            
+            if (modsLeft == 0) {
+                if (testList >= fileCount)
+                    clearInterval(task)
+                else {
+                    if (!lock)
+                        runTest();      
+                }
+            }
+        });
+
+        
+        
         
         
     </script>

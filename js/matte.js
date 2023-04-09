@@ -450,7 +450,9 @@ const Matte = {
                     break;
                     
                   case TYPE.TYPE:
-                    throw new Error("TODO");
+                    if (object.data.kv_types == undefined)
+                        object.data.kv_types = [];
+                    object.data.kv_types[key] = value;
                     break;
                 }
             }
@@ -458,7 +460,7 @@ const Matte = {
             
 
             const objectGetConvOperator = function(m, type) {
-                out = heap.valueObjectAccess(m.data.table_attribSet, type, 0);
+                return heap.valueObjectAccess(m.data.table_attribSet, type, 0);
             };
 
             const objectGetAccessOperator = function(object, isBracket, read) {
@@ -467,10 +469,12 @@ const Matte = {
                     return out;
                 
                 const set = heap.valueObjectAccess(object.data.table_attribSet, isBracket ? heap_specialString_bracketAccess : heap_specialString_dotAccess, 0);
-                if (set.binID == TYPE.OBJECT) {
-                    vm.raiseErrorString("operator['[]'] and operator['.'] property must be an Object if it is set.");
-                } else {
-                    out = heap.valueObjectAccess(set, read ? heap_specialString_get : heap_specailString_set, 0);
+                if (set && set.binID) {
+                    if (set.binID == TYPE.OBJECT) {
+                        vm.raiseErrorString("operator['[]'] and operator['.'] property must be an Object if it is set.");
+                    } else {
+                        out = heap.valueObjectAccess(set, read ? heap_specialString_get : heap_specialString_set, 0);
+                    }
                 }
                 return out;
             };
@@ -547,7 +551,7 @@ const Matte = {
                 createBoolean : function(val) {
                     const out = createValue();
                     out.binID = TYPE.BOOLEAN;
-                    out.data = val;
+                    out.data = !val ? false : true;
                     return out;
                 },
                 
@@ -626,9 +630,10 @@ const Matte = {
 
 
                     const captures = stub.captures;
+                    var frame;
                     // always preserve origin
-                    if (vm.stackframe.length > 0) {
-                        const frame = vm.stackframe[0];
+                    if (vm.getStackSize() > 0) {
+                        frame = vm.getStackframe(0);
                         out.data.function_origin = frame.context;
                         out.data.function_origin_referrable = frame.referrable;
                     }
@@ -636,22 +641,20 @@ const Matte = {
                     if (captures.length == 0) return out;
 
 
-                    if (vm.stackframe.length == 0)
-                        throw new Error('This shouldnt happen.');
                                             
-                    const frame = vm.stackframe[0];
-                    for(i = 0; i < captures.length; ++i) {
+                    for(var i = 0; i < captures.length; ++i) {
                         var context = frame.context;
                         var contextReferrable = frame.referrable;
                         
                         while(context.binID != 0) {
                             const origin = context;
-                            if (stub.stubID == captures[i].stubID) {
+                            if (origin.data.function_stub.stubID == captures[i].stubID) {
                                 const ref = {};
                                 ref.referrableSrc = contextReferrable;
                                 ref.index = captures[i].referrable;
                                 
                                 out.data.function_captures.push(ref);
+                                break;
                             }
                             context = origin.data.function_origin;
                             contextReferrable = origin.data.function_origin_referrable;
@@ -662,6 +665,7 @@ const Matte = {
                             out.data.function_captures.push({referrableSrc:createValue(), index:0});
                         }
                     }
+                    return out;
                 },
                 
                 createExternalFunction : function(stub) {
@@ -669,7 +673,19 @@ const Matte = {
                 },
                 
                 createTypedFunction : function(stub, args) {
-                    throw new Error('TODO');
+                    for(var i = 0; i < args.length; ++i) {
+                        if (args[i].binID != TYPE.TYPE) {
+                            if (i == len-1) {
+                                vm.raiseErrorString("Function constructor with type specifiers requires those specifications to be Types. The return value specifier is not a Type.");
+                            } else {
+                                vm.raiseErrorString("Function constructor with type specifiers requires those specifications to be Types. The type specifier for Argument '"+stub.argNames[i]+"' is not a Type.\n");
+                            }
+                            return createValue();
+                        }
+                    }
+                    const func = heap.createFunction(stub);
+                    func.data.function_types = args;
+                    return func;
                 },
                 
                 valueObjectPushLock : function(value) {
@@ -704,8 +720,8 @@ const Matte = {
                     if (index >= value.data.function_captures.length) return;
                     const ref = value.data.function_captures[index];
                     heap.valueObjectSet(
-                        referrable.referrableSrc, 
-                        heap.createNumber(referrable.index),
+                        ref.referrableSrc, 
+                        heap.createNumber(ref.index),
                         capt 
                     );
                 },
@@ -795,7 +811,13 @@ const Matte = {
                             vm.raiseErrorString("Cannot convert function into a string.");
                             return heap_specialString_empty;
                         }
-                        throw new Error("TODO");
+
+                        const operator = objectGetConvOperator(value, heap_type_string);
+                        if (operator.binID) {
+                            return heap.valueAsString(vm.callFunction(operator, [], []));
+                        } else {
+                            vm.raiseErrorString("Object has no valid conversion to string");
+                        }
                             
                     }
                     // shouldnt get here.
@@ -805,11 +827,11 @@ const Matte = {
                 
                 valueAsBoolean : function(value) {
                     switch(value.binID) {
-                      case TYPE.EMPTY:   return 0;
-                      case TYPE.TYPE:    return 1;
+                      case TYPE.EMPTY:   return false;
+                      case TYPE.TYPE:    return true;
                       case TYPE.NUMBER:  return value.data != 0;
                       case TYPE.BOOLEAN: return value.data;
-                      case TYPE.STRING:  return 1;
+                      case TYPE.STRING:  return true;
                       case TYPE.OBJECT:
                         if (value.data.function_stub != undefined)
                             return 1;
@@ -819,31 +841,94 @@ const Matte = {
                         
                       break;
                     }
-                    return 0;
+                    return false;
                 },
                 
-                valueToType : function(value, type) {
-                    throw new Error("TODO");
+                valueToType : function(v, t) {
+                    switch(t.data.id) {
+                      case 1: // empty
+                        if (v.binID != TYPE.EMPTY) {
+                            vm.raiseErrorString("It is an error to convert any non-empty value to the Empty type.");
+                        } else {
+                            return v;
+                        }
+                        break;
+                      case 7: // type
+                        if (v.binID != TYPE.TYPE) {
+                            vm.raiseErrorString("It is an error to convert any non-Type value to a Type.");
+                        } else {
+                            return v;
+                        }
+                        break;
+
+                      case 2:
+                        return heap.createBoolean(heap.valueAsBoolean(v));
+
+                      case 3:
+                        return heap.createNumber(heap.valueAsNumber(v));
+
+                      case 4:
+                        return heap.valueAsString(v);
+                        
+                      case 5: 
+                        if (v.binID == TYPE.OBJECT && !v.data.function_stub) {
+                            return v;
+                        } else {
+                            vm.raiseErrorString("Cannot convert value to Object type.");
+                        }
+                        break;
+                      case 6: 
+                        if (v.binID == TYPE.OBJECT && v.data.function_stub) {
+                            return v;
+                        } else {
+                            vm.raiseErrorString("Cannot convert value to Function type.");
+                        }
+                        break;
+                      
+                    }
+                    return heap.createEmpty();
                 },
                 
                 valueIsCallable : function(value) {
+                    if (value.binID == TYPE.TYPE) return 1;
+                    if (value.binID != TYPE.OBJECT) return 0;
                     if (value.data.function_stub == undefined) return 0;
                     if (value.data.function_types == undefined) return 1;
                     return 2; // type-strict
                 },
                 
                 valueObjectFunctionPreTypeCheckUnsafe : function(func, args) {
-                    throw new Error("TODO");
+                    const len = args.length;
+                    for(var i = 0; i < len; ++i) {
+                        if (!heap.valueIsA(args[i], func.data.function_types[i])) {
+                            matte.raiseErrorString(
+                                "Argument '" + func.data.function_stub.argNames[i] + 
+                                "' (type: " + heap.valueTypeName(heap.valueGetType(args[i])).data + ") is not of required type " + 
+                                heap.valueTypeName(func.data.function_types[i]).data
+                            );
+                            return 0;
+                        }
+                    }
+                    return 1;
                 },
                 
-                valueObjectFunctionPostTypeCheckUnsafe : function(func, args) {
-                    throw new Error("TODO");
+                valueObjectFunctionPostTypeCheckUnsafe : function(func, ret) {
+                    const end = func.data.function_types.length - 1;
+                    if (!heap.valueIsA(ret, func.data.function_types[end])) {
+                        matte.raiseErrorString(
+                            "Return value" + 
+                            " (type: " + heap.valueTypeName(heap.valueGetType(ret)).data + ") is not of required type " + 
+                            heap.valueTypeName(func.data.function_types[end]).data
+                        );
+                        return 0;
+                    }
+                    return 1;
                 },
                 
                 valueObjectAccess : function(value, key, isBracket) {
                     switch(value.binID) {
                       case TYPE.TYPE:
-                        return valueObjectAccessDirect(value, key, isBracket);
+                        return heap.valueObjectAccessDirect(value, key, isBracket);
 
                       case TYPE.OBJECT:
                         if (value.data.function_stub != undefined) {
@@ -854,7 +939,10 @@ const Matte = {
                         if (accessor.binID) {
                             return vm.callFunction(accessor, [key], [heap_specialString_key]);
                         } else {
-                            return objectLookup(value, key);
+                            const output = objectLookup(value, key);
+                            if (output == undefined)
+                                return createValue();
+                            return output;
                         }
                       default:
                         vm.raiseErrorString("Cannot access member of a non-object type. (Given value is of type: " + heap.valueTypeName(heap.valueGetType(value)).data + ")");
@@ -891,7 +979,7 @@ const Matte = {
                             vm.raiseErrorString("The given type has no built-in function by the name '" + key.data + "'");
                             return;
                         }
-                        return vm.externalBuiltinFunctionAsValue(out);
+                        return vm.getBuiltinFunctionAsValue(out);
                         
                         
                       case TYPE.OBJECT:
@@ -931,6 +1019,12 @@ const Matte = {
                 },
                 
                 valueObjectKeys : function(value) {
+                    if (value.binID != TYPE.OBJECT || value.data.function_stub) {
+                        vm.raiseErrorString("Can only get keys from something that's an Object.");
+                        return createValue();
+                    }
+                
+                
                     if (value.data.table_attribSet != undefined) {
                         const set = heap.valueObjectAccess(value.data.table_attribSet, heap_specialString_keys, 0);
                         if (set && set.binID)
@@ -980,6 +1074,11 @@ const Matte = {
                 },
                 
                 valueObjectValues : function(value) {
+                    if (value.binID != TYPE.OBJECT || value.data.function_stub) {
+                        vm.raiseErrorString("Can only get values from something that's an Object.");
+                        return createValue();
+                    }
+
                     if (value.data.table_attribSet != undefined) {
                         const set = heap.valueObjectAccess(value.data.table_attribSet, heap_specialString_values, 0);
                         if (set && set.binID)
@@ -1073,7 +1172,7 @@ const Matte = {
                     value.data.kv_number.splice(plainIndex, 0, v);
                 },
 
-                valueObjectPush : function(value, plainIndex, v) {
+                valueObjectPush : function(value, v) {
                     if (value.binID != TYPE.OBJECT) return;
                     if (value.data.kv_number == undefined) value.data.kv_number = [];
                     value.data.kv_number.push(v);
@@ -1150,10 +1249,11 @@ const Matte = {
                         return;
                     }
                     const keys = heap.valueObjectKeys(srcTable);
-                    for(var i = 0; i < keys.length; ++i) {
+                    const len = heap.valueObjectGetNumberKeyCount(keys);
+                    for(var i = 0; i < len; ++i) {
                         const key = heap.valueObjectArrayAtUnsafe(keys, i);
                         const val = heap.valueObjectAccess(srcTable, key, 1);
-                        valueObjectSet(value, key, val, 0);
+                        heap.valueObjectSet(value, key, val, 0);
                     }
                 },
                 
@@ -1177,7 +1277,7 @@ const Matte = {
                         return;
                     }
                     
-                    value.data.table_attribSet = v;
+                    value.data.table_attribSet = opObject;
                 },
                 
                 valueObjectGetAttributesUnsafe : function(value) {
@@ -1197,7 +1297,7 @@ const Matte = {
                         break;
                       case TYPE.TYPE:
                         if (value.data.kv_types == undefined) return;
-                        delete value.data.kv_types[key.data];
+                        delete value.data.kv_types[key];
                         break;
                       case TYPE.NUMBER:
                         if (value.data.kv_number == undefined || value.data.kv_number.length == 0) return;
@@ -1310,7 +1410,7 @@ const Matte = {
             };
             
             heap_queryTable[QUERY.TYPE] = function(value) {
-                heap.valueGetType(value);
+                return heap.valueGetType(value);
             };
             
                         
@@ -1393,35 +1493,35 @@ const Matte = {
                     vm.raiseErrorString("floor requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createBoolean(Math.floor(value.data));
+                return heap.createNumber(Math.floor(value.data));
             };
             heap_queryTable[QUERY.CEIL] = function(value) {
                 if (value.binID != TYPE.NUMBER) {
                     vm.raiseErrorString("ceil requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createBoolean(Math.ceil(value.data));
+                return heap.createNumber(Math.ceil(value.data));
             };
             heap_queryTable[QUERY.ROUND] = function(value) {
                 if (value.binID != TYPE.NUMBER) {
                     vm.raiseErrorString("round requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createBoolean(Math.round(value.data));
+                return heap.createNumber(Math.round(value.data));
             };
             heap_queryTable[QUERY.RADIANS] = function(value) {
                 if (value.binID != TYPE.NUMBER) {
                     vm.raiseErrorString("radian conversion requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createBoolean(value.data * (Math.PI / 180.0));
+                return heap.createNumber(value.data * (Math.PI / 180.0));
             };
             heap_queryTable[QUERY.DEGREES] = function(value) {
                 if (value.binID != TYPE.NUMBER) {
                     vm.raiseErrorString("degree conversion requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createBoolean(value.data * (180.0 / Math.PI));
+                return heap.createNumber(value.data * (180.0 / Math.PI));
             };
 
 
@@ -1525,7 +1625,21 @@ const Matte = {
                 }
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETCHARAT);
             };
+            heap_queryTable[QUERY.CHARCODEAT] = function(value) {
+                if (value.binID != TYPE.STRING) {
+                    vm.raiseErrorString("charCodeAt requires base value to be a string.");
+                    return createValue();
+                }
+                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_CHARCODEAT);
+            };
 
+            heap_queryTable[QUERY.CHARAT] = function(value) {
+                if (value.binID != TYPE.STRING) {
+                    vm.raiseErrorString("charAt requires base value to be a string.");
+                    return createValue();
+                }
+                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_CHARAT);
+            };
 
 
 
@@ -1820,6 +1934,7 @@ const Matte = {
             const vm_specialString_value = heap.createString('value');
             const vm_specialString_base = heap.createString('base');
             const vm_specialString_previous = heap.createString('previous');
+            const vm_specialString_from = heap.createString('from');
             const vm_externalFunctionIndex = []; // all external functions
             const vm_externalFunctions = {}; // name -> id in index
             const vm_extStubs = [];
@@ -1830,13 +1945,14 @@ const Matte = {
 
             const vm_callstack = [];
             const vm_opcodesSwitch = [];
+            vm.stackframe = vm_callstack;
 
             var vm_pendingCatchable = false;
             var vm_pendingCatchableIsError = false;
             var vm_pendingRestartCondition = false;
+            var vm_pendingRestartConditionData = false;
             var vm_stacksize = 0;
             var vm_fileIDPool = 10;
-            var vm_sfsCount = 0;
             var vm_catchable;
             var vm_errorLastFile;
             var vm_errorLastLine;
@@ -1871,7 +1987,7 @@ const Matte = {
                 }
                 
                 for(var i = 0; i < vm_stacksize; ++i) {
-                    const framesrc = vm_getStackFrame(i);
+                    const framesrc = vm.getStackframe(i);
                     const frame = heap.createObject();
                     const filename = vm_getScriptNameById(framesrc.stub.fileID);
                     
@@ -1880,7 +1996,7 @@ const Matte = {
                     heap.valueObjectSet(frame, key, val, 0);
                     
                     const instcount = framesrc.stub.instructionCount;
-                    key = heap.createString(lineNumber);
+                    key = heap.createString("lineNumber");
                     var lineNumber = 0;
                     if (framesrc.pc -1 < instcount) {
                         lineNumber = framesrc.stub.instructions[framesrc.pc-1].lineNumber;
@@ -1910,14 +2026,8 @@ const Matte = {
                 return out;
             };
             
-            const vm_getStackFrame = function(i) {
-                i = vm_stacksize - 1 - i;
-                if (i >= vm_stacksize) {
-                    vm.raiseErrorString("Invalid stackframe requested");
-                    return {};
-                }
-                return vm_callstack[i];
-            };
+
+    
 
             
             const vm_addBuiltIn = function(index, argNames, fn) {
@@ -1944,7 +2054,7 @@ const Matte = {
                     charCount += argNames[i].length;
                 }
                 
-                const buffer = new Uint8Array(7 + 4 + 1 + charCount*4);
+                const buffer = new Uint8Array(7 + 4 + 1 + charCount*4 + argNames.length*4);
                 
                 buffer[0] = 'M'.charCodeAt(0);
                 buffer[1] = 'A'.charCodeAt(0);
@@ -1961,6 +2071,8 @@ const Matte = {
                 bufferView.setUint8(iter, argNames.length); iter += 1;
                 
                 for(var i = 0; i < argNames.length; ++i) {
+                    bufferView.setUint32(iter, argNames[i].length, true);
+                    iter += 4;
                     for(var n = 0; n < argNames[i].length; ++n) {
                         bufferView.setInt32(iter, argNames[i].charCodeAt(n), true);
                         iter += 4;
@@ -2031,12 +2143,12 @@ const Matte = {
                 var onSend;
                 var onError;
                 if (respObject.binID != heap.TYPE.EMPTY) {
-                    onSend = heap.valueObjectAccessDirect(respObject, vm_specailString_onsend, 0);
+                    onSend = heap.valueObjectAccessDirect(respObject, vm_specialString_onsend, 0);
                     if (onSend && onSend.binID != heap.TYPE.EMPTY && !heap.valueIsCallable(onSend)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onSend' attribute be a Function.");
                         return heap.createEmpty();                                            
                     }
-                    onError = heap.valueObjectAccessDirect(respObject, vm_specailString_onerror, 0);
+                    onError = heap.valueObjectAccessDirect(respObject, vm_specialString_onerror, 0);
                     if (onError && onError.binID != heap.TYPE.EMPTY && !heap.valueIsCallable(onError)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onError' attribute be a Function.");
                         return heap.createEmpty();                                            
@@ -2046,10 +2158,10 @@ const Matte = {
                 var out = vm.callFunction(v, [], []);
                 if (vm_pendingCatchable) {
                     const catchable = vm_catchable;
-                    vm_catchable.binID = 0;
+                    vm_catchable = heap.createEmpty();;
                     vm_pendingCatchable = 0;
                     
-                    if (vm.pendingCatchableIsError && onSend) {
+                    if (vm_pendingCatchableIsError && onSend) {
                         return vm.callFunction(onSend, [catchable], [vm_specialString_message]);
                     }
                     
@@ -2073,28 +2185,28 @@ const Matte = {
 
             const vm_pushFrame = function() {
                 vm_stacksize ++;
-                var frame;
-                if (vm_callstack.length < vm_stacksize) {
-                    while(vm_callstack.length < vm_stacksize) {
-                        vm_callstack.push({});
-                    }
-                    frame = vm_callstack[vm_stacksize-1];
-                    frame.pc = 0;
-                    frame.prettyName = "";
-                    frame.context = heap.createEmpty();
-                    frame.stub = null;
-                    frame.valueStack = []
-                } else {
-                    frame = vm_callstack[vm_stacksize-1];
-                    frame.stub = null;
-                    frame.prettyName = "";
-                    frame.valueStack.length = 0;
-                    frame.pc = 0;
+
+                while(vm_callstack.length < vm_stacksize) {
+                    vm_callstack.push({
+                        pc : 0,
+                        prettyName : "",
+                        context : heap.createEmpty(),
+                        stub : null,
+                        valueStack : []
+                    });
                 }
+                
+                const frame = vm_callstack[vm_stacksize-1];
+                frame.stub = null;
+                frame.prettyName = "";
+                frame.valueStack.length = 0;
+                frame.pc = 0;
                 
                 if (vm_pendingRestartCondition) {
                     frame.restartCondition = vm_pendingRestartCondition;
                     frame.restartConditionData = vm_pendingRestartConditionData;
+                    vm_pendingRestartCondition = null;
+                    vm_pendingRestartConditionData = null;
                 } else {
                     frame.restartCondition = null;
                     frame.restartConditionData = null;
@@ -2109,14 +2221,15 @@ const Matte = {
             const vm_executionLoop = function() {
                 const frame = vm_callstack[vm_stacksize-1];
                 var inst;
-                vm_sfsCount = 0;
                 const stub = frame.stub;
-
+                frame.sfsCount = 0;
                 // tucked with RELOOP
                 while(true) {
                     while(frame.pc < frame.stub.instructionCount) {
                         inst = stub.instructions[frame.pc++];
                         vm_opcodeSwitch[inst.opcode](frame, inst);
+                        if (vm_pendingCatchable)
+                            break;
                     }
                     
                     var output;
@@ -2128,7 +2241,7 @@ const Matte = {
                         output = heap.createEmpty();
                     }
                     
-                    if (frame.restartCondition && vm_pendingCatchable) {
+                    if (frame.restartCondition && !vm_pendingCatchable) {
                         if (frame.restartCondition(frame, output, frame.restartConditionData)) {
                             frame.pc = 0;
                             continue; // reloop
@@ -2144,17 +2257,22 @@ const Matte = {
 
                 
             vm.getBuiltinFunctionAsValue = function(extCall) {
-                throw new Error("TODO");
+                if (extCall > vm.EXT_CALL.GETEXTERNALFUNCTION) return;
+                return vm_extFuncs[extCall];
             };
                 
                 
             // Performs import as if from the code context,
             // invoking "onImport"
-            vm.import = function(module, parameters) {
+            vm.import = function(module, parameters, data) {
                 if (vm_imports[module] != undefined)
                     return vm_imports[module];
                 
-                vm.runBytecode(vm.onImport(module), parameters, module);
+                
+                if (data == undefined)
+                    data = vm.onImport(module);
+                const v = vm.runBytecode(data, parameters, module);
+                vm_imports[module] = v;
             };
             
             vm.runBytecode = function(bytes, parameters, name) {
@@ -2187,6 +2305,19 @@ const Matte = {
             };
                 
                 
+            vm.getStackframe = function(i) {
+                i = vm_stacksize - 1 - i;
+                if (i >= vm_stacksize) {
+                    vm.raiseErrorString("Invalid stackframe requested");
+                    return {};
+                }
+                return vm_callstack[i];
+            };
+            
+            vm.getStackSize = function() {
+                return vm_stacksize;
+            };
+                
                 
             vm.raiseError = function(val) {
                 if (vm_pendingCatchable)
@@ -2206,7 +2337,7 @@ const Matte = {
                     return;
                 }
                 
-                const framesrc = vm_getStackFrame(0);
+                const framesrc = vm.getStackframe(0);
                 const instcount = framesrc.stub.instructions.length;
                 if (framesrc.pc - 1 < instcount) {
                     vm_errorLastLine = framesrc.stub.instructions[framesrc.pc-1].lineNumber;
@@ -2255,7 +2386,7 @@ const Matte = {
                 
                 if (func.binID == heap.TYPE.TYPE) {
                     if (args.length) {
-                        if (argNames[0].data != vm_specailString_from.data) {
+                        if (argNames[0].data != vm_specialString_from.data) {
                             vm.raiseErrorString("Type conversion failed: unbound parameter to function ('from')");
                         }
                         return heap.valueToType(args[0], func);
@@ -2278,6 +2409,10 @@ const Matte = {
                     const argsReal = [];
                     const lenReal = args.length;
                     const len = stub.argCount;
+
+                    for(var i = 0; i < len; ++i) {
+                        argsReal.push(heap.createEmpty());
+                    }
                     
                     
                     for(var i = 0; i < lenReal; ++i) {
@@ -2322,6 +2457,9 @@ const Matte = {
                     const lenReal = args.length;
                     var   len = stub.argCount;
                     const referrables = [];
+                    for(var i = 0; i < len+1; ++i) {
+                        referrables.push(heap.createEmpty());
+                    }
                     
                     for(var i = 0; i < lenReal; ++i) {
                         for(var n = 0; n < len; ++n) {
@@ -2351,7 +2489,7 @@ const Matte = {
                     var ok = 1;
                     if (callable == 2 && len) {
                         const arr = referrables.slice(1, len); 
-                        ok = heap.valueObjectFunctionPreTypeCheckUnsafe(d, arr);
+                        ok = heap.valueObjectFunctionPreTypeCheckUnsafe(func, arr);
                     }
                     len = stub.localCount;
                     for(var i = 0; i < len; ++i) {
@@ -2377,6 +2515,7 @@ const Matte = {
                     vm_popFrame();
                     
                     if (!vm_stacksize && vm_pendingCatchable) {
+                        console.log('Uncaught error: ' + heap.valueObjectAccessString(vm_catchable, 'summary').data);                        
                         /*
                         if (vm_unhandled) {
                             vm_unhandled(
@@ -2386,11 +2525,11 @@ const Matte = {
                                 vm_unhandledData
                             );
                         }*/
-                        console.log('Uncaught error: ' + heap.valueObjectAccessString(vm_catchable, 'summary').data);                        
                         
                         vm_catchable = heap.createEmpty();
                         vm_pendingCatchable = 0;
                         vm_pendingCatchableIsError = 0;
+                        throw new Error("Fatal error.");
                         return heap.createEmpty();
                     }
                     return result;
@@ -2415,7 +2554,7 @@ const Matte = {
             /////////////////////////////////////////////////////////////////
             const vm_badOperator = function(op, value) {
                 vm.raiseErrorString(
-                    op + " operator on value of type " + heap.valueTypeName(heap.valueGetType(value)) + " is undefined."
+                    op + " operator on value of type " + heap.valueTypeName(heap.valueGetType(value)).data + " is undefined."
                 );
             };
             
@@ -2464,7 +2603,7 @@ const Matte = {
                     
                   case heap.TYPE.STRING:
                     const astr = a.data;
-                    const bstr = b.data;
+                    const bstr = heap.valueAsString(b).data;
                     return heap.createString(astr + bstr);
                     
                   case heap.TYPE.OBJECT:
@@ -2563,7 +2702,7 @@ const Matte = {
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_POUND] = function(a) {return vm_operatorOverloadOnly1("#", a);};
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_TOKEN] = function(a) {return vm_operatorOverloadOnly1("$", a);};
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_OR] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_OR] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.BOOLEAN:
                     return heap.createBoolean(a.data | heap.valueAsBoolean(b));
@@ -2577,7 +2716,7 @@ const Matte = {
                 return heap.createEmpty();
             };
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_OR] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_OR] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.BOOLEAN:
                     return heap.createBoolean(a.data || heap.valueAsBoolean(b));
@@ -2591,7 +2730,7 @@ const Matte = {
                 return heap.createEmpty();
             };
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_AND] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_AND] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.BOOLEAN:
                     return heap.createBoolean(a.data & heap.valueAsBoolean(b));
@@ -2605,7 +2744,7 @@ const Matte = {
                 return heap.createEmpty();
             };
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_AND] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_AND] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.BOOLEAN:
                     return heap.createBoolean(a.data && heap.valueAsBoolean(b));
@@ -2656,7 +2795,7 @@ const Matte = {
             };
 
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ] = function(a, b) {
                 if (b.binID == heap.TYPE.EMPTY && a.binID != heap.TYPE.EMPTY) {
                     return heap.createBoolean(false);
                 }
@@ -2670,6 +2809,8 @@ const Matte = {
                   case heap.TYPE.STRING:
                     return heap.createBoolean(a.data == heap.valueAsString(b).data);
 
+                  case heap.TYPE.BOOLEAN:
+                    return heap.createBoolean(a.data == heap.valueAsBoolean(b));
 
                   case heap.TYPE.OBJECT:
                     if (vm_objectHasOperator(a, '==')) {
@@ -2698,7 +2839,7 @@ const Matte = {
             };
 
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_NOTEQ] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_NOTEQ] = function(a, b) {
                 if (b.binID == heap.TYPE.EMPTY && a.binID != heap.TYPE.EMPTY) {
                     return heap.createBoolean(true);
                 }
@@ -2711,6 +2852,9 @@ const Matte = {
 
                   case heap.TYPE.STRING:
                     return heap.createBoolean(a.data != heap.valueAsString(b).data);
+
+                  case heap.TYPE.BOOLEAN:
+                    return heap.createBoolean(a.data == heap.valueAsBoolean(b));
 
 
                   case heap.TYPE.OBJECT:
@@ -2742,7 +2886,7 @@ const Matte = {
 
 
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESS] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESS] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
                     return heap.createBoolean(a.data < heap.valueAsNumber(b));
@@ -2759,7 +2903,7 @@ const Matte = {
                 }
             };
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATER] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATER] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
                     return heap.createBoolean(a.data > heap.valueAsNumber(b));
@@ -2777,7 +2921,7 @@ const Matte = {
             };
 
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESSEQ] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESSEQ] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
                     return heap.createBoolean(a.data <= heap.valueAsNumber(b));
@@ -2794,7 +2938,7 @@ const Matte = {
                 }
             };
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATEREQ] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATEREQ] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
                     return heap.createBoolean(a.data >= heap.valueAsNumber(b));
@@ -2868,7 +3012,7 @@ const Matte = {
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_ADD] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
-                    return heap.createNumber(a.data + heap.valueAsNumber(b).data);
+                    return heap.createNumber(a.data + heap.valueAsNumber(b));
                   case heap.TYPE.OBJECT:
                     return vm_runObjectOperator2(a, "+=", b);
                   default:
@@ -2881,7 +3025,7 @@ const Matte = {
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_SUB] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
-                    return heap.createNumber(a.data - heap.valueAsNumber(b).data);
+                    return heap.createNumber(a.data - heap.valueAsNumber(b));
                   case heap.TYPE.OBJECT:
                     return vm_runObjectOperator2(a, "-=", b);
                   default:
@@ -2893,7 +3037,7 @@ const Matte = {
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_DIV] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
-                    return heap.createNumber(a.data / heap.valueAsNumber(b).data);
+                    return heap.createNumber(a.data / heap.valueAsNumber(b));
                   case heap.TYPE.OBJECT:
                     return vm_runObjectOperator2(a, "/=", b);
                   default:
@@ -2905,7 +3049,7 @@ const Matte = {
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_MULT] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
-                    return heap.createNumber(a.data * heap.valueAsNumber(b).data);
+                    return heap.createNumber(a.data * heap.valueAsNumber(b));
                   case heap.TYPE.OBJECT:
                     return vm_runObjectOperator2(a, "*=", b);
                   default:
@@ -2917,7 +3061,7 @@ const Matte = {
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_MOD] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
-                    return heap.createNumber(a.data % heap.valueAsNumber(b).data);
+                    return heap.createNumber(a.data % heap.valueAsNumber(b));
                   case heap.TYPE.OBJECT:
                     return vm_runObjectOperator2(a, "%=", b);
                   default:
@@ -2929,7 +3073,7 @@ const Matte = {
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_POW] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
-                    return heap.createNumber(Math.pow(a.data, heap.valueAsNumber(b).data));
+                    return heap.createNumber(Math.pow(a.data, heap.valueAsNumber(b)));
                   case heap.TYPE.OBJECT:
                     return vm_runObjectOperator2(a, "**=", b);
                   default:
@@ -3006,6 +3150,8 @@ const Matte = {
                 const v = vm_stackframeGetReferrable(0, Math.floor(inst.data));
                 if (v) {
                     frame.valueStack.push(v);
+                } else {
+                    vm.raiseErrorString("VM Error: Tried to push non-existant referrable.");                
                 }
             };
 
@@ -3034,9 +3180,11 @@ const Matte = {
             };
             
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_SFS] = function(frame, inst) {
-                vm_sfsCount = inst.data;
+                frame.sfsCount = inst.data;
                 // the fallthrough
-                vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NFN](frame.stub.instructions[frame.pc++]);   
+                if (frame.pc >= frame.stub.instructionCount) return;
+                inst = frame.stub.instructions[frame.pc++];
+                vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NFN](frame, inst);   
             };
 
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NFN] = function(frame, inst) {
@@ -3046,19 +3194,31 @@ const Matte = {
                     return;
                 }
                 
-                if (vm_sfsCount) {
-                    if (frame.valueStack.length < vm_sfsCount) {
+                if (frame.sfsCount) {
+                    if (frame.valueStack.length < frame.sfsCount) {
                         vm.raiseErrorString("VM internal error: too few values on stack to service SFS opcode!");
                         return;
                     }
                     
                     const vals = [];
-                    for(var i = 0; i < vm_sfsCount; ++i) {
-                        vals[vm_sfsCount - i - 1] = frame.valueStack[frame.valueStack.length-1-i];
+                    for(var i = 0; i < frame.sfsCount; ++i) {
+                        vals.push(heap.createEmpty());
+                    }
+                    for(var i = 0; i < frame.sfsCount; ++i) {
+                        vals[frame.sfsCount - i - 1] = frame.valueStack[frame.valueStack.length-1-i];
                     }
                     const v = heap.createTypedFunction(stub, vals);
-                    vm_sfsCount = 0;
+
+
+                    for(var i = 0; i < frame.sfsCount; ++i) {
+                        frame.valueStack.pop();
+                    }
+
+                    frame.sfsCount = 0;
                     frame.valueStack.push(v);
+                    
+                    
+                    
                 } else {
                     frame.valueStack.push(heap.createFunction(stub));
                 }
@@ -3150,7 +3310,7 @@ const Matte = {
                 const argNames = [];
                 
                 const stackSize = frame.valueStack.length;
-                const key = frame.valueStack[frame.valueStack.length-1];
+                var key = frame.valueStack[frame.valueStack.length-1];
                 
                 var i = 0;
                 if (stackSize > 2 && key.binID == heap.TYPE.STRING) {
@@ -3178,6 +3338,7 @@ const Matte = {
                     frame.valueStack.pop();
                     frame.valueStack.pop();
                 }
+                frame.valueStack.pop();
                 frame.valueStack.push(result);
             };
 
@@ -3217,11 +3378,7 @@ const Matte = {
                         vOut = heap.createEmpty();
                         vm.raiseErrorString("VM error: tried to access non-existent referrable operation (corrupt bytecode?).");
                     }
-                    if (vOut.binID == heap.TYPE.OBJECT) {    
-                        // already in its proper place: simply mutates object.            
-                    } else {
-                        vm_stackframeSetReferrable(0, refn, vOut);                    
-                    }
+                    vm_stackframeSetReferrable(0, refn, vOut);                    
                     frame.valueStack.pop();
                     frame.valueStack.push(vOut);
 
@@ -3258,7 +3415,7 @@ const Matte = {
                 var isBracket = 0;
                 if (opr >= vm_operator.MATTE_OPERATOR_STATE_BRACKET) {
                     opr -= vm_operator.MATTE_OPERATOR_STATE_BRACKET;
-                    isBacket = 1;
+                    isBracket = 1;
                 }
                 opr += vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE;
                 const key    = frame.valueStack[frame.valueStack.length-1];
@@ -3331,7 +3488,7 @@ const Matte = {
             };
             
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_SKP] = function(frame, inst) {
-                vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_SCA](inst);
+                vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_SCA](frame, inst);
                 frame.valueStack.pop();
             };            
             
@@ -3422,7 +3579,7 @@ const Matte = {
                     if (frame.valueStack.length < 1) {
                         vm.raiseErrorString("VM error: OPR operator requires 1 operand.");
                     } else {
-                        const a = frame.valueStack[frame.valueStack.length - 2];
+                        const a = frame.valueStack[frame.valueStack.length - 1];
                         const v = vm_operator_1(inst.data, a);
                         frame.valueStack.pop();
                         frame.valueStack.push(v);

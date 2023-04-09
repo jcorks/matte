@@ -560,6 +560,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteValue_t copy = matte_heap_new_value(vm->heap);
                 matte_value_into_copy(vm->heap, &copy, *v);
                 STACK_PUSH(copy);
+            } else {
+                matte_vm_raise_error_cstring(vm, "VM Error: Tried to push non-existant referrable.");
+                
             }
             break;
           }
@@ -568,7 +571,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t referrableStrID = (double) inst->data;
             matteValue_t v = matte_bytecode_stub_get_string(frame->stub, referrableStrID);
             if (!v.binID) {
-                matte_vm_raise_error_cstring(vm, "No such bytecode stub string.");
+                matte_vm_raise_error_cstring(vm, "VM Error: No such bytecode stub string.");
             } else {
                 matteVMStackFrame_t f = matte_vm_get_stackframe(vm, vm->namedRefIndex+1);
                 if (f.context.binID) {

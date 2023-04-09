@@ -33,7 +33,11 @@ DEALINGS IN THE SOFTWARE.
     if (statics != empty)
         statics->foreach(do:::(key, value) {
             staticNames[key] = true;
-        });
+        })
+    else 
+        statics = {}
+    ;
+    
     @staticData = {...statics};
     @classinst = {define : define};
     when(classinst.define->type != Function) error(detail:'class must include a "define" function within its "info" specification');

@@ -1768,7 +1768,7 @@ static void matte_value_into_new_function_ref_real(matteHeap_t * heap, matteValu
         stub,
         &len
     );
-    matteVMStackFrame_t frame;
+    matteVMStackFrame_t frame = {};
 
     // save origin so that others may use referrables.
     // This happens in every case EXCEPT the 0-stub function.
@@ -2527,7 +2527,8 @@ void matte_value_object_pop_lock_(matteHeap_t * heap, matteValue_t v) {
 
 
 matteValue_t matte_value_object_keys(matteHeap_t * heap, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
+        matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "Can only get keys from something that's an Object."));        
         return matte_heap_new_value(heap);
     }
     matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
@@ -2626,7 +2627,8 @@ matteValue_t matte_value_object_keys(matteHeap_t * heap, matteValue_t v) {
 }
 
 matteValue_t matte_value_object_values(matteHeap_t * heap, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
+        matte_vm_raise_error_string(heap->vm, MATTE_VM_STR_CAST(heap->vm, "Can only get keys from something that's an Object."));        
         return matte_heap_new_value(heap);
     }
     matteObject_t * m = matte_heap_bin_fetch_table(heap->bin, v.value.id);
