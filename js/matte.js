@@ -5,6 +5,7 @@ const Matte = {
         onImport, // function 
         onPrint, // function
     ) {
+        var OBJECT_ID_POOL = 0;
         if (onImport == undefined) 
             throw new Error("onImport MUST be defined");
     
@@ -409,6 +410,7 @@ const Matte = {
                 return {
                     binID : TYPE.OBJECT,
                     data : {
+                        id : OBJECT_ID_POOL++,
                         typecode : TYPECODES.OBJECT
                     }
                 }
@@ -444,15 +446,21 @@ const Matte = {
                     } 
                     break;
                   case TYPE.OBJECT:
-                    if (object.data.kv_object == undefined)
-                        object.data.kv_object = [];
-                    object.data.kv_object[key] = value;
+                    if (object.data.kv_object_values == undefined) {
+                        object.data.kv_object_keys   = [];
+                        object.data.kv_object_values = {};
+                    }                    
+                    object.data.kv_object_values[key.data.id.toString()] = value;
+                    object.data.kv_object_keys.push(key);
                     break;
                     
                   case TYPE.TYPE:
-                    if (object.data.kv_types == undefined)
-                        object.data.kv_types = [];
-                    object.data.kv_types[key] = value;
+                    if (object.data.kv_types_values == undefined) {
+                        object.data.kv_types_keys   = [];
+                        object.data.kv_types_values = {};
+                    }
+                    object.data.kv_types_values[key.data.id.toString()] = value;
+                    object.data.kv_types_keys.push(key);
                     break;
                 }
             }
@@ -505,13 +513,13 @@ const Matte = {
                         return object.data.kv_true;                    
                     }
                   case TYPE.OBJECT:
-                    if (object.data.kv_object == undefined)
+                    if (object.data.kv_object_values == undefined)
                         return undefined;
-                    return object.data.kv_object[object];
+                    return object.data.kv_object_values[key.data.id.toString()];
                   case TYPE.TYPE:
-                    if (!object.data.kv_types)
+                    if (!object.data.kv_types_values)
                         return undefined;
-                    return object.data.kv_types[key];
+                    return object.data.kv_types_values[key.data.id.toString()];
                   
                 }
             };
@@ -1046,8 +1054,8 @@ const Matte = {
                         }
                     }
 
-                    if (value.data.kv_object) {
-                        const keys = Object.keys(value.data.kv_object);;
+                    if (value.data.kv_object_keys) {
+                        const keys = Object.values(value.data.kv_object_keys);
                         const len = keys.length;
                         for(var i = 0; i < len; ++i) {
                             out.push(keys[i]); // OK, object 
@@ -1063,8 +1071,8 @@ const Matte = {
                     }
 
 
-                    if (value.data.kv_types) {
-                        const keys = Object.keys(value.data.kv_types);
+                    if (value.data.kv_types_keys) {
+                        const keys = Object.values(value.data.kv_types_keys);
                         const len = keys.length;
                         for(var i = 0; i < len; ++i) {
                             out.push(keys[i]); // OK, type
@@ -1082,7 +1090,7 @@ const Matte = {
                     if (value.data.table_attribSet != undefined) {
                         const set = heap.valueObjectAccess(value.data.table_attribSet, heap_specialString_values, 0);
                         if (set && set.binID)
-                            return heap.valueObjectKeys(set);
+                            return heap.valueObjectValues(set);
                     }
                     const out = [];
                     if (value.data.kv_number) {
@@ -1100,8 +1108,8 @@ const Matte = {
                         }
                     }
 
-                    if (value.data.kv_object) {
-                        const values = Object.values(value.data.kv_object);
+                    if (value.data.kv_object_values) {
+                        const values = Object.values(value.data.kv_object_values);
                         const len = values.length;
                         for(var i = 0; i < len; ++i) {
                             out.push(values[i]); // OK, object 
@@ -1117,9 +1125,9 @@ const Matte = {
                     }
 
 
-                    if (value.data.kv_types) {
-                        const values = Object.values(value.data.kv_types);
-                        const len = keys.length;
+                    if (value.data.kv_types_values) {
+                        const values = Object.values(value.data.kv_types_values);
+                        const len = values.length;
                         for(var i = 0; i < len; ++i) {
                             out.push(values[i]); // OK, type
                         }
@@ -1140,8 +1148,8 @@ const Matte = {
                         out += keys.length;
                     }
 
-                    if (value.data.kv_object) {
-                        const keys = Object.keys(value.data.kv_object);
+                    if (value.data.kv_object_keys) {
+                        const keys = Object.values(value.data.kv_object_keys);
                         out +=  keys.length;
                     }
                     
@@ -1154,8 +1162,8 @@ const Matte = {
                     }
 
 
-                    if (value.data.kv_types) {
-                        const keys = Object.keys(value.data.kv_types);
+                    if (value.data.kv_types_keys) {
+                        const keys = Object.values(value.data.kv_types_keys);
                         out += keys.length;
                     }
                     return out;                     
@@ -1213,12 +1221,19 @@ const Matte = {
                         heap_specialString_key,
                         heap_specialString_value
                     ];
+                    const stub = func.data.function_stub; 
+                    if (stub && stub.argCount >= 2) {
+                        names[0] = heap.createString(stub.argNames[0]);
+                        names[1] = heap.createString(stub.argNames[1]);
+                    }
                     
                     const keys   = heap.valueObjectKeys(value);
                     const values = heap.valueObjectValues(value);
-   
-                    for(var i = 0; i < keys.length; ++i) {
-                        vm.callFunction(func, [keys[i], values[i]], names);
+                    const len = heap.valueObjectGetNumberKeyCount(keys);
+                    for(var i = 0; i < len; ++i) {
+                        const k = heap.valueObjectAccessIndex(keys, i);
+                        const v = heap.valueObjectAccessIndex(values, i);
+                        vm.callFunction(func, [k, v], names);
                     }
                 },
                 
@@ -1236,7 +1251,7 @@ const Matte = {
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
                     if (assigner.binID) {
                         const r = vm.callFunction(assigner, [key, v], [heap_specialString_key, heap_specialString_value]);
-                        if (r.binID == TYPE.BOOLEAN && r.data) {
+                        if (r.binID == TYPE.BOOLEAN && !r.data) {
                             return;
                         }
                     }
@@ -1296,8 +1311,13 @@ const Matte = {
                         delete value.data.kv_string[key.data];
                         break;
                       case TYPE.TYPE:
-                        if (value.data.kv_types == undefined) return;
-                        delete value.data.kv_types[key];
+                        if (value.data.kv_types_keys == undefined) return;
+                        delete value.data.kv_types_values[key.data.id];
+                        for(var i = 0; i < value.data.kv_types_keys.length; ++i) {
+                            if (value.data.kv_types_keys[i] === key) {
+                                value.data.kv_types_keys.splice(i, 1);
+                            }
+                        }
                         break;
                       case TYPE.NUMBER:
                         if (value.data.kv_number == undefined || value.data.kv_number.length == 0) return;
@@ -1311,8 +1331,13 @@ const Matte = {
                         }
                         break;
                       case TYPE.OBJECT:
-                        if (value.data.kv_object == undefined) return;
-                        delete value.data.kv_object[key];
+                        if (value.data.kv_object_keys == undefined) return;
+                        delete value.data.kv_object_values[key.data.id];
+                        for(var i = 0; i < value.data.kv_object_keys.length; ++i) {
+                            if (value.data.kv_object_keys[i] === key) {
+                                value.data.kv_object_keys.splice(i, 1);
+                            }
+                        }
                         break;
                     }
                 },
@@ -3282,8 +3307,8 @@ const Matte = {
                 for(var i = 0; i < len; ++i) {
                     heap.valueObjectSet(
                         target,
-                        heap.valueObjectAccessDirect(keys, i),
-                        heap.valueObjectAccessDirect(vals, i),
+                        heap.valueObjectAccessIndex(keys, i),
+                        heap.valueObjectAccessIndex(vals, i),
                         1
                     );
                 }
@@ -4042,14 +4067,15 @@ const Matte = {
                 
                 const outArr = [];
                 var str = args[0].data;
+                var at = 0;
                 while(true) {
-                    const index = str.indexOf(str2.data);
+                    const index = str.indexOf(str2.data)+at;
                     if (index == -1) {
                         break;
                     }
-                    
+                    at = index;
                     outArr.push(heap.createNumber(index));
-                    str = str.substring(0, index + str.data.length);
+                    str = str.substring(at, str.length);
                 }
                 
                 return heap.createObjectArray(outArr);
