@@ -395,7 +395,7 @@ const Matte = {
             
             var typecode_id_pool = 10;
             const TYPECODES = {
-                OBJECT : 1
+                OBJECT : 5
             };
         
             const createValue = function() {
@@ -418,7 +418,7 @@ const Matte = {
                 switch(key.binID) {
                   case TYPE.STRING:
                     if (object.data.kv_string == undefined)
-                        object.data.kv_string = {};
+                        object.data.kv_string = Object.create(null, {});
                     object.data.kv_string[key.data] = value;
                     break;
                     
@@ -470,7 +470,7 @@ const Matte = {
                 
                 const set = heap.valueObjectAccess(object.data.table_attribSet, isBracket ? heap_specialString_bracketAccess : heap_specialString_dotAccess, 0);
                 if (set && set.binID) {
-                    if (set.binID == TYPE.OBJECT) {
+                    if (set.binID != TYPE.OBJECT) {
                         vm.raiseErrorString("operator['[]'] and operator['.'] property must be an Object if it is set.");
                     } else {
                         out = heap.valueObjectAccess(set, read ? heap_specialString_get : heap_specialString_set, 0);
@@ -1214,8 +1214,8 @@ const Matte = {
                         heap_specialString_value
                     ];
                     
-                    const keys   = valueObjectKeys(value);
-                    const values = valueObjectValues(value);
+                    const keys   = heap.valueObjectKeys(value);
+                    const values = heap.valueObjectValues(value);
    
                     for(var i = 0; i < keys.length; ++i) {
                         vm.callFunction(func, [keys[i], values[i]], names);
@@ -1861,6 +1861,7 @@ const Matte = {
             const heap_specialString_name = heap.createString('name');
             const heap_specialString_inherits = heap.createString('inherits');
             const heap_specialString_key = heap.createString('key');
+            const heap_specialString_value = heap.createString('value');
             
             return heap; 
         }();    
@@ -2237,6 +2238,8 @@ const Matte = {
                         output = frame.valueStack[frame.valueStack.length-1];
                         if (vm_pendingCatchable)
                             output = heap.createEmpty();
+                        while(frame.valueStack.length)
+                            frame.valueStack.pop();
                     } else {
                         output = heap.createEmpty();
                     }
@@ -3423,6 +3426,9 @@ const Matte = {
                 const val    = frame.valueStack[frame.valueStack.length-3];
                 
                 if (opr == vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE) {
+                    frame.valueStack.pop();
+                    frame.valueStack.pop();
+                    frame.valueStack.pop();
                     frame.valueStack.push(
                         heap.valueObjectSet(object, key, val, isBracket)
                     );   
