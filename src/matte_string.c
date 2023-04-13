@@ -321,7 +321,7 @@ void matte_string_insert_n_chars(
     uint32_t i;
     uint32_t len = nvalues;
 
-    if (position == t->len-1) {
+    if (position == t->len) {
         for(i = 0; i < len; ++i)
             t->utf8[t->len++] = values[i];
     } else {       

@@ -307,6 +307,10 @@ DEALINGS IN THE SOFTWARE.
             
             
                 this.interface = {
+                    'Client' : {
+                        get ::<- Client
+                    },
+                
                     update ::{
                         _socket_server_update(a:socket);  
                         
@@ -320,7 +324,7 @@ DEALINGS IN THE SOFTWARE.
                             // new client
                             if (clientIndex[id] == empty) ::<={
                                 @client = Client.new(id:id, handle:socket);
-                                Object.push(object:clients, value:client);
+                                clients->push(value:client);
                                 clientIndex[id] = true;
                                 found[id] = true;
 
@@ -332,7 +336,7 @@ DEALINGS IN THE SOFTWARE.
                         @i = 0;
                         [::] {
                             forever(do:::{
-                                when(i == Object.length(of:clients)) send();
+                                when(i == clients->keycount) send();
                                 
                                 @idKey = String(from:clients[i].id);
                                 if (found[idKey]) ::<= {
@@ -340,8 +344,8 @@ DEALINGS IN THE SOFTWARE.
                                     i+=1;
                                 } else ::<={
                                     clients[i].emit(event:'onDisconnect', detail:clients[i]);
-                                    Object.removeKey(from:clients, key:i);
-                                    Object.removeKey(from:clientIndex, key:idKey);                                
+                                    clients->remove(key:i);
+                                    clientIndex->remove(key:idKey);                                
                                 };
                             });
                         };                  
@@ -350,7 +354,6 @@ DEALINGS IN THE SOFTWARE.
             }
         );
         
-        Server.Client = Client;
         return Server;
     },
     
