@@ -468,6 +468,8 @@ const Matte = {
             
 
             const objectGetConvOperator = function(m, type) {
+                if (m.data.table_attribSet == undefined)
+                    return createValue();
                 return heap.valueObjectAccess(m.data.table_attribSet, type, 0);
             };
 
@@ -485,6 +487,35 @@ const Matte = {
                     }
                 }
                 return out;
+            };
+            
+            const isaAdd = function(arr, v) {
+                arr.push(v);
+                const d = v.data;
+                if (d.isa) {
+                    const count = d.isa.length
+                    for(var i = 0; i < count; ++i) {
+                        arr.push(d.isa[i]);
+                    }
+                }
+            };
+            
+            const typeArrayToIsA = function(val) {
+                const count = heap.valueObjectGetNumberKeyCount(val); // should be non-number?
+                const array = [];
+                if (count == 0) {
+                    vm.raiseErrorString("'inherits' attribute cannot be empty.");
+                    return array;
+                }
+                for(var i = 0; i < count; ++i) {
+                    const v = heap.valueObjectArrayAtUnsafe(val, i);
+                    if (v.binID != TYPE.TYPE) {
+                        vm.raiseErrorString("'inherits' attribute must have Type values only.");
+                        return array;
+                    }
+                    isaAdd(array, v);
+                }
+                return array;
             };
 
 
@@ -792,7 +823,18 @@ const Matte = {
                         vm.raiseErrorString('Cannot convert string value into a number');
                         return 0;
                       case TYPE.OBJECT:
-                        throw new Error('TODO');
+                        if (value.data.function_stub) {
+                            vm.raiseErrorString("Cannot convert function value into a number.");
+                            return 0;
+                        }
+
+                        const operator = objectGetConvOperator(value, heap_type_number);
+                        if (operator.binID) {
+                            return heap.valueAsNumber(vm.callFunction(operator, [], []));
+                        } else {
+                            vm.raiseErrorString("Object has no valid conversion to number");
+                        }
+                        
                         
                     }
                 },
@@ -1373,7 +1415,7 @@ const Matte = {
                         
                         if (typep.data.isa == undefined) return 0;
                         for(var i = 0; i < typep.data.isa.length; ++i) {
-                            if (typep.data.isa[i] == typeobj.data.id) return 1;
+                            if (typep.data.isa[i].data.id == typeobj.data.id) return 1;
                         }
                         return 0;
                     }
@@ -1390,7 +1432,7 @@ const Matte = {
                         if (value.data.function_stub != undefined)
                             return heap_type_function;
                         else {
-                            return heap_typecode2data[value.data.typecode];
+                            return heap_typecode2data[value.data.typecode.data.id];
                         } 
                     }
                 },
@@ -2808,7 +2850,7 @@ const Matte = {
             };
 
 
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_POW] = function(a) {
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_POW] = function(a, b) {
                 switch(a.binID) {
                   case heap.TYPE.NUMBER:
                     return heap.createNumber(Math.pow(a.data, heap.valueAsNumber(b)));
@@ -3711,7 +3753,7 @@ const Matte = {
                 const len = heap.valueObjectGetNumberKeyCount(args[0]);
                 var str = "";
                 for(; index.data < len; ++index.data) {
-                    str += heap.valueAsString(heap.valueObjectAccessIndex(args[0], index)).data;
+                    str += heap.valueAsString(heap.valueObjectAccessIndex(args[0], index.data)).data;
                 }
                 
                 return heap.createString(str);
@@ -4058,8 +4100,17 @@ const Matte = {
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SEARCH, ['base', 'key'], function(fn, args) {
                 if (!ensureArgString(args)) return heap.createEmpty();
                 const str2 = heap.valueAsString(args[1]);
+                if (str2.data == '') return heap.createNumber(-1);
                 return heap.createNumber(args[0].data.indexOf(str2.data));
             });
+
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_CONTAINS, ['base', 'key'], function(fn, args) {
+                if (!ensureArgString(args)) return heap.createEmpty();
+                const str2 = heap.valueAsString(args[1]);
+                if (str2.data == '') return heap.createBoolean(false);
+                return heap.createBoolean(args[0].data.indexOf(str2.data) != -1);
+            });
+
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SEARCH_ALL, ['base', 'key'], function(fn, args) {
                 if (!ensureArgString(args)) return heap.createEmpty();
@@ -4069,13 +4120,13 @@ const Matte = {
                 var str = args[0].data;
                 var at = 0;
                 while(true) {
-                    const index = str.indexOf(str2.data)+at;
+                    const index = str.indexOf(str2.data);
                     if (index == -1) {
                         break;
                     }
-                    at = index;
-                    outArr.push(heap.createNumber(index));
-                    str = str.substring(at, str.length);
+                    outArr.push(heap.createNumber(at+index));
+                    at += index+str2.data.length;
+                    str = str.substring(index+str2.data.length, str.length);
                 }
                 
                 return heap.createObjectArray(outArr);
@@ -4089,12 +4140,12 @@ const Matte = {
                 
                 
                 if (str2.binID) {      
-                    return heap.createString(args[0].data.replace(str2.data, str3.data));
+                    return heap.createString(args[0].data.replaceAll(str2.data, str3.data));
                 } else {
                     var strOut = args[0].data;
                     const len = heap.valueObjectGetNumberKeyCount(strs);
                     for(var i = 0; i < len; ++i) {
-                        strOut = strOut.replace(heap.valueAsString(heap.valueObjectAccessIndex(strs, i)).data, str3.data);                
+                        strOut = strOut.replaceAll(heap.valueAsString(heap.valueObjectAccessIndex(strs, i)).data, str3.data);                
                     };
                     return heap.createString(strOut);
                 }
@@ -4112,7 +4163,7 @@ const Matte = {
                         break;
                         
                     count ++;
-                    str = str.replace(str.data, '');
+                    str = str.replace(str2.data, '');
                 }           
                 return heap.createNumber(count); 
             });
@@ -4176,13 +4227,14 @@ const Matte = {
                 return heap.createObjectArray(results);
             });                
 
-            vm_addBuiltIn(vm.EXT_CALL.QUERY_SPLIT, ['base', 'token'], function(fn, args) {
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_SCAN, ['base', 'format'], function(fn, args) {
                 if (!ensureArgString(args)) return heap.createEmpty();
 
                 // this is not a good method.
                 var exp = heap.valueAsString(args[1]).data;
-                exp = exp.replaceAll('[%]', '(.*)');
-                const strs = args[0].data.search(new RegExp(exp, "g"));
+                exp = exp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                exp = exp.replaceAll('\\[%\\]', '(.*)');
+                const strs = args[0].data.match(new RegExp(exp, "i"));
                 
                 if (strs == null || strs.length == 0) {
                     return heap.createObject();
@@ -4190,9 +4242,8 @@ const Matte = {
                 
                 const arr = [];
                 for(var i = 1; i < strs.length; ++i) {
-                    strs[i] = heap.createString(strs[i]);
+                    arr.push(heap.createString(strs[i]));
                 }
-                
                 return heap.createObjectArray(arr);
             });
             return vm;
