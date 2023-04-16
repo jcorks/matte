@@ -29,7 +29,7 @@ DEALINGS IN THE SOFTWARE.
 */
 @class = import(module:"Matte.Core.Class");
 @_print = getExternalFunction(name:"__matte_::consoleio_print");
-
+@_getch = getExternalFunction(name:"__matte_::consoleio_getch");
 return class(
     name : 'Matte.System.ConsoleIO',
     define:::(this) {
@@ -58,6 +58,11 @@ return class(
                     o = o->replace(key:key, with:''+v);
                 });
                 _print(a:o);
+            },
+            
+            getch :: (unbuffered) {
+                if (unbuffered != empty) unbuffered => Boolean;
+                return _getch(a:unbuffered);
             },
 
             getln : getExternalFunction(name:"__matte_::consoleio_getline"),

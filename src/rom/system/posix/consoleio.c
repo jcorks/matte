@@ -27,7 +27,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-
+#include <termios.h>
 
 MATTE_EXT_FN(matte_consoleio__clear) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
@@ -56,6 +56,39 @@ MATTE_EXT_FN(matte_consoleio__getline) {
     return v;    
 }
 
+MATTE_EXT_FN(matte_consoleio__getch) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+
+    int retrievedTerm = 0;
+    struct termios term0 = {};
+    if (matte_value_as_boolean(heap, args[0])) {
+        if (!tcgetattr(0, &term0)) {
+            retrievedTerm = 1;
+            struct termios termN = term0;
+            termN.c_lflag &= ~ICANON;
+            termN.c_lflag |= ECHO;
+            termN.c_cc[VMIN] = 0;
+            termN.c_cc[VTIME] = 0;
+            
+            tcsetattr(0, TCSANOW, &termN);
+            setvbuf(stdin, NULL, _IONBF, 0);
+        }
+    }
+    char cstr[2] = {};
+    cstr[1] = 0;
+    read(0, &cstr[0], 1);
+    
+    if (retrievedTerm) {
+        tcsetattr(0, TCSANOW, &term0);        
+        setvbuf(stdin, NULL, _IOLBF, BUFSIZ);
+    }    
+    matteValue_t v =  matte_heap_new_value(heap);
+    if (cstr[0] != 0) {
+        matte_value_into_string(heap, &v, MATTE_VM_STR_CAST(vm, cstr));
+    }
+    return v;   
+ 
+}
 
 
 
@@ -74,5 +107,6 @@ static void matte_system__consoleio(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::consoleio_print"),   1, matte_consoleio__print,   NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::consoleio_getline"), 0, matte_consoleio__getline, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::consoleio_clear"),   0, matte_consoleio__clear, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::consoleio_getch"),   1, matte_consoleio__getch, NULL);
 }
 
