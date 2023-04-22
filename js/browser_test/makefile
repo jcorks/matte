@@ -101,4 +101,18 @@ all:
 	cd ../../cli && ./matte compile ../testing/test97.mt ../js/browser_test/test97.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test98.mt ../js/browser_test/test98.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test99.mt ../js/browser_test/test99.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test100.mt ../js/browser_test/test100.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test101.mt ../js/browser_test/test101.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test102.mt ../js/browser_test/test102.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test103.mt ../js/browser_test/test103.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test104.mt ../js/browser_test/test104.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test105.mt ../js/browser_test/test105.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test106.mt ../js/browser_test/test106.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test107.mt ../js/browser_test/test107.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test108.mt ../js/browser_test/test108.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test109.mt ../js/browser_test/test109.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test110.mt ../js/browser_test/test110.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test111.mt ../js/browser_test/test111.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test112.mt ../js/browser_test/test112.mt.bytes
+	cd ../../cli && ./matte compile ../testing/mytestmodule.mt ../js/mytestmodule.mt
 

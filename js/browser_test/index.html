@@ -49,15 +49,21 @@
             }
         );
 
-
+        matte.setExternalFunction('external_test!', ['a', 'b'], function(fn, args) {
+            return matte.heap.createNumber(
+                matte.heap.valueAsNumber(args[0]) +
+                matte.heap.valueAsNumber(args[1])
+            );
+        });
 
         const initialModules = [
-            'Matte.Core.Class'
+            'Matte.Core.Class',
+            'mytestmodule.mt'
         ];
         var modsLeft = initialModules.length;
 
-        var testList = 88;
-        const fileCount = 110;
+        var testList = 1;
+        const fileCount = 113;
         var lock = false;;
         const runTest = function() {
             var result;
