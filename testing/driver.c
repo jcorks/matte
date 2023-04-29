@@ -44,7 +44,7 @@ static int TESTID = 1;
 static void test_string_utf8(matteVM_t * vm) {
     matteString_t * str = matte_string_create();
     assert(matte_string_get_length(str) == 0);
-    assert(matte_string_get_byte_length(str) == 0);
+    assert(matte_string_get_utf8_length(str) == 0);
     assert(!strcmp(matte_string_get_c_str(str), ""));
     
     matte_string_concat_printf(str, "hello%d안녕world𐍈ㄅㄞˇ!!!", 4);
@@ -89,7 +89,7 @@ static void test_string_utf8(matteVM_t * vm) {
 static void test_string(matteVM_t * vm) {
     matteString_t * str = matte_string_create();
     assert(matte_string_get_length(str) == 0);
-    assert(matte_string_get_byte_length(str) == 0);
+    assert(matte_string_get_utf8_length(str) == 0);
     assert(!strcmp(matte_string_get_c_str(str), ""));
     
     matte_string_concat_printf(str, "hello%dworld!!!", 4);

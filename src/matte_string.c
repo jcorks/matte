@@ -78,6 +78,29 @@ static uint32_t utf8_next_char(uint8_t ** source) {
 }
 
 
+static int utf8_put_char(uint32_t val, uint8_t * iter) {
+    if (val < 0x80) {
+        *(iter++) = val & 0x7F;
+        return 1;
+    } else if (val < 0x800) {
+        *(iter++) = ((val & 0x7C0) >> 6) | 0xC0;
+        *(iter++) = (val & 0x3F) | 0x80; 
+        return 2;
+    } else if (val < 0x10000) {
+        *(iter++) = ((val & 0xF000) >> 12) | 0xE0; 
+        *(iter++) = ((val & 0xFC0) >> 6) | 0x80; 
+        *(iter++) = (val & 0x3F) | 0x80; 
+        return 3;
+    } else {
+        *(iter++) = ((val & 0x1C0000) >> 18) | 0xF0; 
+        *(iter++) = ((val & 0x3F000) >> 12) | 0x80; 
+        *(iter++) = ((val & 0xFC0) >> 6) | 0x80; 
+        *(iter++) = (val & 0x3F) | 0x80; 
+        return 4;
+    }
+}
+
+
 static void matte_string_concat_cstr(matteString_t * s, const uint8_t * cstr, uint32_t len) {
     while (s->len + len >= s->alloc) {
         s->alloc*=1.4;
@@ -249,21 +272,7 @@ const char * matte_string_get_c_str(const matteString_t * tsrc) {
         uint8_t * iter = (uint8_t*)t->cstrtemp;
         for(i = 0; i < len; ++i) {
             uint32_t val = t->utf8[i];
-            if (val < 0x80) {
-                *(iter++) = val & 0x7F;
-            } else if (val < 0x800) {
-                *(iter++) = ((val & 0x7C0) >> 6) | 0xC0;
-                *(iter++) = (val & 0x3F) | 0x80; 
-            } else if (val < 0x10000) {
-                *(iter++) = ((val & 0xF000) >> 12) | 0xE0; 
-                *(iter++) = ((val & 0xFC0) >> 6) | 0x80; 
-                *(iter++) = (val & 0x3F) | 0x80; 
-            } else {
-                *(iter++) = ((val & 0x1C0000) >> 18) | 0xF0; 
-                *(iter++) = ((val & 0x3F000) >> 12) | 0x80; 
-                *(iter++) = ((val & 0xFC0) >> 6) | 0x80; 
-                *(iter++) = (val & 0x3F) | 0x80; 
-            }
+            iter += utf8_put_char(val, iter);
         }
         *iter = 0;
     }
@@ -355,16 +364,52 @@ void matte_string_remove_n_chars(
 
 
 
-uint32_t matte_string_get_byte_length(const matteString_t * t) {
-    // for now same as string length. will change when unicode is supported.
+uint32_t matte_string_get_utf8_length(const matteString_t * t) {
     matte_string_get_c_str(t);
-    return strlen(t->cstrtemp);
+    uint8_t * c = t->cstrtemp;
+    uint32_t length = 0;
+    while(*c) {length++; c++;}
+    return length;
 }
 
-void * matte_string_get_byte_data(const matteString_t * t) {
+void * matte_string_get_utf8_data(const matteString_t * t) {
     matte_string_get_c_str(t);
     return t->cstrtemp;
 }
+
+void matte_string_append_utf8_char(
+    matteString_t * s,
+    uint8_t * utf8Data
+) {
+    uint32_t val = utf8_next_char(&utf8Data);
+
+    while (s->len + 1 >= s->alloc) {
+        s->alloc*=1.4;
+        s->utf8 = realloc(s->utf8, s->alloc*sizeof(uint32_t));
+    }
+
+    s->utf8[s->len++] = val;
+    
+    if (s->cstrtemp) {
+        free(s->cstrtemp);
+        s->cstrtemp = NULL;
+    }
+}
+
+uint32_t matte_string_get_hash(
+    const matteString_t * s
+) {
+    uint32_t * data = s->utf8;
+    uint32_t hash = 5381;
+
+    uint32_t i;
+    for(i = 0; i < s->len; ++i, ++data) {
+        hash = (hash<<5) + hash + *data;
+    } 
+    return hash;
+}
+
+
 
 int matte_string_test_contains(const matteString_t * a, const matteString_t * b) {
     if (b->len == 0 || a->len == 0) return 0;

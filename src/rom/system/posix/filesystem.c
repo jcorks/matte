@@ -333,7 +333,7 @@ MATTE_EXT_FN(matte_filesystem__writestring) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeString() could not open output file"));
         return matte_heap_new_value(heap);
     }
-    if (!fwrite(matte_string_get_byte_data(data), 1, matte_string_get_byte_length(data), f)) {
+    if (!fwrite(matte_string_get_utf8_data(data), 1, matte_string_get_utf8_length(data), f)) {
         fclose(f);
         return matte_heap_new_value(heap);
     }

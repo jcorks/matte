@@ -49,7 +49,7 @@ static uint32_t  str_len__;
 static uint8_t * str_buffer__ = NULL;
 static matteString_t * nextString = NULL;
 static uint32_t i__;
-#define CHOMP_STRING() str_len__ = CHOMP(uint32_t); matte_string_clear(nextString); for(i__=0;i__<str_len__;i__++){int32_t h = CHOMP(int32_t); matte_string_append_char(nextString, h);}
+#define CHOMP_STRING() str_len__ = CHOMP(uint32_t); uint8_t * str_buffer__ = calloc(str_len__+1, 1); CHOMPN(str_buffer__, str_len__); nextString = matte_string_create_from_c_str(str_buffer__);
 
 
 
@@ -108,8 +108,11 @@ uint8_t * print_function(FILE * fout, uint8_t * iter, uint32_t * size) {
     } InstructionData;
     uint32_t n;
     uint32_t opcodeCount = CHOMP(uint32_t);
+    uint32_t baseLine = CHOMP(uint32_t);
+    
     for(i = 0; i < opcodeCount; ++i) {
-        uint32_t lineNumber = CHOMP(uint32_t);
+        uint16_t lineOffset = CHOMP(uint16_t);
+        uint32_t lineNumber = baseLine + lineOffset;
         int32_t  opcode = CHOMP(uint8_t);        
         uint32_t a;
         uint32_t b;

@@ -75,15 +75,15 @@ static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
 
 
 static matteValue_t chomp_string(matteHeap_t * heap, uint8_t ** bytes, uint32_t * left) {
-    matteString_t * str = matte_string_create();
+    matteString_t * str;
     uint32_t len = 0;
     ADVANCE(uint32_t, len);
-    int32_t ch = 0;
-    uint32_t i;
-    for(i = 0; i < len; ++i) {
-        ADVANCE(int32_t, ch);
-        matte_string_append_char(str, ch);
-    }
+    uint8_t * utf8raw = calloc(len+1, 1);
+    ADVANCEN(len, utf8raw[0]);
+    
+    str = matte_string_create_from_c_str("%s", utf8raw);
+    free(utf8raw);
+
     matteValue_t v = matte_heap_new_value(heap);
     matte_value_into_string(heap, &v, str);
     matte_string_destroy(str);
@@ -136,12 +136,16 @@ static matteBytecodeStub_t * bytes_to_stub(matteHeap_t * heap, uint32_t fileID, 
         ADVANCEN(sizeof(matteBytecodeStubCapture_t)*out->capturedCount, out->captures[0]);
     }
     ADVANCE(uint32_t, out->instructionCount);
+    uint32_t baseLine = 0;
+    ADVANCE(uint32_t, baseLine);
     if (out->instructionCount) {
         out->instructions = calloc(sizeof(matteBytecodeStubInstruction_t), out->instructionCount);    
         for(i = 0; i < out->instructionCount; ++i) {
-            ADVANCE(uint32_t, out->instructions[i].lineNumber);
+            uint16_t lineOffset;
+            ADVANCE(uint16_t, lineOffset);
             ADVANCE(uint8_t,  out->instructions[i].opcode);
             ADVANCE(double,   out->instructions[i].data);
+            out->instructions[i].lineNumber = baseLine + lineOffset;
         }
     }
 

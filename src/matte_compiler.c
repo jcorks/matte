@@ -4360,13 +4360,9 @@ matteArray_t * matte_syntax_graph_compile(matteSyntaxGraphWalker_t * g) {
 #define WRITE_NBYTES(__N__, __VALP__) matte_array_push_n(byteout, (__VALP__), __N__);
 
 static void write_unistring(matteArray_t * byteout, matteString_t * str) {
-    uint32_t len = matte_string_get_length(str);
+    uint32_t len = matte_string_get_utf8_length(str);
     WRITE_BYTES(uint32_t, len);
-    uint32_t i;
-    for(i = 0; i < len; ++i) {
-        int32_t ch = matte_string_get_char(str, i);
-        WRITE_BYTES(int32_t, ch);
-    }
+    WRITE_NBYTES(len, matte_string_get_utf8_data(str));
 }
 
 void * matte_function_block_array_to_bytecode(
@@ -4417,9 +4413,16 @@ void * matte_function_block_array_to_bytecode(
 
         nInst = matte_array_get_size(block->instructions);
         WRITE_BYTES(uint32_t, nInst);
+
+        uint32_t baseLine = 0;
+        if (nInst)
+            baseLine = matte_array_at(block->instructions, matteBytecodeStubInstruction_t, 0).lineNumber;
+        WRITE_BYTES(uint32_t, baseLine);
+
         for(n = 0; n < nInst; ++n) {
             matteBytecodeStubInstruction_t * inst = &matte_array_at(block->instructions, matteBytecodeStubInstruction_t, n);
-            WRITE_BYTES(uint32_t, inst->lineNumber);
+            uint16_t offset = inst->lineNumber - baseLine;
+            WRITE_BYTES(uint16_t, offset);
             WRITE_BYTES(uint8_t, inst->opcode);
             WRITE_BYTES(double, inst->data);        
         }

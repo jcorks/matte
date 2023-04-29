@@ -48,7 +48,7 @@
                 console.log(value);
             }
         );
-
+        
         matte.setExternalFunction('external_test!', ['a', 'b'], function(fn, args) {
             return matte.heap.createNumber(
                 matte.heap.valueAsNumber(args[0]) +
@@ -106,7 +106,7 @@
                 }
             }
         });
-
+        
         
         
         

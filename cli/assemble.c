@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #include <ctype.h>
 #include <string.h>
 #include <inttypes.h>
+#include "../src/matte_string.h"
 
 #define MAX_LEN 256
 #define FALSE 0
@@ -71,6 +72,7 @@ typedef struct {
 
 static unistring read_unistring_ascii(const char * line) {
     while(isspace(line[0])) line++;
+
     uint32_t len = strlen(line);
     if (line[0] != '"' || line[len-1] != '"') {
         printf("ERROR on line %d: expected ascii string (starts and ends with \")\n", lineN);
@@ -79,14 +81,19 @@ static unistring read_unistring_ascii(const char * line) {
     len = len-2;
     line++;
 
-    int d;
-    unistring out;
-    out.len = len;
-    out.data = malloc(sizeof(int)*len);
+    char * lineCleaned = calloc(len+1, 1);
+    memcpy(lineCleaned, line, len);
+    lineCleaned[len] = 0;
+    
+    matteString_t * str = matte_string_create_from_c_str("%s", lineCleaned);
+    free(lineCleaned);
+
+    unistring out = {};
+    out.len = matte_string_get_length(str);
+    out.data = calloc(sizeof(int32_t), out.len);
     uint32_t i;
-    for(i = 0; i < len; ++i) {
-        out.data[i] = *line;
-        line++;
+    for(i = 0; i < out.len; ++i) {
+        out.data[i] = matte_string_get_char(str, i);
     }
     return out;
 }
@@ -247,8 +254,14 @@ static void function_to_stub(FILE * f, uint32_t id) {
             free(captures);
 
             fwrite(&instructionsCount, 1, sizeof(uint32_t), out);
+            uint32_t baseLine = 0;
+            if (instructionsCount)
+                baseLine = instructions[i].line;
+            fwrite(&baseLine, 1, sizeof(uint32_t), out);
+            
             for(i = 0; i < instructionsCount; ++i) {
-                fwrite(&instructions[i].line, 1, sizeof(uint32_t), out);
+                uint16_t offset = instructions[i].line - baseLine;
+                fwrite(&offset, 1, sizeof(uint16_t), out);
                 fwrite(&instructions[i].opcode, 1, sizeof(uint8_t), out);
                 fwrite(instructions[i].data, 8, sizeof(uint8_t), out);
             }

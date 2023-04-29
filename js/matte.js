@@ -237,12 +237,38 @@ const Matte = {
                     
                     chompString : function() {
                         const size = bytes.chompUInt32();
-                        var str = '';
-                        // inefficient.
-                        for(var i = 0; i < size; ++i) {
-                            str = str + String.fromCharCode(bytes.chompInt32());
-                        }
-                        return str;
+                        var out = "";
+                        var i = 0;
+                        while (i < size) {
+                            var val = 0;
+                            const p0 = bytes.chompUInt8();
+                            i++;
+                            if (p0 < 128 && p0) {
+                                val = (p0) & 0x7F;
+                            } else {
+                                const p1 = bytes.chompUInt8();
+                                i++;
+                                if (p0 < 224 && p0 && p1) {
+                                    val = ((p0 & 0x1F)<<6) + (p1 & 0x3F);
+                                } else {
+                                    const p2 = bytes.chompUInt8();                                    
+                                    i++;
+                                    if (p0 < 240 && p0 && p1 && p2) {
+                                        val = ((p0 & 0x0F)<<12) + ((p1 & 0x3F)<<6) + (p2 & 0x3F);
+                                    } else {
+                                        const p3 = bytes.chompUInt8();
+                                        i++;
+                                        if (p0 && p1 && p2 && p3) {
+                                            val = ((p0 & 0x7)<<18) + ((p1 & 0x3F)<<12) + ((p2 & 0x3F)<<6) + (p3 & 0x3F);
+                                        } 
+                                    }
+                                }
+                            }
+                            out += String.fromCodePoint(val);
+                        } 
+                        return out;
+
+
                     },
                     
                     chompBytes : function(n) {
@@ -301,9 +327,12 @@ const Matte = {
                     
                     stub.instructionCount = bytes.chompUInt32();
                     stub.instructions = [];
+                    
+                    const baseLine = bytes.chompUInt32();
                     for(var i = 0; i < stub.instructionCount; ++i) {
+                        const offset = bytes.chompUInt16();
                         stub.instructions[i] = {
-                            lineNumber : bytes.chompUInt32(),
+                            lineNumber : baseLine + offset,
                             opcode     : bytes.chompUInt8(),
                             data       : bytes.chompDouble(),
                         };
@@ -2117,12 +2146,26 @@ const Matte = {
                 vm_externalFunctionIndex[index] = set;
 
 
-                var charCount = 0;
+                var charLen = 0;
                 for(var i = 0; i < argNames.length; ++i) {
-                    charCount += argNames[i].length;
-                }
+                    const str = argNames[i];
+                    var nBytes = 0;
+                    // get utf8 length;
+                    for(var n = 0; n < str.length; ++n) {
+                        const val = str.codePointAt(n);
+                        if (val < 0x80) {
+                            charLen += 1;
+                        } else if (val < 0x800) {
+                            charLen += 2;
+                        } else if (val < 0x10000) {
+                            charLen += 3;    
+                        } else {
+                            charLen += 4;
+                        }                    
+                    }
+                };
                 
-                const buffer = new Uint8Array(7 + 4 + 1 + charCount*4 + argNames.length*4);
+                const buffer = new Uint8Array(7 + 4 + 1 + charLen + argNames.length*4);
                 
                 buffer[0] = 'M'.charCodeAt(0);
                 buffer[1] = 'A'.charCodeAt(0);
@@ -2139,11 +2182,43 @@ const Matte = {
                 bufferView.setUint8(iter, argNames.length); iter += 1;
                 
                 for(var i = 0; i < argNames.length; ++i) {
-                    bufferView.setUint32(iter, argNames[i].length, true);
+                    const str = argNames[i];
+                    var nBytes = 0;
+                    // get utf8 length;
+                    for(var n = 0; n < str.length; ++n) {
+                        const val = str.codePointAt(n);
+                        if (val < 0x80) {
+                            nBytes += 1;
+                        } else if (val < 0x800) {
+                            nBytes += 2;
+                        } else if (val < 0x10000) {
+                            nBytes += 3;    
+                        } else {
+                            nBytes += 4;
+                        }                    
+                    }
+                
+                
+                    bufferView.setUint32(iter, nBytes, true);
                     iter += 4;
-                    for(var n = 0; n < argNames[i].length; ++n) {
-                        bufferView.setInt32(iter, argNames[i].charCodeAt(n), true);
-                        iter += 4;
+                    for(var n = 0; n < str.length; ++n) {
+                        const val = str.codePointAt(n);
+                        if (val < 0x80) {
+                            bufferView.setUint8(iter++, val & 0x7F);
+                        } else if (val < 0x800) {
+                            bufferView.setUint8(iter++, ((val & 0x7C0) >> 6) | 0xC0);
+                            bufferView.setUint8(iter++, (val & 0x3F) | 0x80); 
+                        } else if (val < 0x10000) {
+                            bufferView.setUint8(iter++, ((val & 0xF000) >> 12) | 0xE0); 
+                            bufferView.setUint8(iter++, ((val & 0xFC0) >> 6) | 0x80); 
+                            bufferView.setUint8(iter++, (val & 0x3F) | 0x80); 
+                        } else {
+                            bufferView.setUint8(iter++, ((val & 0x1C0000) >> 18) | 0xF0); 
+                            bufferView.setUint8(iter++, ((val & 0x3F000) >> 12) | 0x80); 
+                            bufferView.setUint8(iter++, ((val & 0xFC0) >> 6) | 0x80); 
+                            bufferView.setUint8(iter++, (val & 0x3F) | 0x80); 
+                        }
+
                     }
                 };
                 

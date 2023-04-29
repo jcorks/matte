@@ -153,16 +153,7 @@ static int key_cmp_fn_c_str(const void * a, const void * b, uint32_t len) {
 
 static uint32_t hash_fn_matte_str(uint8_t * src, uint32_t len) {
     matteString_t * str = (void*)src;
-    uint8_t * data = matte_string_get_byte_data(str);
-    len = matte_string_get_byte_length(str);
-
-    uint32_t hash = 5381;
-
-    uint32_t i;
-    for(i = 0; i < len; ++i, ++data) {
-        hash = (hash<<5) + hash + *data;
-    } 
-    return hash;
+    return matte_string_get_hash(str);
 }
 
 static int key_cmp_fn_matte_str(const void * a, const void * b, uint32_t len) {

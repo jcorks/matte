@@ -1239,13 +1239,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 #define WRITE_NBYTES(__VAL__, __N__) matte_array_push_n(arr, &(__VAL__), __N__);
 
 static void write_unistring(matteArray_t * arr, matteString_t * str) {
-    uint32_t len = matte_string_get_length(str);
+    uint32_t len = matte_string_get_utf8_length(str);
     WRITE_BYTES(uint32_t, len);
-    uint32_t i;
-    for(i = 0; i < len; ++i) {
-        int32_t ch = matte_string_get_char(str, i);
-        WRITE_BYTES(int32_t, ch);
-    }
+    WRITE_NBYTES(((uint8_t*)matte_string_get_utf8_data(str))[0], len);
 }
 
 
