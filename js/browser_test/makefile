@@ -114,5 +114,9 @@ all:
 	cd ../../cli && ./matte compile ../testing/test110.mt ../js/browser_test/test110.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test111.mt ../js/browser_test/test111.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test112.mt ../js/browser_test/test112.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test113.mt ../js/browser_test/test113.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test114.mt ../js/browser_test/test114.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test115.mt ../js/browser_test/test115.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test116.mt ../js/browser_test/test116.mt.bytes
 	cd ../../cli && ./matte compile ../testing/mytestmodule.mt ../js/mytestmodule.mt
 
