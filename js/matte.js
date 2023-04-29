@@ -359,14 +359,13 @@ const Matte = {
         // matte_heap.c
         
         const heap = function(){
-            const TYPE = {
-                EMPTY: 0,
-                BOOLEAN : 1,
-                NUMBER: 2,
-                STRING: 3,
-                OBJECT: 4,
-                TYPE : 5
-            };
+            const TYPE_EMPTY = 0;
+            const TYPE_BOOLEAN = 1;
+            const TYPE_NUMBER = 2;
+            const TYPE_STRING = 3;
+            const TYPE_OBJECT = 4;
+            const TYPE_TYPE = 5;
+            
             
             const QUERY = {
                 TYPE: 0,
@@ -427,17 +426,18 @@ const Matte = {
             const TYPECODES = {
                 OBJECT : 5
             };
+            const EMPTY_VALUE = {
+                binID : TYPE_EMPTY,
+                data : null
+            };
         
             const createValue = function() {
-                return {
-                    binID : TYPE.EMPTY,
-                    data : null
-                }
+                return EMPTY_VALUE;
             };
 
             const createObject = function() {
                 return {
-                    binID : TYPE.OBJECT,
+                    binID : TYPE_OBJECT,
                     data : {
                         id : OBJECT_ID_POOL++,
                         typecode : TYPECODES.OBJECT
@@ -447,13 +447,13 @@ const Matte = {
             
             const objectPutProp = function(object, key, value) {
                 switch(key.binID) {
-                  case TYPE.STRING:
+                  case TYPE_STRING:
                     if (object.data.kv_string == undefined)
                         object.data.kv_string = Object.create(null, {});
                     object.data.kv_string[key.data] = value;
                     break;
                     
-                  case TYPE.NUMBER:
+                  case TYPE_NUMBER:
                     if (object.data.kv_number == undefined)
                         object.data.kv_number = [];
                         
@@ -467,14 +467,14 @@ const Matte = {
                     
                     object.data.kv_number[Math.floor(key.data)] = value;
                     break;
-                  case TYPE.BOOLEAN:
+                  case TYPE_BOOLEAN:
                     if (key.data == true) {
                         object.data.kv_true = value;
                     } else {
                         object.data.kv_false = value;                    
                     } 
                     break;
-                  case TYPE.OBJECT:
+                  case TYPE_OBJECT:
                     if (object.data.kv_object_values == undefined) {
                         object.data.kv_object_keys   = [];
                         object.data.kv_object_values = {};
@@ -483,7 +483,7 @@ const Matte = {
                     object.data.kv_object_keys.push(key);
                     break;
                     
-                  case TYPE.TYPE:
+                  case TYPE_TYPE:
                     if (object.data.kv_types_values == undefined) {
                         object.data.kv_types_keys   = [];
                         object.data.kv_types_values = {};
@@ -509,7 +509,7 @@ const Matte = {
                 
                 const set = heap.valueObjectAccess(object.data.table_attribSet, isBracket ? heap_specialString_bracketAccess : heap_specialString_dotAccess, 0);
                 if (set && set.binID) {
-                    if (set.binID != TYPE.OBJECT) {
+                    if (set.binID != TYPE_OBJECT) {
                         vm.raiseErrorString("operator['[]'] and operator['.'] property must be an Object if it is set.");
                     } else {
                         out = heap.valueObjectAccess(set, read ? heap_specialString_get : heap_specialString_set, 0);
@@ -538,7 +538,7 @@ const Matte = {
                 }
                 for(var i = 0; i < count; ++i) {
                     const v = heap.valueObjectArrayAtUnsafe(val, i);
-                    if (v.binID != TYPE.TYPE) {
+                    if (v.binID != TYPE_TYPE) {
                         vm.raiseErrorString("'inherits' attribute must have Type values only.");
                         return array;
                     }
@@ -551,14 +551,14 @@ const Matte = {
             // either returns lookup value or undefined if no such key
             const objectLookup = function(object, key) {
                 switch(key.binID) {
-                  case TYPE.EMPTY: return undefined;
+                  case TYPE_EMPTY: return undefined;
 
-                  case TYPE.STRING:
+                  case TYPE_STRING:
                     if (object.data.kv_string == undefined) 
                         return undefined;
                     return object.data.kv_string[key.data];
 
-                  case TYPE.NUMBER:
+                  case TYPE_NUMBER:
                     if (key.data < 0) return undefined;
                     if (object.data.kv_number == undefined)
                         return undefined;
@@ -566,17 +566,17 @@ const Matte = {
                         return undefined;
                     return object.data.kv_number[Math.floor(key.data)];
                    
-                  case TYPE.BOOLEAN:
+                  case TYPE_BOOLEAN:
                     if (key.data == true) {
                         return object.data.kv_true;
                     } else {
                         return object.data.kv_true;                    
                     }
-                  case TYPE.OBJECT:
+                  case TYPE_OBJECT:
                     if (object.data.kv_object_values == undefined)
                         return undefined;
                     return object.data.kv_object_values[key.data.id.toString()];
-                  case TYPE.TYPE:
+                  case TYPE_TYPE:
                     if (!object.data.kv_types_values)
                         return undefined;
                     return object.data.kv_types_values[key.data.id.toString()];
@@ -604,28 +604,33 @@ const Matte = {
             };
             const heap_queryTable = {};
             const heap = {
-                TYPE : TYPE,
+                TYPE_BOOLEAN : TYPE_BOOLEAN,
+                TYPE_EMPTY : TYPE_EMPTY,
+                TYPE_NUMBER : TYPE_NUMBER,
+                TYPE_OBJECT : TYPE_OBJECT,
+                TYPE_TYPE : TYPE_TYPE,
+                TYPE_STRING : TYPE_STRING,
                 createEmpty : function() {
                     return createValue();
                 },
                 
                 createNumber : function(val) {
-                    const out = createValue();
-                    out.binID = TYPE.NUMBER;
+                    const out = {};
+                    out.binID = TYPE_NUMBER;
                     out.data = val;
                     return out
                 },
                 
                 createBoolean : function(val) {
-                    const out = createValue();
-                    out.binID = TYPE.BOOLEAN;
+                    const out = {};
+                    out.binID = TYPE_BOOLEAN;
                     out.data = !val ? false : true;
                     return out;
                 },
                 
                 createString : function(val) {
-                    const out = createValue();
-                    out.binID = TYPE.STRING;
+                    const out = {};
+                    out.binID = TYPE_STRING;
                     out.data = val;
                     return out;
                 },
@@ -636,7 +641,7 @@ const Matte = {
                 
                 createObjectTyped : function(type) {
                     const out = createObject();
-                    if (type.binID != TYPE.TYPE) {
+                    if (type.binID != TYPE_TYPE) {
                         vm.raiseErrorString("Cannot instantiate object without a Type. (given value is of type " + heap.valueTypeName(heap.valueGetType(type)) + ')');
                         return out;
                     }
@@ -645,8 +650,8 @@ const Matte = {
                 },
                 
                 createType : function(name, inherits) {
-                    const out = createValue();
-                    out.binID = TYPE.TYPE;
+                    const out = {};
+                    out.binID = TYPE_TYPE;
                     if (heap_typepool == 0xffffffff) {
                         vm.raiseErrorString('Type count limit reached. No more types can be created.');
                         return createValue();
@@ -663,7 +668,7 @@ const Matte = {
                     }
 
                     if (inherits && inherits.binID) {
-                        if (inherits.binID != TYPE.OBJECT) {
+                        if (inherits.binID != TYPE_OBJECT) {
                             vm.raiseErrorString("'inherits' attribute must be an object.");
                             return createValue();
                         }                    
@@ -684,10 +689,7 @@ const Matte = {
                 
                 createObjectArray : function(values) {
                     const out = createObject();
-                    out.data.kv_number = [];
-                    for(var i = 0; i < values.length; ++i) {
-                        out.data.kv_number[i] = values[i];
-                    }
+                    out.data.kv_number = values.slice(0);
                     return out;
                 },
                 
@@ -742,7 +744,7 @@ const Matte = {
                 
                 createTypedFunction : function(stub, args) {
                     for(var i = 0; i < args.length; ++i) {
-                        if (args[i].binID != TYPE.TYPE) {
+                        if (args[i].binID != TYPE_TYPE) {
                             if (i == len-1) {
                                 vm.raiseErrorString("Function constructor with type specifiers requires those specifications to be Types. The return value specifier is not a Type.");
                             } else {
@@ -795,12 +797,12 @@ const Matte = {
                 },
                 
                 valueGetBytecodeStub : function(value) {
-                    if (value.binID == TYPE.OBJECT && value.data.function_stub != undefined)
+                    if (value.binID == TYPE_OBJECT && value.data.function_stub != undefined)
                         return value.data.function_stub;
                 },
                 
                 valueGetCapturedValue : function(value, index) {
-                    if (value.binID != TYPE.OBJECT || value.data.function_stub == undefined) return;
+                    if (value.binID != TYPE_OBJECT || value.data.function_stub == undefined) return;
                     if (index >= value.data.function_captures.length) return;
                     return heap.valueObjectArrayAtUnsafe(
                         value.data.function_captures[index].referrableSrc,
@@ -809,12 +811,12 @@ const Matte = {
                 },
                 
                 valueSubset : function(value, from, to) {
-                    if (value.binID == TYPE.OBJECT) {
+                    if (value.binID == TYPE_OBJECT) {
                         const curlen = value.data.kv_number ? value.data.kv_number.length : 0;
                         if (from >= curlen || to >= curlen) return createValue();
                         
                         return heap.createObjectArray(value.data.kv_number.slice(from, to+1));
-                    } else if (value.binID == TYPE.STRING) {
+                    } else if (value.binID == TYPE_STRING) {
                         
                         const curlen = value.data.length;;
                         if (from >= curlen || to >= curlen) return createValue();
@@ -829,29 +831,29 @@ const Matte = {
                 // valueObjectSetNativeFinalizer are not implemented.
                 
                 valueIsEmpty : function(value) {
-                    return value.binID == TYPE.EMPTY
+                    return value.binID == TYPE_EMPTY
                 },
                 
                 valueAsNumber : function(value) {
                     switch(value.binID) {
-                      case TYPE.EMPTY:
+                      case TYPE_EMPTY:
                         vm.raiseErrorString('Cannot convert empty into a number');
                         return 0;
 
-                      case TYPE.TYPE:
+                      case TYPE_TYPE:
                         vm.raiseErrorString('Cannot convert type value into a number');
                         return 0;
 
-                      case TYPE.NUMBER:
+                      case TYPE_NUMBER:
                         return value.data;
                         
-                      case TYPE.BOOLEAN:
+                      case TYPE_BOOLEAN:
                         return value.data == true ? 1 : 0;
                         
-                      case TYPE.STRING:
+                      case TYPE_STRING:
                         vm.raiseErrorString('Cannot convert string value into a number');
                         return 0;
-                      case TYPE.OBJECT:
+                      case TYPE_OBJECT:
                         if (value.data.function_stub) {
                             vm.raiseErrorString("Cannot convert function value into a number.");
                             return 0;
@@ -870,22 +872,22 @@ const Matte = {
                 
                 valueAsString : function(value) {
                     switch(value.binID) {
-                      case TYPE.EMPTY:
+                      case TYPE_EMPTY:
                         return heap_specialString_empty;
 
-                      case TYPE.TYPE:
+                      case TYPE_TYPE:
                         return heap.valueTypeName(value);
 
-                      case TYPE.NUMBER:
+                      case TYPE_NUMBER:
                         return heap.createString(Number.parseFloat(value.data));
 
-                      case TYPE.BOOLEAN:
+                      case TYPE_BOOLEAN:
                         return value.data == true ? heap_specialString_true : heap_specialString_false;
                         
-                      case TYPE.STRING:
+                      case TYPE_STRING:
                         return value;
                         
-                      case TYPE.OBJECT:
+                      case TYPE_OBJECT:
                         if (value.data.function_stub != undefined) {
                             vm.raiseErrorString("Cannot convert function into a string.");
                             return heap_specialString_empty;
@@ -906,12 +908,12 @@ const Matte = {
                 
                 valueAsBoolean : function(value) {
                     switch(value.binID) {
-                      case TYPE.EMPTY:   return false;
-                      case TYPE.TYPE:    return true;
-                      case TYPE.NUMBER:  return value.data != 0;
-                      case TYPE.BOOLEAN: return value.data;
-                      case TYPE.STRING:  return true;
-                      case TYPE.OBJECT:
+                      case TYPE_EMPTY:   return false;
+                      case TYPE_TYPE:    return true;
+                      case TYPE_NUMBER:  return value.data != 0;
+                      case TYPE_BOOLEAN: return value.data;
+                      case TYPE_STRING:  return true;
+                      case TYPE_OBJECT:
                         if (value.data.function_stub != undefined)
                             return 1;
 
@@ -931,14 +933,14 @@ const Matte = {
                 valueToType : function(v, t) {
                     switch(t.data.id) {
                       case 1: // empty
-                        if (v.binID != TYPE.EMPTY) {
+                        if (v.binID != TYPE_EMPTY) {
                             vm.raiseErrorString("It is an error to convert any non-empty value to the Empty type.");
                         } else {
                             return v;
                         }
                         break;
                       case 7: // type
-                        if (v.binID != TYPE.TYPE) {
+                        if (v.binID != TYPE_TYPE) {
                             vm.raiseErrorString("It is an error to convert any non-Type value to a Type.");
                         } else {
                             return v;
@@ -955,14 +957,14 @@ const Matte = {
                         return heap.valueAsString(v);
                         
                       case 5: 
-                        if (v.binID == TYPE.OBJECT && !v.data.function_stub) {
+                        if (v.binID == TYPE_OBJECT && !v.data.function_stub) {
                             return v;
                         } else {
                             vm.raiseErrorString("Cannot convert value to Object type.");
                         }
                         break;
                       case 6: 
-                        if (v.binID == TYPE.OBJECT && v.data.function_stub) {
+                        if (v.binID == TYPE_OBJECT && v.data.function_stub) {
                             return v;
                         } else {
                             vm.raiseErrorString("Cannot convert value to Function type.");
@@ -974,8 +976,8 @@ const Matte = {
                 },
                 
                 valueIsCallable : function(value) {
-                    if (value.binID == TYPE.TYPE) return 1;
-                    if (value.binID != TYPE.OBJECT) return 0;
+                    if (value.binID == TYPE_TYPE) return 1;
+                    if (value.binID != TYPE_OBJECT) return 0;
                     if (value.data.function_stub == undefined) return 0;
                     if (value.data.function_types == undefined) return 1;
                     return 2; // type-strict
@@ -1011,16 +1013,19 @@ const Matte = {
                 
                 valueObjectAccess : function(value, key, isBracket) {
                     switch(value.binID) {
-                      case TYPE.TYPE:
+                      case TYPE_TYPE:
                         return heap.valueObjectAccessDirect(value, key, isBracket);
 
-                      case TYPE.OBJECT:
+                      case TYPE_OBJECT:
                         if (value.data.function_stub != undefined) {
                             vm.raiseErrorString("Functions do not have members.");
                             return createValue();
                         }
-                        const accessor = objectGetAccessOperator(value, isBracket, 1);
-                        if (accessor.binID) {
+                        var accessor;
+                        if (value.data.table_attribSet != undefined)
+                            accessor = objectGetAccessOperator(value, isBracket, 1);
+                        
+                        if (accessor && accessor.binID) {
                             return vm.callFunction(accessor, [key], [heap_specialString_key]);
                         } else {
                             const output = objectLookup(value, key);
@@ -1037,13 +1042,13 @@ const Matte = {
                 // will return undefined if no such access
                 valueObjectAccessDirect : function(value, key, isBracket) {
                     switch(value.binID) {
-                      case TYPE.TYPE:
+                      case TYPE_TYPE:
                         if (isBracket) {
                             vm.raiseErrorString("Types can only yield access to built-in functions through the dot '.' accessor.");
                             return;
                         }
                         
-                        if (key.binID != TYPE.STRING) {
+                        if (key.binID != TYPE_STRING) {
                             vm.raiseErrorString("Types can only yield access to built-in functions through the string keys.");
                             return;
                         }
@@ -1066,7 +1071,7 @@ const Matte = {
                         return vm.getBuiltinFunctionAsValue(out);
                         
                         
-                      case TYPE.OBJECT:
+                      case TYPE_OBJECT:
                         if (value.data.function_stub != undefined) {
                             vm.raiseErrorString("Cannot access member of type Function (Functions do not have members).");
                             return undefined;
@@ -1103,7 +1108,7 @@ const Matte = {
                 },
                 
                 valueObjectKeys : function(value) {
-                    if (value.binID != TYPE.OBJECT || value.data.function_stub) {
+                    if (value.binID != TYPE_OBJECT || value.data.function_stub) {
                         vm.raiseErrorString("Can only get keys from something that's an Object.");
                         return createValue();
                     }
@@ -1158,7 +1163,7 @@ const Matte = {
                 },
                 
                 valueObjectValues : function(value) {
-                    if (value.binID != TYPE.OBJECT || value.data.function_stub) {
+                    if (value.binID != TYPE_OBJECT || value.data.function_stub) {
                         vm.raiseErrorString("Can only get values from something that's an Object.");
                         return createValue();
                     }
@@ -1213,7 +1218,7 @@ const Matte = {
                 
                 
                 valueObjectGetKeyCount : function(value) {
-                    if (value.binID != TYPE.OBJECT) return 0;
+                    if (value.binID != TYPE_OBJECT) return 0;
                     var out = 0;
                     if (value.data.kv_number) {
                         out += value.data.kv_number.length;
@@ -1246,19 +1251,19 @@ const Matte = {
                 },
                 
                 valueObjectGetNumberKeyCount : function(value) {
-                    if (value.binID != TYPE.OBJECT) return 0;
+                    if (value.binID != TYPE_OBJECT) return 0;
                     if (value.data.kv_number == undefined) return 0;
                     return value.data.kv_number.length;                    
                 },
                 
                 valueObjectInsert : function(value, plainIndex, v) {
-                    if (value.binID != TYPE.OBJECT) return;
+                    if (value.binID != TYPE_OBJECT) return;
                     if (value.data.kv_number == undefined) value.data.kv_number = [];
                     value.data.kv_number.splice(plainIndex, 0, v);
                 },
 
                 valueObjectPush : function(value, v) {
-                    if (value.binID != TYPE.OBJECT) return;
+                    if (value.binID != TYPE_OBJECT) return;
                     if (value.data.kv_number == undefined) value.data.kv_number = [];
                     value.data.kv_number.push(v);
                 },
@@ -1285,7 +1290,7 @@ const Matte = {
                         const set = heap.valueObjectAccess(value.data.table_attribSet, heap_specialString_foreach, 0);
                         if (set.binID) {
                             const v = vm.callFunction(set, [], []);
-                            if (binID != TYPE.OBJECT) {
+                            if (binID != TYPE_OBJECT) {
                                 vm.raiseErrorString("foreach attribute MUST return an object.");
                                 return;
                             } else {
@@ -1315,12 +1320,12 @@ const Matte = {
                 },
                 
                 valueObjectSet : function(value, key, v, isBracket) {
-                    if (value.binID != TYPE.OBJECT) {
+                    if (value.binID != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot set property on something that isn't an object.");
                         return heap.createEmpty();
                     }
                     
-                    if (key.binID == TYPE.EMPTY) {
+                    if (key.binID == TYPE_EMPTY) {
                         vm.raiseErrorString("Cannot set property with an empty key");
                         return heap.createEmpty();
                     }
@@ -1328,7 +1333,7 @@ const Matte = {
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
                     if (assigner.binID) {
                         const r = vm.callFunction(assigner, [key, v], [heap_specialString_key, heap_specialString_value]);
-                        if (r.binID == TYPE.BOOLEAN && !r.data) {
+                        if (r.binID == TYPE_BOOLEAN && !r.data) {
                             return heap.createEmpty();
                         }
                     }
@@ -1336,7 +1341,7 @@ const Matte = {
                 },
                 
                 valueObjectSetTable: function(value, srcTable) {
-                    if (srcTable.binID != TYPE.OBJECT) {
+                    if (srcTable.binID != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot use object set assignment syntax something that isnt an object.");
                         return;
                     }
@@ -1354,12 +1359,12 @@ const Matte = {
                 },
                 
                 valueObjectSetAttributes : function(value, opObject) {
-                    if (value.binID != TYPE.OBJECT) {
+                    if (value.binID != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot assign attributes set to something that isnt an object.");
                         return;
                     }
                     
-                    if (opObject.binID != TYPE.OBJECT) {
+                    if (opObject.binID != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot assign attributes set that isn't an object.");
                         return;
                     }
@@ -1377,16 +1382,16 @@ const Matte = {
                 },
                 
                 valueObjectRemoveKey : function(value, key) {
-                    if (value.binID != TYPE.OBJECT) {
+                    if (value.binID != TYPE_OBJECT) {
                         return; // no error?
                     }
                     
                     switch(key.binID) {
-                      case TYPE.STRING:
+                      case TYPE_STRING:
                         if (value.data.kv_string == undefined) return;
                         delete value.data.kv_string[key.data];
                         break;
-                      case TYPE.TYPE:
+                      case TYPE_TYPE:
                         if (value.data.kv_types_keys == undefined) return;
                         delete value.data.kv_types_values[key.data.id];
                         for(var i = 0; i < value.data.kv_types_keys.length; ++i) {
@@ -1395,18 +1400,18 @@ const Matte = {
                             }
                         }
                         break;
-                      case TYPE.NUMBER:
+                      case TYPE_NUMBER:
                         if (value.data.kv_number == undefined || value.data.kv_number.length == 0) return;
                         value.data.kv_number.splice(Math.floor(key.data), 1);
                         break;
-                      case TYPE.BOOLEAN:
+                      case TYPE_BOOLEAN:
                         if (key.data) {
                             value.data.kv_true = undefined;
                         } else {
                             value.data.kv_false = undefined;                        
                         }
                         break;
-                      case TYPE.OBJECT:
+                      case TYPE_OBJECT:
                         if (value.data.kv_object_keys == undefined) return;
                         delete value.data.kv_object_values[key.data.id];
                         for(var i = 0; i < value.data.kv_object_keys.length; ++i) {
@@ -1420,7 +1425,7 @@ const Matte = {
                 
                 
                 valueObjectRemoveKeyString : function(value, plainString) {
-                    if (value.binID != TYPE.OBJECT) {
+                    if (value.binID != TYPE_OBJECT) {
                         return; // no error?
                     }
                     
@@ -1429,13 +1434,13 @@ const Matte = {
                 },
                                 
                 valueIsA : function(value, typeobj) {
-                    if (typeobj.binID != TYPE.TYPE) {
+                    if (typeobj.binID != TYPE_TYPE) {
                         vm.raiseErrorString("VM error: cannot query isa() with a non Type value.");
                         return 0;
                     }
                     
                     if (typeobj.data.id == heap_type_any.data.id) return 1;
-                    if (value.binID != TYPE.OBJECT) {
+                    if (value.binID != TYPE_OBJECT) {
                         return (heap.valueGetType(value)).data.id == typeobj.data.id;
                     } else {
                         if (typeobj.data.id == heap_type_object.data.id) return 1;
@@ -1452,12 +1457,12 @@ const Matte = {
                 
                 valueGetType : function(value) {
                     switch(value.binID) {
-                      case TYPE.EMPTY:      return heap_type_empty;
-                      case TYPE.BOOLEAN:    return heap_type_boolean;
-                      case TYPE.NUMBER:     return heap_type_number;
-                      case TYPE.STRING:     return heap_type_string;
-                      case TYPE.TYPE:       return heap_type_type;
-                      case TYPE.OBJECT: 
+                      case TYPE_EMPTY:      return heap_type_empty;
+                      case TYPE_BOOLEAN:    return heap_type_boolean;
+                      case TYPE_NUMBER:     return heap_type_number;
+                      case TYPE_STRING:     return heap_type_string;
+                      case TYPE_TYPE:       return heap_type_type;
+                      case TYPE_OBJECT: 
                         if (value.data.function_stub != undefined)
                             return heap_type_function;
                         else {
@@ -1476,7 +1481,7 @@ const Matte = {
                 },
                 
                 valueTypeName : function(value) {
-                    if (value.binID != TYPE.TYPE) {
+                    if (value.binID != TYPE_TYPE) {
                         vm.raiseErrorString("VM error: cannot get type name of a non Type value.");
                         return heap_specialString_empty;
                     }
@@ -1511,7 +1516,7 @@ const Matte = {
             
                         
             heap_queryTable[QUERY.COS] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("cos requires base value to be a number.");
                     return createValue();
                 }
@@ -1519,7 +1524,7 @@ const Matte = {
             };
             
             heap_queryTable[QUERY.SIN] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("sin requires base value to be a number.");
                     return createValue();
                 }
@@ -1528,7 +1533,7 @@ const Matte = {
             
             
             heap_queryTable[QUERY.TAN] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("tan requires base value to be a number.");
                     return createValue();
                 }
@@ -1537,7 +1542,7 @@ const Matte = {
             
 
             heap_queryTable[QUERY.ACOS] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("acos requires base value to be a number.");
                     return createValue();
                 }
@@ -1545,7 +1550,7 @@ const Matte = {
             };
             
             heap_queryTable[QUERY.ASIN] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("asin requires base value to be a number.");
                     return createValue();
                 }
@@ -1554,7 +1559,7 @@ const Matte = {
             
             
             heap_queryTable[QUERY.ATAN] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("atan requires base value to be a number.");
                     return createValue();
                 }
@@ -1564,56 +1569,56 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_ATAN2);
             };
             heap_queryTable[QUERY.SQRT] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("sqrt requires base value to be a number.");
                     return createValue();
                 }
                 return heap.createNumber(Math.atan(value.data));
             };
             heap_queryTable[QUERY.ABS] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("abs requires base value to be a number.");
                     return createValue();
                 }
                 return heap.createNumber(Math.abs(value.data));
             };
             heap_queryTable[QUERY.ISNAN] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("isNaN requires base value to be a number.");
                     return createValue();
                 }
                 return heap.createBoolean(isNaN(value.data));
             };
             heap_queryTable[QUERY.FLOOR] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("floor requires base value to be a number.");
                     return createValue();
                 }
                 return heap.createNumber(Math.floor(value.data));
             };
             heap_queryTable[QUERY.CEIL] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("ceil requires base value to be a number.");
                     return createValue();
                 }
                 return heap.createNumber(Math.ceil(value.data));
             };
             heap_queryTable[QUERY.ROUND] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("round requires base value to be a number.");
                     return createValue();
                 }
                 return heap.createNumber(Math.round(value.data));
             };
             heap_queryTable[QUERY.RADIANS] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("radian conversion requires base value to be a number.");
                     return createValue();
                 }
                 return heap.createNumber(value.data * (Math.PI / 180.0));
             };
             heap_queryTable[QUERY.DEGREES] = function(value) {
-                if (value.binID != TYPE.NUMBER) {
+                if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("degree conversion requires base value to be a number.");
                     return createValue();
                 }
@@ -1627,7 +1632,7 @@ const Matte = {
 
 
             heap_queryTable[QUERY.REMOVECHAR] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("removeChar requires base value to be a string.");
                     return createValue();
                 }
@@ -1635,7 +1640,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.SUBSTR] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("substr requires base value to be a string.");
                     return createValue();
                 }
@@ -1643,7 +1648,7 @@ const Matte = {
             };
             
             heap_queryTable[QUERY.SPLIT] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("split requires base value to be a string.");
                     return createValue();
                 }
@@ -1651,7 +1656,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.SCAN] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("scan requires base value to be a string.");
                     return createValue();
                 }
@@ -1659,7 +1664,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.LENGTH] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("length requires base value to be a string.");
                     return createValue();
                 }
@@ -1667,7 +1672,7 @@ const Matte = {
             };
             
             heap_queryTable[QUERY.SEARCH] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("search requires base value to be a string.");
                     return createValue();
                 }
@@ -1675,7 +1680,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.SEARCH_ALL] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("searchAll requires base value to be a string.");
                     return createValue();
                 }
@@ -1683,7 +1688,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.CONTAINS] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("contains requires base value to be a string.");
                     return createValue();
                 }
@@ -1691,7 +1696,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.REPLACE] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("replace requires base value to be a string.");
                     return createValue();
                 }
@@ -1699,7 +1704,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.COUNT] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("count requires base value to be a string.");
                     return createValue();
                 }
@@ -1707,7 +1712,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.SETCHARCODEAT] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("setCharCodeAt requires base value to be a string.");
                     return createValue();
                 }
@@ -1715,14 +1720,14 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.SETCHARAT] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("setCharAt requires base value to be a string.");
                     return createValue();
                 }
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETCHARAT);
             };
             heap_queryTable[QUERY.CHARCODEAT] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("charCodeAt requires base value to be a string.");
                     return createValue();
                 }
@@ -1730,7 +1735,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.CHARAT] = function(value) {
-                if (value.binID != TYPE.STRING) {
+                if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("charAt requires base value to be a string.");
                     return createValue();
                 }
@@ -1742,7 +1747,7 @@ const Matte = {
 
 
             heap_queryTable[QUERY.KEYCOUNT] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("keycount requires base value to be an object.");
                     return createValue();
                 }
@@ -1750,7 +1755,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.KEYS] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("keys requires base value to be an object.");
                     return createValue();
                 }
@@ -1758,7 +1763,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.VALUES] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("values requires base value to be an object.");
                     return createValue();
                 }
@@ -1766,7 +1771,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.PUSH] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("push requires base value to be an object.");
                     return createValue();
                 }
@@ -1774,7 +1779,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.POP] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("pop requires base value to be an object.");
                     return createValue();
                 }
@@ -1790,7 +1795,7 @@ const Matte = {
             };
             
             heap_queryTable[QUERY.INSERT] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("insert requires base value to be an object.");
                     return createValue();
                 }
@@ -1798,7 +1803,7 @@ const Matte = {
             };
             
             heap_queryTable[QUERY.REMOVE] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("remove requires base value to be an object.");
                     return createValue();
                 }
@@ -1806,7 +1811,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.SETATTRIBUTES] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("setAttributes requires base value to be an object.");
                     return createValue();
                 }
@@ -1814,7 +1819,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.ATTRIBUTES] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("setAttributes requires base value to be an object.");
                     return createValue();
                 }
@@ -1826,7 +1831,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.SORT] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("sort requires base value to be an object.");
                     return createValue();
                 }
@@ -1834,7 +1839,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.SUBSET] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("subset requires base value to be an object.");
                     return createValue();
                 }
@@ -1842,7 +1847,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.FILTER] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("filter requires base value to be an object.");
                     return createValue();
                 }
@@ -1850,7 +1855,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.FINDINDEX] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("findIndex requires base value to be an object.");
                     return createValue();
                 }
@@ -1858,7 +1863,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.ISA] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("isa requires base value to be an object.");
                     return createValue();
                 }
@@ -1866,7 +1871,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.MAP] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("map requires base value to be an object.");
                     return createValue();
                 }
@@ -1874,7 +1879,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.ANY] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("any requires base value to be an object.");
                     return createValue();
                 }
@@ -1882,7 +1887,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.FOR] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("for requires base value to be an object.");
                     return createValue();
                 }
@@ -1890,7 +1895,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.FOREACH] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("foreach requires base value to be an object.");
                     return createValue();
                 }
@@ -1898,7 +1903,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.ALL] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("all requires base value to be an object.");
                     return createValue();
                 }
@@ -1906,7 +1911,7 @@ const Matte = {
             };
 
             heap_queryTable[QUERY.REDUCE] = function(value) {
-                if (value.binID != TYPE.OBJECT) {
+                if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("reduce requires base value to be an object.");
                     return createValue();
                 }
@@ -2077,7 +2082,7 @@ const Matte = {
                 
                 const arr = [];
                 var str;
-                if (detail.binID == heap.TYPE.STRING) {
+                if (detail.binID == heap.TYPE_STRING) {
                     str = detail.data + '\n';
                 } else {
                     str = "<no string data available>";
@@ -2278,21 +2283,21 @@ const Matte = {
                     return heap.createEmpty();
                 }
                 
-                if (respObject.binID != heap.TYPE.EMPTY && respObject.binID != heap.TYPE.OBJECT) {
+                if (respObject.binID != heap.TYPE_EMPTY && respObject.binID != heap.TYPE_OBJECT) {
                     vm.raiseErrorString("Listen requires that the response expression is an object.");
                     return heap.createEmpty();                    
                 }
                 
                 var onSend;
                 var onError;
-                if (respObject.binID != heap.TYPE.EMPTY) {
+                if (respObject.binID != heap.TYPE_EMPTY) {
                     onSend = heap.valueObjectAccessDirect(respObject, vm_specialString_onsend, 0);
-                    if (onSend && onSend.binID != heap.TYPE.EMPTY && !heap.valueIsCallable(onSend)) {
+                    if (onSend && onSend.binID != heap.TYPE_EMPTY && !heap.valueIsCallable(onSend)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onSend' attribute be a Function.");
                         return heap.createEmpty();                                            
                     }
                     onError = heap.valueObjectAccessDirect(respObject, vm_specialString_onerror, 0);
-                    if (onError && onError.binID != heap.TYPE.EMPTY && !heap.valueIsCallable(onError)) {
+                    if (onError && onError.binID != heap.TYPE_EMPTY && !heap.valueIsCallable(onError)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onError' attribute be a Function.");
                         return heap.createEmpty();                                            
                     }
@@ -2378,10 +2383,10 @@ const Matte = {
                         ////////// DEBUGGING PURPOSES ONLY
                         ////////// Please re-comment for deployment!
                             // check if any invalid values were introduced, such as undefined
-                            for(var i = 0; i < frame.valueStack.length; ++i) {
-                                if (frame.valueStack[i] == undefined || frame.valueStack[i] == null || frame.valueStack[i].binID == undefined)
-                                    throw new Error('Value stack poisoned.');                            
-                            }
+                            //for(var i = 0; i < frame.valueStack.length; ++i) {
+                            //    if (frame.valueStack[i] == undefined || frame.valueStack[i] == null || frame.valueStack[i].binID == undefined)
+                            //        throw new Error('Value stack poisoned.');                            
+                            //}
                         
                         //////////
                     }
@@ -2559,7 +2564,7 @@ const Matte = {
                     return heap.createEmpty();                        
                 }
                 
-                if (func.binID == heap.TYPE.TYPE) {
+                if (func.binID == heap.TYPE_TYPE) {
                     if (args.length) {
                         if (argNames[0].data != vm_specialString_from.data) {
                             vm.raiseErrorString("Type conversion failed: unbound parameter to function ('from')");
@@ -2783,15 +2788,15 @@ const Matte = {
             };          
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ADD] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data + heap.valueAsNumber(b));
                     
-                  case heap.TYPE.STRING:
+                  case heap.TYPE_STRING:
                     const astr = a.data;
                     const bstr = heap.valueAsString(b).data;
                     return heap.createString(astr + bstr);
                     
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '+', b);
                     
                   default:
@@ -2804,10 +2809,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_SUB] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data - heap.valueAsNumber(b));
                     
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '-', b);
                     
                   default:
@@ -2818,10 +2823,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_DIV] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data / heap.valueAsNumber(b));
                     
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '/', b);
                     
                   default:
@@ -2832,10 +2837,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_MULT] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data * heap.valueAsNumber(b));
                     
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '*', b);
                     
                   default:
@@ -2847,10 +2852,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NOT] = function(a) {
                 switch(a.binID) {
-                  case heap.TYPE.BOOLEAN:
+                  case heap.TYPE_BOOLEAN:
                     return heap.createBoolean(!heap.valueAsBoolean(a));
                     
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '!');
                     
                   default:
@@ -2861,10 +2866,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NEGATE] = function(a) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(-a.data);
                     
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '-()');
                     
                   default:
@@ -2875,7 +2880,7 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_NOT] = function(a) {
                 switch(a.binID) {
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '~');
                     
                   default:
@@ -2889,10 +2894,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_OR] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.BOOLEAN:
+                  case heap.TYPE_BOOLEAN:
                     return heap.createBoolean(a.data | heap.valueAsBoolean(b));
 
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '|');
                     
                   default:
@@ -2903,10 +2908,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_OR] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.BOOLEAN:
+                  case heap.TYPE_BOOLEAN:
                     return heap.createBoolean(a.data || heap.valueAsBoolean(b));
 
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '||');
                     
                   default:
@@ -2917,10 +2922,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_AND] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.BOOLEAN:
+                  case heap.TYPE_BOOLEAN:
                     return heap.createBoolean(a.data & heap.valueAsBoolean(b));
 
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '&');
                     
                   default:
@@ -2931,10 +2936,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_AND] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.BOOLEAN:
+                  case heap.TYPE_BOOLEAN:
                     return heap.createBoolean(a.data && heap.valueAsBoolean(b));
 
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '&&');
                     
                   default:
@@ -2946,7 +2951,7 @@ const Matte = {
 
             const vm_operatorOverloadOnly2 = function(operator, a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, operator, b);
                   default:
                     vm_badOperator(operator, a);
@@ -2956,7 +2961,7 @@ const Matte = {
 
             const vm_operatorOverloadOnly1 = function(operator, a) {
                 switch(a.binID) {
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, operator);
                   default:
                     vm_badOperator(operator, a);
@@ -2967,10 +2972,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_POW] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(Math.pow(a.data, heap.valueAsNumber(b)));
 
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '**');
                     
                   default:
@@ -2981,36 +2986,36 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ] = function(a, b) {
-                if (b.binID == heap.TYPE.EMPTY && a.binID != heap.TYPE.EMPTY) {
+                if (b.binID == heap.TYPE_EMPTY && a.binID != heap.TYPE_EMPTY) {
                     return heap.createBoolean(false);
                 }
                 switch(a.binID) {
-                  case heap.TYPE.EMPTY:
+                  case heap.TYPE_EMPTY:
                     return heap.createBoolean(b.binID == 0);
                     
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createBoolean(a.data == heap.valueAsNumber(b));
 
-                  case heap.TYPE.STRING:
+                  case heap.TYPE_STRING:
                     return heap.createBoolean(a.data == heap.valueAsString(b).data);
 
-                  case heap.TYPE.BOOLEAN:
+                  case heap.TYPE_BOOLEAN:
                     return heap.createBoolean(a.data == heap.valueAsBoolean(b));
 
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     if (vm_objectHasOperator(a, '==')) {
                         return vm_runObjectOperator2(a, '==', b);
                     } else {
                         if (b.binID == 0) {
                             return heap.createBoolean(false);
-                        } else if (b.binID == heap.TYPE.OBJECT) {
+                        } else if (b.binID == heap.TYPE_OBJECT) {
                             return heap.createBoolean(a === b);
                         } else {
                             vm.raiseErrorString("== operator with object and non-empty or non-object values is undefined.");
                             return heap.createBoolean(false);
                         }
                     }
-                  case heap.TYPE.TYPE:
+                  case heap.TYPE_TYPE:
                     if (b.binID == a.binID) {
                         return heap.createBoolean(a.data.id == b.data.id);
                     } else {
@@ -3025,37 +3030,37 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NOTEQ] = function(a, b) {
-                if (b.binID == heap.TYPE.EMPTY && a.binID != heap.TYPE.EMPTY) {
+                if (b.binID == heap.TYPE_EMPTY && a.binID != heap.TYPE_EMPTY) {
                     return heap.createBoolean(true);
                 }
                 switch(a.binID) {
-                  case heap.TYPE.EMPTY:
+                  case heap.TYPE_EMPTY:
                     return heap.createBoolean(b.binID != 0);
                     
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createBoolean(a.data != heap.valueAsNumber(b));
 
-                  case heap.TYPE.STRING:
+                  case heap.TYPE_STRING:
                     return heap.createBoolean(a.data != heap.valueAsString(b).data);
 
-                  case heap.TYPE.BOOLEAN:
+                  case heap.TYPE_BOOLEAN:
                     return heap.createBoolean(a.data == heap.valueAsBoolean(b));
 
 
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     if (vm_objectHasOperator(a, '!=')) {
                         return vm_runObjectOperator2(a, '!=', b);
                     } else {
                         if (b.binID == 0) {
                             return heap.createBoolean(true);
-                        } else if (b.binID == heap.TYPE.OBJECT) {
+                        } else if (b.binID == heap.TYPE_OBJECT) {
                             return heap.createBoolean(a != b);
                         } else {
                             vm.raiseErrorString("== operator with object and non-empty or non-object values is undefined.");
                             return heap.createBoolean(true);
                         }
                     }
-                  case heap.TYPE.TYPE:
+                  case heap.TYPE_TYPE:
                     if (b.binID == a.binID) {
                         return heap.createBoolean(a.data.id != b.data.id);
                     } else {
@@ -3073,14 +3078,14 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESS] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createBoolean(a.data < heap.valueAsNumber(b));
                     
-                  case heap.TYPE.STRING:
+                  case heap.TYPE_STRING:
                     return heap.createBoolean(
                         a.data < heap.valueAsString(b).data
                     );
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<", b);
                   default:
                     vm_badOperator("<", a);
@@ -3090,14 +3095,14 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATER] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createBoolean(a.data > heap.valueAsNumber(b));
                     
-                  case heap.TYPE.STRING:
+                  case heap.TYPE_STRING:
                     return heap.createBoolean(
                         a.data > heap.valueAsString(b).data
                     );
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">", b);
                   default:
                     vm_badOperator(">", a);
@@ -3108,14 +3113,14 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESSEQ] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createBoolean(a.data <= heap.valueAsNumber(b));
                     
-                  case heap.TYPE.STRING:
+                  case heap.TYPE_STRING:
                     return heap.createBoolean(
                         a.data <= heap.valueAsString(b).data
                     );
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<=", b);
                   default:
                     vm_badOperator("<=", a);
@@ -3125,14 +3130,14 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATEREQ] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createBoolean(a.data >= heap.valueAsNumber(b));
                     
-                  case heap.TYPE.STRING:
+                  case heap.TYPE_STRING:
                     return heap.createBoolean(
                         a.data >= heap.valueAsString(b).data
                     );
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">=", b);
                   default:
                     vm_badOperator(">=", a);
@@ -3143,10 +3148,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_MODULO] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data % heap.valueAsNumber(b));
                     
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '%', b);
                     
                   default:
@@ -3158,7 +3163,7 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_TYPESPEC] = function(a, b) {
                 switch(b.binID) {
-                  case heap.TYPE.TYPE:
+                  case heap.TYPE_TYPE:
                     if (!heap.valueIsA(a, b)) {
                         vm.raiseErrorString("Type specifier (=>) failure: expected value of type '"+heap.valueTypeName(b).data+"', but received value of type '"+heap.valueTypeName(heap.valueGetType(a)).data+"'");
                     }
@@ -3172,10 +3177,10 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_CARET] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.BOOLEAN:
+                  case heap.TYPE_BOOLEAN:
                     return heap.createBoolean(a.data ^ heap.valueAsBoolean(b));
                     
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '^', b);
                     
                   default:
@@ -3196,9 +3201,9 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_ADD] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data + heap.valueAsNumber(b));
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "+=", b);
                   default:
                     vm_badOperator("+=", a);
@@ -3209,9 +3214,9 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_SUB] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data - heap.valueAsNumber(b));
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "-=", b);
                   default:
                     vm_badOperator("-=", a);
@@ -3221,9 +3226,9 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_DIV] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data / heap.valueAsNumber(b));
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "/=", b);
                   default:
                     vm_badOperator("/=", a);
@@ -3233,9 +3238,9 @@ const Matte = {
             
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_MULT] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data * heap.valueAsNumber(b));
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "*=", b);
                   default:
                     vm_badOperator("*=", a);
@@ -3245,9 +3250,9 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_MOD] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(a.data % heap.valueAsNumber(b));
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "%=", b);
                   default:
                     vm_badOperator("%=", a);
@@ -3257,9 +3262,9 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_POW] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.NUMBER:
+                  case heap.TYPE_NUMBER:
                     return heap.createNumber(Math.pow(a.data, heap.valueAsNumber(b)));
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "**=", b);
                   default:
                     vm_badOperator("**=", a);
@@ -3269,7 +3274,7 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_AND] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "&=", b);
                   default:
                     vm_badOperator("&=", a);
@@ -3279,7 +3284,7 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_OR] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "|=", b);
                   default:
                     vm_badOperator("|=", a);
@@ -3289,7 +3294,7 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_XOR] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "^=", b);
                   default:
                     vm_badOperator("^=", a);
@@ -3299,7 +3304,7 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<<=", b);
                   default:
                     vm_badOperator("<<=", a);
@@ -3309,7 +3314,7 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE.OBJECT:
+                  case heap.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">>=", b);
                   default:
                     vm_badOperator(">>=", a);
@@ -3498,8 +3503,8 @@ const Matte = {
                 var key = frame.valueStack[frame.valueStack.length-1];
                 
                 var i = 0;
-                if (stackSize > 2 && key.binID == heap.TYPE.STRING) {
-                    while(i < stackSize && key.binID == heap.TYPE.STRING) {
+                if (stackSize > 2 && key.binID == heap.TYPE_STRING) {
+                    while(i < stackSize && key.binID == heap.TYPE_STRING) {
                         argNames.push(key);
                         i++;
                         key = frame.valueStack[frame.valueStack.length - 1 - i];
@@ -3558,7 +3563,7 @@ const Matte = {
                       case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT: 
                       case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT: 
                         vOut = vm_operatorFunc[op + vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE](ref, v); 
-                        if (ref.binID != heap.TYPE.OBJECT)
+                        if (ref.binID != heap.TYPE_OBJECT)
                             vm_stackframeSetReferrable(0, refn, vOut);                    
 
                         break;
@@ -3641,7 +3646,7 @@ const Matte = {
                         out = vm_operatorFunc[opr](ref, val); 
                     }
                     
-                    if (!isDirect || val.binID != heap.TYPE.OBJECT) {
+                    if (!isDirect || val.binID != heap.TYPE_OBJECT) {
                         heap.valueObjectSet(object, key, out, isBracket);
                     }
                     frame.valueStack.pop();
@@ -3719,7 +3724,7 @@ const Matte = {
                 const output = heap.valueQuery(o, inst.data);
                 frame.valueStack.pop();
                 frame.valueStack.push(output);
-                if (output.binID == heap.TYPE.OBJECT && output.data.function_stub != undefined) {
+                if (output.binID == heap.TYPE_OBJECT && output.data.function_stub != undefined) {
                     frame.valueStack.push(o);
                     frame.valueStack.push(vm_specialString_base);                    
                 }
@@ -3864,7 +3869,7 @@ const Matte = {
 
             //// strings
             vm_addBuiltIn(vm.EXT_CALL.STRING_COMBINE, ["strings"], function(fn, args) {
-                if (args[0].binID != heap.TYPE.OBJECT) {
+                if (args[0].binID != heap.TYPE_OBJECT) {
                     vm.raiseErrorString( "Expected Object as parameter for string combination. (The object should contain string values to combine).");
                     return heap.createEmpty();
                 }
@@ -3914,7 +3919,7 @@ const Matte = {
             });
 
             const ensureArgObject = function(args) {
-                if (args[0].binID != heap.TYPE.OBJECT) {
+                if (args[0].binID != heap.TYPE_OBJECT) {
                     vm.raiseErrorString("Built-in Object function expects a value of type Object to work with.");
                     return 0;
                 }
@@ -3941,7 +3946,7 @@ const Matte = {
                 if (args[1].binID) {
                     heap.valueObjectRemoveKey(args[0], args[1])
                 } else if (args[2].binID) {
-                    if (args[2].binID != heap.TYPE.OBJECT) {
+                    if (args[2].binID != heap.TYPE_OBJECT) {
                         vm.raiseErrorString("'keys' for remove query requires argument to be an Object.");
                         return heap.createEmpty();
                     }                
@@ -3956,7 +3961,7 @@ const Matte = {
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETATTRIBUTES, ['base', 'attributes'], function(fn, args) {
                 if (!ensureArgObject(args)) return heap.createEmpty();
-                if (args[1].binID != heap.TYPE.OBJECT) {
+                if (args[1].binID != heap.TYPE_OBJECT) {
                     vm.raiseErrorString("'setAttributes' requires an Object to be the 'attributes'");
                     return heap.createEmpty();
                 }
@@ -3966,7 +3971,7 @@ const Matte = {
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SORT, ['base', 'comparator'], function(fn, args) {
                 if (!ensureArgObject(args)) return heap.createEmpty();
-                if (heap.binID == heap.TYPE.OBJECT && heap.data.function_stub) {
+                if (heap.binID == heap.TYPE_OBJECT && heap.data.function_stub) {
                     vm.raiseErrorString("A function comparator is required for sorting.h");
                     return heap.createEmpty();
                 }
@@ -4141,7 +4146,7 @@ const Matte = {
                 const v = args[1];
                 const params = args[0];
                 
-                if (!(v.binID == heap.TYPE.OBJECT && v.data.function_stub)) {
+                if (!(v.binID == heap.TYPE_OBJECT && v.data.function_stub)) {
                     vm.raiseErrorString("'for' requires the second argument to be a function.");
                     return heap.createEmpty();
                 }
@@ -4211,7 +4216,7 @@ const Matte = {
             
 
             const ensureArgString = function(args) {
-                if (args[0].binID != heap.TYPE.STRING) {
+                if (args[0].binID != heap.TYPE_STRING) {
                     vm.raiseErrorString("Built-in String function expects a value of type String to work with.");
                     return 0;
                 }
@@ -4380,11 +4385,11 @@ const Matte = {
             
             const encode = function(val) {
                 switch(val.binID) {
-                  case heap.TYPE.NUMBER: return ''+val.data; break;
-                  case heap.TYPE.STRING: return val.data; break;
-                  case heap.TYPE.BOOLEAN: return val.data == true ? 'true' : 'false'; break;
-                  case heap.TYPE.EMPTY: return 'null';
-                  case heap.TYPE.OBJECT: (function(){
+                  case heap.TYPE_NUMBER: return ''+val.data; break;
+                  case heap.TYPE_STRING: return val.data; break;
+                  case heap.TYPE_BOOLEAN: return val.data == true ? 'true' : 'false'; break;
+                  case heap.TYPE_EMPTY: return 'null';
+                  case heap.TYPE_OBJECT: (function(){
                     if (heap.valueObjectGetKeyCount(val) != heap.valueObjectGetNumberKeyCount(val)) {
                         const keys = heap.valueObjectKeys(val);
                         const vals = heap.valueObjectValues(val);
@@ -4393,7 +4398,7 @@ const Matte = {
                         for(var i = 0; i < keys.length; ++i) {
                             if (i != 0)
                                 out += ',';
-                            if (keys[i].binID == heap.TYPE.OBJECT)
+                            if (keys[i].binID == heap.TYPE_OBJECT)
                                 continue;
                             out += encode(keys[i]) + ':' + encode(values[i]);
                         }
