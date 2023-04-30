@@ -2633,7 +2633,6 @@ const Matte = {
 
                 // non-external call
                 } else {
-                    const argsReal = [];
                     const lenReal = args.length;
                     var   len = stub.argCount;
                     const referrables = [];
@@ -2641,30 +2640,42 @@ const Matte = {
                         referrables.push(heap.createEmpty());
                     }
                     
+                    
+                    const nameMap = {};
+                    
                     for(var i = 0; i < lenReal; ++i) {
-                        for(var n = 0; n < len; ++n) {
-                            if (stub.argNames[n] == argNames[i].data) {
-                                referrables[n+1] = args[i];
-                                break;
-                            }
-                        }
-                        
-                        if (n == len) {
-                            var str;
-                            if (len) {
-                                str = "Could not bind requested parameter: '"+argNames[i].data+"'.\n Bindable parameters for this function: ";
-                            } else {
-                                str = "Could not bind requested parameter: '"+argNames[i].data+"'.\n (no bindable parameters for this function)";                                
-                            }
-                            
-                            for(n = 0; n < len; ++n) {
-                                str += " \"" + stub.argNames[n] + "\" ";
-                            }
-                            
-                            vm.raiseErrorString(str);
-                            return heap.createEmpty();
+                        nameMap[argNames[i].data] = args[i];
+                    };
+                    
+                    for(var i = 0; i < len; ++i) {
+                        const name = stub.argNames[i];
+                        const res = nameMap[name];
+                        if (res == undefined) {                      
+                        } else {
+                            delete nameMap[name];
+                            referrables[i+1] = res;                            
                         }
                     }
+                    
+                    
+                    const unbound = Object.keys(nameMap);
+                    if (unbound.length) {
+                        const which = unbound[0];
+                        var str;
+                        if (len) {
+                            str = "Could not bind requested parameter: '"+which+"'.\n Bindable parameters for this function: ";
+                        } else {
+                            str = "Could not bind requested parameter: '"+which+"'.\n (no bindable parameters for this function)";                                
+                        }
+                        
+                        for(n = 0; n < len; ++n) {
+                            str += " \"" + stub.argNames[n] + "\" ";
+                        }
+                        
+                        vm.raiseErrorString(str);
+                        return heap.createEmpty();                          
+                    }
+
                     
                     var ok = 1;
                     if (callable == 2 && len) {
