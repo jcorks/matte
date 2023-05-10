@@ -356,9 +356,9 @@ const Matte = {
             }
         };
     
-        // matte_heap.c
+        // matte_store.c
         
-        const heap = function(){
+        const store = function(){
             const TYPE_EMPTY = 0;
             const TYPE_BOOLEAN = 1;
             const TYPE_NUMBER = 2;
@@ -461,7 +461,7 @@ const Matte = {
                         const index = Math.floor(key.data);
                         
                         for(var i = object.data.kv_number.length; i < index+1; ++i) {
-                            object.data.kv_number[i] = heap.createEmpty();                        
+                            object.data.kv_number[i] = store.createEmpty();                        
                         }
                     }
                     
@@ -499,7 +499,7 @@ const Matte = {
             const objectGetConvOperator = function(m, type) {
                 if (m.data.table_attribSet == undefined)
                     return createValue();
-                return heap.valueObjectAccess(m.data.table_attribSet, type, 0);
+                return store.valueObjectAccess(m.data.table_attribSet, type, 0);
             };
 
             const objectGetAccessOperator = function(object, isBracket, read) {
@@ -507,12 +507,12 @@ const Matte = {
                 if (object.data.table_attribSet == undefined)
                     return out;
                 
-                const set = heap.valueObjectAccess(object.data.table_attribSet, isBracket ? heap_specialString_bracketAccess : heap_specialString_dotAccess, 0);
+                const set = store.valueObjectAccess(object.data.table_attribSet, isBracket ? store_specialString_bracketAccess : store_specialString_dotAccess, 0);
                 if (set && set.binID) {
                     if (set.binID != TYPE_OBJECT) {
                         vm.raiseErrorString("operator['[]'] and operator['.'] property must be an Object if it is set.");
                     } else {
-                        out = heap.valueObjectAccess(set, read ? heap_specialString_get : heap_specialString_set, 0);
+                        out = store.valueObjectAccess(set, read ? store_specialString_get : store_specialString_set, 0);
                     }
                 }
                 return out;
@@ -530,14 +530,14 @@ const Matte = {
             };
             
             const typeArrayToIsA = function(val) {
-                const count = heap.valueObjectGetNumberKeyCount(val); // should be non-number?
+                const count = store.valueObjectGetNumberKeyCount(val); // should be non-number?
                 const array = [];
                 if (count == 0) {
                     vm.raiseErrorString("'inherits' attribute cannot be empty.");
                     return array;
                 }
                 for(var i = 0; i < count; ++i) {
-                    const v = heap.valueObjectArrayAtUnsafe(val, i);
+                    const v = store.valueObjectArrayAtUnsafe(val, i);
                     if (v.binID != TYPE_TYPE) {
                         vm.raiseErrorString("'inherits' attribute must have Type values only.");
                         return array;
@@ -584,26 +584,26 @@ const Matte = {
                 }
             };
 
-            const heap_lock = {};
-            var heap_typepool = 0;
-            const heap_typecode2data = [[]];
-            const heap_type_number_methods = {
+            const store_lock = {};
+            var store_typepool = 0;
+            const store_typecode2data = [[]];
+            const store_type_number_methods = {
                 PI : vm.EXT_CALL.NUMBER_PI,
                 parse : vm.EXT_CALL.NUMBER_PARSE,
                 random : vm.EXT_CALL.NUMBER_RANDOM
             };
-            const heap_type_object_methods = {
+            const store_type_object_methods = {
                 newType : vm.EXT_CALL.OBJECT_NEWTYPE,
                 instantiate : vm.EXT_CALL.OBJECT_INSTANTIATE,
                 freezeGC : vm.EXT_CALL.OBJECT_FREEZEGC,
                 thawGC : vm.EXT_CALL.OBJECT_THAWGC,
                 garbageCollect : vm.EXT_CALL.OBJECT_GARBAGECOLLECT
             };
-            const heap_type_string_methods = {
+            const store_type_string_methods = {
                 combine : vm.EXT_CALL.STRING_COMBINE
             };
-            const heap_queryTable = {};
-            const heap = {
+            const store_queryTable = {};
+            const store = {
                 TYPE_BOOLEAN : TYPE_BOOLEAN,
                 TYPE_EMPTY : TYPE_EMPTY,
                 TYPE_NUMBER : TYPE_NUMBER,
@@ -642,7 +642,7 @@ const Matte = {
                 createObjectTyped : function(type) {
                     const out = createObject();
                     if (type.binID != TYPE_TYPE) {
-                        vm.raiseErrorString("Cannot instantiate object without a Type. (given value is of type " + heap.valueTypeName(heap.valueGetType(type)) + ')');
+                        vm.raiseErrorString("Cannot instantiate object without a Type. (given value is of type " + store.valueTypeName(store.valueGetType(type)) + ')');
                         return out;
                     }
                     out.data.typecode = type.data.id;
@@ -652,19 +652,19 @@ const Matte = {
                 createType : function(name, inherits) {
                     const out = {};
                     out.binID = TYPE_TYPE;
-                    if (heap_typepool == 0xffffffff) {
+                    if (store_typepool == 0xffffffff) {
                         vm.raiseErrorString('Type count limit reached. No more types can be created.');
                         return createValue();
                     } else {
                         out.data = {
-                            id : ++heap_typepool
+                            id : ++store_typepool
                         };
                     }
                     
                     if (name && name.binID) {
-                        out.data.name = heap.valueAsString(name);
+                        out.data.name = store.valueAsString(name);
                     } else {
-                        out.data.name = heap.createString("<anonymous type " + out.data.id + ">");
+                        out.data.name = store.createString("<anonymous type " + out.data.id + ">");
                     }
 
                     if (inherits && inherits.binID) {
@@ -674,7 +674,7 @@ const Matte = {
                         }                    
                         out.data.isa = typeArrayToIsA(inherits);
                     }
-                    heap_typecode2data.push(out);
+                    store_typecode2data.push(out);
                     return out;
                 },
                 
@@ -739,7 +739,7 @@ const Matte = {
                 },
                 
                 createExternalFunction : function(stub) {
-                    return heap.createFunction(stub);
+                    return store.createFunction(stub);
                 },
                 
                 createTypedFunction : function(stub, args) {
@@ -753,25 +753,25 @@ const Matte = {
                             return createValue();
                         }
                     }
-                    const func = heap.createFunction(stub);
+                    const func = store.createFunction(stub);
                     func.data.function_types = args;
                     return func;
                 },
                 
                 valueObjectPushLock : function(value) {
-                    if (heap_lock[value] != undefined) {
-                        heap_lock[value]++;
+                    if (store_lock[value] != undefined) {
+                        store_lock[value]++;
                     } else {
-                        heap_lock[value] = 1;                    
+                        store_lock[value] = 1;                    
                     }
                 },
                 
                 valueObjectPopLock : function(value) {
-                    if (heap_lock[value] == undefined)
+                    if (store_lock[value] == undefined)
                         return;
-                    heap_lock[value]--;
-                    if (heap_lock[value] <= 0)
-                        delete heap_lock[value];
+                    store_lock[value]--;
+                    if (store_lock[value] <= 0)
+                        delete store_lock[value];
                 },
                 
                 valueObjectArrayAtUnsafe : function(value, index) {
@@ -789,9 +789,9 @@ const Matte = {
                 valueSetCapturedValue : function(value, index, capt) {
                     if (index >= value.data.function_captures.length) return;
                     const ref = value.data.function_captures[index];
-                    heap.valueObjectSet(
+                    store.valueObjectSet(
                         ref.referrableSrc, 
-                        heap.createNumber(ref.index),
+                        store.createNumber(ref.index),
                         capt 
                     );
                 },
@@ -804,7 +804,7 @@ const Matte = {
                 valueGetCapturedValue : function(value, index) {
                     if (value.binID != TYPE_OBJECT || value.data.function_stub == undefined) return;
                     if (index >= value.data.function_captures.length) return;
-                    return heap.valueObjectArrayAtUnsafe(
+                    return store.valueObjectArrayAtUnsafe(
                         value.data.function_captures[index].referrableSrc,
                         value.data.function_captures[index].index
                     );
@@ -815,12 +815,12 @@ const Matte = {
                         const curlen = value.data.kv_number ? value.data.kv_number.length : 0;
                         if (from >= curlen || to >= curlen) return createValue();
                         
-                        return heap.createObjectArray(value.data.kv_number.slice(from, to+1));
+                        return store.createObjectArray(value.data.kv_number.slice(from, to+1));
                     } else if (value.binID == TYPE_STRING) {
                         
                         const curlen = value.data.length;;
                         if (from >= curlen || to >= curlen) return createValue();
-                        return heap.createString(
+                        return store.createString(
                             value.data.substr(from, to+1)
                         );
                     }
@@ -859,9 +859,9 @@ const Matte = {
                             return 0;
                         }
 
-                        const operator = objectGetConvOperator(value, heap_type_number);
+                        const operator = objectGetConvOperator(value, store_type_number);
                         if (operator.binID) {
-                            return heap.valueAsNumber(vm.callFunction(operator, [], []));
+                            return store.valueAsNumber(vm.callFunction(operator, [], []));
                         } else {
                             vm.raiseErrorString("Object has no valid conversion to number");
                         }
@@ -873,16 +873,16 @@ const Matte = {
                 valueAsString : function(value) {
                     switch(value.binID) {
                       case TYPE_EMPTY:
-                        return heap_specialString_empty;
+                        return store_specialString_empty;
 
                       case TYPE_TYPE:
-                        return heap.valueTypeName(value);
+                        return store.valueTypeName(value);
 
                       case TYPE_NUMBER:
-                        return heap.createString(Number.parseFloat(value.data));
+                        return store.createString(Number.parseFloat(value.data));
 
                       case TYPE_BOOLEAN:
-                        return value.data == true ? heap_specialString_true : heap_specialString_false;
+                        return value.data == true ? store_specialString_true : store_specialString_false;
                         
                       case TYPE_STRING:
                         return value;
@@ -890,19 +890,19 @@ const Matte = {
                       case TYPE_OBJECT:
                         if (value.data.function_stub != undefined) {
                             vm.raiseErrorString("Cannot convert function into a string.");
-                            return heap_specialString_empty;
+                            return store_specialString_empty;
                         }
 
-                        const operator = objectGetConvOperator(value, heap_type_string);
+                        const operator = objectGetConvOperator(value, store_type_string);
                         if (operator.binID) {
-                            return heap.valueAsString(vm.callFunction(operator, [], []));
+                            return store.valueAsString(vm.callFunction(operator, [], []));
                         } else {
                             vm.raiseErrorString("Object has no valid conversion to string");
                         }
                             
                     }
                     // shouldnt get here.
-                    return heap_specialString_empty;
+                    return store_specialString_empty;
                 },
                 
                 
@@ -917,10 +917,10 @@ const Matte = {
                         if (value.data.function_stub != undefined)
                             return 1;
 
-                        const operator = objectGetConvOperator(value, heap_type_boolean);                            
+                        const operator = objectGetConvOperator(value, store_type_boolean);                            
                         if (operator.binID) {
                             const r = vm.callFunction(operator, [], []);
-                            return heap.valueAsBoolean(r);
+                            return store.valueAsBoolean(r);
                         } else {
                             return 1;
                         }
@@ -948,13 +948,13 @@ const Matte = {
                         break;
 
                       case 2:
-                        return heap.createBoolean(heap.valueAsBoolean(v));
+                        return store.createBoolean(store.valueAsBoolean(v));
 
                       case 3:
-                        return heap.createNumber(heap.valueAsNumber(v));
+                        return store.createNumber(store.valueAsNumber(v));
 
                       case 4:
-                        return heap.valueAsString(v);
+                        return store.valueAsString(v);
                         
                       case 5: 
                         if (v.binID == TYPE_OBJECT && !v.data.function_stub) {
@@ -972,7 +972,7 @@ const Matte = {
                         break;
                       
                     }
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 },
                 
                 valueIsCallable : function(value) {
@@ -986,11 +986,11 @@ const Matte = {
                 valueObjectFunctionPreTypeCheckUnsafe : function(func, args) {
                     const len = args.length;
                     for(var i = 0; i < len; ++i) {
-                        if (!heap.valueIsA(args[i], func.data.function_types[i])) {
+                        if (!store.valueIsA(args[i], func.data.function_types[i])) {
                             vm.raiseErrorString(
                                 "Argument '" + func.data.function_stub.argNames[i] + 
-                                "' (type: " + heap.valueTypeName(heap.valueGetType(args[i])).data + ") is not of required type " + 
-                                heap.valueTypeName(func.data.function_types[i]).data
+                                "' (type: " + store.valueTypeName(store.valueGetType(args[i])).data + ") is not of required type " + 
+                                store.valueTypeName(func.data.function_types[i]).data
                             );
                             return 0;
                         }
@@ -1000,11 +1000,11 @@ const Matte = {
                 
                 valueObjectFunctionPostTypeCheckUnsafe : function(func, ret) {
                     const end = func.data.function_types.length - 1;
-                    if (!heap.valueIsA(ret, func.data.function_types[end])) {
+                    if (!store.valueIsA(ret, func.data.function_types[end])) {
                         matte.raiseErrorString(
                             "Return value" + 
-                            " (type: " + heap.valueTypeName(heap.valueGetType(ret)).data + ") is not of required type " + 
-                            heap.valueTypeName(func.data.function_types[end]).data
+                            " (type: " + store.valueTypeName(store.valueGetType(ret)).data + ") is not of required type " + 
+                            store.valueTypeName(func.data.function_types[end]).data
                         );
                         return 0;
                     }
@@ -1014,7 +1014,7 @@ const Matte = {
                 valueObjectAccess : function(value, key, isBracket) {
                     switch(value.binID) {
                       case TYPE_TYPE:
-                        return heap.valueObjectAccessDirect(value, key, isBracket);
+                        return store.valueObjectAccessDirect(value, key, isBracket);
 
                       case TYPE_OBJECT:
                         if (value.data.function_stub != undefined) {
@@ -1026,7 +1026,7 @@ const Matte = {
                             accessor = objectGetAccessOperator(value, isBracket, 1);
                         
                         if (accessor && accessor.binID) {
-                            return vm.callFunction(accessor, [key], [heap_specialString_key]);
+                            return vm.callFunction(accessor, [key], [store_specialString_key]);
                         } else {
                             const output = objectLookup(value, key);
                             if (output == undefined)
@@ -1034,7 +1034,7 @@ const Matte = {
                             return output;
                         }
                       default:
-                        vm.raiseErrorString("Cannot access member of a non-object type. (Given value is of type: " + heap.valueTypeName(heap.valueGetType(value)).data + ")");
+                        vm.raiseErrorString("Cannot access member of a non-object type. (Given value is of type: " + store.valueTypeName(store.valueGetType(value)).data + ")");
                         return createValue();
                     }
                 },
@@ -1055,9 +1055,9 @@ const Matte = {
                         
                         var base;
                         switch(value.data.id) {
-                          case 3: base = heap_type_number_methods; break;
-                          case 4: base = heap_type_string_methods; break;
-                          case 5: base = heap_type_object_methods; break;
+                          case 3: base = store_type_number_methods; break;
+                          case 4: base = store_type_string_methods; break;
+                          case 5: base = store_type_object_methods; break;
                         }
                         if (base == undefined) {
                             vm.raiseErrorString("The given type has no built-in functions.");
@@ -1085,24 +1085,24 @@ const Matte = {
                         }
                       
                       default:
-                        vm.raiseErrorString("Cannot access member of a non-object type. (Given value is of type: " + heap.valueTypeName(heap.valueGetType(value)).data + ")");
+                        vm.raiseErrorString("Cannot access member of a non-object type. (Given value is of type: " + store.valueTypeName(store.valueGetType(value)).data + ")");
                         return undefined;                      
                     }
                 },
                 
                 
                 valueObjectAccessString: function(value, plainString) {
-                    return heap.valueObjectAccess(
+                    return store.valueObjectAccess(
                         value,
-                        heap.createString(plainString),
+                        store.createString(plainString),
                         0
                     );
                 },
                 
                 valueObjectAccessIndex : function(value, index) {
-                    return heap.valueObjectAccess(
+                    return store.valueObjectAccess(
                         value,
-                        heap.createNumber(index),
+                        store.createNumber(index),
                         1
                     );                
                 },
@@ -1115,15 +1115,15 @@ const Matte = {
                 
                 
                     if (value.data.table_attribSet != undefined) {
-                        const set = heap.valueObjectAccess(value.data.table_attribSet, heap_specialString_keys, 0);
+                        const set = store.valueObjectAccess(value.data.table_attribSet, store_specialString_keys, 0);
                         if (set && set.binID)
-                            return heap.valueObjectValues(vm.callFunction(set, [], []));
+                            return store.valueObjectValues(vm.callFunction(set, [], []));
                     }
                     const out = [];
                     if (value.data.kv_number) {
                         const len = value.data.kv_number.length;
                         for(var i = 0; i < len; ++i) {
-                            out.push(heap.createNumber(i));
+                            out.push(store.createNumber(i));
                         }
                     }
                                     
@@ -1131,7 +1131,7 @@ const Matte = {
                         const keys = Object.keys(value.data.kv_string);
                         const len = keys.length;
                         for(var i = 0; i < len; ++i) {
-                            out.push(heap.createString(keys[i]));
+                            out.push(store.createString(keys[i]));
                         }
                     }
 
@@ -1144,11 +1144,11 @@ const Matte = {
                     }
                     
                     if (value.data.kv_true) {
-                        out.push(heap.createBoolean(true));
+                        out.push(store.createBoolean(true));
                     }
 
                     if (value.data.kv_false) {
-                        out.push(heap.createBoolean(false));
+                        out.push(store.createBoolean(false));
                     }
 
 
@@ -1159,7 +1159,7 @@ const Matte = {
                             out.push(keys[i]); // OK, type
                         }
                     }
-                    return heap.createObjectArray(out);                
+                    return store.createObjectArray(out);                
                 },
                 
                 valueObjectValues : function(value) {
@@ -1169,9 +1169,9 @@ const Matte = {
                     }
 
                     if (value.data.table_attribSet != undefined) {
-                        const set = heap.valueObjectAccess(value.data.table_attribSet, heap_specialString_values, 0);
+                        const set = store.valueObjectAccess(value.data.table_attribSet, store_specialString_values, 0);
                         if (set && set.binID)
-                            return heap.valueObjectValues(vm.callFunction(set, [], []));
+                            return store.valueObjectValues(vm.callFunction(set, [], []));
                     }
                     const out = [];
                     if (value.data.kv_number) {
@@ -1198,11 +1198,11 @@ const Matte = {
                     }
                     
                     if (value.data.kv_true) {
-                        out.push(heap.createBoolean(value.data.kv_true));
+                        out.push(store.createBoolean(value.data.kv_true));
                     }
 
                     if (value.data.kv_false) {
-                        out.push(heap.createBoolean(value.data.kv_false));
+                        out.push(store.createBoolean(value.data.kv_false));
                     }
 
 
@@ -1213,7 +1213,7 @@ const Matte = {
                             out.push(values[i]); // OK, type
                         }
                     }
-                    return heap.createObjectArray(out);                  
+                    return store.createObjectArray(out);                  
                 },
                 
                 
@@ -1275,19 +1275,19 @@ const Matte = {
                     if (vals.length == 0) return;
                     
                     const names = [
-                        heap.createString('a'),
-                        heap.createString('b')
+                        store.createString('a'),
+                        store.createString('b')
                     ];
                     
                     vals.sort(function(a, b) {
-                        return heap.valueAsNumber(vm.callFunction(lessFnValue, [a, b], names));
+                        return store.valueAsNumber(vm.callFunction(lessFnValue, [a, b], names));
                     });
                 },
                 
                 
                 valueObjectForeach : function(value, func) {
                     if (value.data.table_attribSet) {
-                        const set = heap.valueObjectAccess(value.data.table_attribSet, heap_specialString_foreach, 0);
+                        const set = store.valueObjectAccess(value.data.table_attribSet, store_specialString_foreach, 0);
                         if (set.binID) {
                             const v = vm.callFunction(set, [], []);
                             if (binID != TYPE_OBJECT) {
@@ -1300,21 +1300,21 @@ const Matte = {
                     }
                     
                     const names = [
-                        heap_specialString_key,
-                        heap_specialString_value
+                        store_specialString_key,
+                        store_specialString_value
                     ];
                     const stub = func.data.function_stub; 
                     if (stub && stub.argCount >= 2) {
-                        names[0] = heap.createString(stub.argNames[0]);
-                        names[1] = heap.createString(stub.argNames[1]);
+                        names[0] = store.createString(stub.argNames[0]);
+                        names[1] = store.createString(stub.argNames[1]);
                     }
                     
-                    const keys   = heap.valueObjectKeys(value);
-                    const values = heap.valueObjectValues(value);
-                    const len = heap.valueObjectGetNumberKeyCount(keys);
+                    const keys   = store.valueObjectKeys(value);
+                    const values = store.valueObjectValues(value);
+                    const len = store.valueObjectGetNumberKeyCount(keys);
                     for(var i = 0; i < len; ++i) {
-                        const k = heap.valueObjectAccessIndex(keys, i);
-                        const v = heap.valueObjectAccessIndex(values, i);
+                        const k = store.valueObjectAccessIndex(keys, i);
+                        const v = store.valueObjectAccessIndex(values, i);
                         vm.callFunction(func, [k, v], names);
                     }
                 },
@@ -1322,19 +1322,19 @@ const Matte = {
                 valueObjectSet : function(value, key, v, isBracket) {
                     if (value.binID != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot set property on something that isn't an object.");
-                        return heap.createEmpty();
+                        return store.createEmpty();
                     }
                     
                     if (key.binID == TYPE_EMPTY) {
                         vm.raiseErrorString("Cannot set property with an empty key");
-                        return heap.createEmpty();
+                        return store.createEmpty();
                     }
                     
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
                     if (assigner.binID) {
-                        const r = vm.callFunction(assigner, [key, v], [heap_specialString_key, heap_specialString_value]);
+                        const r = vm.callFunction(assigner, [key, v], [store_specialString_key, store_specialString_value]);
                         if (r.binID == TYPE_BOOLEAN && !r.data) {
-                            return heap.createEmpty();
+                            return store.createEmpty();
                         }
                     }
                     return objectPutProp(value, key, v);
@@ -1345,12 +1345,12 @@ const Matte = {
                         vm.raiseErrorString("Cannot use object set assignment syntax something that isnt an object.");
                         return;
                     }
-                    const keys = heap.valueObjectKeys(srcTable);
-                    const len = heap.valueObjectGetNumberKeyCount(keys);
+                    const keys = store.valueObjectKeys(srcTable);
+                    const len = store.valueObjectGetNumberKeyCount(keys);
                     for(var i = 0; i < len; ++i) {
-                        const key = heap.valueObjectArrayAtUnsafe(keys, i);
-                        const val = heap.valueObjectAccess(srcTable, key, 1);
-                        heap.valueObjectSet(value, key, val, 0);
+                        const key = store.valueObjectArrayAtUnsafe(keys, i);
+                        const val = store.valueObjectAccess(srcTable, key, 1);
+                        store.valueObjectSet(value, key, val, 0);
                     }
                 },
                 
@@ -1439,12 +1439,12 @@ const Matte = {
                         return 0;
                     }
                     
-                    if (typeobj.data.id == heap_type_any.data.id) return 1;
+                    if (typeobj.data.id == store_type_any.data.id) return 1;
                     if (value.binID != TYPE_OBJECT) {
-                        return (heap.valueGetType(value)).data.id == typeobj.data.id;
+                        return (store.valueGetType(value)).data.id == typeobj.data.id;
                     } else {
-                        if (typeobj.data.id == heap_type_object.data.id) return 1;
-                        const typep = heap.valueGetType(value); 
+                        if (typeobj.data.id == store_type_object.data.id) return 1;
+                        const typep = store.valueGetType(value); 
                         if (typep.data.id == typeobj.data.id) return 1;
                         
                         if (typep.data.isa == undefined) return 0;
@@ -1457,23 +1457,23 @@ const Matte = {
                 
                 valueGetType : function(value) {
                     switch(value.binID) {
-                      case TYPE_EMPTY:      return heap_type_empty;
-                      case TYPE_BOOLEAN:    return heap_type_boolean;
-                      case TYPE_NUMBER:     return heap_type_number;
-                      case TYPE_STRING:     return heap_type_string;
-                      case TYPE_TYPE:       return heap_type_type;
+                      case TYPE_EMPTY:      return store_type_empty;
+                      case TYPE_BOOLEAN:    return store_type_boolean;
+                      case TYPE_NUMBER:     return store_type_number;
+                      case TYPE_STRING:     return store_type_string;
+                      case TYPE_TYPE:       return store_type_type;
                       case TYPE_OBJECT: 
                         if (value.data.function_stub != undefined)
-                            return heap_type_function;
+                            return store_type_function;
                         else {
-                            return heap_typecode2data[value.data.typecode];
+                            return store_typecode2data[value.data.typecode];
                         } 
                     }
                 },
                 
                 
                 valueQuery : function(value, query) {
-                    const out = heap_queryTable[query](value);
+                    const out = store_queryTable[query](value);
                     if (out == undefined) {
                         vm.raiseErrorString("VM error: unknown query operator");
                     }
@@ -1483,146 +1483,146 @@ const Matte = {
                 valueTypeName : function(value) {
                     if (value.binID != TYPE_TYPE) {
                         vm.raiseErrorString("VM error: cannot get type name of a non Type value.");
-                        return heap_specialString_empty;
+                        return store_specialString_empty;
                     }
                     switch(value.data.id) {
-                      case 1: return heap_specialString_type_empty;
-                      case 2: return heap_specialString_type_boolean;
-                      case 3: return heap_specialString_type_number;
-                      case 4: return heap_specialString_type_string;
-                      case 5: return heap_specialString_type_object;
-                      case 6: return heap_specialString_type_function;
-                      case 7: return heap_specialString_type_type;
+                      case 1: return store_specialString_type_empty;
+                      case 2: return store_specialString_type_boolean;
+                      case 3: return store_specialString_type_number;
+                      case 4: return store_specialString_type_string;
+                      case 5: return store_specialString_type_object;
+                      case 6: return store_specialString_type_function;
+                      case 7: return store_specialString_type_type;
                       default:
                         return value.data.name;
                     }
                 },
                 
-                getEmptyType    : function() {return heap_type_empty;},
-                getBooleanType  : function() {return heap_type_boolean;},
-                getNumberType   : function() {return heap_type_number;},
-                getStringType   : function() {return heap_type_string;},
-                getObjectType   : function() {return heap_type_object;},
-                getFunctionType : function() {return heap_type_function;},
-                getTypeType     : function() {return heap_type_type;},
-                getAnyType      : function() {return heap_type_any;}
+                getEmptyType    : function() {return store_type_empty;},
+                getBooleanType  : function() {return store_type_boolean;},
+                getNumberType   : function() {return store_type_number;},
+                getStringType   : function() {return store_type_string;},
+                getObjectType   : function() {return store_type_object;},
+                getFunctionType : function() {return store_type_function;},
+                getTypeType     : function() {return store_type_type;},
+                getAnyType      : function() {return store_type_any;}
                 
                                 
             };
             
-            heap_queryTable[QUERY.TYPE] = function(value) {
-                return heap.valueGetType(value);
+            store_queryTable[QUERY.TYPE] = function(value) {
+                return store.valueGetType(value);
             };
             
                         
-            heap_queryTable[QUERY.COS] = function(value) {
+            store_queryTable[QUERY.COS] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("cos requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.cos(value.data));
+                return store.createNumber(Math.cos(value.data));
             };
             
-            heap_queryTable[QUERY.SIN] = function(value) {
+            store_queryTable[QUERY.SIN] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("sin requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.sin(value.data));
+                return store.createNumber(Math.sin(value.data));
             };
             
             
-            heap_queryTable[QUERY.TAN] = function(value) {
+            store_queryTable[QUERY.TAN] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("tan requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.tan(value.data));
+                return store.createNumber(Math.tan(value.data));
             };
             
 
-            heap_queryTable[QUERY.ACOS] = function(value) {
+            store_queryTable[QUERY.ACOS] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("acos requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.acos(value.data));
+                return store.createNumber(Math.acos(value.data));
             };
             
-            heap_queryTable[QUERY.ASIN] = function(value) {
+            store_queryTable[QUERY.ASIN] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("asin requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.asin(value.data));
+                return store.createNumber(Math.asin(value.data));
             };
             
             
-            heap_queryTable[QUERY.ATAN] = function(value) {
+            store_queryTable[QUERY.ATAN] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("atan requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.atan(value.data));
+                return store.createNumber(Math.atan(value.data));
             };
-            heap_queryTable[QUERY.ATAN2] = function(value) {
+            store_queryTable[QUERY.ATAN2] = function(value) {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_ATAN2);
             };
-            heap_queryTable[QUERY.SQRT] = function(value) {
+            store_queryTable[QUERY.SQRT] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("sqrt requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.atan(value.data));
+                return store.createNumber(Math.atan(value.data));
             };
-            heap_queryTable[QUERY.ABS] = function(value) {
+            store_queryTable[QUERY.ABS] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("abs requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.abs(value.data));
+                return store.createNumber(Math.abs(value.data));
             };
-            heap_queryTable[QUERY.ISNAN] = function(value) {
+            store_queryTable[QUERY.ISNAN] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("isNaN requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createBoolean(isNaN(value.data));
+                return store.createBoolean(isNaN(value.data));
             };
-            heap_queryTable[QUERY.FLOOR] = function(value) {
+            store_queryTable[QUERY.FLOOR] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("floor requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.floor(value.data));
+                return store.createNumber(Math.floor(value.data));
             };
-            heap_queryTable[QUERY.CEIL] = function(value) {
+            store_queryTable[QUERY.CEIL] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("ceil requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.ceil(value.data));
+                return store.createNumber(Math.ceil(value.data));
             };
-            heap_queryTable[QUERY.ROUND] = function(value) {
+            store_queryTable[QUERY.ROUND] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("round requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(Math.round(value.data));
+                return store.createNumber(Math.round(value.data));
             };
-            heap_queryTable[QUERY.RADIANS] = function(value) {
+            store_queryTable[QUERY.RADIANS] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("radian conversion requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(value.data * (Math.PI / 180.0));
+                return store.createNumber(value.data * (Math.PI / 180.0));
             };
-            heap_queryTable[QUERY.DEGREES] = function(value) {
+            store_queryTable[QUERY.DEGREES] = function(value) {
                 if (value.binID != TYPE_NUMBER) {
                     vm.raiseErrorString("degree conversion requires base value to be a number.");
                     return createValue();
                 }
-                return heap.createNumber(value.data * (180.0 / Math.PI));
+                return store.createNumber(value.data * (180.0 / Math.PI));
             };
 
 
@@ -1631,7 +1631,7 @@ const Matte = {
 
 
 
-            heap_queryTable[QUERY.REMOVECHAR] = function(value) {
+            store_queryTable[QUERY.REMOVECHAR] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("removeChar requires base value to be a string.");
                     return createValue();
@@ -1639,7 +1639,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_REMOVECHAR);
             };
 
-            heap_queryTable[QUERY.SUBSTR] = function(value) {
+            store_queryTable[QUERY.SUBSTR] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("substr requires base value to be a string.");
                     return createValue();
@@ -1647,7 +1647,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SUBSTR);
             };
             
-            heap_queryTable[QUERY.SPLIT] = function(value) {
+            store_queryTable[QUERY.SPLIT] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("split requires base value to be a string.");
                     return createValue();
@@ -1655,7 +1655,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SPLIT);
             };
 
-            heap_queryTable[QUERY.SCAN] = function(value) {
+            store_queryTable[QUERY.SCAN] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("scan requires base value to be a string.");
                     return createValue();
@@ -1663,15 +1663,15 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SCAN);
             };
 
-            heap_queryTable[QUERY.LENGTH] = function(value) {
+            store_queryTable[QUERY.LENGTH] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("length requires base value to be a string.");
                     return createValue();
                 }
-                return heap.createNumber(value.data.length);
+                return store.createNumber(value.data.length);
             };
             
-            heap_queryTable[QUERY.SEARCH] = function(value) {
+            store_queryTable[QUERY.SEARCH] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("search requires base value to be a string.");
                     return createValue();
@@ -1679,7 +1679,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SEARCH);
             };
 
-            heap_queryTable[QUERY.SEARCH_ALL] = function(value) {
+            store_queryTable[QUERY.SEARCH_ALL] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("searchAll requires base value to be a string.");
                     return createValue();
@@ -1687,7 +1687,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SEARCH_ALL);
             };
 
-            heap_queryTable[QUERY.CONTAINS] = function(value) {
+            store_queryTable[QUERY.CONTAINS] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("contains requires base value to be a string.");
                     return createValue();
@@ -1695,7 +1695,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_CONTAINS);
             };
 
-            heap_queryTable[QUERY.REPLACE] = function(value) {
+            store_queryTable[QUERY.REPLACE] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("replace requires base value to be a string.");
                     return createValue();
@@ -1703,7 +1703,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_REPLACE);
             };
 
-            heap_queryTable[QUERY.COUNT] = function(value) {
+            store_queryTable[QUERY.COUNT] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("count requires base value to be a string.");
                     return createValue();
@@ -1711,7 +1711,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_COUNT);
             };
 
-            heap_queryTable[QUERY.SETCHARCODEAT] = function(value) {
+            store_queryTable[QUERY.SETCHARCODEAT] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("setCharCodeAt requires base value to be a string.");
                     return createValue();
@@ -1719,14 +1719,14 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETCHARCODEAT);
             };
 
-            heap_queryTable[QUERY.SETCHARAT] = function(value) {
+            store_queryTable[QUERY.SETCHARAT] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("setCharAt requires base value to be a string.");
                     return createValue();
                 }
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETCHARAT);
             };
-            heap_queryTable[QUERY.CHARCODEAT] = function(value) {
+            store_queryTable[QUERY.CHARCODEAT] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("charCodeAt requires base value to be a string.");
                     return createValue();
@@ -1734,7 +1734,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_CHARCODEAT);
             };
 
-            heap_queryTable[QUERY.CHARAT] = function(value) {
+            store_queryTable[QUERY.CHARAT] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("charAt requires base value to be a string.");
                     return createValue();
@@ -1746,31 +1746,31 @@ const Matte = {
 
 
 
-            heap_queryTable[QUERY.KEYCOUNT] = function(value) {
+            store_queryTable[QUERY.KEYCOUNT] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("keycount requires base value to be an object.");
                     return createValue();
                 }
-                return heap.createNumber(heap.valueObjectGetKeyCount(value));
+                return store.createNumber(store.valueObjectGetKeyCount(value));
             };
 
-            heap_queryTable[QUERY.KEYS] = function(value) {
+            store_queryTable[QUERY.KEYS] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("keys requires base value to be an object.");
                     return createValue();
                 }
-                return heap.valueObjectKeys(value);
+                return store.valueObjectKeys(value);
             };
 
-            heap_queryTable[QUERY.VALUES] = function(value) {
+            store_queryTable[QUERY.VALUES] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("values requires base value to be an object.");
                     return createValue();
                 }
-                return heap.valueObjectValues(value);
+                return store.valueObjectValues(value);
             };
 
-            heap_queryTable[QUERY.PUSH] = function(value) {
+            store_queryTable[QUERY.PUSH] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("push requires base value to be an object.");
                     return createValue();
@@ -1778,23 +1778,23 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_PUSH);
             };
 
-            heap_queryTable[QUERY.POP] = function(value) {
+            store_queryTable[QUERY.POP] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("pop requires base value to be an object.");
                     return createValue();
                 }
                 
-                const indexPlain = heap.valueObjectGetNumberKeyCount(value) - 1;
-                const key = heap.createNumber(indexPlain);
-                const out = heap.valueObjectAccessDirect(value, key, 1);
+                const indexPlain = store.valueObjectGetNumberKeyCount(value) - 1;
+                const key = store.createNumber(indexPlain);
+                const out = store.valueObjectAccessDirect(value, key, 1);
                 if (out != undefined) {
-                    heap.valueObjectRemoveKey(value, key);
+                    store.valueObjectRemoveKey(value, key);
                     return out;
                 }
                 return createValue();
             };
             
-            heap_queryTable[QUERY.INSERT] = function(value) {
+            store_queryTable[QUERY.INSERT] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("insert requires base value to be an object.");
                     return createValue();
@@ -1802,7 +1802,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_INSERT);
             };
             
-            heap_queryTable[QUERY.REMOVE] = function(value) {
+            store_queryTable[QUERY.REMOVE] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("remove requires base value to be an object.");
                     return createValue();
@@ -1810,7 +1810,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_REMOVE);
             };
 
-            heap_queryTable[QUERY.SETATTRIBUTES] = function(value) {
+            store_queryTable[QUERY.SETATTRIBUTES] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("setAttributes requires base value to be an object.");
                     return createValue();
@@ -1818,19 +1818,19 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETATTRIBUTES);
             };
 
-            heap_queryTable[QUERY.ATTRIBUTES] = function(value) {
+            store_queryTable[QUERY.ATTRIBUTES] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("setAttributes requires base value to be an object.");
                     return createValue();
                 }
-                const out = heap.valueObjectGetAttributesUnsafe(value);
+                const out = store.valueObjectGetAttributesUnsafe(value);
                 if (out == undefined) {
                     return createValue();
                 }
                 return out;
             };
 
-            heap_queryTable[QUERY.SORT] = function(value) {
+            store_queryTable[QUERY.SORT] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("sort requires base value to be an object.");
                     return createValue();
@@ -1838,7 +1838,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SORT);
             };
 
-            heap_queryTable[QUERY.SUBSET] = function(value) {
+            store_queryTable[QUERY.SUBSET] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("subset requires base value to be an object.");
                     return createValue();
@@ -1846,7 +1846,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SUBSET);
             };
 
-            heap_queryTable[QUERY.FILTER] = function(value) {
+            store_queryTable[QUERY.FILTER] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("filter requires base value to be an object.");
                     return createValue();
@@ -1854,7 +1854,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FILTER);
             };
 
-            heap_queryTable[QUERY.FINDINDEX] = function(value) {
+            store_queryTable[QUERY.FINDINDEX] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("findIndex requires base value to be an object.");
                     return createValue();
@@ -1862,7 +1862,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FINDINDEX);
             };
 
-            heap_queryTable[QUERY.ISA] = function(value) {
+            store_queryTable[QUERY.ISA] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("isa requires base value to be an object.");
                     return createValue();
@@ -1870,7 +1870,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_ISA);
             };
 
-            heap_queryTable[QUERY.MAP] = function(value) {
+            store_queryTable[QUERY.MAP] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("map requires base value to be an object.");
                     return createValue();
@@ -1878,7 +1878,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_MAP);
             };
 
-            heap_queryTable[QUERY.ANY] = function(value) {
+            store_queryTable[QUERY.ANY] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("any requires base value to be an object.");
                     return createValue();
@@ -1886,7 +1886,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_ANY);
             };
 
-            heap_queryTable[QUERY.FOR] = function(value) {
+            store_queryTable[QUERY.FOR] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("for requires base value to be an object.");
                     return createValue();
@@ -1894,7 +1894,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FOR);
             };
 
-            heap_queryTable[QUERY.FOREACH] = function(value) {
+            store_queryTable[QUERY.FOREACH] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("foreach requires base value to be an object.");
                     return createValue();
@@ -1902,7 +1902,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FOREACH);
             };
 
-            heap_queryTable[QUERY.ALL] = function(value) {
+            store_queryTable[QUERY.ALL] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("all requires base value to be an object.");
                     return createValue();
@@ -1910,7 +1910,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_ALL);
             };
 
-            heap_queryTable[QUERY.REDUCE] = function(value) {
+            store_queryTable[QUERY.REDUCE] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("reduce requires base value to be an object.");
                     return createValue();
@@ -1929,42 +1929,42 @@ const Matte = {
             
 
             
-            const heap_type_empty = heap.createType();
-            const heap_type_boolean = heap.createType();
-            const heap_type_number = heap.createType();
-            const heap_type_string = heap.createType();
-            const heap_type_object = heap.createType();
-            const heap_type_function = heap.createType();
-            const heap_type_type = heap.createType();
-            const heap_type_any = heap.createType();
+            const store_type_empty = store.createType();
+            const store_type_boolean = store.createType();
+            const store_type_number = store.createType();
+            const store_type_string = store.createType();
+            const store_type_object = store.createType();
+            const store_type_function = store.createType();
+            const store_type_type = store.createType();
+            const store_type_any = store.createType();
             
             
-            const heap_specialString_false = heap.createString('false');
-            const heap_specialString_true = heap.createString('true');
-            const heap_specialString_empty = heap.createString('empty');
-            const heap_specialString_nothing = heap.createString('');
+            const store_specialString_false = store.createString('false');
+            const store_specialString_true = store.createString('true');
+            const store_specialString_empty = store.createString('empty');
+            const store_specialString_nothing = store.createString('');
 
-            const heap_specialString_type_boolean = heap.createString('Boolean');
-            const heap_specialString_type_empty = heap.createString('Empty');
-            const heap_specialString_type_number = heap.createString('Number');
-            const heap_specialString_type_string = heap.createString('String');
-            const heap_specialString_type_object = heap.createString('Object');
-            const heap_specialString_type_type = heap.createString('Type');
-            const heap_specialString_type_function = heap.createString('Function');
+            const store_specialString_type_boolean = store.createString('Boolean');
+            const store_specialString_type_empty = store.createString('Empty');
+            const store_specialString_type_number = store.createString('Number');
+            const store_specialString_type_string = store.createString('String');
+            const store_specialString_type_object = store.createString('Object');
+            const store_specialString_type_type = store.createString('Type');
+            const store_specialString_type_function = store.createString('Function');
 
-            const heap_specialString_bracketAccess = heap.createString('[]');
-            const heap_specialString_dotAccess = heap.createString('.');
-            const heap_specialString_set = heap.createString('set');
-            const heap_specialString_get = heap.createString('get');
-            const heap_specialString_foreach = heap.createString('foreach');
-            const heap_specialString_keys = heap.createString('keys');
-            const heap_specialString_values = heap.createString('values');
-            const heap_specialString_name = heap.createString('name');
-            const heap_specialString_inherits = heap.createString('inherits');
-            const heap_specialString_key = heap.createString('key');
-            const heap_specialString_value = heap.createString('value');
+            const store_specialString_bracketAccess = store.createString('[]');
+            const store_specialString_dotAccess = store.createString('.');
+            const store_specialString_set = store.createString('set');
+            const store_specialString_get = store.createString('get');
+            const store_specialString_foreach = store.createString('foreach');
+            const store_specialString_keys = store.createString('keys');
+            const store_specialString_values = store.createString('values');
+            const store_specialString_name = store.createString('name');
+            const store_specialString_inherits = store.createString('inherits');
+            const store_specialString_key = store.createString('key');
+            const store_specialString_value = store.createString('value');
             
-            return heap; 
+            return store; 
         }();    
     
     
@@ -2029,14 +2029,14 @@ const Matte = {
             const vm_imports = [];
             const vm_stubIndex = {};
             const vm_precomputed = {}; // matte_vm.c: imported
-            const vm_specialString_parameters = heap.createString('parameters');
-            const vm_specialString_onsend = heap.createString('onSend');
-            const vm_specialString_onerror = heap.createString('onError');
-            const vm_specialString_message = heap.createString('message');
-            const vm_specialString_value = heap.createString('value');
-            const vm_specialString_base = heap.createString('base');
-            const vm_specialString_previous = heap.createString('previous');
-            const vm_specialString_from = heap.createString('from');
+            const vm_specialString_parameters = store.createString('parameters');
+            const vm_specialString_onsend = store.createString('onSend');
+            const vm_specialString_onerror = store.createString('onError');
+            const vm_specialString_message = store.createString('message');
+            const vm_specialString_value = store.createString('value');
+            const vm_specialString_base = store.createString('base');
+            const vm_specialString_previous = store.createString('previous');
+            const vm_specialString_from = store.createString('from');
             const vm_externalFunctionIndex = []; // all external functions
             const vm_externalFunctions = {}; // name -> id in index
             const vm_extStubs = [];
@@ -2072,17 +2072,17 @@ const Matte = {
             };
             
             const vm_infoNewObject = function(detail) {
-                const out = heap.createObject();
-                const callstack = heap.createObject();
+                const out = store.createObject();
+                const callstack = store.createObject();
                 
-                var key = heap.createString("length");
-                var val = heap.createNumber(vm_stacksize);
+                var key = store.createString("length");
+                var val = store.createNumber(vm_stacksize);
                 
-                heap.valueObjectSet(callstack, key, val, 0);
+                store.valueObjectSet(callstack, key, val, 0);
                 
                 const arr = [];
                 var str;
-                if (detail.binID == heap.TYPE_STRING) {
+                if (detail.binID == store.TYPE_STRING) {
                     str = detail.data + '\n';
                 } else {
                     str = "<no string data available>";
@@ -2090,40 +2090,40 @@ const Matte = {
                 
                 for(var i = 0; i < vm_stacksize; ++i) {
                     const framesrc = vm.getStackframe(i);
-                    const frame = heap.createObject();
+                    const frame = store.createObject();
                     const filename = vm_getScriptNameById(framesrc.stub.fileID);
                     
-                    key = heap.createString('file');
-                    val = heap.createString(filename ? filename : '<unknown>');
-                    heap.valueObjectSet(frame, key, val, 0);
+                    key = store.createString('file');
+                    val = store.createString(filename ? filename : '<unknown>');
+                    store.valueObjectSet(frame, key, val, 0);
                     
                     const instcount = framesrc.stub.instructionCount;
-                    key = heap.createString("lineNumber");
+                    key = store.createString("lineNumber");
                     var lineNumber = 0;
                     if (framesrc.pc -1 < instcount) {
                         lineNumber = framesrc.stub.instructions[framesrc.pc-1].lineNumber;
                     }
-                    val = heap.createNumber(lineNumber);
-                    heap.valueObjectSet(frame, key, val);
+                    val = store.createNumber(lineNumber);
+                    store.valueObjectSet(frame, key, val);
                     arr.push(frame);
                     str += 
                         " (" + i + ") -> " + (filename ? filename : "<unknown>") + ", line " + lineNumber + "\n"
                     ;
                 }
                 
-                val = heap.createObjectArray(arr);
-                key = heap.createString("frames");
+                val = store.createObjectArray(arr);
+                key = store.createString("frames");
                 
-                heap.valueObjectSet(callstack, key, val, 0);
-                key = heap.createString("callstack");
-                heap.valueObjectSet(out, key, callstack, 0);
+                store.valueObjectSet(callstack, key, val, 0);
+                key = store.createString("callstack");
+                store.valueObjectSet(out, key, callstack, 0);
                 
-                key = heap.createString("summary");
-                val = heap.createString(str);
-                heap.valueObjectSet(out, key, val);
+                key = store.createString("summary");
+                val = store.createString(str);
+                store.valueObjectSet(out, key, val);
                 
-                key = heap.createString("detail");
-                heap.valueObjectSet(out, key, detail);
+                key = store.createString("detail");
+                store.valueObjectSet(out, key, detail);
                 
                 return out;
             };
@@ -2231,7 +2231,7 @@ const Matte = {
                 const stub = stubs[0];
                 
                 vm_extStubs[index] = stub;
-                vm_extFuncs[index] = heap.createFunction(stub);
+                vm_extFuncs[index] = store.createFunction(stub);
             };
 
             const vm_stackframeGetReferrable = function(i, referrableID) {
@@ -2242,9 +2242,9 @@ const Matte = {
                 }
                 
                 if (referrableID < vm_callstack[i].referrableSize) {
-                    return heap.valueObjectArrayAtUnsafe(vm_callstack[i].referrable, referrableID);
+                    return store.valueObjectArrayAtUnsafe(vm_callstack[i].referrable, referrableID);
                 } else {
-                    const ref = heap.valueGetCapturedValue(vm_callstack[i].context, referrableID - vm_callstack[i].referrableSize);
+                    const ref = store.valueGetCapturedValue(vm_callstack[i].context, referrableID - vm_callstack[i].referrableSize);
                     if (!ref) {
                         vm.raiseErrorString("Invalid referrable");
                         return undefined;
@@ -2261,10 +2261,10 @@ const Matte = {
                 }
                 
                 if (referrableID < vm_callstack[i].referrableSize) {
-                    const vkey = heap.createNumber(referrableID);
-                    heap.valueObjectSet(vm_callstack[i].referrable, vkey, val, 1);
+                    const vkey = store.createNumber(referrableID);
+                    store.valueObjectSet(vm_callstack[i].referrable, vkey, val, 1);
                 } else {
-                    heap.valueSetCapturedValue(
+                    store.valueSetCapturedValue(
                         vm_callstack[i].context,
                         referrableID - vm_callstack[i].referrableSize,
                         val
@@ -2278,35 +2278,35 @@ const Matte = {
             }
 
             const vm_listen = function(v, respObject) {
-                if (!heap.valueIsCallable(v)) {
+                if (!store.valueIsCallable(v)) {
                     vm.raiseErrorString("Listen expressions require that the listened-to expression is a function. ");
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
                 
-                if (respObject.binID != heap.TYPE_EMPTY && respObject.binID != heap.TYPE_OBJECT) {
+                if (respObject.binID != store.TYPE_EMPTY && respObject.binID != store.TYPE_OBJECT) {
                     vm.raiseErrorString("Listen requires that the response expression is an object.");
-                    return heap.createEmpty();                    
+                    return store.createEmpty();                    
                 }
                 
                 var onSend;
                 var onError;
-                if (respObject.binID != heap.TYPE_EMPTY) {
-                    onSend = heap.valueObjectAccessDirect(respObject, vm_specialString_onsend, 0);
-                    if (onSend && onSend.binID != heap.TYPE_EMPTY && !heap.valueIsCallable(onSend)) {
+                if (respObject.binID != store.TYPE_EMPTY) {
+                    onSend = store.valueObjectAccessDirect(respObject, vm_specialString_onsend, 0);
+                    if (onSend && onSend.binID != store.TYPE_EMPTY && !store.valueIsCallable(onSend)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onSend' attribute be a Function.");
-                        return heap.createEmpty();                                            
+                        return store.createEmpty();                                            
                     }
-                    onError = heap.valueObjectAccessDirect(respObject, vm_specialString_onerror, 0);
-                    if (onError && onError.binID != heap.TYPE_EMPTY && !heap.valueIsCallable(onError)) {
+                    onError = store.valueObjectAccessDirect(respObject, vm_specialString_onerror, 0);
+                    if (onError && onError.binID != store.TYPE_EMPTY && !store.valueIsCallable(onError)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onError' attribute be a Function.");
-                        return heap.createEmpty();                                            
+                        return store.createEmpty();                                            
                     }
                 }
                 
                 var out = vm.callFunction(v, [], []);
                 if (vm_pendingCatchable) {
                     const catchable = vm_catchable;
-                    vm_catchable = heap.createEmpty();;
+                    vm_catchable = store.createEmpty();;
                     vm_pendingCatchable = 0;
                     
                     if (vm_pendingCatchableIsError && onSend) {
@@ -2324,7 +2324,7 @@ const Matte = {
                             return catchable
                         }
                     }
-                    return heap.createEmpty(); // shouldnt get here
+                    return store.createEmpty(); // shouldnt get here
                 } else {
                     return out;
                 }
@@ -2338,7 +2338,7 @@ const Matte = {
                     vm_callstack.push({
                         pc : 0,
                         prettyName : "",
-                        context : heap.createEmpty(),
+                        context : store.createEmpty(),
                         stub : null,
                         valueStack : []
                     });
@@ -2395,11 +2395,11 @@ const Matte = {
                     if (frame.valueStack.length) {
                         output = frame.valueStack[frame.valueStack.length-1];
                         if (vm_pendingCatchable)
-                            output = heap.createEmpty();
+                            output = store.createEmpty();
                         while(frame.valueStack.length)
                             frame.valueStack.pop();
                     } else {
-                        output = heap.createEmpty();
+                        output = store.createEmpty();
                     }
                     
                     if (frame.restartCondition && !vm_pendingCatchable) {
@@ -2412,8 +2412,8 @@ const Matte = {
                 }
 
             };
-            // controls the heap
-            vm.heap = heap;
+            // controls the store
+            vm.store = store;
 
 
                 
@@ -2473,12 +2473,12 @@ const Matte = {
             
             
             vm.valueToString = function(val) {
-                return heap.valueAsString(val).data + ' => (' + heap.valueTypeName(heap.valueGetType(val)).data + ')';
+                return store.valueAsString(val).data + ' => (' + store.valueTypeName(store.valueGetType(val)).data + ')';
             };
                 
                 
             vm.raiseErrorString = function(string) {
-                vm.raiseError(heap.createString(string));
+                vm.raiseError(store.createString(string));
             };
                 
                 
@@ -2538,51 +2538,51 @@ const Matte = {
                 if (precomp != undefined) return precomp;
                 
                 if (parameters == undefined)
-                    parameters = heap.createEmpty();
+                    parameters = store.createEmpty();
                 
                 const stub = vm_findStub(fileid, 0);
                 if (stub == undefined) {
                     vm.raiseErrorString('Script has no toplevel context to run');
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
-                const func = heap.createFunction(stub);
+                const func = store.createFunction(stub);
                 const result = vm.callFunction(func, [parameters], [vm_specialString_parameters]);
                 vm_precomputed[fileid] = result;
                 return result;
             },
                 
             vm.callFunction = function(func, args, argNames) {
-                if (vm_pendingCatchable) return heap.createEmpty();
-                const callable = heap.valueIsCallable(func);
+                if (vm_pendingCatchable) return store.createEmpty();
+                const callable = store.valueIsCallable(func);
                 if (callable == 0) {
                     vm.raiseErrorString("Error: cannot call non-function value ");
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
                 
                 if (args.length != argNames.length) {
                     vm.raiseErrorString("VM call as mismatching arguments and parameter names.");
-                    return heap.createEmpty();                        
+                    return store.createEmpty();                        
                 }
                 
-                if (func.binID == heap.TYPE_TYPE) {
+                if (func.binID == store.TYPE_TYPE) {
                     if (args.length) {
                         if (argNames[0].data != vm_specialString_from.data) {
                             vm.raiseErrorString("Type conversion failed: unbound parameter to function ('from')");
                         }
-                        return heap.valueToType(args[0], func);
+                        return store.valueToType(args[0], func);
                     } else {
                         vm.raiseErrorString("Type conversion failed (no value given to convert).");
-                        return heap.createEmpty();
+                        return store.createEmpty();
                     }
                 }
                 
                 
                 //external function 
-                const stub = heap.valueGetBytecodeStub(func);
+                const stub = store.valueGetBytecodeStub(func);
                 if (stub.fileID == 0) {
                     const external = stub.stubID;
                     if (external >= vm_externalFunctionIndex.length) {
-                        return heap.createEmpty();
+                        return store.createEmpty();
                     }
                     
                     const set = vm_externalFunctionIndex[external];
@@ -2591,7 +2591,7 @@ const Matte = {
                     const len = stub.argCount;
 
                     for(var i = 0; i < len; ++i) {
-                        argsReal.push(heap.createEmpty());
+                        argsReal.push(store.createEmpty());
                     }
                     
                     
@@ -2616,16 +2616,16 @@ const Matte = {
                             }
                             
                             vm.raiseErrorString(str);
-                            return heap.createEmpty();
+                            return store.createEmpty();
                         }
                     }
                     
                     var result;
                     if (callable == 2) {
-                        const ok = heap.valueObjectFunctionPreTypeCheckUnsafe(func, argsReal);
+                        const ok = store.valueObjectFunctionPreTypeCheckUnsafe(func, argsReal);
                         if (ok) 
                             result = set.userFunction(func, argsReal, set.userData);
-                        heap.valueObjectFunctionPostTypeCheckUnsafe(func, result);
+                        store.valueObjectFunctionPostTypeCheckUnsafe(func, result);
                     } else {
                         result = set.userFunction(func, argsReal, set.userData);                        
                     }
@@ -2637,7 +2637,7 @@ const Matte = {
                     var   len = stub.argCount;
                     const referrables = [];
                     for(var i = 0; i < len+1; ++i) {
-                        referrables.push(heap.createEmpty());
+                        referrables.push(store.createEmpty());
                     }
                     
                     
@@ -2673,24 +2673,24 @@ const Matte = {
                         }
                         
                         vm.raiseErrorString(str);
-                        return heap.createEmpty();                          
+                        return store.createEmpty();                          
                     }
 
                     
                     var ok = 1;
                     if (callable == 2 && len) {
                         const arr = referrables.slice(1, referrables.length); 
-                        ok = heap.valueObjectFunctionPreTypeCheckUnsafe(func, arr);
+                        ok = store.valueObjectFunctionPreTypeCheckUnsafe(func, arr);
                     }
                     len = stub.localCount;
                     for(var i = 0; i < len; ++i) {
-                        referrables.push(heap.createEmpty());
+                        referrables.push(store.createEmpty());
                     }
                     const frame = vm_pushFrame();
                     frame.context = func;
                     frame.stub = stub;
                     referrables[0] = func;
-                    frame.referrable = heap.createObjectArray(referrables);
+                    frame.referrable = store.createObjectArray(referrables);
                     frame.referrableSize = referrables.length;
                     
                     var result;
@@ -2699,14 +2699,14 @@ const Matte = {
                             result = vm_executionLoop(vm);
                         } 
                         if (!vm_pendingCatchable)
-                            heap.valueObjectFunctionPostTypeCheckUnsafe(func, result);
+                            store.valueObjectFunctionPostTypeCheckUnsafe(func, result);
                     } else {
                         result = vm_executionLoop(vm);
                     }
                     vm_popFrame();
                     
                     if (!vm_stacksize && vm_pendingCatchable) {
-                        console.log('Uncaught error: ' + heap.valueObjectAccessString(vm_catchable, 'summary').data);                        
+                        console.log('Uncaught error: ' + store.valueObjectAccessString(vm_catchable, 'summary').data);                        
                         /*
                         if (vm_unhandled) {
                             vm_unhandled(
@@ -2725,11 +2725,11 @@ const Matte = {
                         } else 
                             throw new Error('Uncaught error');
                         
-                        vm_catchable = heap.createEmpty();
+                        vm_catchable = store.createEmpty();
                         vm_pendingCatchable = 0;
                         vm_pendingCatchableIsError = 0;
                         //throw new Error("Fatal error.");
-                        return heap.createEmpty();
+                        return store.createEmpty();
                     }
 
 
@@ -2755,25 +2755,25 @@ const Matte = {
             /////////////////////////////////////////////////////////////////
             const vm_badOperator = function(op, value) {
                 vm.raiseErrorString(
-                    op + " operator on value of type " + heap.valueTypeName(heap.valueGetType(value)).data + " is undefined."
+                    op + " operator on value of type " + store.valueTypeName(store.valueGetType(value)).data + " is undefined."
                 );
             };
             
             const vm_objectHasOperator = function(a, op) {
-                const opSrc = heap.valueObjectGetAttributesUnsafe(a);
+                const opSrc = store.valueObjectGetAttributesUnsafe(a);
                 if (opSrc == undefined)
                     return false;
                 
-                return heap.valueObjectAccessString(opSrc, op).binID != 0;
+                return store.valueObjectAccessString(opSrc, op).binID != 0;
             };
             
             const vm_runObjectOperator2 = function(a, op, b) {
-                const opSrc = heap.valueObjectGetAttributesUnsafe(a);
+                const opSrc = store.valueObjectGetAttributesUnsafe(a);
                 if (opSrc == undefined) {
                     vm.raiseErrorString(op + ' operator on object without operator overloading is undefined.');
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 } else {
-                    const oper = heap.valueObjectAccessString(opSrc, op);
+                    const oper = store.valueObjectAccessString(opSrc, op);
                     return vm.callFunction(
                         oper,
                         [b],
@@ -2784,12 +2784,12 @@ const Matte = {
             
             
             const vm_runObjectOperator1 = function(a, op) {
-                const opSrc = heap.valueObjectGetAttributesUnsafe(a);
+                const opSrc = store.valueObjectGetAttributesUnsafe(a);
                 if (opSrc == undefined) {
                     vm.raiseErrorString(op + ' operator on object without operator overloading is undefined.');
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 } else {
-                    const oper = heap.valueObjectAccessString(opSrc, op);
+                    const oper = store.valueObjectAccessString(opSrc, op);
                     return vm.callFunction(
                         oper,
                         [],
@@ -2799,105 +2799,105 @@ const Matte = {
             };          
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ADD] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data + heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data + store.valueAsNumber(b));
                     
-                  case heap.TYPE_STRING:
+                  case store.TYPE_STRING:
                     const astr = a.data;
-                    const bstr = heap.valueAsString(b).data;
-                    return heap.createString(astr + bstr);
+                    const bstr = store.valueAsString(b).data;
+                    return store.createString(astr + bstr);
                     
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '+', b);
                     
                   default:
                     vm_badOperator('+', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_SUB] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data - heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data - store.valueAsNumber(b));
                     
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '-', b);
                     
                   default:
                     vm_badOperator('-', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_DIV] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data / heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data / store.valueAsNumber(b));
                     
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '/', b);
                     
                   default:
                     vm_badOperator('/', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_MULT] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data * heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data * store.valueAsNumber(b));
                     
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '*', b);
                     
                   default:
                     vm_badOperator('*', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NOT] = function(a) {
                 switch(a.binID) {
-                  case heap.TYPE_BOOLEAN:
-                    return heap.createBoolean(!heap.valueAsBoolean(a));
+                  case store.TYPE_BOOLEAN:
+                    return store.createBoolean(!store.valueAsBoolean(a));
                     
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '!');
                     
                   default:
                     vm_badOperator('!', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NEGATE] = function(a) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(-a.data);
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(-a.data);
                     
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '-()');
                     
                   default:
                     vm_badOperator('-()', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_NOT] = function(a) {
                 switch(a.binID) {
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '~');
                     
                   default:
                     vm_badOperator('~', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
             
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_POUND] = function(a) {return vm_operatorOverloadOnly1("#", a);};
@@ -2905,183 +2905,183 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_OR] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_BOOLEAN:
-                    return heap.createBoolean(a.data | heap.valueAsBoolean(b));
+                  case store.TYPE_BOOLEAN:
+                    return store.createBoolean(a.data | store.valueAsBoolean(b));
 
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '|');
                     
                   default:
                     vm_badOperator('|', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_OR] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_BOOLEAN:
-                    return heap.createBoolean(a.data || heap.valueAsBoolean(b));
+                  case store.TYPE_BOOLEAN:
+                    return store.createBoolean(a.data || store.valueAsBoolean(b));
 
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '||');
                     
                   default:
                     vm_badOperator('||', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_AND] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_BOOLEAN:
-                    return heap.createBoolean(a.data & heap.valueAsBoolean(b));
+                  case store.TYPE_BOOLEAN:
+                    return store.createBoolean(a.data & store.valueAsBoolean(b));
 
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '&');
                     
                   default:
                     vm_badOperator('&', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_AND] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_BOOLEAN:
-                    return heap.createBoolean(a.data && heap.valueAsBoolean(b));
+                  case store.TYPE_BOOLEAN:
+                    return store.createBoolean(a.data && store.valueAsBoolean(b));
 
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '&&');
                     
                   default:
                     vm_badOperator('&&', a);                  
                 }
-                return heap.createEmpty();                                
+                return store.createEmpty();                                
             };
 
 
             const vm_operatorOverloadOnly2 = function(operator, a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, operator, b);
                   default:
                     vm_badOperator(operator, a);
                 };
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
             const vm_operatorOverloadOnly1 = function(operator, a) {
                 switch(a.binID) {
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, operator);
                   default:
                     vm_badOperator(operator, a);
                 };
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_POW] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(Math.pow(a.data, heap.valueAsNumber(b)));
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(Math.pow(a.data, store.valueAsNumber(b)));
 
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '**');
                     
                   default:
                     vm_badOperator('**', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ] = function(a, b) {
-                if (b.binID == heap.TYPE_EMPTY && a.binID != heap.TYPE_EMPTY) {
-                    return heap.createBoolean(false);
+                if (b.binID == store.TYPE_EMPTY && a.binID != store.TYPE_EMPTY) {
+                    return store.createBoolean(false);
                 }
                 switch(a.binID) {
-                  case heap.TYPE_EMPTY:
-                    return heap.createBoolean(b.binID == 0);
+                  case store.TYPE_EMPTY:
+                    return store.createBoolean(b.binID == 0);
                     
-                  case heap.TYPE_NUMBER:
-                    return heap.createBoolean(a.data == heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createBoolean(a.data == store.valueAsNumber(b));
 
-                  case heap.TYPE_STRING:
-                    return heap.createBoolean(a.data == heap.valueAsString(b).data);
+                  case store.TYPE_STRING:
+                    return store.createBoolean(a.data == store.valueAsString(b).data);
 
-                  case heap.TYPE_BOOLEAN:
-                    return heap.createBoolean(a.data == heap.valueAsBoolean(b));
+                  case store.TYPE_BOOLEAN:
+                    return store.createBoolean(a.data == store.valueAsBoolean(b));
 
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     if (vm_objectHasOperator(a, '==')) {
                         return vm_runObjectOperator2(a, '==', b);
                     } else {
                         if (b.binID == 0) {
-                            return heap.createBoolean(false);
-                        } else if (b.binID == heap.TYPE_OBJECT) {
-                            return heap.createBoolean(a === b);
+                            return store.createBoolean(false);
+                        } else if (b.binID == store.TYPE_OBJECT) {
+                            return store.createBoolean(a === b);
                         } else {
                             vm.raiseErrorString("== operator with object and non-empty or non-object values is undefined.");
-                            return heap.createBoolean(false);
+                            return store.createBoolean(false);
                         }
                     }
-                  case heap.TYPE_TYPE:
+                  case store.TYPE_TYPE:
                     if (b.binID == a.binID) {
-                        return heap.createBoolean(a.data.id == b.data.id);
+                        return store.createBoolean(a.data.id == b.data.id);
                     } else {
                         vm.raiseErrorString("!= operator with Type and non-type is undefined.");
-                        return heap.createEmpty();                        
+                        return store.createEmpty();                        
                     }
                   default:
                     vm_badOperator('==', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NOTEQ] = function(a, b) {
-                if (b.binID == heap.TYPE_EMPTY && a.binID != heap.TYPE_EMPTY) {
-                    return heap.createBoolean(true);
+                if (b.binID == store.TYPE_EMPTY && a.binID != store.TYPE_EMPTY) {
+                    return store.createBoolean(true);
                 }
                 switch(a.binID) {
-                  case heap.TYPE_EMPTY:
-                    return heap.createBoolean(b.binID != 0);
+                  case store.TYPE_EMPTY:
+                    return store.createBoolean(b.binID != 0);
                     
-                  case heap.TYPE_NUMBER:
-                    return heap.createBoolean(a.data != heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createBoolean(a.data != store.valueAsNumber(b));
 
-                  case heap.TYPE_STRING:
-                    return heap.createBoolean(a.data != heap.valueAsString(b).data);
+                  case store.TYPE_STRING:
+                    return store.createBoolean(a.data != store.valueAsString(b).data);
 
-                  case heap.TYPE_BOOLEAN:
-                    return heap.createBoolean(a.data == heap.valueAsBoolean(b));
+                  case store.TYPE_BOOLEAN:
+                    return store.createBoolean(a.data == store.valueAsBoolean(b));
 
 
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     if (vm_objectHasOperator(a, '!=')) {
                         return vm_runObjectOperator2(a, '!=', b);
                     } else {
                         if (b.binID == 0) {
-                            return heap.createBoolean(true);
-                        } else if (b.binID == heap.TYPE_OBJECT) {
-                            return heap.createBoolean(a != b);
+                            return store.createBoolean(true);
+                        } else if (b.binID == store.TYPE_OBJECT) {
+                            return store.createBoolean(a != b);
                         } else {
                             vm.raiseErrorString("== operator with object and non-empty or non-object values is undefined.");
-                            return heap.createBoolean(true);
+                            return store.createBoolean(true);
                         }
                     }
-                  case heap.TYPE_TYPE:
+                  case store.TYPE_TYPE:
                     if (b.binID == a.binID) {
-                        return heap.createBoolean(a.data.id != b.data.id);
+                        return store.createBoolean(a.data.id != b.data.id);
                     } else {
                         vm.raiseErrorString("!= operator with Type and non-type is undefined.");
-                        return heap.createEmpty();                        
+                        return store.createEmpty();                        
                     }
                   default:
                     vm_badOperator('!=', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
 
@@ -3089,115 +3089,115 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESS] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createBoolean(a.data < heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createBoolean(a.data < store.valueAsNumber(b));
                     
-                  case heap.TYPE_STRING:
-                    return heap.createBoolean(
-                        a.data < heap.valueAsString(b).data
+                  case store.TYPE_STRING:
+                    return store.createBoolean(
+                        a.data < store.valueAsString(b).data
                     );
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<", b);
                   default:
                     vm_badOperator("<", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATER] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createBoolean(a.data > heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createBoolean(a.data > store.valueAsNumber(b));
                     
-                  case heap.TYPE_STRING:
-                    return heap.createBoolean(
-                        a.data > heap.valueAsString(b).data
+                  case store.TYPE_STRING:
+                    return store.createBoolean(
+                        a.data > store.valueAsString(b).data
                     );
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">", b);
                   default:
                     vm_badOperator(">", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESSEQ] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createBoolean(a.data <= heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createBoolean(a.data <= store.valueAsNumber(b));
                     
-                  case heap.TYPE_STRING:
-                    return heap.createBoolean(
-                        a.data <= heap.valueAsString(b).data
+                  case store.TYPE_STRING:
+                    return store.createBoolean(
+                        a.data <= store.valueAsString(b).data
                     );
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<=", b);
                   default:
                     vm_badOperator("<=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATEREQ] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createBoolean(a.data >= heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createBoolean(a.data >= store.valueAsNumber(b));
                     
-                  case heap.TYPE_STRING:
-                    return heap.createBoolean(
-                        a.data >= heap.valueAsString(b).data
+                  case store.TYPE_STRING:
+                    return store.createBoolean(
+                        a.data >= store.valueAsString(b).data
                     );
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">=", b);
                   default:
                     vm_badOperator(">=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_MODULO] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data % heap.valueAsNumber(b));
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data % store.valueAsNumber(b));
                     
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '%', b);
                     
                   default:
                     vm_badOperator('%', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_TYPESPEC] = function(a, b) {
                 switch(b.binID) {
-                  case heap.TYPE_TYPE:
-                    if (!heap.valueIsA(a, b)) {
-                        vm.raiseErrorString("Type specifier (=>) failure: expected value of type '"+heap.valueTypeName(b).data+"', but received value of type '"+heap.valueTypeName(heap.valueGetType(a)).data+"'");
+                  case store.TYPE_TYPE:
+                    if (!store.valueIsA(a, b)) {
+                        vm.raiseErrorString("Type specifier (=>) failure: expected value of type '"+store.valueTypeName(b).data+"', but received value of type '"+store.valueTypeName(store.valueGetType(a)).data+"'");
                     }
                     return a;
                   default:
                     vm_badOperator('=>', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_CARET] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_BOOLEAN:
-                    return heap.createBoolean(a.data ^ heap.valueAsBoolean(b));
+                  case store.TYPE_BOOLEAN:
+                    return store.createBoolean(a.data ^ store.valueAsBoolean(b));
                     
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '^', b);
                     
                   default:
                     vm_badOperator('^', a);                  
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             };
             
             
@@ -3212,124 +3212,124 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_ADD] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data + heap.valueAsNumber(b));
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data + store.valueAsNumber(b));
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "+=", b);
                   default:
                     vm_badOperator("+=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };
             
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_SUB] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data - heap.valueAsNumber(b));
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data - store.valueAsNumber(b));
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "-=", b);
                   default:
                     vm_badOperator("-=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_DIV] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data / heap.valueAsNumber(b));
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data / store.valueAsNumber(b));
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "/=", b);
                   default:
                     vm_badOperator("/=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };            
             
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_MULT] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data * heap.valueAsNumber(b));
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data * store.valueAsNumber(b));
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "*=", b);
                   default:
                     vm_badOperator("*=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };            
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_MOD] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(a.data % heap.valueAsNumber(b));
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data % store.valueAsNumber(b));
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "%=", b);
                   default:
                     vm_badOperator("%=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_POW] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_NUMBER:
-                    return heap.createNumber(Math.pow(a.data, heap.valueAsNumber(b)));
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(Math.pow(a.data, store.valueAsNumber(b)));
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "**=", b);
                   default:
                     vm_badOperator("**=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_AND] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "&=", b);
                   default:
                     vm_badOperator("&=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_OR] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "|=", b);
                   default:
                     vm_badOperator("|=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_XOR] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "^=", b);
                   default:
                     vm_badOperator("^=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<<=", b);
                   default:
                     vm_badOperator("<<=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT] = function(a, b) {
                 switch(a.binID) {
-                  case heap.TYPE_OBJECT:
+                  case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">>=", b);
                   default:
                     vm_badOperator(">>=", a);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
             };                 
 
@@ -3361,23 +3361,23 @@ const Matte = {
             };
             
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NEM] = function(frame, inst) {
-                frame.valueStack.push(heap.createEmpty());
+                frame.valueStack.push(store.createEmpty());
             };
 
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NNM] = function(frame, inst) {
-                frame.valueStack.push(heap.createNumber(inst.data));
+                frame.valueStack.push(store.createNumber(inst.data));
             };
 
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NBL] = function(frame, inst) {
-                frame.valueStack.push(heap.createBoolean(Math.floor(inst.data) == 1));
+                frame.valueStack.push(store.createBoolean(Math.floor(inst.data) == 1));
             };
 
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NST] = function(frame, inst) {
-                frame.valueStack.push(heap.createString(frame.stub.strings[Math.floor(inst.data)]));
+                frame.valueStack.push(store.createString(frame.stub.strings[Math.floor(inst.data)]));
             };
 
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NOB] = function(frame, inst) {
-                frame.valueStack.push(heap.createObject());
+                frame.valueStack.push(store.createObject());
             };
             
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_SFS] = function(frame, inst) {
@@ -3403,12 +3403,12 @@ const Matte = {
                     
                     const vals = [];
                     for(var i = 0; i < frame.sfsCount; ++i) {
-                        vals.push(heap.createEmpty());
+                        vals.push(store.createEmpty());
                     }
                     for(var i = 0; i < frame.sfsCount; ++i) {
                         vals[frame.sfsCount - i - 1] = frame.valueStack[frame.valueStack.length-1-i];
                     }
-                    const v = heap.createTypedFunction(stub, vals);
+                    const v = store.createTypedFunction(stub, vals);
 
 
                     for(var i = 0; i < frame.sfsCount; ++i) {
@@ -3421,7 +3421,7 @@ const Matte = {
                     
                     
                 } else {
-                    frame.valueStack.push(heap.createFunction(stub));
+                    frame.valueStack.push(store.createFunction(stub));
                 }
             };
             
@@ -3432,7 +3432,7 @@ const Matte = {
                     return;
                 }
                 const obj = frame.valueStack[frame.valueStack.length-2];
-                heap.valueObjectPush(obj, frame.valueStack[frame.valueStack.length-1]);
+                store.valueObjectPush(obj, frame.valueStack[frame.valueStack.length-1]);
                 frame.valueStack.pop();
             };
 
@@ -3442,7 +3442,7 @@ const Matte = {
                     return;
                 }
                 const obj = frame.valueStack[frame.valueStack.length-3];
-                heap.valueObjectSet(obj, frame.valueStack[frame.valueStack.length-2], frame.valueStack[frame.valueStack.length-1], 1);
+                store.valueObjectSet(obj, frame.valueStack[frame.valueStack.length-2], frame.valueStack[frame.valueStack.length-1], 1);
                 frame.valueStack.pop();
                 frame.valueStack.pop();
             };
@@ -3454,13 +3454,13 @@ const Matte = {
                 }
                 const p = frame.valueStack.pop();
                 const target = frame.valueStack[frame.valueStack.length-1];
-                const len = heap.valueObjectGetNumberKeyCount(p);
-                var keylen = heap.valueObjectGetNumberKeyCount(p);
+                const len = store.valueObjectGetNumberKeyCount(p);
+                var keylen = store.valueObjectGetNumberKeyCount(p);
                 for(var i = 0; i < len; ++i) {
-                    heap.valueObjectInsert(
+                    store.valueObjectInsert(
                         target, 
                         keylen++,
-                        heap.valueObjectAccessIndex(p, i)
+                        store.valueObjectAccessIndex(p, i)
                     );
                 }   
             };
@@ -3472,16 +3472,16 @@ const Matte = {
                 }
                 
                 const p = frame.valueStack.pop();
-                const keys = heap.valueObjectKeys(p);
-                const vals = heap.valueObjectValues(p);
+                const keys = store.valueObjectKeys(p);
+                const vals = store.valueObjectValues(p);
                 
                 const target = frame.valueStack[frame.valueStack.length-1];
-                const len = heap.valueObjectGetNumberKeyCount(keys);
+                const len = store.valueObjectGetNumberKeyCount(keys);
                 for(var i = 0; i < len; ++i) {
-                    heap.valueObjectSet(
+                    store.valueObjectSet(
                         target,
-                        heap.valueObjectAccessIndex(keys, i),
-                        heap.valueObjectAccessIndex(vals, i),
+                        store.valueObjectAccessIndex(keys, i),
+                        store.valueObjectAccessIndex(vals, i),
                         1
                     );
                 }
@@ -3490,14 +3490,14 @@ const Matte = {
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_PTO] = function(frame, inst) {
                 var v;
                 switch(Math.floor(inst.data)) {
-                  case 0: v = heap.getEmptyType(); break;
-                  case 1: v = heap.getBooleanType(); break;
-                  case 2: v = heap.getNumberType(); break;
-                  case 3: v = heap.getStringType(); break;
-                  case 4: v = heap.getObjectType(); break;
-                  case 5: v = heap.getFunctionType(); break;
-                  case 6: v = heap.getTypeType(); break;
-                  case 7: v = heap.getAnyType(); break;
+                  case 0: v = store.getEmptyType(); break;
+                  case 1: v = store.getBooleanType(); break;
+                  case 2: v = store.getNumberType(); break;
+                  case 3: v = store.getStringType(); break;
+                  case 4: v = store.getObjectType(); break;
+                  case 5: v = store.getFunctionType(); break;
+                  case 6: v = store.getTypeType(); break;
+                  case 7: v = store.getAnyType(); break;
                 }
                 frame.valueStack.push(v);
             };
@@ -3514,8 +3514,8 @@ const Matte = {
                 var key = frame.valueStack[frame.valueStack.length-1];
                 
                 var i = 0;
-                if (stackSize > 2 && key.binID == heap.TYPE_STRING) {
-                    while(i < stackSize && key.binID == heap.TYPE_STRING) {
+                if (stackSize > 2 && key.binID == store.TYPE_STRING) {
+                    while(i < stackSize && key.binID == store.TYPE_STRING) {
                         argNames.push(key);
                         i++;
                         key = frame.valueStack[frame.valueStack.length - 1 - i];
@@ -3574,13 +3574,13 @@ const Matte = {
                       case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT: 
                       case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT: 
                         vOut = vm_operatorFunc[op + vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE](ref, v); 
-                        if (ref.binID != heap.TYPE_OBJECT)
+                        if (ref.binID != store.TYPE_OBJECT)
                             vm_stackframeSetReferrable(0, refn, vOut);                    
 
                         break;
                         
                       default:
-                        vOut = heap.createEmpty();
+                        vOut = store.createEmpty();
                         vm.raiseErrorString("VM error: tried to access non-existent referrable operation (corrupt bytecode?).");
                     }
                     frame.valueStack.pop();
@@ -3630,16 +3630,16 @@ const Matte = {
                     frame.valueStack.pop();
                     frame.valueStack.pop();
                     frame.valueStack.pop();
-                    const out = heap.valueObjectSet(object, key, val, isBracket);
+                    const out = store.valueObjectSet(object, key, val, isBracket);
                     frame.valueStack.push(
-                        out ? out : heap.createEmpty()
+                        out ? out : store.createEmpty()
                     );   
                 } else {
-                    var ref = heap.valueObjectAccessDirect(object, key, isBracket);
+                    var ref = store.valueObjectAccessDirect(object, key, isBracket);
                     var isDirect = 1;
                     if (!ref) {
                         isDirect = 0;
-                        ref = heap.valueObjectAccess(object, key, isBracket);
+                        ref = store.valueObjectAccess(object, key, isBracket);
                     }
                     var out;
                     switch(opr) {
@@ -3657,8 +3657,8 @@ const Matte = {
                         out = vm_operatorFunc[opr](ref, val); 
                     }
                     
-                    if (!isDirect || val.binID != heap.TYPE_OBJECT) {
-                        heap.valueObjectSet(object, key, out, isBracket);
+                    if (!isDirect || val.binID != store.TYPE_OBJECT) {
+                        store.valueObjectSet(object, key, out, isBracket);
                     }
                     frame.valueStack.pop();
                     frame.valueStack.pop();
@@ -3676,7 +3676,7 @@ const Matte = {
                 const isBracket = inst.data != 0.0;
                 const key = frame.valueStack[frame.valueStack.length-1];
                 const object = frame.valueStack[frame.valueStack.length-2];
-                const output = heap.valueObjectAccess(object, key, isBracket);
+                const output = store.valueObjectAccess(object, key, isBracket);
                 
                 frame.valueStack.pop();
                 frame.valueStack.pop();
@@ -3703,7 +3703,7 @@ const Matte = {
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_SCA] = function(frame, inst) {
                 const count = inst.data;
                 const condition = frame.valueStack[frame.valueStack.length-1];
-                if (!heap.valueAsBoolean(condition)) {
+                if (!store.valueAsBoolean(condition)) {
                     frame.pc += count;
                 }
             };
@@ -3711,7 +3711,7 @@ const Matte = {
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_SCO] = function(frame, inst) {
                 const count = inst.data;
                 const condition = frame.valueStack[frame.valueStack.length-1];
-                if (heap.valueAsBoolean(condition)) {
+                if (store.valueAsBoolean(condition)) {
                     frame.pc += count;
                 }            
             };
@@ -3720,7 +3720,7 @@ const Matte = {
                 const src  = frame.valueStack[frame.valueStack.length-1];
                 const dest = frame.valueStack[frame.valueStack.length-2];
                 
-                heap.valueObjectSetTable(dest, src);
+                store.valueObjectSetTable(dest, src);
                 
                 frame.valueStack.pop();
             };
@@ -3732,10 +3732,10 @@ const Matte = {
             
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_QRY] = function(frame, inst) {
                 const o = frame.valueStack[frame.valueStack.length-1];
-                const output = heap.valueQuery(o, inst.data);
+                const output = store.valueQuery(o, inst.data);
                 frame.valueStack.pop();
                 frame.valueStack.push(output);
-                if (output.binID == heap.TYPE_OBJECT && output.data.function_stub != undefined) {
+                if (output.binID == store.TYPE_OBJECT && output.data.function_stub != undefined) {
                     frame.valueStack.push(o);
                     frame.valueStack.push(vm_specialString_base);                    
                 }
@@ -3800,58 +3800,58 @@ const Matte = {
             
             
             ////////////////////////////////////// add builtin ext calls           
-            vm_addBuiltIn(vm.EXT_CALL.NOOP, [], function(fn, args){return heap.createEmpty();});
-            vm_addBuiltIn(vm.EXT_CALL.BREAKPOINT, [], function(fn, args){return heap.createEmpty();});
+            vm_addBuiltIn(vm.EXT_CALL.NOOP, [], function(fn, args){return store.createEmpty();});
+            vm_addBuiltIn(vm.EXT_CALL.BREAKPOINT, [], function(fn, args){return store.createEmpty();});
             
             
             const vm_extCall_foreverRestartCondition = function(frame, result) {
                 return 1;
             };
             vm_addBuiltIn(vm.EXT_CALL.FOREVER, ['do'], function(fn, args) {
-                if (!heap.valueIsCallable(args[0])) {
+                if (!store.valueIsCallable(args[0])) {
                     vm.raiseErrorString("'forever' requires only argument to be a function.");
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
                 vm_pendingRestartCondition = vm_extCall_foreverRestartCondition;
                 vm.callFunction(args[0], [], []);
-                return heap.createEmpty();
+                return store.createEmpty();
             });
             
             
             vm_addBuiltIn(vm.EXT_CALL.IMPORT, ['module', 'parameters'], function(fn, args) {
-                return vm.import(heap.valueAsString(args[0]).data, args[1]);
+                return vm.import(store.valueAsString(args[0]).data, args[1]);
             });
             
             vm_addBuiltIn(vm.EXT_CALL.PRINT, ['message'], function(fn, args) {
-                onPrint(heap.valueAsString(args[0]).data);
-                return heap.createEmpty();
+                onPrint(store.valueAsString(args[0]).data);
+                return store.createEmpty();
             });
             
             vm_addBuiltIn(vm.EXT_CALL.SEND, ['message'], function(fn, args) {
                 vm_catchable = args[0];
                 vm_pendingCatchable = 1;
                 vm_pendingCatchableIsError = 0;
-                return heap.createEmpty();                
+                return store.createEmpty();                
             });
             
             vm_addBuiltIn(vm.EXT_CALL.ERROR, ['detail'], function(fn, args) {
                 vm.raiseError(args[0]);
-                return heap.createEmpty();
+                return store.createEmpty();
             });
             
             vm_addBuiltIn(vm.EXT_CALL.GETEXTERNALFUNCTION, ['name'], function(fn, args) {
-                const str = heap.valueAsString(args[0]).data;
+                const str = store.valueAsString(args[0]).data;
                 if (vm_pendingCatchable) {
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
                 
                 const id = vm_externalFunctions[str];
                 if (!id) {
                     vm.raiseErrorString("getExternalFunction() was unable to find an external function of the name: " + str);
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
                 
-                const out = heap.createFunction(vm_extStubs[id]);
+                const out = store.createFunction(vm_extStubs[id]);
                 delete vm_externalFunctions[str];
                 return out;
             });
@@ -3859,40 +3859,40 @@ const Matte = {
             
             //// Numbers 
             vm_addBuiltIn(vm.EXT_CALL.NUMBER_PI, [], function(fn, args) {
-                return heap.createNumber(Math.PI);
+                return store.createNumber(Math.PI);
             });
 
             vm_addBuiltIn(vm.EXT_CALL.NUMBER_PARSE, ['string'], function(fn, args) {
-                const aconv = heap.valueAsString(args[0]);
+                const aconv = store.valueAsString(args[0]);
                 const p = Number.parseFloat(aconv.data);
                 if (Number.isNaN(p)) {
                     vm.raiseErrorString("Could not interpret String as a Number");
                 } else {
-                    return heap.createNumber(p);
+                    return store.createNumber(p);
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             });
 
             vm_addBuiltIn(vm.EXT_CALL.NUMBER_RANDOM, [], function(fn, args) {
-                return heap.createNumber(Math.random());
+                return store.createNumber(Math.random());
             });
 
 
             //// strings
             vm_addBuiltIn(vm.EXT_CALL.STRING_COMBINE, ["strings"], function(fn, args) {
-                if (args[0].binID != heap.TYPE_OBJECT) {
+                if (args[0].binID != store.TYPE_OBJECT) {
                     vm.raiseErrorString( "Expected Object as parameter for string combination. (The object should contain string values to combine).");
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
                 
-                const index = heap.createNumber(0);
-                const len = heap.valueObjectGetNumberKeyCount(args[0]);
+                const index = store.createNumber(0);
+                const len = store.valueObjectGetNumberKeyCount(args[0]);
                 var str = "";
                 for(; index.data < len; ++index.data) {
-                    str += heap.valueAsString(heap.valueObjectAccessIndex(args[0], index.data)).data;
+                    str += store.valueAsString(store.valueObjectAccessIndex(args[0], index.data)).data;
                 }
                 
-                return heap.createString(str);
+                return store.createString(str);
             });
             
             
@@ -3900,24 +3900,24 @@ const Matte = {
             
             //// Objects 
             vm_addBuiltIn(vm.EXT_CALL.OBJECT_NEWTYPE, ["name", "inherits"], function(fn, args) {
-                return heap.createType(args[0], args[1]);
+                return store.createType(args[0], args[1]);
             });
             
             vm_addBuiltIn(vm.EXT_CALL.OBJECT_INSTANTIATE, ["type"], function(fn, args) {
-                return heap.createObjectTyped(args[0]);
+                return store.createObjectTyped(args[0]);
             });
             
 
             vm_addBuiltIn(vm.EXT_CALL.OBJECT_FREEZEGC, [], function(fn, args) {
-                return heap.createEmpty();
+                return store.createEmpty();
             });
 
             vm_addBuiltIn(vm.EXT_CALL.OBJECT_THAWGC, [], function(fn, args) {
-                return heap.createEmpty();
+                return store.createEmpty();
 
             });
             vm_addBuiltIn(vm.EXT_CALL.OBJECT_GARBAGECOLLECT, [], function(fn, args) {
-                return heap.createEmpty();
+                return store.createEmpty();
 
             });
 
@@ -3926,11 +3926,11 @@ const Matte = {
 
             /// query number 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_ATAN2, ['base', 'y'], function(fn, args) {
-                return heap.createNumber(Math.atan2(heap.valueAsNumber(args[0]), heap.valueAsNumber(args[1]))); 
+                return store.createNumber(Math.atan2(store.valueAsNumber(args[0]), store.valueAsNumber(args[1]))); 
             });
 
             const ensureArgObject = function(args) {
-                if (args[0].binID != heap.TYPE_OBJECT) {
+                if (args[0].binID != store.TYPE_OBJECT) {
                     vm.raiseErrorString("Built-in Object function expects a value of type Object to work with.");
                     return 0;
                 }
@@ -3940,80 +3940,80 @@ const Matte = {
 
             /// query object
             vm_addBuiltIn(vm.EXT_CALL.QUERY_PUSH, ['base', 'value'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
-                const ind = heap.createNumber(heap.valueObjectGetNumberKeyCount(args[0]));
-                heap.valueObjectSet(args[0], ind, args[1], 1);
+                if (!ensureArgObject(args)) return store.createEmpty();
+                const ind = store.createNumber(store.valueObjectGetNumberKeyCount(args[0]));
+                store.valueObjectSet(args[0], ind, args[1], 1);
                 return args[0];
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_INSERT, ['base', 'at', 'value'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
-                heap.valueObjectInsert(args[0], heap.valueAsNumber(args[1]), args[2]);
+                if (!ensureArgObject(args)) return store.createEmpty();
+                store.valueObjectInsert(args[0], store.valueAsNumber(args[1]), args[2]);
                 return args[0];
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REMOVE, ['base', 'key', 'keys'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
+                if (!ensureArgObject(args)) return store.createEmpty();
                 if (args[1].binID) {
-                    heap.valueObjectRemoveKey(args[0], args[1])
+                    store.valueObjectRemoveKey(args[0], args[1])
                 } else if (args[2].binID) {
-                    if (args[2].binID != heap.TYPE_OBJECT) {
+                    if (args[2].binID != store.TYPE_OBJECT) {
                         vm.raiseErrorString("'keys' for remove query requires argument to be an Object.");
-                        return heap.createEmpty();
+                        return store.createEmpty();
                     }                
-                    const len = heap.valueObjectGetNumberKeyCount(args[2]);
+                    const len = store.valueObjectGetNumberKeyCount(args[2]);
                     for(var i = 0; i < len; ++i) {
-                        const v = heap.valueObjectAccessIndex(args[2], i);
-                        heap.valueObjectRemoveKey(args[0], v);
+                        const v = store.valueObjectAccessIndex(args[2], i);
+                        store.valueObjectRemoveKey(args[0], v);
                     }
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETATTRIBUTES, ['base', 'attributes'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
-                if (args[1].binID != heap.TYPE_OBJECT) {
+                if (!ensureArgObject(args)) return store.createEmpty();
+                if (args[1].binID != store.TYPE_OBJECT) {
                     vm.raiseErrorString("'setAttributes' requires an Object to be the 'attributes'");
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
-                heap.valueObjectSetAttributes(args[0], args[1]);
-                return heap.createEmpty();
+                store.valueObjectSetAttributes(args[0], args[1]);
+                return store.createEmpty();
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SORT, ['base', 'comparator'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
-                if (heap.binID == heap.TYPE_OBJECT && heap.data.function_stub) {
+                if (!ensureArgObject(args)) return store.createEmpty();
+                if (store.binID == store.TYPE_OBJECT && store.data.function_stub) {
                     vm.raiseErrorString("A function comparator is required for sorting.h");
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
-                heap.valueObjectSortUnsafe(args[0], args[1]);
-                return heap.createEmpty();
+                store.valueObjectSortUnsafe(args[0], args[1]);
+                return store.createEmpty();
             });
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SUBSET, ['base', 'from', 'to'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
-                return heap.valueSubset(
+                if (!ensureArgObject(args)) return store.createEmpty();
+                return store.valueSubset(
                     args[0],
-                    heap.valueAsNumber(args[1]), 
-                    heap.valueAsNumber(args[2])
+                    store.valueAsNumber(args[1]), 
+                    store.valueAsNumber(args[2])
                 )
             });            
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FILTER, ['base', 'by'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
+                if (!ensureArgObject(args)) return store.createEmpty();
                 
                 var ctout = 0;
-                const len = heap.valueObjectGetKeyCount(args[0]);
-                const out = heap.createObject();
+                const len = store.valueObjectGetKeyCount(args[0]);
+                const out = store.createObject();
                 const names = [vm_specialString_value];
                 const vals = [0];
                 for(var i = 0; i < len; ++i) {
                     if (vm_pendingCatchable) break;
-                    const v = heap.valueObjectAccessIndex(args[0], i);
+                    const v = store.valueObjectAccessIndex(args[0], i);
                     vals[0] = v;
 
-                    if (heap.valueAsBoolean(vm.callFunction(args[1], vals, names))) {
-                        heap.valueObjectInsert(out, ctout++, v);
+                    if (store.valueAsBoolean(vm.callFunction(args[1], vals, names))) {
+                        store.valueObjectInsert(out, ctout++, v);
                     }
                 }
                 return out;
@@ -4021,45 +4021,45 @@ const Matte = {
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FINDINDEX, ['base', 'value'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
+                if (!ensureArgObject(args)) return store.createEmpty();
 
-                const len = heap.valueObjectGetNumberKeyCount(args[0]);
+                const len = store.valueObjectGetNumberKeyCount(args[0]);
                 for(var i = 0; i < len; ++i) {
                     if (vm_pendingCatchable) break;
-                    const v = heap.valueObjectAccessIndex(args[0], i);
-                    if (heap.valueAsBoolean(vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ](v, args[1]))) {
-                        return heap.createNumber(i);
+                    const v = store.valueObjectAccessIndex(args[0], i);
+                    if (store.valueAsBoolean(vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ](v, args[1]))) {
+                        return store.createNumber(i);
                     }
                 }
-                return heap.createEmpty();
+                return store.createEmpty();
             });
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_ISA, ['query', 'type'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
+                if (!ensureArgObject(args)) return store.createEmpty();
         
-                return heap.createBoolean(heap.valueIsA(args[0], args[1]));
+                return store.createBoolean(store.valueIsA(args[0], args[1]));
             });            
             
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_MAP, ['base', 'to'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
+                if (!ensureArgObject(args)) return store.createEmpty();
                 const names = [vm_specialString_value];
                 const vals = [0];
-                const object = heap.createObject();
+                const object = store.createObject();
                 
-                const len = heap.valueObjectGetNumberKeyCount(args[0]);
+                const len = store.valueObjectGetNumberKeyCount(args[0]);
                 for(var i = 0; i < len; ++i) {
                     if (vm_pendingCatchable) break;
-                    const v = heap.valueObjectAccessIndex(args[0], i);
+                    const v = store.valueObjectAccessIndex(args[0], i);
                     vals[0] = v;
                     const newv = vm.callFunction(args[1], vals, names);
-                    heap.valueObjectSetIndexUnsafe(args[0], i, newv);
+                    store.valueObjectSetIndexUnsafe(args[0], i, newv);
                 }
                 return args[0];
             });            
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REDUCE, ['base', 'to'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
+                if (!ensureArgObject(args)) return store.createEmpty();
                 const names = [
                     vm_specialString_previous,
                     vm_specialString_value
@@ -4067,11 +4067,11 @@ const Matte = {
                 const vals = [
                     0, 0
                 ];
-                var out = heap.createEmpty();
-                const len = heap.valueObjectGetNumberKeyCount(args[0]);
+                var out = store.createEmpty();
+                const len = store.valueObjectGetNumberKeyCount(args[0]);
                 for(var i = 0; i < len; ++i) {
                     vals[0] = out;
-                    vals[1] = heap.valueObjectAccessIndex(args[0], i);
+                    vals[1] = store.valueObjectAccessIndex(args[0], i);
                     
                     out = vm.callFunction(args[1], vals, names);
                 }
@@ -4079,54 +4079,54 @@ const Matte = {
             });
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_ANY, ['base', 'condition'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
+                if (!ensureArgObject(args)) return store.createEmpty();
                 const names = [
                     vm_specialString_value
                 ];
                 
                 const vals = [0];
-                const len = heap.valueObjectGetNumberKeyCount(args[0]);
+                const len = store.valueObjectGetNumberKeyCount(args[0]);
                 for(var i = 0; i < len; ++i) {
-                    vals[0] = heap.valueObjectAccessIndex(args[0], i);
+                    vals[0] = store.valueObjectAccessIndex(args[0], i);
                     const newv = vm.callFunction(args[1], vals, names);
-                    if (heap.valueAsBoolean(newv)) {
-                        return heap.createBoolean(true);
+                    if (store.valueAsBoolean(newv)) {
+                        return store.createBoolean(true);
                     }
                 }
-                return heap.createBoolean(false);
+                return store.createBoolean(false);
             });            
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_ALL, ['base', 'condition'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
+                if (!ensureArgObject(args)) return store.createEmpty();
                 const names = [
                     vm_specialString_value
                 ];
                 
                 const vals = [0];
-                const len = heap.valueObjectGetNumberKeyCount(args[0]);
+                const len = store.valueObjectGetNumberKeyCount(args[0]);
                 for(var i = 0; i < len; ++i) {
-                    vals[0] = heap.valueObjectAccessIndex(args[0], i);
+                    vals[0] = store.valueObjectAccessIndex(args[0], i);
                     const newv = vm.callFunction(args[1], vals, names);
-                    if (!heap.valueAsBoolean(newv)) {
-                        return heap.createBoolean(false);
+                    if (!store.valueAsBoolean(newv)) {
+                        return store.createBoolean(false);
                     }
                 }
-                return heap.createBoolean(true);
+                return store.createBoolean(true);
             }); 
 
             const vm_extCall_forRestartCondition_up = function(frame, res, data) {
                 const d = data;
                 if (res.binID != 0) {
-                    d.i = heap.valueAsNumber(res);
+                    d.i = store.valueAsNumber(res);
                 } else {
                     d.i += d.offset;
                 }
                 
                 if (d.usesi) {
-                    heap.valueObjectSetIndexUnsafe(
+                    store.valueObjectSetIndexUnsafe(
                         frame.referrable,
                         1,
-                        heap.createNumber(d.i)
+                        store.createNumber(d.i)
                     );
                 }
                 return d.i < d.end;
@@ -4135,16 +4135,16 @@ const Matte = {
             const vm_extCall_forRestartCondition_down = function(frame, res, data) {
                 const d = data;
                 if (res.binID != 0) {
-                    d.i = heap.valueAsNumber(res);
+                    d.i = store.valueAsNumber(res);
                 } else {
                     d.i += d.offset;
                 }
                 
                 if (d.usesi) {
-                    heap.valueObjectSetIndexUnsafe(
+                    store.valueObjectSetIndexUnsafe(
                         frame.referrable,
                         1,
-                        heap.createNumber(d.i)
+                        store.createNumber(d.i)
                     );
                 }
                 return d.i > d.end;
@@ -4152,59 +4152,59 @@ const Matte = {
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FOR, ['base', 'do'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
+                if (!ensureArgObject(args)) return store.createEmpty();
                 
                 const v = args[1];
                 const params = args[0];
                 
-                if (!(v.binID == heap.TYPE_OBJECT && v.data.function_stub)) {
+                if (!(v.binID == store.TYPE_OBJECT && v.data.function_stub)) {
                     vm.raiseErrorString("'for' requires the second argument to be a function.");
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
                 
-                const a = heap.valueObjectAccessIndex(params, 0);
-                const b = heap.valueObjectAccessIndex(params, 1);
-                const c = heap.valueObjectAccessIndex(params, 2);
+                const a = store.valueObjectAccessIndex(params, 0);
+                const b = store.valueObjectAccessIndex(params, 1);
+                const c = store.valueObjectAccessIndex(params, 2);
 
                 const d = {
-                    i:   heap.valueAsNumber(a),
-                    end: heap.valueAsNumber(b), 
+                    i:   store.valueAsNumber(a),
+                    end: store.valueAsNumber(b), 
                     offset : 1,
-                    usesi : heap.valueGetBytecodeStub(v).argCount != 0
+                    usesi : store.valueGetBytecodeStub(v).argCount != 0
                 };
                 
                 if (c.binID == 0) {
                     if (d.i >= d.end) {
-                        return heap.createEmpty();
+                        return store.createEmpty();
                     }
                     vm_pendingRestartCondition = vm_extCall_forRestartCondition_up
                 } else {
-                    const incr = heap.valueAsNumber(c);
+                    const incr = store.valueAsNumber(c);
                     d.offset = incr;
                     
                     if (incr < 0) {
                         if (d.i <= d.end) {
-                            return heap.createEmpty();
+                            return store.createEmpty();
                         }
                         vm_pendingRestartCondition = vm_extCall_forRestartCondition_down;
                     } else {
                         if (d.i >= d.end) {
-                            return heap.createEmpty();
+                            return store.createEmpty();
                         }
                         vm_pendingRestartCondition = vm_extCall_forRestartCondition_up;
                     }
                 }
                 
                 vm_pendingRestartConditionData = d;
-                const iter = heap.createNumber(d.i);
+                const iter = store.createNumber(d.i);
                 
                 
-                const stub = heap.valueGetBytecodeStub(v);
+                const stub = store.valueGetBytecodeStub(v);
                 var arr = [];
                 var names = [];
                 if (stub.argCount) {
                     arr.push(iter);
-                    names.push(heap.createString(stub.argNames[0]));
+                    names.push(store.createString(stub.argNames[0]));
                 }
                 
                 vm.callFunction(v, arr, names);
@@ -4212,12 +4212,12 @@ const Matte = {
                 
             });
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FOREACH, ['base', 'do'], function(fn, args) {
-                if (!ensureArgObject(args)) return heap.createEmpty();
-                if (!heap.valueIsCallable(args[1])) {
+                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!store.valueIsCallable(args[1])) {
                     vm.raiseErrorString("'foreach' requires the first argument to be a function.");
-                    return heap.createEmpty();
+                    return store.createEmpty();
                 }
-                heap.valueObjectForeach(args[0], args[1]);
+                store.valueObjectForeach(args[0], args[1]);
                 return args[0];
             });            
             
@@ -4227,7 +4227,7 @@ const Matte = {
             
 
             const ensureArgString = function(args) {
-                if (args[0].binID != heap.TYPE_STRING) {
+                if (args[0].binID != store.TYPE_STRING) {
                     vm.raiseErrorString("Built-in String function expects a value of type String to work with.");
                     return 0;
                 }
@@ -4239,23 +4239,23 @@ const Matte = {
             
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SEARCH, ['base', 'key'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const str2 = heap.valueAsString(args[1]);
-                if (str2.data == '') return heap.createNumber(-1);
-                return heap.createNumber(args[0].data.indexOf(str2.data));
+                if (!ensureArgString(args)) return store.createEmpty();
+                const str2 = store.valueAsString(args[1]);
+                if (str2.data == '') return store.createNumber(-1);
+                return store.createNumber(args[0].data.indexOf(str2.data));
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_CONTAINS, ['base', 'key'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const str2 = heap.valueAsString(args[1]);
-                if (str2.data == '') return heap.createBoolean(false);
-                return heap.createBoolean(args[0].data.indexOf(str2.data) != -1);
+                if (!ensureArgString(args)) return store.createEmpty();
+                const str2 = store.valueAsString(args[1]);
+                if (str2.data == '') return store.createBoolean(false);
+                return store.createBoolean(args[0].data.indexOf(str2.data) != -1);
             });
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SEARCH_ALL, ['base', 'key'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const str2 = heap.valueAsString(args[1]);
+                if (!ensureArgString(args)) return store.createEmpty();
+                const str2 = store.valueAsString(args[1]);
                 
                 const outArr = [];
                 var str = args[0].data;
@@ -4265,37 +4265,37 @@ const Matte = {
                     if (index == -1) {
                         break;
                     }
-                    outArr.push(heap.createNumber(at+index));
+                    outArr.push(store.createNumber(at+index));
                     at += index+str2.data.length;
                     str = str.substring(index+str2.data.length, str.length);
                 }
                 
-                return heap.createObjectArray(outArr);
+                return store.createObjectArray(outArr);
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REPLACE, ['base', 'key', 'with', 'keys'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const str2 = heap.valueAsString(args[1]);    
-                const str3 = heap.valueAsString(args[2]);    
-                const strs = heap.valueAsString(args[3]);
+                if (!ensureArgString(args)) return store.createEmpty();
+                const str2 = store.valueAsString(args[1]);    
+                const str3 = store.valueAsString(args[2]);    
+                const strs = store.valueAsString(args[3]);
                 
                 
                 if (str2.binID) {      
-                    return heap.createString(args[0].data.replaceAll(str2.data, str3.data));
+                    return store.createString(args[0].data.replaceAll(str2.data, str3.data));
                 } else {
                     var strOut = args[0].data;
-                    const len = heap.valueObjectGetNumberKeyCount(strs);
+                    const len = store.valueObjectGetNumberKeyCount(strs);
                     for(var i = 0; i < len; ++i) {
-                        strOut = strOut.replaceAll(heap.valueAsString(heap.valueObjectAccessIndex(strs, i)).data, str3.data);                
+                        strOut = strOut.replaceAll(store.valueAsString(store.valueObjectAccessIndex(strs, i)).data, str3.data);                
                     };
-                    return heap.createString(strOut);
+                    return store.createString(strOut);
                 }
             });
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_COUNT, ['base', 'key'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const str2 = heap.valueAsString(args[1]);    
+                if (!ensureArgString(args)) return store.createEmpty();
+                const str2 = store.valueAsString(args[1]);    
 
                 var str = args[0].data;
                 var count = 0;
@@ -4306,86 +4306,86 @@ const Matte = {
                     count ++;
                     str = str.replace(str2.data, '');
                 }           
-                return heap.createNumber(count); 
+                return store.createNumber(count); 
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_CHARCODEAT, ['base', 'index'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const index = heap.valueAsNumber(args[1]);
-                return heap.createNumber(args[0].data.charCodeAt(index));
+                if (!ensureArgString(args)) return store.createEmpty();
+                const index = store.valueAsNumber(args[1]);
+                return store.createNumber(args[0].data.charCodeAt(index));
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_CHARAT, ['base', 'index'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const index = heap.valueAsNumber(args[1]);
-                return heap.createString(args[0].data.charAt(index));
+                if (!ensureArgString(args)) return store.createEmpty();
+                const index = store.valueAsNumber(args[1]);
+                return store.createString(args[0].data.charAt(index));
             });
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETCHARCODEAT, ['base', 'index', 'value'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const index = heap.valueAsNumber(args[1]);
-                const val = heap.valueAsNumber(args[2]);
+                if (!ensureArgString(args)) return store.createEmpty();
+                const index = store.valueAsNumber(args[1]);
+                const val = store.valueAsNumber(args[2]);
                 
                 var str = args[0].data;
-                return heap.createString(str.substring(0, index) + String.fromCharCode(val) + str.substring(index + 1));                
+                return store.createString(str.substring(0, index) + String.fromCharCode(val) + str.substring(index + 1));                
             });
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETCHARAT, ['base', 'index', 'value'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const index = heap.valueAsNumber(args[1]);
-                const val = heap.valueAsString(args[2]);
+                if (!ensureArgString(args)) return store.createEmpty();
+                const index = store.valueAsNumber(args[1]);
+                const val = store.valueAsString(args[2]);
                 
                 var str = args[0].data;
-                return heap.createString(str.substring(0, index) + val.data + str.substring(index + 1));                
+                return store.createString(str.substring(0, index) + val.data + str.substring(index + 1));                
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REMOVECHAR, ['base', 'index'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const index = heap.valueAsNumber(args[1]);
+                if (!ensureArgString(args)) return store.createEmpty();
+                const index = store.valueAsNumber(args[1]);
                 
                 var str = args[0].data;
-                return heap.createString(str.substring(0, index) + str.substring(index + 1));                
+                return store.createString(str.substring(0, index) + str.substring(index + 1));                
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SUBSTR, ['base', 'from', 'to'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const from = heap.valueAsNumber(args[1]);
-                const to   = heap.valueAsNumber(args[2]);
+                if (!ensureArgString(args)) return store.createEmpty();
+                const from = store.valueAsNumber(args[1]);
+                const to   = store.valueAsNumber(args[2]);
 
                 var str = args[0].data;
-                return heap.createString(str.substring(from, to+1));                
+                return store.createString(str.substring(from, to+1));                
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SPLIT, ['base', 'token'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
-                const token = heap.valueAsString(args[1]).data;
+                if (!ensureArgString(args)) return store.createEmpty();
+                const token = store.valueAsString(args[1]).data;
                 const results = args[0].data.split(token);
                 for(var i = 0; i < results.length; ++i) {
-                    results[i] = heap.createString(results[i]);
+                    results[i] = store.createString(results[i]);
                 }
-                return heap.createObjectArray(results);
+                return store.createObjectArray(results);
             });                
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SCAN, ['base', 'format'], function(fn, args) {
-                if (!ensureArgString(args)) return heap.createEmpty();
+                if (!ensureArgString(args)) return store.createEmpty();
 
                 // this is not a good method.
-                var exp = heap.valueAsString(args[1]).data;
+                var exp = store.valueAsString(args[1]).data;
                 exp = exp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 exp = exp.replaceAll('\\[%\\]', '(.*)');
                 const strs = args[0].data.match(new RegExp(exp, "i"));
                 
                 if (strs == null || strs.length == 0) {
-                    return heap.createObject();
+                    return store.createObject();
                 }
                 
                 const arr = [];
                 for(var i = 1; i < strs.length; ++i) {
-                    arr.push(heap.createString(strs[i]));
+                    arr.push(store.createString(strs[i]));
                 }
-                return heap.createObjectArray(arr);
+                return store.createObjectArray(arr);
             });
             return vm;
         }());
@@ -4396,20 +4396,20 @@ const Matte = {
             
             const encode = function(val) {
                 switch(val.binID) {
-                  case heap.TYPE_NUMBER: return ''+val.data; break;
-                  case heap.TYPE_STRING: return val.data; break;
-                  case heap.TYPE_BOOLEAN: return val.data == true ? 'true' : 'false'; break;
-                  case heap.TYPE_EMPTY: return 'null';
-                  case heap.TYPE_OBJECT: (function(){
-                    if (heap.valueObjectGetKeyCount(val) != heap.valueObjectGetNumberKeyCount(val)) {
-                        const keys = heap.valueObjectKeys(val);
-                        const vals = heap.valueObjectValues(val);
+                  case store.TYPE_NUMBER: return ''+val.data; break;
+                  case store.TYPE_STRING: return val.data; break;
+                  case store.TYPE_BOOLEAN: return val.data == true ? 'true' : 'false'; break;
+                  case store.TYPE_EMPTY: return 'null';
+                  case store.TYPE_OBJECT: (function(){
+                    if (store.valueObjectGetKeyCount(val) != store.valueObjectGetNumberKeyCount(val)) {
+                        const keys = store.valueObjectKeys(val);
+                        const vals = store.valueObjectValues(val);
 
                         var out = '{';                        
                         for(var i = 0; i < keys.length; ++i) {
                             if (i != 0)
                                 out += ',';
-                            if (keys[i].binID == heap.TYPE_OBJECT)
+                            if (keys[i].binID == store.TYPE_OBJECT)
                                 continue;
                             out += encode(keys[i]) + ':' + encode(values[i]);
                         }
@@ -4417,7 +4417,7 @@ const Matte = {
                     // simple array
                     } else {
                         var out = '[';                        
-                        const vals = heap.valueObjectValues(val);
+                        const vals = store.valueObjectValues(val);
                         for(var i = 0; i < vals.length; ++i) {
                             if (i != 0)
                                 out += ',';
@@ -4436,28 +4436,28 @@ const Matte = {
             const decode = function(js) {
                 switch(typeof js) {
                   case 'number':
-                    return heap.createNumber(js);
+                    return store.createNumber(js);
                     
                   case 'string':
-                    return heap.createString(js);
+                    return store.createString(js);
                     
                   case 'boolean':
-                    return heap.createBoolean(js);
+                    return store.createBoolean(js);
                     
                   case 'undefined':
-                    return heap.createEmpty();
+                    return store.createEmpty();
                     
                   case 'object': (function() {
                     if (js == null)
-                        return heap.createEmpty();
+                        return store.createEmpty();
                     
-                    const out = heap.createObject();
+                    const out = store.createObject();
                     const keys = Object.keys(js);
                     
                     for(var i = 0; i < keys.length; ++i) {
                         const key = decode(keys[i]);
                         const val = decode(js[keys[i]]);
-                        heap.valueObjectSet(out, key, val);
+                        store.valueObjectSet(out, key, val);
                     }
                     return out;
                   })()
