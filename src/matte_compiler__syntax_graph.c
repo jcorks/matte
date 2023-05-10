@@ -1045,7 +1045,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
 }
 
 matteSyntaxGraph_t * matte_syntax_graph_create() {
-    matteSyntaxGraph_t * out = calloc(1, sizeof(matteSyntaxGraph_t));
+    matteSyntaxGraph_t * out = (matteSyntaxGraph_t*)calloc(1, sizeof(matteSyntaxGraph_t));
     out->tokenNames = matte_array_create(sizeof(matteString_t *));
     out->constructRoots = matte_array_create(sizeof(matteSyntaxGraphRoot_t *));
     generate_graph(out);
@@ -1092,10 +1092,10 @@ void matte_syntax_graph_add_construct_path(
 matteSyntaxGraphNode_t * matte_syntax_graph_node_token(
     int a
 ){
-    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    matteSyntaxGraphNode_t * n = (matteSyntaxGraphNode_t*)calloc(1, sizeof(matteSyntaxGraphNode_t));
     n->type = MATTE_SYNTAX_GRAPH_NODE__TOKEN;
     n->token.count = 1;
-    n->token.refs = malloc(sizeof(int));
+    n->token.refs = (int*)malloc(sizeof(int));
     n->token.refs[0] = a;
     n->token.marker = 0;
     return n;
@@ -1106,10 +1106,10 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_token_alias(
     int a,
     int b
 ){
-    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    matteSyntaxGraphNode_t * n = (matteSyntaxGraphNode_t*)calloc(1, sizeof(matteSyntaxGraphNode_t));
     n->type = MATTE_SYNTAX_GRAPH_NODE__TOKEN_ALIAS;
     n->token.count = 1;
-    n->token.refs = malloc(sizeof(int)*2);
+    n->token.refs = (int*)malloc(sizeof(int)*2);
     n->token.refs[0] = a;
     n->token.refs[1] = b;
     n->token.marker = 0;
@@ -1122,10 +1122,10 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_token_alias(
 matteSyntaxGraphNode_t * matte_syntax_graph_node_marker(
     int a
 ){
-    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    matteSyntaxGraphNode_t * n = (matteSyntaxGraphNode_t*)calloc(1, sizeof(matteSyntaxGraphNode_t));
     n->type = MATTE_SYNTAX_GRAPH_NODE__TOKEN;
     n->token.count = 1;
-    n->token.refs = malloc(sizeof(int));
+    n->token.refs = (int*)malloc(sizeof(int));
     n->token.refs[0] = a;
     n->token.marker = 1;
     return n;
@@ -1139,7 +1139,7 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_token_group(
     int a,
     ...
 ){
-    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    matteSyntaxGraphNode_t * n = (matteSyntaxGraphNode_t*)calloc(1, sizeof(matteSyntaxGraphNode_t));
     n->type = MATTE_SYNTAX_GRAPH_NODE__TOKEN;
 
 
@@ -1156,7 +1156,7 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_token_group(
     }
     uint32_t i;
     n->token.count = matte_array_get_size(tokens);
-    n->token.refs = malloc(sizeof(int)*n->token.count);
+    n->token.refs = (int*)malloc(sizeof(int)*n->token.count);
     for(i = 0; i < n->token.count; ++i) {
         n->token.refs[i] = matte_array_at(tokens, int, i);
     }
@@ -1169,7 +1169,7 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_token_group(
 // returns a new node that represents the end of a syntax 
 // tree path.
 matteSyntaxGraphNode_t * matte_syntax_graph_node_end() {
-    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    matteSyntaxGraphNode_t * n = (matteSyntaxGraphNode_t*)calloc(1, sizeof(matteSyntaxGraphNode_t));
     n->type = MATTE_SYNTAX_GRAPH_NODE__END;
     return n;
 }
@@ -1179,7 +1179,7 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_end() {
 // a previous node. Level is how far up the tree this 
 // previous node is. 0 is the self, 1 is the parent, etc
 matteSyntaxGraphNode_t * matte_syntax_graph_node_to_parent(int level) {
-    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    matteSyntaxGraphNode_t * n = (matteSyntaxGraphNode_t*)calloc(1, sizeof(matteSyntaxGraphNode_t));
     n->type = MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT;
     n->upLevel = level;
     return n;  
@@ -1188,7 +1188,7 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_to_parent(int level) {
 
 // returns a new node that represents a construct sub-tree.
 matteSyntaxGraphNode_t * matte_syntax_graph_node_construct(int a){
-    matteSyntaxGraphNode_t * n = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    matteSyntaxGraphNode_t * n = (matteSyntaxGraphNode_t*)calloc(1, sizeof(matteSyntaxGraphNode_t));
     n->type = MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT;
     n->construct = a;
     return n;  
@@ -1200,7 +1200,7 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_split(
     matteSyntaxGraphNode_t * n,
     ...
 ) {
-    matteSyntaxGraphNode_t * out = calloc(1, sizeof(matteSyntaxGraphNode_t));
+    matteSyntaxGraphNode_t * out = (matteSyntaxGraphNode_t*)calloc(1, sizeof(matteSyntaxGraphNode_t));
     out->type = MATTE_SYNTAX_GRAPH_NODE__SPLIT;
 
     matteSyntaxGraphNode_t * prev = NULL;
@@ -1242,7 +1242,7 @@ matteSyntaxGraphNode_t * matte_syntax_graph_node_split(
     uint32_t i;
     uint32_t len = matte_array_get_size(paths);
     out->split.count = len;
-    out->split.nodes = malloc(sizeof(matteSyntaxGraphNode_t *)*len);
+    out->split.nodes = (matteSyntaxGraphNode_t**)malloc(sizeof(matteSyntaxGraphNode_t *)*len);
     for(i = 0; i < len; ++i) {
         out->split.nodes[i] = matte_array_at(paths, matteSyntaxGraphNode_t *, i);
     }
@@ -1259,7 +1259,7 @@ static void matte_syntax_graph_set_construct_count(
     uint32_t id
 ) {
     while(matte_array_get_size(g->constructRoots) <= id) {
-        matteSyntaxGraphRoot_t * root = calloc(1, sizeof(matteSyntaxGraphRoot_t));
+        matteSyntaxGraphRoot_t * root = (matteSyntaxGraphRoot_t*)calloc(1, sizeof(matteSyntaxGraphRoot_t));
         root->name = matte_string_create();
         root->paths = matte_array_create(sizeof(matteSyntaxGraphNode_t *));
         root->pathNames = matte_array_create(sizeof(matteString_t *));

@@ -43,7 +43,7 @@ struct matteStringStore_t{
 
 
 matteStringStore_t * matte_string_store_create() {
-    matteStringStore_t * h = calloc(1, sizeof(matteStringStore_t));
+    matteStringStore_t * h = (matteStringStore_t*)calloc(1, sizeof(matteStringStore_t));
     h->strings = matte_array_create(sizeof(matteString_t *));
     h->strbufferToID = matte_table_create_hash_c_string();
     matteString_t * str = NULL;

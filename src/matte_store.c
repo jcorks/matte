@@ -375,11 +375,11 @@ static matteValue_t * store_new_value_pointer(matteStore_t * h) {
     uint32_t size = matte_array_get_size(h->valueStore);
     if (!size) {
         // encourage locality by allocating in blocks
-        matteValue_t * block = malloc(STORE_VALUE_POINTER_BLOCK_SIZE*sizeof(matteValue_t));
+        matteValue_t * block = (matteValue_t*)malloc(STORE_VALUE_POINTER_BLOCK_SIZE*sizeof(matteValue_t));
         matte_array_push(h->valueStore_refs, block);
         uint32_t i;
         matte_array_set_size(h->valueStore, STORE_VALUE_POINTER_BLOCK_SIZE);
-        matteValue_t ** iter = matte_array_get_data(h->valueStore);
+        matteValue_t ** iter = (matteValue_t**)matte_array_get_data(h->valueStore);
         for(i = 0; i < STORE_VALUE_POINTER_BLOCK_SIZE; ++i, iter++, block++) {
             *iter = block;            
         }
@@ -409,7 +409,7 @@ static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, mat
       case MATTE_VALUE_TYPE_EMPTY: return NULL;
       case MATTE_VALUE_TYPE_STRING: {
         if (!m->table.keyvalues_string) return NULL;
-        return matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
+        return (matteValue_t*)matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
       }
       
       // array lookup
@@ -434,12 +434,12 @@ static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, mat
       
       case MATTE_VALUE_TYPE_OBJECT: {           
         if (!m->table.keyvalues_object) return NULL;
-        return matte_table_find_by_uint(m->table.keyvalues_object, key.value.id);
+        return (matteValue_t*)matte_table_find_by_uint(m->table.keyvalues_object, key.value.id);
       }
       
       case MATTE_VALUE_TYPE_TYPE: {
         if (!m->table.keyvalues_types) return NULL;
-        return matte_table_find_by_uint(m->table.keyvalues_types, key.value.id);
+        return (matteValue_t*)matte_table_find_by_uint(m->table.keyvalues_types, key.value.id);
       }
     }
     return NULL;
@@ -580,7 +580,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
     switch(key.binID) {
       case MATTE_VALUE_TYPE_STRING: {
         if (!m->table.keyvalues_string) m->table.keyvalues_string = matte_table_create_hash_pointer();
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
+        matteValue_t * value = (matteValue_t*)matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
         if (value) {
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, value);
@@ -603,7 +603,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             matte_store_recycle(store, out);
             return NULL;
         }
-        if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_pool_fetch(store->keyvalues_numberPool);
+        if (!m->table.keyvalues_number) m->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
         uint32_t index = (uint32_t)key.value.number;
         if (index >= matte_array_get_size(m->table.keyvalues_number)) {
             uint32_t currentLen = matte_array_get_size(m->table.keyvalues_number);
@@ -649,7 +649,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
      
       case MATTE_VALUE_TYPE_OBJECT: {   
         if (!m->table.keyvalues_object) m->table.keyvalues_object = matte_table_create_hash_pointer();        
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_object, key.value.id);
+        matteValue_t * value = (matteValue_t*)matte_table_find_by_uint(m->table.keyvalues_object, key.value.id);
         if (value) {
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, value);
@@ -668,7 +668,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
       
       case MATTE_VALUE_TYPE_TYPE: {
         if (!m->table.keyvalues_types) m->table.keyvalues_types = matte_table_create_hash_pointer();
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_types, key.value.id);
+        matteValue_t * value = (matteValue_t*)matte_table_find_by_uint(m->table.keyvalues_types, key.value.id);
         if (value) {
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, value);
@@ -691,14 +691,14 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
 static matteValue_t object_get_conv_operator(matteStore_t * store, matteObject_t * m, uint32_t type) {
     matteValue_t out = matte_store_new_value(store);
     if (m->table.attribSet.binID == 0) return out;
-    matteValue_t * operator = &m->table.attribSet;
+    matteValue_t * operator_ = &m->table.attribSet;
 
     matteValue_t key;
     store = store;
     key.binID = MATTE_VALUE_TYPE_TYPE;
     key.value.id = type;
     // OK: empty doesnt allocate anything
-    out = matte_value_object_access(store, *operator, key, 0);
+    out = matte_value_object_access(store, *operator_, key, 0);
     return out;
 }
 
@@ -727,7 +727,7 @@ static uint32_t CREATED_COUNT = 1;
 
 
 
-static char * BUILTIN_NUMBER__NAMES[] = {
+static const char * BUILTIN_NUMBER__NAMES[] = {
     "PI",
     "parse",
     "random",
@@ -740,7 +740,7 @@ static int BUILTIN_NUMBER__IDS[] = {
     MATTE_EXT_CALL__NUMBER__RANDOM
 };
 
-static char * BUILTIN_STRING__NAMES[] = {
+static const char * BUILTIN_STRING__NAMES[] = {
     "combine",
     NULL
 };
@@ -750,7 +750,7 @@ static int BUILTIN_STRING__IDS[] = {
 };
 
 
-static char * BUILTIN_OBJECT__NAMES[] = {
+static const char * BUILTIN_OBJECT__NAMES[] = {
     "newType",
     "instantiate",
     "freezeGC",
@@ -772,7 +772,7 @@ static int BUILTIN_OBJECT__IDS[] = {
 static void add_table_refs(
     matteTable_t * table,
     matteStringStore_t * stringStore,
-    char ** names,
+    const char ** names,
     int * ids
 ) {
     while(*names) {
@@ -791,12 +791,12 @@ static void * keyvalues_number_create() {
 }
 
 void keyvalues_number_destroy(void * obj) {
-    matte_array_destroy(obj);
+    matte_array_destroy((matteArray_t*)obj);
 }
 
 
 matteStore_t * matte_store_create(matteVM_t * vm) {
-    matteStore_t * out = calloc(1, sizeof(matteStore_t));
+    matteStore_t * out = (matteStore_t*)calloc(1, sizeof(matteStore_t));
     out->vm = vm;
     out->bin = matte_store_bin_create();
     out->keyvalues_numberPool = matte_pool_create(keyvalues_number_create, keyvalues_number_destroy);
@@ -1577,7 +1577,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
     matteString_t * str = matte_string_create_from_c_str("VM error: unknown query operator.");
     matte_vm_raise_error_string(store->vm, str);
     matte_string_destroy(str);
-
+    return matte_store_new_value(store);
 }
 
 
@@ -1645,7 +1645,7 @@ void matte_value_into_new_object_array_ref_(matteStore_t * store, matteValue_t *
     uint32_t i;
     uint32_t len = matte_array_get_size(args);
 
-    if (!d->table.keyvalues_number) d->table.keyvalues_number = matte_pool_fetch(store->keyvalues_numberPool);
+    if (!d->table.keyvalues_number) d->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
     matte_array_set_size(d->table.keyvalues_number, len);
     for(i = 0; i < len; ++i) {
         matteValue_t val = matte_store_new_value(store);
@@ -2105,10 +2105,10 @@ double matte_value_as_number(matteStore_t * store, matteValue_t v) {
             return 0;        
         }
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-        matteValue_t operator = object_get_conv_operator(store, m, store->type_number.value.id);
-        if (operator.binID) {            
-            double num = matte_value_as_number(store, matte_vm_call(store->vm, operator, matte_array_empty(), matte_array_empty(), NULL));
-            matte_store_recycle(store, operator);
+        matteValue_t operator_ = object_get_conv_operator(store, m, store->type_number.value.id);
+        if (operator_.binID) {            
+            double num = matte_value_as_number(store, matte_vm_call(store->vm, operator_, matte_array_empty(), matte_array_empty(), NULL));
+            matte_store_recycle(store, operator_);
             return num;
         } else {
             matte_vm_raise_error_cstring(store->vm, "Cannot convert object into a number. No 'Number' property in 'operator' object.");
@@ -2133,7 +2133,7 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
       case MATTE_VALUE_TYPE_NUMBER: {        
         matteString_t * str;
         if (fabs(v.value.number - (int64_t)v.value.number) < DBL_EPSILON) {
-            str = matte_string_create_from_c_str("%"PRId64"", (int64_t)v.value.number);                
+            str = matte_string_create_from_c_str("%" PRId64 "", (int64_t)v.value.number);                
         } else {
             str = matte_string_create_from_c_str("%.15g", v.value.number);        
         }
@@ -2158,10 +2158,10 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
             return store->specialString_empty;        
         }
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-        matteValue_t operator = object_get_conv_operator(store, m, store->type_string.value.id);
-        if (operator.binID) {
-            matteValue_t result = matte_vm_call(store->vm, operator, matte_array_empty(), matte_array_empty(), NULL);
-            matte_store_recycle(store, operator);
+        matteValue_t operator_ = object_get_conv_operator(store, m, store->type_string.value.id);
+        if (operator_.binID) {
+            matteValue_t result = matte_vm_call(store->vm, operator_, matte_array_empty(), matte_array_empty(), NULL);
+            matte_store_recycle(store, operator_);
             matteValue_t f = matte_value_as_string(store, result);
             matte_store_recycle(store, result);
             return f;
@@ -2263,11 +2263,11 @@ int matte_value_as_boolean(matteStore_t * store, matteValue_t v) {
             return 1;              
             
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-        matteValue_t operator = object_get_conv_operator(store, m, store->type_boolean.value.id);
-        if (operator.binID) {
-            matteValue_t r = matte_vm_call(store->vm, operator, matte_array_empty(), matte_array_empty(), NULL);
+        matteValue_t operator_ = object_get_conv_operator(store, m, store->type_boolean.value.id);
+        if (operator_.binID) {
+            matteValue_t r = matte_vm_call(store->vm, operator_, matte_array_empty(), matte_array_empty(), NULL);
             int out = matte_value_as_boolean(store, r);
-            matte_store_recycle(store, operator);
+            matte_store_recycle(store, operator_);
             matte_store_recycle(store, r);
             return out;
         } else {
@@ -2436,7 +2436,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
             matte_string_destroy(err);
             return NULL;
         }
-        return matte_vm_get_external_builtin_function_as_value(store->vm, out);
+        return matte_vm_get_external_builtin_function_as_value(store->vm, (matteExtCall_t)out);
       }
       case MATTE_VALUE_TYPE_OBJECT: {
         if (IS_FUNCTION_ID(v.value.id)) {
@@ -2789,7 +2789,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
       case MATTE_VALUE_TYPE_EMPTY: return;
       case MATTE_VALUE_TYPE_STRING: {
         if (!m->table.keyvalues_string) return;
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
+        matteValue_t * value = (matteValue_t*)matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
         if (value) {
             matte_table_remove_by_uint(m->table.keyvalues_string, key.value.id);
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
@@ -2803,7 +2803,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
 
       case MATTE_VALUE_TYPE_TYPE: {
         if (!m->table.keyvalues_types) return;
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_types, key.value.id);
+        matteValue_t * value = (matteValue_t*)matte_table_find_by_uint(m->table.keyvalues_types, key.value.id);
         if (value) {
             matte_table_remove_by_uint(m->table.keyvalues_types, key.value.id);
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
@@ -2854,7 +2854,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
    
       case MATTE_VALUE_TYPE_OBJECT: {           
         if (!m->table.keyvalues_object) return;
-        matteValue_t * value = matte_table_find_by_uint(m->table.keyvalues_object, key.value.id);
+        matteValue_t * value = (matteValue_t*)matte_table_find_by_uint(m->table.keyvalues_object, key.value.id);
         if (value) {
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, value);                
@@ -2871,7 +2871,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
 
 void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue_t func) {
     // 
-    matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
+    matteObject_t * m = (matteObject_t*)matte_store_bin_fetch_table(store->bin, v.value.id);
 
     // foreach operator
     if (m->table.attribSet.binID) {
@@ -3149,7 +3149,7 @@ void matte_value_object_sort_unsafe(matteStore_t * store, matteValue_t v, matteV
     names[1].value.id = matte_string_store_internalize_cstring(store->stringStore, "b");
     params.names = MATTE_ARRAY_CAST(names, matteValue_t, 2);
     
-    matteValue_Sort_t * sortArray = malloc(sizeof(matteValue_Sort_t)*len);
+    matteValue_Sort_t * sortArray = (matteValue_Sort_t*)malloc(sizeof(matteValue_Sort_t)*len);
     uint32_t i;
     for(i = 0; i < len; ++i) {
         sortArray[i].value = matte_array_at(m->table.keyvalues_number, matteValue_t, i);
@@ -3186,7 +3186,7 @@ void matte_value_object_insert(
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(store, m, &val);
     }
-    if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_pool_fetch(store->keyvalues_numberPool);
+    if (!m->table.keyvalues_number) m->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
     matte_array_insert(
         m->table.keyvalues_number,
         index,
@@ -3209,7 +3209,7 @@ void matte_value_object_push(
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(store, m, &val);
     }
-    if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_pool_fetch(store->keyvalues_numberPool);
+    if (!m->table.keyvalues_number) m->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
     matte_array_push(
         m->table.keyvalues_number,
         val
@@ -3567,7 +3567,7 @@ static void update_all_root_children(matteStore_t * h, matteObject_t * root, mat
                     matte_table_iter_is_end(iter) == 0;
                     matte_table_iter_proceed(iter)
                 ) {
-                    matteValue_t * v = matte_table_iter_get_value(iter);
+                    matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
                     size+=update_all_root_children__push_value(h, *v);
 
                 }
@@ -3579,7 +3579,7 @@ static void update_all_root_children(matteStore_t * h, matteObject_t * root, mat
                     matte_table_iter_is_end(iter) == 0;
                     matte_table_iter_proceed(iter)
                 ) {
-                    matteValue_t * v = matte_table_iter_get_value(iter);
+                    matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
                     size+=update_all_root_children__push_value(h, *v);
                 }
             }
@@ -3588,7 +3588,7 @@ static void update_all_root_children(matteStore_t * h, matteObject_t * root, mat
                     matte_table_iter_is_end(iter) == 0;
                     matte_table_iter_proceed(iter)
                 ) {
-                    matteValue_t * v = matte_table_iter_get_value(iter);
+                    matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
                     size+=update_all_root_children__push_value(h, *v);
 
                 }
@@ -3773,7 +3773,7 @@ static void object_cleanup(matteStore_t * h) {
                     matte_table_iter_is_end(iter) == 0;
                     matte_table_iter_proceed(iter)
                 ) {
-                    matteValue_t * v = matte_table_iter_get_value(iter);
+                    matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
                     //matte_store_recycle(h, *v);
                     object_unlink_parent_value(h, m, v);                
 
@@ -3789,7 +3789,7 @@ static void object_cleanup(matteStore_t * h) {
                     matte_table_iter_is_end(iter) == 0;
                     matte_table_iter_proceed(iter)
                 ) {
-                    matteValue_t * v = matte_table_iter_get_value(iter);
+                    matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
                     //matte_store_recycle(h, *v);
                     object_unlink_parent_value(h, m, v);                      
                     store_recycle_value_pointer(h, v);
@@ -3801,7 +3801,7 @@ static void object_cleanup(matteStore_t * h) {
                     matte_table_iter_is_end(iter) == 0;
                     matte_table_iter_proceed(iter)
                 ) {
-                    matteValue_t * v = matte_table_iter_get_value(iter);
+                    matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
                     //matte_store_recycle(h, *v);
                     object_unlink_parent_value(h, m, v);  
                     store_recycle_value_pointer(h, v);
@@ -3876,8 +3876,8 @@ void matte_store_garbage_collect(matteStore_t * h) {
     //h->cooldown++;
 }
 
-static void * create_table() {
-    matteObject_t * out = calloc(1, sizeof(matteObject_t));
+static matteObject_t * create_table() {
+    matteObject_t * out = (matteObject_t*)calloc(1, sizeof(matteObject_t));
     //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
     //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
 
@@ -3894,8 +3894,8 @@ static void * create_table() {
     return out;
 }
 
-static void * create_function() {
-    matteObject_t * out = calloc(1, sizeof(matteObject_t));
+static matteObject_t * create_function() {
+    matteObject_t * out = (matteObject_t*)calloc(1, sizeof(matteObject_t));
     //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
     //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
     #ifdef MATTE_DEBUG__STORE
@@ -3911,7 +3911,7 @@ static void * create_function() {
 
 
 static void destroy_object(void * d) {
-    matteObject_t * out = d;
+    matteObject_t * out = (matteObject_t*)d;
     #ifdef MATTE_DEBUG__STORE
         matte_array_destroy(out->parents);
     #endif
@@ -3946,7 +3946,7 @@ struct matteStoreBin_t {
 
 
 matteStoreBin_t * matte_store_bin_create() {
-    matteStoreBin_t * store = calloc(1, sizeof(matteStoreBin_t));
+    matteStoreBin_t * store = (matteStoreBin_t*)calloc(1, sizeof(matteStoreBin_t));
     
     store->functions = matte_array_create(sizeof(matteObject_t *));
     store->tables    = matte_array_create(sizeof(matteObject_t *));
@@ -4079,7 +4079,7 @@ struct matteObjectPool_t {
 };
 
 matteObjectPool_t * matte_pool_create(void*(*cr)(), void (*ds)(void *)) {
-    matteObjectPool_t * out = calloc(1, sizeof(matteObjectPool_t));
+    matteObjectPool_t * out = (matteObjectPool_t*)calloc(1, sizeof(matteObjectPool_t));
     out->create = cr;
     out->destroy = ds;
     out->pool = matte_array_create(sizeof(void *));

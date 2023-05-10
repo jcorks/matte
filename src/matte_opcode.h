@@ -142,7 +142,9 @@ typedef enum {
     // Allows for many assignments at once to an object using the 
     // dot operator. The syntax is operand.{static object};
     // The first operand is pushed to the top of the stack.
-    MATTE_OPCODE_OAS
+    MATTE_OPCODE_OAS,
+    
+    MATTE_OPCODE_ERROR = -1
 
 } matteOpcode_t;
 
@@ -195,6 +197,10 @@ typedef enum {
     // special operator state flag for OSN instructions.
     // TODO: better method maybe? 
     MATTE_OPERATOR_STATE_BRACKET = 200,
+
+
+    MATTE_OPERATOR_ERROR = -1,
+    
 } matteOperator_t;
 
 

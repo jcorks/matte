@@ -61,7 +61,7 @@ static int vm_ext_call__for_restart_condition__up(
     matteValue_t res,
     void * data
 ) {
-    ForLoopData * d = data;
+    ForLoopData * d = (ForLoopData*)data;
     if (res.binID != 0) {
         d->i = matte_value_as_number(vm->store, res);
     } else {
@@ -83,7 +83,7 @@ static int vm_ext_call__for_restart_condition__down(
     matteValue_t res,
     void * data
 ) {
-    ForLoopData * d = data;
+    ForLoopData * d = (ForLoopData*)data;
     if (res.binID != 0) {
         d->i = matte_value_as_number(vm->store, res);
     } else {
@@ -138,7 +138,7 @@ static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_
         return matte_store_new_value(vm->store);
     }
 
-    uint32_t * id = matte_table_find(vm->externalFunctions, str);
+    uint32_t * id = (uint32_t*)matte_table_find(vm->externalFunctions, str);
     if (!id) {
         matteString_t * strerr = matte_string_create_from_c_str("%s", "getExternalFunction() was unable to find an external function of the name: ");
         matte_string_concat(strerr, str);
@@ -201,7 +201,7 @@ static void import_compile_error(
     uint32_t ch,
     void * data
 ) {
-    VMImportCompilerData * vmdata = data;
+    VMImportCompilerData * vmdata = (VMImportCompilerData*)data;
     matteVM_t * vm = vmdata->vm;
     matteString_t * strM = matte_string_create();
     matte_string_concat_printf(strM, "Error while compiling imported file:\n%s,line %d:%d:\n%s", matte_string_get_c_str(vmdata->filename), line, ch, matte_string_get_c_str(str));
@@ -410,9 +410,9 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
 
 
     // first, see if the requested script has been preloaded
-    uint32_t * fileidPtr = matte_table_find(vm->importPath2ID, str);
+    uint32_t * fileidPtr = (uint32_t*)matte_table_find(vm->importPath2ID, str);
     uint32_t fileid = fileidPtr ? *fileidPtr : 0;
-    matteValue_t * v = matte_table_find_by_uint(vm->imported, fileid);
+    matteValue_t * v = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
     if (v) {
         #ifdef MATTE_DEBUG
             //printf("import() returning pre-computed value\n");
@@ -491,7 +491,7 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
         // in this case, if the fileID exists, the existing 
         // source is used.
         if (fileid) {
-            v = matte_table_find_by_uint(vm->imported, fileid);
+            v = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
             if (v) {
                 matteValue_t cpy = matte_store_new_value(vm->store);
                 matte_value_into_copy(vm->store, &a, *v);

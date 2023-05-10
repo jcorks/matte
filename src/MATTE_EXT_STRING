@@ -201,7 +201,7 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
     uint32_t len = matte_string_get_length(str);
     uint32_t lenNew = matte_string_get_length(newst);
 
-    uint32_t * newstBuffer = malloc(sizeof(uint32_t) * lenNew);
+    uint32_t * newstBuffer = (uint32_t*)malloc(sizeof(uint32_t) * lenNew);
     for(n = 0; n < lenNew; ++n) {
         newstBuffer[n] = matte_string_get_char(newst, n);
     }
@@ -482,7 +482,7 @@ static int scan__index_of(const char * str, const char * substr) {
 static ScanAnchor scan__new_anchor(const char * str, int start, int len) {
     ScanAnchor anchor;
     anchor.start = start;
-    char * newsub = malloc(len+1);
+    char * newsub = (char*)malloc(len+1);
     memcpy(newsub, str+start, len);
     newsub[len] = 0;
     anchor.str = newsub;
@@ -580,7 +580,7 @@ static matteValue_t vm_ext_call__string__scan(matteVM_t * vm, matteValue_t fn, c
         if (anchor->start != 0) {
                 
             int len = (offset - lastoffset);
-            char * newstr = malloc(len+1);
+            char * newstr = (char*)malloc(len+1);
             memcpy(newstr, str_c+lastoffset, len);
             newstr[len] = 0;
             matte_array_push(subs, newstr);

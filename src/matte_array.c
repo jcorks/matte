@@ -44,11 +44,11 @@ DEALINGS IN THE SOFTWARE.
 
 
 matteArray_t * matte_array_create(uint32_t typesize) {
-    matteArray_t * a = malloc(sizeof(matteArray_t));
+    matteArray_t * a = (matteArray_t*)malloc(sizeof(matteArray_t));
     a->sizeofType = typesize;
     a->size = 0;
     a->allocSize = array_presize_amt;
-    a->data = malloc(typesize*array_presize_amt);
+    a->data = (uint8_t*)malloc(typesize*array_presize_amt);
     return a;
 }
 
@@ -74,7 +74,7 @@ matteArray_t matte_array_temporary_from_static_array(void * data, uint32_t sizeo
     arr.sizeofType = sizeofType;
     arr.size = len;
     arr.allocSize = len;
-    arr.data = data;
+    arr.data = (uint8_t*)data;
     return arr;
 }
 
@@ -83,13 +83,13 @@ matteArray_t * matte_array_clone(const matteArray_t * src) {
     #ifdef MATTE_DEBUG
         assert(src && "matteArray_t pointer cannot be NULL.");
     #endif
-    matteArray_t * a = malloc(sizeof(matteArray_t));
+    matteArray_t * a = (matteArray_t*)malloc(sizeof(matteArray_t));
 
     // do not clone pre-alloc size
     a->allocSize = src->size;
     a->size = src->size;
     a->sizeofType = src->sizeofType;
-    a->data = malloc(src->size*a->sizeofType);
+    a->data = (uint8_t*)malloc(src->size*a->sizeofType);
     memcpy(a->data, src->data, src->size*a->sizeofType);
     return a;
 }
@@ -127,7 +127,7 @@ void matte_array_push_n(matteArray_t * t, const void * elements, uint32_t count)
     #endif
     while(t->size + count > t->allocSize) {
         t->allocSize += t->allocSize*array_resize_amt+1;
-        t->data = realloc(t->data, t->allocSize*t->sizeofType);
+        t->data = (uint8_t*)realloc(t->data, t->allocSize*t->sizeofType);
     }
     memcpy(
         (t->data)+(t->size*t->sizeofType), 
@@ -180,7 +180,7 @@ void matte_array_set_size(matteArray_t * t, uint32_t size) {
     #endif
     while(size >= t->allocSize) {
         t->allocSize += t->allocSize*array_resize_amt;
-        t->data = realloc(t->data, t->allocSize*t->sizeofType);
+        t->data = (uint8_t*)realloc(t->data, t->allocSize*t->sizeofType);
     }
     t->size = size;
 }

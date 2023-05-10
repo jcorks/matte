@@ -47,11 +47,11 @@ struct matteBin_t {
 
 typedef struct {
     uint32_t id;
-    void * data;
+    uint8_t * data;
 } deadTag_t;
 
 matteBin_t * matte_bin_create(void * (*createNew)(), void (*destroy)(void *)) {
-    matteBin_t * out = malloc(sizeof(matteBin_t));
+    matteBin_t * out = (matteBin_t*)malloc(sizeof(matteBin_t));
     out->alive = matte_array_create(sizeof(void*));
     out->dead = matte_array_create(sizeof(deadTag_t));
     out->createNew = createNew;
@@ -61,16 +61,16 @@ matteBin_t * matte_bin_create(void * (*createNew)(), void (*destroy)(void *)) {
 
 void matte_bin_destroy(matteBin_t * b) {
     uint32_t i;
-    uint32_t len = matte_array_get_size(b->alive);
-    void ** objs = matte_array_get_data(b->alive);
+    uint32_t len =         matte_array_get_size(b->alive);
+    void ** objs = (void**)matte_array_get_data(b->alive);
 
     for(i = 0; i < len; ++i) {
         if (objs[i]) {
             b->destroy(objs[i]);
         }
     }
-    len              = matte_array_get_size(b->dead);
-    deadTag_t * tags = matte_array_get_data(b->dead);
+    len              =             matte_array_get_size(b->dead);
+    deadTag_t * tags = (deadTag_t*)matte_array_get_data(b->dead);
 
     for(i = 0; i < len; ++i) {
         b->destroy(tags[i].data);
@@ -115,7 +115,7 @@ void matte_bin_recycle(matteBin_t * b, uint32_t id) {
 
     deadTag_t tag;
     tag.id = id;
-    tag.data = matte_array_at(b->alive, void*, id);
+    tag.data = matte_array_at(b->alive, uint8_t*, id);
     matte_array_at(b->alive, void*, id) = NULL;
     matte_array_push(b->dead, tag);
 }

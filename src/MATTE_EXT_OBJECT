@@ -245,6 +245,7 @@ static matteValue_t vm_ext_call__object__freeze_gc(matteVM_t * vm, matteValue_t 
         matte_store_push_lock_gc(vm->store);
         vm->userGCFreeze = 1;
     }
+    return matte_store_new_value(vm->store);
 }
 
 
@@ -253,6 +254,7 @@ static matteValue_t vm_ext_call__object__thaw_gc(matteVM_t * vm, matteValue_t fn
         matte_store_pop_lock_gc(vm->store);
         vm->userGCFreeze = 0;
     }
+    return matte_store_new_value(vm->store);
 }
 
 static matteValue_t vm_ext_call__object__garbage_collect(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
@@ -263,6 +265,7 @@ static matteValue_t vm_ext_call__object__garbage_collect(matteVM_t * vm, matteVa
     if (vm->userGCFreeze) {
         matte_store_push_lock_gc(vm->store);
     }
+    return matte_store_new_value(vm->store);
 }
 
 static matteValue_t vm_ext_call__object__is(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {

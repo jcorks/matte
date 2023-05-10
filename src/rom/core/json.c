@@ -64,7 +64,7 @@ static matteString_t * encode_value(matteStore_t * store, matteValue_t val) {
     
       case MATTE_VALUE_TYPE_NUMBER: 
         if (fabs(val.value.number - (int64_t)val.value.number) < DBL_EPSILON) {
-            return matte_string_create_from_c_str("%"PRId64"", (int64_t)val.value.number);                
+            return matte_string_create_from_c_str("%" PRId64 "", (int64_t)val.value.number);                
         } else {
             return matte_string_create_from_c_str("%.15g", val.value.number);        
         }
@@ -397,7 +397,7 @@ MATTE_EXT_FN(matte_json__decode) {
     matteStore_t * store = matte_vm_get_store(vm);
     const matteString_t * str = matte_value_string_get_string_unsafe(store, args[0]);   
     StringIter iter;
-    iter.str = str;
+    iter.str = (matteString_t*)str;
     iter.index = 0;
     matteValue_t out = decode_value(vm, store, &iter);
     return out;

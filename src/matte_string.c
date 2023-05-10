@@ -104,7 +104,7 @@ static int utf8_put_char(uint32_t val, uint8_t * iter) {
 static void matte_string_concat_cstr(matteString_t * s, const uint8_t * cstr, uint32_t len) {
     while (s->len + len >= s->alloc) {
         s->alloc*=1.4;
-        s->utf8 = realloc(s->utf8, s->alloc*sizeof(uint32_t));
+        s->utf8 = (uint32_t*)realloc(s->utf8, s->alloc*sizeof(uint32_t));
     }
 
     uint32_t val;
@@ -130,9 +130,9 @@ static void matte_string_set_cstr(matteString_t * s, const uint8_t * cstr, uint3
 
 
 matteString_t * matte_string_create() {
-    matteString_t * out = calloc(1, sizeof(matteString_t));
+    matteString_t * out = (matteString_t*)calloc(1, sizeof(matteString_t));
     out->alloc = prealloc_size;
-    out->utf8 = malloc(prealloc_size*sizeof(uint32_t));
+    out->utf8 = (uint32_t*)malloc(prealloc_size*sizeof(uint32_t));
     return out;
 }
 
@@ -143,7 +143,7 @@ matteString_t * matte_string_create_from_c_str(const char * format, ...) {
     va_end(args);
 
 
-    char * newBuffer = malloc(lenReal+2);
+    char * newBuffer = (char*)malloc(lenReal+2);
     va_start(args, format);    
     vsnprintf(newBuffer, lenReal+1, format, args);
     va_end(args);
@@ -188,7 +188,7 @@ void matte_string_set(matteString_t * s, const matteString_t * src) {
         free(s->utf8);
         s->len = src->len;
         s->alloc = src->len;
-        s->utf8 = malloc(s->len*sizeof(uint32_t));
+        s->utf8 = (uint32_t*)malloc(s->len*sizeof(uint32_t));
         memcpy(s->utf8, src->utf8, src->len*sizeof(uint32_t));
     }
 
@@ -204,7 +204,7 @@ void matte_string_concat_printf(matteString_t * s, const char * format, ...) {
     va_end(args);
 
 
-    char * newBuffer = malloc(lenReal+2);
+    char * newBuffer = (char*)malloc(lenReal+2);
     va_start(args, format);    
     vsnprintf(newBuffer, lenReal+1, format, args);
     va_end(args);
@@ -254,7 +254,7 @@ const matteString_t * matte_string_get_substr(
     uint32_t len = (to - from) + 1;
     if (s->lastSubstr->alloc <= len) {
         s->lastSubstr->alloc = len;
-        s->lastSubstr->utf8 = realloc(s->lastSubstr->utf8, len*sizeof(uint32_t));
+        s->lastSubstr->utf8 = (uint32_t*)realloc(s->lastSubstr->utf8, len*sizeof(uint32_t));
     }
     memcpy(s->lastSubstr->utf8, s->utf8+from, len*sizeof(uint32_t));
     s->lastSubstr->len = len;
@@ -268,7 +268,7 @@ const char * matte_string_get_c_str(const matteString_t * tsrc) {
         matteString_t * t = (matteString_t *)tsrc;
         uint32_t i;
         uint32_t len = t->len;
-        t->cstrtemp = malloc(len*sizeof(uint32_t)+1);
+        t->cstrtemp = (char*)malloc(len*sizeof(uint32_t)+1);
         uint8_t * iter = (uint8_t*)t->cstrtemp;
         for(i = 0; i < len; ++i) {
             uint32_t val = t->utf8[i];
@@ -301,7 +301,7 @@ void matte_string_set_char(matteString_t * t, uint32_t p, uint32_t value) {
 void matte_string_append_char(matteString_t * t, uint32_t value) {
     if (t->len + 1 >= t->alloc) {
         t->alloc*=1.4;
-        t->utf8 = realloc(t->utf8, t->alloc*sizeof(uint32_t));
+        t->utf8 = (uint32_t*)realloc(t->utf8, t->alloc*sizeof(uint32_t));
     }
     if (t->cstrtemp) {
         free(t->cstrtemp);
@@ -320,7 +320,7 @@ void matte_string_insert_n_chars(
     if (position >= t->len) return;
     while(t->len + nvalues >= t->alloc) {
         t->alloc*=1.4;
-        t->utf8 = realloc(t->utf8, t->alloc*sizeof(uint32_t));
+        t->utf8 = (uint32_t*)realloc(t->utf8, t->alloc*sizeof(uint32_t));
     }
     if (t->cstrtemp) {
         free(t->cstrtemp);
@@ -366,7 +366,7 @@ void matte_string_remove_n_chars(
 
 uint32_t matte_string_get_utf8_length(const matteString_t * t) {
     matte_string_get_c_str(t);
-    uint8_t * c = t->cstrtemp;
+    uint8_t * c = (uint8_t*)t->cstrtemp;
     uint32_t length = 0;
     while(*c) {length++; c++;}
     return length;
@@ -385,7 +385,7 @@ void matte_string_append_utf8_char(
 
     while (s->len + 1 >= s->alloc) {
         s->alloc*=1.4;
-        s->utf8 = realloc(s->utf8, s->alloc*sizeof(uint32_t));
+        s->utf8 = (uint32_t*)realloc(s->utf8, s->alloc*sizeof(uint32_t));
     }
 
     s->utf8[s->len++] = val;
@@ -535,7 +535,7 @@ uint8_t * matte_string_base64_to_bytes(
     if (!len) return NULL;
 
     *size = 0;
-    uint8_t * out = malloc(len); // raw length is always bigger than real length;
+    uint8_t * out = (uint8_t*)malloc(len); // raw length is always bigger than real length;
 
     while(len && matte_string_get_char(in, len-1) == '=') len--;
     int buffer = 0;

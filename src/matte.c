@@ -144,7 +144,7 @@ static void debug_print_area(matte_t * m) {
     );
     int i = line;
 
-    matteArray_t * localLines = matte_table_find_by_uint(m->lines, fileid);
+    matteArray_t * localLines = (matteArray_t*)matte_table_find_by_uint(m->lines, fileid);
     if (localLines) {
         for(i = ((int)line) - PRINT_AREA_LINES/2; i < ((int)line) + PRINT_AREA_LINES/2 + 1; ++i) {
             if (i < 0 || i >= matte_array_get_size(localLines)) {
@@ -164,7 +164,7 @@ static void debug_print_area(matte_t * m) {
 
 // Default handler for compile errors.
 static void default_compile_error(const matteString_t * str, uint32_t line, uint32_t ch, void * data) {
-    matte_t * m = data;
+    matte_t * m = (matte_t*)data;
     matte_print(m, "%s (line %d:%d)", matte_string_get_c_str(str), line, ch);
     
 }
@@ -187,7 +187,7 @@ static void exec_command_print_error(
     matteValue_t val,
     void * data
 ) {
-    matte_t * m = data;
+    matte_t * m = (matte_t*)data;
     if(event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED)
         matte_print(m, "Error while evaluating print command: %s", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_store(vm), matte_value_as_string(matte_vm_get_store(vm), val))));
 }
@@ -319,7 +319,7 @@ static uint8_t * debug_on_import(
         usrdata
     );
 
-    debug_split_lines(usrdata, *preexistingFileID, out, *dataLength);
+    debug_split_lines((matte_t*)usrdata, *preexistingFileID, out, *dataLength);
     return out;
 }
 
@@ -334,7 +334,7 @@ static void default_debug_callback(
     matteValue_t val,
     void * data
 ) {
-    matte_t * m = data;
+    matte_t * m = (matte_t*)data;
     if (event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED) {
         const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_store(vm), matte_value_as_string(matte_vm_get_store(vm), val));
         matte_print(m, "ERROR RAISED FROM VIRTUAL MACHINE: %s", str ? matte_string_get_c_str(str) : "<no string info given>");
@@ -351,7 +351,7 @@ static void debug_on_event(
     matteValue_t val,
     void * data
 ) {
-    matte_t * m = data;
+    matte_t * m = (matte_t*)data;
     if (event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED) {
         // error happened before stackframe could start, so its not super useful to start at 0
         if (matte_vm_get_stackframe(vm, m->stackframe).pc == 0)
@@ -406,7 +406,7 @@ static void debug_on_event(
 
 static char * default_input(matte_t * m) {
     printf(" > ");
-    char * line = malloc(256+1);;
+    char * line = (char*)malloc(256+1);;
     fgets(line, 256, stdin);
     return line;
 }
@@ -429,7 +429,7 @@ static void default_unhandled_error(
     matteValue_t val,
     void * d
 ) {
-    matte_t * m = d;
+    matte_t * m = (matte_t*)d;
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteValue_t s = matte_value_object_access_string(matte_vm_get_store(vm), val, MATTE_VM_STR_CAST(vm, "summary"));
         if (s.binID && s.binID == MATTE_VALUE_TYPE_STRING) {
@@ -447,14 +447,14 @@ static void default_unhandled_error(
             matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), 
             lineNumber
         );
-        matte_print(m, "%s", matte_introspect_value(d, val));
+        matte_print(m, "%s", matte_introspect_value(m, val));
     };
 }
 
 
 
 static void default_print_callback(matteVM_t * vm, const matteString_t * str, void * data) {
-    matte_t * m = data;
+    matte_t * m = (matte_t*)data;
     m->output(
         m,
         matte_string_get_c_str(str)
@@ -467,11 +467,11 @@ static void default_print_callback(matteVM_t * vm, const matteString_t * str, vo
 
 
 matte_t * matte_create() {
-    matte_t * m = calloc(1, sizeof(matte_t));
+    matte_t * m = (matte_t*)calloc(1, sizeof(matte_t));
     m->vm = matte_vm_create();
     m->output = default_output;
     m->input = default_input;
-    m->formatBuffer = malloc(MATTE_PRINT_LIMIT+1);
+    m->formatBuffer = (char *)malloc(MATTE_PRINT_LIMIT+1);
     return m;
 }
 
@@ -681,7 +681,7 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
     
     if (m->isDebug) {
         // do split manually since will bypass normal import 
-        debug_split_lines(m, fid, source, strlen(source));
+        debug_split_lines(m, fid, (const uint8_t*)source, strlen(source));
     }
     
     matteValue_t out = matte_vm_run_fileid(

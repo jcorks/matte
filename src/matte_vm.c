@@ -212,7 +212,7 @@ static uint8_t * vm_default_import(
     uint32_t * dataLength,
     void * usrdata
 ) {
-    uint32_t * id = matte_table_find(vm->defaultImport_table, importPath);
+    uint32_t * id = (uint32_t*)matte_table_find(vm->defaultImport_table, importPath);
     if (id) {
         *dataLength = 0;
         *fileid = *id;
@@ -227,14 +227,14 @@ static uint8_t * vm_default_import(
     }
 
     #define DEFAULT_DUMP_SIZE 1024
-    char * msg = malloc(DEFAULT_DUMP_SIZE);
+    char * msg = (char*)malloc(DEFAULT_DUMP_SIZE);
     uint32_t totalLen = 0;
     uint32_t len;
     while((len = fread(msg, 1, DEFAULT_DUMP_SIZE, f))) {
         totalLen += len;
     }
     fseek(f, SEEK_SET, 0);
-    uint8_t * outBuffer = malloc(totalLen);
+    uint8_t * outBuffer = (uint8_t*)malloc(totalLen);
     uint8_t * iter = outBuffer;
     while((len = fread(msg, 1, DEFAULT_DUMP_SIZE, f))) {
         memcpy(iter, msg, len);
@@ -242,7 +242,7 @@ static uint8_t * vm_default_import(
     }
     free(msg);
     fclose(f);
-    id = malloc(sizeof(uint32_t));
+    id = (uint32_t*)malloc(sizeof(uint32_t));
     *id = matte_vm_get_new_file_id(vm, importPath);
     matte_table_insert(vm->defaultImport_table, importPath, id);
 
@@ -256,7 +256,7 @@ static uint8_t * vm_default_import(
 uint32_t matte_vm_get_new_file_id(matteVM_t * vm, const matteString_t * name) {
     uint32_t fileid = vm->nextID++; 
 
-    uint32_t * fileidPtr = malloc(sizeof(uint32_t));
+    uint32_t * fileidPtr = (uint32_t*)malloc(sizeof(uint32_t));
     *fileidPtr = fileid;
 
     matte_table_insert(vm->importPath2ID, name, fileidPtr);   
@@ -270,7 +270,7 @@ matteImportFunction_t matte_vm_get_default_import() {
 }
 
 uint32_t matte_vm_get_file_id_by_name(matteVM_t * vm, const matteString_t * name) {
-    uint32_t * p = matte_table_find(vm->importPath2ID, name);   
+    uint32_t * p = (uint32_t*)matte_table_find(vm->importPath2ID, name);   
     if (!p) return 0xffffffff;
     return *p;
 }
@@ -287,7 +287,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
     matteVMStackFrame_t * frame;
     if (matte_array_get_size(vm->callstack) < vm->stacksize) {
         while(matte_array_get_size(vm->callstack) < vm->stacksize) {
-            frame = calloc(1, sizeof(matteVMStackFrame_t));
+            frame = (matteVMStackFrame_t*)calloc(1, sizeof(matteVMStackFrame_t));
             matte_array_push(vm->callstack, frame);
         }
         frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
@@ -327,9 +327,9 @@ static void vm_pop_frame(matteVM_t * vm) {
 
 
 static matteBytecodeStub_t * vm_find_stub(matteVM_t * vm, uint32_t fileid, uint32_t stubid) {
-    matteTable_t * subt = matte_table_find_by_uint(vm->stubIndex, fileid);
+    matteTable_t * subt = (matteTable_t*)matte_table_find_by_uint(vm->stubIndex, fileid);
     if (!subt) return NULL;
-    return matte_table_find_by_uint(subt, stubid);
+    return (matteBytecodeStub_t*)matte_table_find_by_uint(subt, stubid);
 }
 
 
@@ -657,7 +657,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matte_vm_raise_error_cstring(vm, "VM internal error: too few values on stack to service SFS opcode!");
                     break;
                 }
-                matteValue_t * vals = calloc(sfscount, sizeof(matteValue_t));
+                matteValue_t * vals = (matteValue_t*)calloc(sfscount, sizeof(matteValue_t));
                 // reverse order since on the stack is [retval] [arg n-1] [arg n-2]...
                 for(i = 0; i < sfscount; ++i) {
                     vals[sfscount - i - 1] = STACK_PEEK(i);
@@ -1100,7 +1100,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           
           case MATTE_OPCODE_QRY: {
             matteValue_t o = STACK_PEEK(0);
-            matteValue_t output = matte_value_query(vm->store, &o, (uint32_t)inst->data);
+            matteValue_t output = matte_value_query(vm->store, &o, (matteQuery_t)inst->data);
             STACK_POP_NORET();            
 
             STACK_PUSH(output);
@@ -1146,7 +1146,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         matteValue_t b = STACK_PEEK(0);
                         matteValue_t v = vm_operator_2(
                             vm,
-                            (int)(inst->data),
+                            (matteOperator_t)(inst->data),
                             a, b
                         );
                         STACK_POP_NORET();
@@ -1171,7 +1171,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         matteValue_t a = STACK_PEEK(0);
                         matteValue_t v = vm_operator_1(
                             vm,
-                            (int)inst->data,
+                            (matteOperator_t)inst->data,
                             a
                         );
                         STACK_POP_NORET();
@@ -1286,7 +1286,7 @@ static void vm_add_built_in(
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
         vm->store,
         0,
-        matte_array_get_data(arr), 
+        (const uint8_t*) matte_array_get_data(arr), 
         matte_array_get_size(arr)
     );
     matte_array_destroy(arr);    
@@ -1304,7 +1304,7 @@ static void vm_add_built_in(
 #include "MATTE_EXT_OBJECT"
 #include "MATTE_EXT_STRING"
 matteVM_t * matte_vm_create() {
-    matteVM_t * vm = calloc(1, sizeof(matteVM_t));
+    matteVM_t * vm = (matteVM_t*)calloc(1, sizeof(matteVM_t));
 
 
     vm->callstack = matte_array_create(sizeof(matteVMStackFrame_t *));
@@ -1592,7 +1592,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         
-        matteValue_t * v = matte_table_iter_get_value(iter);
+        matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
         matte_value_object_pop_lock(vm->store, *v);
         matte_store_recycle(vm->store, *v);
         free(v);
@@ -1613,12 +1613,12 @@ void matte_vm_destroy(matteVM_t * vm) {
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         
-        matteTable_t * table = matte_table_iter_get_value(iter);
+        matteTable_t * table = (matteTable_t*)matte_table_iter_get_value(iter);
 
         for(matte_table_iter_start(subiter, table);
             !matte_table_iter_is_end(subiter);
             matte_table_iter_proceed(subiter)) {
-            matte_bytecode_stub_destroy((void*)matte_table_iter_get_value(subiter));
+            matte_bytecode_stub_destroy((matteBytecodeStub_t*)matte_table_iter_get_value(subiter));
         }
 
         matte_table_destroy(table);
@@ -1644,7 +1644,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         
-        matte_string_destroy(matte_table_iter_get_value(iter));
+        matte_string_destroy((matteString_t*)matte_table_iter_get_value(iter));
     }
     matte_table_destroy(vm->id2importPath);
 
@@ -1698,7 +1698,7 @@ void matte_vm_destroy(matteVM_t * vm) {
 }
 
 const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t fileid) {
-    return matte_table_find_by_uint(vm->id2importPath, fileid);
+    return (matteString_t*)matte_table_find_by_uint(vm->id2importPath, fileid);
 }
 
 void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr) {
@@ -1706,7 +1706,7 @@ void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr) {
     uint32_t len = matte_array_get_size(arr);
     for(i = 0; i < len; ++i) {
         matteBytecodeStub_t * stub = matte_array_at(arr, matteBytecodeStub_t *, i);
-        matteTable_t * fileindex = matte_table_find_by_uint(vm->stubIndex, matte_bytecode_stub_get_file_id(stub));
+        matteTable_t * fileindex = (matteTable_t*)matte_table_find_by_uint(vm->stubIndex, matte_bytecode_stub_get_file_id(stub));
         if (!fileindex) {
             fileindex = matte_table_create_hash_pointer();
             matte_table_insert_by_uint(vm->stubIndex, matte_bytecode_stub_get_file_id(stub), fileindex);
@@ -1831,10 +1831,10 @@ matteValue_t matte_vm_call(
         if (callable == 2) {
             int ok = matte_value_object_function_pre_typecheck_unsafe(vm->store, d, argsReal);
             if (ok) 
-                result = set->userFunction(vm, d, matte_array_get_data(argsReal), set->userData);
+                result = set->userFunction(vm, d, (matteValue_t*)matte_array_get_data(argsReal), set->userData);
             matte_value_object_function_post_typecheck_unsafe(vm->store, d, result);
         } else {
-            result = set->userFunction(vm, d, matte_array_get_data(argsReal), set->userData);        
+            result = set->userFunction(vm, d, (matteValue_t*)matte_array_get_data(argsReal), set->userData);        
         }
         matte_value_object_pop_lock(vm->store, d);
 
@@ -2007,7 +2007,7 @@ matteValue_t matte_vm_run_fileid(
     const matteString_t * importPath
 ) {
     if (fileid != MATTE_VM_DEBUG_FILE) {
-        matteValue_t * precomp = matte_table_find_by_uint(vm->imported, fileid);
+        matteValue_t * precomp = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
         if (precomp) return *precomp;
     }
     matteValue_t func = matte_store_new_value(vm->store);
@@ -2033,7 +2033,7 @@ matteValue_t matte_vm_run_fileid(
         import__pop_path(vm->importPaths);
     }
 
-    matteValue_t * ref = malloc(sizeof(matteValue_t));
+    matteValue_t * ref = (matteValue_t*)malloc(sizeof(matteValue_t));
     *ref = result;
     matte_table_insert_by_uint(vm->imported, fileid, ref);
     matte_value_object_push_lock(vm->store, *ref);
@@ -2104,7 +2104,7 @@ static void debug_compile_error(
     uint32_t ch,
     void * data
 ) {
-    matteVM_t * vm = data;
+    matteVM_t * vm = (matteVM_t*)data;
     matteValue_t v = matte_store_new_value(vm->store);
     matte_value_into_string(vm->store, &v, s);
     vm->debug(
@@ -2210,7 +2210,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
     matte_value_object_set(vm->store, callstack, key, val, 0);
     
     
-    matteValue_t * arr = malloc(sizeof(matteValue_t) * len);
+    matteValue_t * arr = (matteValue_t*)malloc(sizeof(matteValue_t) * len);
     matteString_t * str;
     if (detail.binID == MATTE_VALUE_TYPE_STRING) {
         str = matte_string_create_from_c_str("%s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, detail)));        
@@ -2346,7 +2346,7 @@ void matte_vm_raise_error_cstring(matteVM_t * vm, const char * str) {
 
 // Gets the requested stackframe. 0 is the currently running stackframe.
 matteVMStackFrame_t matte_vm_get_stackframe(matteVM_t * vm, uint32_t i) {
-    matteVMStackFrame_t ** frames = matte_array_get_data(vm->callstack);
+    matteVMStackFrame_t ** frames = (matteVMStackFrame_t**)matte_array_get_data(vm->callstack);
     i = vm->stacksize - 1 - i;
     if (i >= vm->stacksize) { // invalid or overflowed
         matte_vm_raise_error_cstring(vm, "Invalid stackframe requested.");
@@ -2361,7 +2361,7 @@ uint32_t matte_vm_get_stackframe_size(const matteVM_t * vm) {
 }
 
 matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID) {
-    matteVMStackFrame_t ** frames = matte_array_get_data(vm->callstack);
+    matteVMStackFrame_t ** frames = (matteVMStackFrame_t**)matte_array_get_data(vm->callstack);
     i = vm->stacksize - 1 - i;
     if (i >= vm->stacksize) { // invalid or overflowed
         matte_vm_raise_error_cstring(vm, "Invalid stackframe requested in referrable query.");
@@ -2386,7 +2386,7 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 }
 
 void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID, matteValue_t val) {
-    matteVMStackFrame_t ** frames = matte_array_get_data(vm->callstack);
+    matteVMStackFrame_t ** frames = (matteVMStackFrame_t**)matte_array_get_data(vm->callstack);
     i = vm->stacksize - 1 - i;
     if (i >= vm->stacksize) { // invalid or overflowed
         matte_vm_raise_error_cstring(vm, "Invalid stackframe requested in referrable assignment.");
@@ -2420,7 +2420,7 @@ void matte_vm_set_external_function_autoname(
     if (argCount > 26) return;
     matteString_t * arr[argCount];
     uint32_t i;
-    char * names[] = {
+    const char * names[] = {
         "a", "b", "c", "d", "e", "f", "g", "h",
         "i", "j", "k", "l", "m", "n", "o", "p",
         "q", "r", "s", "t", "u", "v", "w", "x",
@@ -2450,9 +2450,9 @@ void matte_vm_set_external_function(
 
 
 
-    uint32_t * id = matte_table_find(vm->externalFunctions, identifier);
+    uint32_t * id = (uint32_t*)matte_table_find(vm->externalFunctions, identifier);
     if (!id) {
-        id = malloc(sizeof(uint32_t));
+        id = (uint32_t*)malloc(sizeof(uint32_t));
         *id = matte_array_get_size(vm->externalFunctionIndex);
         matte_array_set_size(vm->externalFunctionIndex, *id+1);
         matte_table_insert(vm->externalFunctions, identifier, id);
@@ -2475,7 +2475,7 @@ matteValue_t matte_vm_get_external_function_as_value(
     matteVM_t * vm,
     const matteString_t * identifier
 ) {
-    uint32_t * id = matte_table_find(vm->externalFunctions, identifier);
+    uint32_t * id = (uint32_t*)matte_table_find(vm->externalFunctions, identifier);
     if (!id) {
         return matte_store_new_value(vm->store);
     }

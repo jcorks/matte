@@ -66,7 +66,7 @@ void matte_set_io(
     
     // The function to clear output from Matte output.
     // If NULL, stdout is cleared using ANSI terminal characters.
-    void   (*clear)(matte_t *);
+    void   (*clear)(matte_t *)
 );  
 
 
