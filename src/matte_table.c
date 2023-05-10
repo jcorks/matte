@@ -30,6 +30,7 @@ DEALINGS IN THE SOFTWARE.
 
 #include "matte_table.h"
 #include "matte_string.h"
+#include "matte.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -186,7 +187,7 @@ static void matte_table_resize(matteTable_t * t) {
     #ifdef MATTE_DEBUG
         assert(t && "matteTable_t pointer cannot be NULL.");
     #endif
-    matteTableEntry_t ** entries = (matteTableEntry_t**)malloc(sizeof(matteTableEntry_t*)*t->size);
+    matteTableEntry_t ** entries = (matteTableEntry_t**)matte_allocate(sizeof(matteTableEntry_t*)*t->size);
     matteTableEntry_t * entry;
     matteTableEntry_t * next;
     matteTableEntry_t * prev;
@@ -205,8 +206,8 @@ static void matte_table_resize(matteTable_t * t) {
 
     // then resize
     t->nBuckets *= 2;
-    free(t->buckets);
-    t->buckets = (matteTableEntry_t**)calloc(t->nBuckets, sizeof(matteTableEntry_t*));
+    matte_deallocate(t->buckets);
+    t->buckets = (matteTableEntry_t**)matte_allocate(t->nBuckets * sizeof(matteTableEntry_t*));
 
 
     // redistribute in-place
@@ -231,7 +232,7 @@ static void matte_table_resize(matteTable_t * t) {
             prev->next = entry;
         }
     }
-    free(entries);
+    matte_deallocate(entries);
         
 
     
@@ -246,7 +247,7 @@ static matteTable_t * matte_table_initialize(matteTable_t * t) {
         assert(t && "matteTable_t pointer cannot be NULL.");
     #endif
 
-    t->buckets = (matteTableEntry_t**)calloc(sizeof(matteTableEntry_t*), table_bucket_start_size);
+    t->buckets = (matteTableEntry_t**)matte_allocate(sizeof(matteTableEntry_t*) * table_bucket_start_size);
     t->nBuckets = table_bucket_start_size;
 
     t->size = 0;
@@ -262,13 +263,13 @@ static matteTableEntry_t * matte_table_new_entry(matteTable_t * t, const void * 
 
     matteTableEntry_t * out;
 
-    out = (matteTableEntry_t*)malloc(sizeof(matteTableEntry_t));
+    out = (matteTableEntry_t*)matte_allocate(sizeof(matteTableEntry_t));
     out->value = value;
     out->next = NULL;
     out->keyLen = keyLen;
     // if the key is dynamically allocated, we need a local copy 
     if (keyLen) {    
-        out->key = malloc(keyLen);
+        out->key = matte_allocate(keyLen);
         memcpy(out->key, key, keyLen);
     } else { // else simple copy (no modify)
         out->key = (void*)key;
@@ -285,13 +286,13 @@ static void matte_table_remove_entry(matteTable_t * t, matteTableEntry_t * entry
     #endif
 
     t->keyRemove(entry->key);
-    free(entry);
+    matte_deallocate(entry);
     t->size--;
 }
 
 
 matteTable_t * matte_table_create_hash_pointer() {
-    matteTable_t * t = (matteTable_t*)calloc(sizeof(matteTable_t), 1);
+    matteTable_t * t = (matteTable_t*)matte_allocate(sizeof(matteTable_t));
     t->hash      = hash_fn_value;
     t->keyCmp    = key_cmp_fn_value;
     t->keyRemove = key_destroy_dont;
@@ -300,17 +301,17 @@ matteTable_t * matte_table_create_hash_pointer() {
 }
 
 matteTable_t * matte_table_create_hash_c_string() {
-    matteTable_t * t = (matteTable_t*)calloc(sizeof(matteTable_t), 1);
+    matteTable_t * t = (matteTable_t*)matte_allocate(sizeof(matteTable_t));
     t->hash      = (KeyHashFunction)hash_fn_buffer;
     t->keyCmp    = key_cmp_fn_c_str;
-    t->keyRemove = (KeyCleanFunction)free;
+    t->keyRemove = (KeyCleanFunction)matte_deallocate;
     t->keyLen    = -1;
     return matte_table_initialize(t);
 }
 
 
 matteTable_t * matte_table_create_hash_matte_string() {
-    matteTable_t * t = (matteTable_t*)calloc(sizeof(matteTable_t), 1);
+    matteTable_t * t = (matteTable_t*)matte_allocate(sizeof(matteTable_t));
     t->hash      = (KeyHashFunction)hash_fn_matte_str;
     t->keyCmp    = key_cmp_fn_matte_str;
     t->keyRemove = (KeyCleanFunction)matte_string_destroy;
@@ -322,10 +323,10 @@ matteTable_t * matte_table_create_hash_buffer(int size) {
     #ifdef MATTE_DEBUG
         assert(size > 0 && "matte_table_create_hash_buffer() requires non-zero size.");
     #endif
-    matteTable_t * t = (matteTable_t*)calloc(sizeof(matteTable_t), 1);
+    matteTable_t * t = (matteTable_t*)matte_allocate(sizeof(matteTable_t));
     t->hash      = (KeyHashFunction)hash_fn_buffer;
     t->keyCmp    = key_cmp_fn_buffer;
-    t->keyRemove = (KeyCleanFunction)free;
+    t->keyRemove = (KeyCleanFunction)matte_deallocate;
     t->keyLen    = size;
     return matte_table_initialize(t);    
 }
@@ -333,8 +334,8 @@ matteTable_t * matte_table_create_hash_buffer(int size) {
 
 void matte_table_destroy(matteTable_t * t) {
     matte_table_clear(t);
-    free(t->buckets);
-    free(t);
+    matte_deallocate(t->buckets);
+    matte_deallocate(t);
 }
 
 
@@ -523,14 +524,14 @@ void matte_table_clear(matteTable_t * t) {
 
 
 matteTableIter_t * matte_table_iter_create() {
-    return (matteTableIter_t*)calloc(sizeof(matteTableIter_t), 1);
+    return (matteTableIter_t*)matte_allocate(sizeof(matteTableIter_t));
 }
 
 void matte_table_iter_destroy(matteTableIter_t * t) {
     #ifdef MATTE_DEBUG
         assert(t && "matteTableIter_t pointer cannot be NULL.");
     #endif
-    free(t);
+    matte_deallocate(t);
 }
 
 

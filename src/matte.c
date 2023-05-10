@@ -51,7 +51,8 @@ typedef struct {
 
 
 
-
+static void * (*matte_allocate_fn)  (uint64_t) = NULL;
+static void   (*matte_deallocate_fn)(void *)   = NULL;
 
 
 struct matte_t {
@@ -173,7 +174,7 @@ static char * prompt(matte_t * m) {
     matte_print(m, "[Matte Debugging]:");
     
     if (m->currentInput)
-        free(m->currentInput);
+        matte_deallocate(m->currentInput);
         
     while(!(m->currentInput = m->input(m)));
     return m->currentInput;
@@ -197,10 +198,10 @@ static int exec_command(matte_t * m) {
     prompt(m); // populates currentCommand
     if (m->currentInput[0] == '\n' || m->currentInput[0] == 0) {
         // repeat last command;
-        free(m->currentInput);        
+        matte_deallocate(m->currentInput);        
         m->currentInput = strdup(m->lastInput);
     } else {
-        free(m->lastInput);
+        matte_deallocate(m->lastInput);
         m->lastInput = strdup(m->currentInput);
     }
 
@@ -406,7 +407,7 @@ static void debug_on_event(
 
 static char * default_input(matte_t * m) {
     printf(" > ");
-    char * line = (char*)malloc(256+1);;
+    char * line = (char*)matte_allocate(256+1);;
     fgets(line, 256, stdin);
     return line;
 }
@@ -467,11 +468,11 @@ static void default_print_callback(matteVM_t * vm, const matteString_t * str, vo
 
 
 matte_t * matte_create() {
-    matte_t * m = (matte_t*)calloc(1, sizeof(matte_t));
+    matte_t * m = (matte_t*)matte_allocate(1*sizeof(matte_t));
     m->vm = matte_vm_create();
     m->output = default_output;
     m->input = default_input;
-    m->formatBuffer = (char *)malloc(MATTE_PRINT_LIMIT+1);
+    m->formatBuffer = (char *)matte_allocate(MATTE_PRINT_LIMIT+1);
     return m;
 }
 
@@ -482,7 +483,7 @@ matteVM_t * matte_get_vm(matte_t * m) {
 
 void matte_destroy(matte_t * m) {
     matte_vm_destroy(m->vm);
-    free(m);
+    matte_deallocate(m);
 }
 
 void * matte_get_user_data(matte_t * m) {
@@ -676,7 +677,7 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
     );
 
     matte_vm_add_stubs(m->vm, stubs);
-    free(bytecode);
+    matte_deallocate(bytecode);
 
     
     if (m->isDebug) {
@@ -712,4 +713,36 @@ void matte_debugging_enable(matte_t * m) {
     );
     m->lastInput = strdup("");
 }
+
+
+static void* alloc_default(uint64_t size) {
+    return malloc(size);
+}
+
+void * matte_allocate(uint64_t size) {
+    if (!matte_allocate_fn)
+        matte_allocate_fn = alloc_default;
+    uint8_t * data = (uint8_t*)matte_allocate_fn(size);
+    if (!data) return data;
+    memset(data, 0, size);
+    return data;
+}
+
+void matte_deallocate(void * data) {
+    if (!data) return;
+    if (!matte_deallocate_fn)
+        matte_deallocate_fn = free;
+    matte_deallocate_fn(data);
+}
+
+
+void matte_set_allocator(
+    void * (*allocator)  (uint64_t),
+    void   (*deallocator)(void*)
+) {
+    matte_allocate_fn = allocator;
+    matte_deallocate_fn = deallocator;
+}
+
+
 

@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_bytecode_stub.h"
 #include "matte_vm.h"
 #include "matte_store_string.h"
+#include "matte.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -375,7 +376,7 @@ static matteValue_t * store_new_value_pointer(matteStore_t * h) {
     uint32_t size = matte_array_get_size(h->valueStore);
     if (!size) {
         // encourage locality by allocating in blocks
-        matteValue_t * block = (matteValue_t*)malloc(STORE_VALUE_POINTER_BLOCK_SIZE*sizeof(matteValue_t));
+        matteValue_t * block = (matteValue_t*)matte_allocate(STORE_VALUE_POINTER_BLOCK_SIZE*sizeof(matteValue_t));
         matte_array_push(h->valueStore_refs, block);
         uint32_t i;
         matte_array_set_size(h->valueStore, STORE_VALUE_POINTER_BLOCK_SIZE);
@@ -398,7 +399,7 @@ static void store_free_value_pointers(matteStore_t * h) {
     uint32_t i;
     uint32_t len = matte_array_get_size(h->valueStore_refs);
     for(i = 0; i < len; ++i) {
-        free(matte_array_at(h->valueStore_refs, matteValue_t *, i));
+        matte_deallocate(matte_array_at(h->valueStore_refs, matteValue_t *, i));
     }
     matte_array_destroy(h->valueStore);
     matte_array_destroy(h->valueStore_refs);
@@ -796,7 +797,7 @@ void keyvalues_number_destroy(void * obj) {
 
 
 matteStore_t * matte_store_create(matteVM_t * vm) {
-    matteStore_t * out = (matteStore_t*)calloc(1, sizeof(matteStore_t));
+    matteStore_t * out = (matteStore_t*)matte_allocate(sizeof(matteStore_t));
     out->vm = vm;
     out->bin = matte_store_bin_create();
     out->keyvalues_numberPool = matte_pool_create(keyvalues_number_create, keyvalues_number_destroy);
@@ -936,7 +937,7 @@ void matte_store_destroy(matteStore_t * h) {
     matte_array_destroy(h->questionableList);
     store_free_value_pointers(h);
     matte_array_destroy(h->toRemove);
-    free(h);
+    matte_deallocate(h);
 }
 
 
@@ -3149,7 +3150,7 @@ void matte_value_object_sort_unsafe(matteStore_t * store, matteValue_t v, matteV
     names[1].value.id = matte_string_store_internalize_cstring(store->stringStore, "b");
     params.names = MATTE_ARRAY_CAST(names, matteValue_t, 2);
     
-    matteValue_Sort_t * sortArray = (matteValue_Sort_t*)malloc(sizeof(matteValue_Sort_t)*len);
+    matteValue_Sort_t * sortArray = (matteValue_Sort_t*)matte_allocate(sizeof(matteValue_Sort_t)*len);
     uint32_t i;
     for(i = 0; i < len; ++i) {
         sortArray[i].value = matte_array_at(m->table.keyvalues_number, matteValue_t, i);
@@ -3161,7 +3162,7 @@ void matte_value_object_sort_unsafe(matteStore_t * store, matteValue_t v, matteV
     for(i = 0; i < len; ++i) {
         matte_array_at(m->table.keyvalues_number, matteValue_t, i) = sortArray[i].value;
     }
-    free(sortArray);
+    matte_deallocate(sortArray);
     
     matte_value_object_pop_lock(store, v);
     matte_value_object_pop_lock(store, less);
@@ -3877,7 +3878,7 @@ void matte_store_garbage_collect(matteStore_t * h) {
 }
 
 static matteObject_t * create_table() {
-    matteObject_t * out = (matteObject_t*)calloc(1, sizeof(matteObject_t));
+    matteObject_t * out = (matteObject_t*)matte_allocate(sizeof(matteObject_t));
     //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
     //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
 
@@ -3895,7 +3896,7 @@ static matteObject_t * create_table() {
 }
 
 static matteObject_t * create_function() {
-    matteObject_t * out = (matteObject_t*)calloc(1, sizeof(matteObject_t));
+    matteObject_t * out = (matteObject_t*)matte_allocate(sizeof(matteObject_t));
     //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
     //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
     #ifdef MATTE_DEBUG__STORE
@@ -3930,7 +3931,7 @@ static void destroy_object(void * d) {
 
     //matte_array_destroy(out->refParents);
     //matte_array_destroy(out->refChildren);
-    free(out);
+    matte_deallocate(out);
 }
 
 struct matteStoreBin_t {
@@ -3946,7 +3947,7 @@ struct matteStoreBin_t {
 
 
 matteStoreBin_t * matte_store_bin_create() {
-    matteStoreBin_t * store = (matteStoreBin_t*)calloc(1, sizeof(matteStoreBin_t));
+    matteStoreBin_t * store = (matteStoreBin_t*)matte_allocate(sizeof(matteStoreBin_t));
     
     store->functions = matte_array_create(sizeof(matteObject_t *));
     store->tables    = matte_array_create(sizeof(matteObject_t *));
@@ -4065,7 +4066,7 @@ void matte_store_bin_destroy(matteStoreBin_t * store) {
     matte_array_destroy(store->functions);
     matte_array_destroy(store->deadFunctions);
     matte_array_destroy(store->deadTables);
-    free(store);
+    matte_deallocate(store);
 }
 
 
@@ -4079,7 +4080,7 @@ struct matteObjectPool_t {
 };
 
 matteObjectPool_t * matte_pool_create(void*(*cr)(), void (*ds)(void *)) {
-    matteObjectPool_t * out = (matteObjectPool_t*)calloc(1, sizeof(matteObjectPool_t));
+    matteObjectPool_t * out = (matteObjectPool_t*)matte_allocate(sizeof(matteObjectPool_t));
     out->create = cr;
     out->destroy = ds;
     out->pool = matte_array_create(sizeof(void *));
@@ -4094,7 +4095,7 @@ void matte_pool_destroy(matteObjectPool_t * p) {
         p->destroy(matte_array_at(p->pool, void *, i));
     }
     matte_array_destroy(p->pool);
-    free(p);
+    matte_deallocate(p);
 }
 
 // returns a pre-allocated instance else
@@ -4139,7 +4140,7 @@ static MatteStoreTrackInfo * store_track_info = NULL;
 
 
 static void matte_store_track_initialize() {
-    store_track_info = calloc(1, sizeof(MatteStoreTrackInfo));
+    store_track_info = matte_allocate(sizeof(MatteStoreTrackInfo));
     store_track_info->values[MATTE_VALUE_TYPE_OBJECT] = matte_table_create_hash_pointer();
 
 }
@@ -4168,7 +4169,7 @@ static void matte_store_track_print(matteStore_t * store, uint32_t id) {
         printf(
             "%s %s:%d\n", 
             get_track_store_symbol(matte_array_at(inst->historyIncr, int, i)),
-            matte_array_at(inst->historyFiles, char *, i),
+            matte_string_get_c_str(matte_array_at(inst->historyFiles, matteString_t *, i)),
             matte_array_at(inst->historyLines, int, i)
         );
     }
@@ -4189,7 +4190,7 @@ static void matte_store_report_val(matteStore_t * store, matteTable_t * t) {
             printf(
                 "%s %s:%d\n", 
                 get_track_store_symbol(matte_array_at(inst->historyIncr, int, i)),
-                matte_array_at(inst->historyFiles, char *, i),
+                matte_string_get_c_str(matte_array_at(inst->historyFiles, matteString_t *, i)),
                 matte_array_at(inst->historyLines, int, i)
             );
         }
@@ -4223,8 +4224,8 @@ matteValue_t matte_store_track_in(matteStore_t * store, matteValue_t val, const 
     // reference is complete. REMOVE!!!
 
     if (!inst) {
-        inst = calloc(sizeof(MatteStoreTrackInfo_Instance), 1);
-        inst->historyFiles = matte_array_create(sizeof(char *));
+        inst = matte_allocate(sizeof(MatteStoreTrackInfo_Instance));
+        inst->historyFiles = matte_array_create(sizeof(matteString_t *));
         inst->historyLines = matte_array_create(sizeof(int));
         inst->historyIncr  = matte_array_create(sizeof(int));
         matte_table_insert_by_uint(store_track_info->values[val.binID], val.value.id, inst);
@@ -4232,7 +4233,7 @@ matteValue_t matte_store_track_in(matteStore_t * store, matteValue_t val, const 
         inst->refid = val;
     } 
 
-    char * fdup = strdup(file);
+    matteString_t * fdup = matte_string_create_from_c_str("%s", file);
     int t = 1;
     matte_array_push(inst->historyFiles, fdup);
     matte_array_push(inst->historyLines, line);
@@ -4252,7 +4253,7 @@ void matte_store_track_neutral(matteStore_t * store, matteValue_t val, const cha
     MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[val.binID], val.value.id);
 
 
-    char * fdup = strdup(file);
+    matteString_t * fdup = matte_string_create_from_c_str("%s", file);
     int t = 2;
     matte_array_push(inst->historyFiles, fdup);
     matte_array_push(inst->historyLines, line);
@@ -4276,7 +4277,7 @@ void matte_store_track_out(matteStore_t * store, matteValue_t val, const char * 
         return;
     }
 
-    char * fdup = strdup(file);
+    matteString_t * fdup = matte_string_create_from_c_str("%s", file);
     int t = 0;
     matte_array_push(inst->historyFiles, fdup);
     matte_array_push(inst->historyLines, line);
@@ -4325,7 +4326,7 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val) {
         assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to distroy it.");
     }
 
-    char * fdup = strdup("<REMOVED>");
+    matteString_t * fdup = matte_string_create_from_c_str("<REMOVED>");
     int t = 0;
     matte_array_push(inst->historyFiles, fdup);
     matte_array_push(inst->historyLines, t);
@@ -4338,11 +4339,11 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val) {
     uint32_t i;
     uint32_t len = matte_array_get_size(inst->historyFiles);
     for(i = 0; i < len; ++i) {
-        free(matte_array_at(inst->historyFiles, char *, i));
+        matte_string_destroy(matte_array_at(inst->historyFiles, matteString_t *, i));
     }
     matte_array_destroy(inst->historyFiles);
     matte_table_remove_by_uint(store_track_info->values[val.binID], val.value.id);
-    free(inst);
+    matte_deallocate(inst);
     inst = NULL;
 
 

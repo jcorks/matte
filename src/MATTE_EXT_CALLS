@@ -150,7 +150,7 @@ static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_
     matteValue_t out = matte_store_new_value(vm->store);
     matte_value_into_new_function_ref(vm->store, &out, matte_array_at(vm->extStubs, matteBytecodeStub_t *, *id));
 
-    free(id);
+    matte_deallocate(id);
     matte_table_remove(vm->externalFunctions, str);    
     return out;
 }
@@ -217,11 +217,11 @@ static void import_compile_error(
 #include <unistd.h>
 #include <limits.h>
 static matteString_t * import__getcwd_generic() {
-    char * path = malloc(PATH_MAX+1);
+    char * path = matte_allocate(PATH_MAX+1);
     path[0] = 0;
     getcwd(path, PATH_MAX);
     matteString_t * st = matte_string_create_from_c_str(path);
-    free(path);
+    matte_deallocate(path);
     return st;
 }
 
@@ -242,19 +242,19 @@ static matteString_t * import__get_directory(const matteString_t * path) {
 
 static int import__is_canonical(const matteString_t * path) {
     char * pathc = strdup(matte_string_get_c_str(path));
-    char * pathc_real = malloc(PATH_MAX+1);
+    char * pathc_real = matte_allocate(PATH_MAX+1);
     pathc_real[0] = 0;
     realpath(pathc, pathc_real);
 
     int result = !strcmp(pathc, pathc_real);
-    free(pathc_real);
-    free(pathc);
+    matte_deallocate(pathc_real);
+    matte_deallocate(pathc);
     return result;
 }
 
 static int import__path_canonicalize(matteString_t * path) {
     char * pathc = strdup(matte_string_get_c_str(path));
-    char * pathc_real = malloc(PATH_MAX+1);
+    char * pathc_real = matte_allocate(PATH_MAX+1);
     pathc_real[0] = 0;
     int result;
     if (realpath(pathc, pathc_real)) {
@@ -265,8 +265,8 @@ static int import__path_canonicalize(matteString_t * path) {
         result = 0;
     }
 
-    free(pathc_real);
-    free(pathc);
+    matte_deallocate(pathc_real);
+    matte_deallocate(pathc);
     return result;
 }
 
@@ -274,11 +274,11 @@ static int import__path_canonicalize(matteString_t * path) {
 #include <windows.h>
 #include <direct.h>
 static matteString_t * import__getcwd_generic() {
-    char * path = malloc(PATH_MAX+1);
+    char * path = matte_allocate(PATH_MAX+1);
     path[0] = 0;
     _getcwd(path, PATH_MAX);
     matteString_t * st = matte_string_create_from_c_str(path);
-    free(path);
+    matte_deallocate(path);
     return st;
 }
 
@@ -299,19 +299,19 @@ static matteString_t * import__get_directory(const matteString_t * path) {
 
 static int import__is_canonical(const matteString_t * path) {
     char * pathc = strdup(matte_string_get_c_str(path));
-    char * pathc_real = malloc(PATH_MAX+1);
+    char * pathc_real = matte_allocate(PATH_MAX+1);
     pathc_real[0] = 0;
     GetFullPathNameA(pathc, PATH_MAX, pathc_real, NULL);
 
     int result = !strcmp(pathc, pathc_real);
-    free(pathc_real);
-    free(pathc);
+    matte_deallocate(pathc_real);
+    matte_deallocate(pathc);
     return result;
 }
 
 static int import__path_canonicalize(matteString_t * path) {
     char * pathc = strdup(matte_string_get_c_str(path));
-    char * pathc_real = malloc(PATH_MAX+1);
+    char * pathc_real = matte_allocate(PATH_MAX+1);
     pathc_real[0] = 0;
     int result;
     if (GetFullPathNameA(pathc, PATH_MAX, pathc_real, NULL)) {
@@ -322,8 +322,8 @@ static int import__path_canonicalize(matteString_t * path) {
         result = 0;
     }
 
-    free(pathc_real);
-    free(pathc);
+    matte_deallocate(pathc_real);
+    matte_deallocate(pathc);
     return result;
 }
 
@@ -525,7 +525,7 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
                 import_compile_error,
                 &data
             );
-            free(src);        
+            matte_deallocate(src);        
         } else {
             rom = src;
             romLen = srcLen;
@@ -536,7 +536,7 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
 
     if (rom && romLen) {
         matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(vm->store, fileid, rom, romLen);
-        if (!readonlyROM) free(rom);
+        if (!readonlyROM) matte_deallocate(rom);
         matte_vm_add_stubs(vm, stubs);
         matte_array_destroy(stubs);
 

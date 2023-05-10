@@ -29,6 +29,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include "matte_array.h"
 #include "matte_bin.h"
+#include "matte.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +52,7 @@ typedef struct {
 } deadTag_t;
 
 matteBin_t * matte_bin_create(void * (*createNew)(), void (*destroy)(void *)) {
-    matteBin_t * out = (matteBin_t*)malloc(sizeof(matteBin_t));
+    matteBin_t * out = (matteBin_t*)matte_allocate(sizeof(matteBin_t));
     out->alive = matte_array_create(sizeof(void*));
     out->dead = matte_array_create(sizeof(deadTag_t));
     out->createNew = createNew;
@@ -78,7 +79,7 @@ void matte_bin_destroy(matteBin_t * b) {
 
     matte_array_destroy(b->alive);
     matte_array_destroy(b->dead);
-    free(b);
+    matte_deallocate(b);
 }
 
 void * matte_bin_add(matteBin_t * b, uint32_t * id) {

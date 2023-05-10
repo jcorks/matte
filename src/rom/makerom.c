@@ -34,6 +34,11 @@ DEALINGS IN THE SOFTWARE.
 #include "../matte_string.h"
 #include "../matte_compiler.h"
 
+// dummy allocator / deallocator
+void * matte_allocate(uint32_t size) {return calloc(size, 1);}
+void matte_deallocate(void * data) {free(data);}
+
+
 static void * dump_bytes(const char * filename, uint32_t * len) {
     FILE * f = fopen(filename, "rb");
     if (!f) {

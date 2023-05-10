@@ -45,14 +45,14 @@ MATTE_EXT_FN(matte_consoleio__clear) {
 MATTE_EXT_FN(matte_consoleio__getline) {
     matteStore_t * store = matte_vm_get_store(vm);
 
-    char * buffer = malloc(GETLINE_SIZE+1);
+    char * buffer = matte_allocate(GETLINE_SIZE+1);
     buffer[0] = 0;
 
     fgets(buffer, GETLINE_SIZE, stdin);
 
     matteValue_t v =  matte_store_new_value(store);
     matte_value_into_string(store, &v, MATTE_VM_STR_CAST(vm, buffer));
-    free(buffer);
+    matte_deallocate(buffer);
     return v;    
 }
 

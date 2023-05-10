@@ -41,6 +41,38 @@ DEALINGS IN THE SOFTWARE.
 static int TESTID = 1;
 
 
+
+int64_t BYTES_USED = 0;
+uint64_t ALLOCS = 0;
+uint64_t FREES = 0;
+uint64_t PEAK_USAGE = 0;
+
+void * test_allocator(uint64_t size) {
+    BYTES_USED += size;
+    ALLOCS++;
+    if (BYTES_USED > PEAK_USAGE)
+        PEAK_USAGE = BYTES_USED;
+    
+    uint8_t * buffer = malloc(size + sizeof(uint64_t));
+    memcpy(buffer, &size, sizeof(uint32_t));
+    return buffer + sizeof(uint64_t);
+}
+
+void test_deallocator(void * buffer) {
+    uint8_t * realBuffer = ((uint8_t*)buffer) - sizeof(uint64_t);
+    uint32_t size = 0;
+    memcpy(&size, realBuffer, sizeof(uint32_t));
+    
+    BYTES_USED -= size;
+    FREES++;
+    free(realBuffer);
+}
+
+
+
+
+
+
 static void test_string_utf8(matteVM_t * vm) {
     matteString_t * str = matte_string_create();
     assert(matte_string_get_length(str) == 0);
@@ -238,6 +270,9 @@ static matteValue_t test_external_function(
 
 int main() {
     uint32_t i = 0;
+    
+    matte_set_allocator(test_allocator, test_deallocator);
+    
     matte_t * m = matte_create();
     test_string(matte_get_vm(m));
     test_string_utf8(matte_get_vm(m));
@@ -299,7 +334,7 @@ int main() {
         matteArray_t * arr = matte_bytecode_stubs_from_bytecode(store, matte_vm_get_new_file_id(vm, infile), outBytes, outByteLen);
         matte_vm_add_stubs(vm, arr);
         matte_array_destroy(arr);
-        free(outBytes);
+        matte_deallocate(outBytes);
 
         matteValue_t v = matte_vm_run_fileid(vm, i+1, matte_store_new_value(matte_vm_get_store(vm)), NULL);
 
@@ -334,5 +369,11 @@ int main() {
     matte_string_destroy(infile);
     matte_string_destroy(outfile);
     printf("Tests pass.\n");
+    
+    printf("Memory report:\n");
+    printf("Peak usage   : %.2f KB\n", ((double)PEAK_USAGE) / 1024);
+    printf("Bytes leaked : %.2f KB\n", ((double)BYTES_USED) / 1024);
+    
+    
     return 0;
 }

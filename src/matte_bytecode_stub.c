@@ -31,6 +31,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_string.h"
 #include "matte_array.h"
 #include "matte_opcode.h"
+#include "matte.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -78,11 +79,11 @@ static matteValue_t chomp_string(matteStore_t * store, uint8_t ** bytes, uint32_
     matteString_t * str;
     uint32_t len = 0;
     ADVANCE(uint32_t, len);
-    uint8_t * utf8raw = (uint8_t*)calloc(len+1, 1);
+    uint8_t * utf8raw = (uint8_t*)matte_allocate((len+1)*1);
     ADVANCEN(len, utf8raw[0]);
     
     str = matte_string_create_from_c_str("%s", utf8raw);
-    free(utf8raw);
+    matte_deallocate(utf8raw);
 
     matteValue_t v = matte_store_new_value(store);
     matte_value_into_string(store, &v, str);
@@ -93,7 +94,7 @@ static matteValue_t chomp_string(matteStore_t * store, uint8_t ** bytes, uint32_
 
 
 static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID, uint8_t ** bytes, uint32_t * left) {
-    matteBytecodeStub_t * out = (matteBytecodeStub_t*)calloc(1, sizeof(matteBytecodeStub_t));
+    matteBytecodeStub_t * out = (matteBytecodeStub_t*)matte_allocate(sizeof(matteBytecodeStub_t));
     uint32_t i;
     uint8_t ver = 0;
 
@@ -116,30 +117,30 @@ static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID
     out->fileID = fileID;
     ADVANCE(uint32_t, out->stubID);
     ADVANCE(uint8_t, out->argCount);
-    out->argNames = (matteValue_t*)malloc(sizeof(matteValue_t)*out->argCount);
+    out->argNames = (matteValue_t*)matte_allocate(sizeof(matteValue_t)*out->argCount);
     for(i = 0; i < out->argCount; ++i) {
         out->argNames[i] = chomp_string(store, bytes, left);    
     }        
     ADVANCE(uint8_t, out->localCount);
-    out->localNames = (matteValue_t*)malloc(sizeof(matteValue_t)*out->localCount);
+    out->localNames = (matteValue_t*)matte_allocate(sizeof(matteValue_t)*out->localCount);
     for(i = 0; i < out->localCount; ++i) {
         out->localNames[i] = chomp_string(store, bytes, left);    
     }        
     ADVANCE(uint32_t, out->stringCount);
-    out->strings = (matteValue_t*)malloc(sizeof(matteValue_t)*out->stringCount);
+    out->strings = (matteValue_t*)matte_allocate(sizeof(matteValue_t)*out->stringCount);
     for(i = 0; i < out->stringCount; ++i) {
         out->strings[i] = chomp_string(store, bytes, left);    
     }       
     ADVANCE(uint16_t, out->capturedCount);
     if (out->capturedCount) {
-        out->captures = (matteBytecodeStubCapture_t*)calloc(sizeof(matteBytecodeStubCapture_t), out->capturedCount);
+        out->captures = (matteBytecodeStubCapture_t*)matte_allocate(sizeof(matteBytecodeStubCapture_t)* out->capturedCount);
         ADVANCEN(sizeof(matteBytecodeStubCapture_t)*out->capturedCount, out->captures[0]);
     }
     ADVANCE(uint32_t, out->instructionCount);
     uint32_t baseLine = 0;
     ADVANCE(uint32_t, baseLine);
     if (out->instructionCount) {
-        out->instructions = (matteBytecodeStubInstruction_t*)calloc(sizeof(matteBytecodeStubInstruction_t), out->instructionCount);    
+        out->instructions = (matteBytecodeStubInstruction_t*)matte_allocate(sizeof(matteBytecodeStubInstruction_t)* out->instructionCount);    
         for(i = 0; i < out->instructionCount; ++i) {
             uint16_t lineOffset;
             ADVANCE(uint16_t, lineOffset);
@@ -160,12 +161,12 @@ static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID
 }
 
 void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
-    free(b->strings);   
-    free(b->captures);
-    free(b->instructions);
-    free(b->localNames);
-    free(b->argNames);
-    free(b);
+    matte_deallocate(b->strings);   
+    matte_deallocate(b->captures);
+    matte_deallocate(b->instructions);
+    matte_deallocate(b->localNames);
+    matte_deallocate(b->argNames);
+    matte_deallocate(b);
 }
 
 

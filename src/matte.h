@@ -37,8 +37,25 @@ typedef struct matteVM_t matteVM_t;
 #include "matte_store.h"
 
 
-// Creates a new Matte isntance
+
+
+// Creates a new Matte instance
 matte_t * matte_create();
+
+
+// Sets the functions to use for all memory allocations 
+// and deallocations. 
+// For correct use, call this before ANY matte calls.
+void matte_set_allocator(
+    // Optional allocator. If specified, this will 
+    // be used instead of matte_allocate() for all memory allocations.
+    void * (*allocator)  (uint64_t),
+    
+    // Optional deallocator. If specified, this will 
+    // be used instead of matte_deallocate() for all memory allocations
+    void   (*deallocator)(void*)
+);
+
 
 // Destroys a Matte instance
 void matte_destroy(matte_t *);
@@ -154,5 +171,13 @@ void matte_set_user_data(matte_t * m, void * d);
 // Gets the VM instance from the matte instance.
 // The VM is owned by the Matte instance.
 matteVM_t * matte_get_vm(matte_t *);
+
+
+// Allocates a buffer of size bytes
+// All bytes are set to 0.
+void * matte_allocate(uint64_t size);
+
+// Deallocates a buffer 
+void matte_deallocate(void *);
 
 #endif

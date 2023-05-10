@@ -35,6 +35,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_string.h"
 #include "matte_opcode.h"
 #include "matte_compiler.h"
+#include "matte.h"
 #include "./rom/native.h"
 #include <stdlib.h>
 #include <string.h>
@@ -227,22 +228,22 @@ static uint8_t * vm_default_import(
     }
 
     #define DEFAULT_DUMP_SIZE 1024
-    char * msg = (char*)malloc(DEFAULT_DUMP_SIZE);
+    char * msg = (char*)matte_allocate(DEFAULT_DUMP_SIZE);
     uint32_t totalLen = 0;
     uint32_t len;
     while((len = fread(msg, 1, DEFAULT_DUMP_SIZE, f))) {
         totalLen += len;
     }
     fseek(f, SEEK_SET, 0);
-    uint8_t * outBuffer = (uint8_t*)malloc(totalLen);
+    uint8_t * outBuffer = (uint8_t*)matte_allocate(totalLen);
     uint8_t * iter = outBuffer;
     while((len = fread(msg, 1, DEFAULT_DUMP_SIZE, f))) {
         memcpy(iter, msg, len);
         iter += len;
     }
-    free(msg);
+    matte_deallocate(msg);
     fclose(f);
-    id = (uint32_t*)malloc(sizeof(uint32_t));
+    id = (uint32_t*)matte_allocate(sizeof(uint32_t));
     *id = matte_vm_get_new_file_id(vm, importPath);
     matte_table_insert(vm->defaultImport_table, importPath, id);
 
@@ -256,7 +257,7 @@ static uint8_t * vm_default_import(
 uint32_t matte_vm_get_new_file_id(matteVM_t * vm, const matteString_t * name) {
     uint32_t fileid = vm->nextID++; 
 
-    uint32_t * fileidPtr = (uint32_t*)malloc(sizeof(uint32_t));
+    uint32_t * fileidPtr = (uint32_t*)matte_allocate(sizeof(uint32_t));
     *fileidPtr = fileid;
 
     matte_table_insert(vm->importPath2ID, name, fileidPtr);   
@@ -287,7 +288,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
     matteVMStackFrame_t * frame;
     if (matte_array_get_size(vm->callstack) < vm->stacksize) {
         while(matte_array_get_size(vm->callstack) < vm->stacksize) {
-            frame = (matteVMStackFrame_t*)calloc(1, sizeof(matteVMStackFrame_t));
+            frame = (matteVMStackFrame_t*)matte_allocate(sizeof(matteVMStackFrame_t));
             matte_array_push(vm->callstack, frame);
         }
         frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
@@ -657,7 +658,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matte_vm_raise_error_cstring(vm, "VM internal error: too few values on stack to service SFS opcode!");
                     break;
                 }
-                matteValue_t * vals = (matteValue_t*)calloc(sfscount, sizeof(matteValue_t));
+                matteValue_t * vals = (matteValue_t*)matte_allocate(sfscount*sizeof(matteValue_t));
                 // reverse order since on the stack is [retval] [arg n-1] [arg n-2]...
                 for(i = 0; i < sfscount; ++i) {
                     vals[sfscount - i - 1] = STACK_PEEK(i);
@@ -670,7 +671,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
                 #endif
 
-                free(vals);
+                matte_deallocate(vals);
 
                 for(i = 0; i < sfscount; ++i) {
                     STACK_POP_NORET();
@@ -1304,7 +1305,7 @@ static void vm_add_built_in(
 #include "MATTE_EXT_OBJECT"
 #include "MATTE_EXT_STRING"
 matteVM_t * matte_vm_create() {
-    matteVM_t * vm = (matteVM_t*)calloc(1, sizeof(matteVM_t));
+    matteVM_t * vm = (matteVM_t*)matte_allocate(sizeof(matteVM_t));
 
 
     vm->callstack = matte_array_create(sizeof(matteVMStackFrame_t *));
@@ -1595,7 +1596,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
         matte_value_object_pop_lock(vm->store, *v);
         matte_store_recycle(vm->store, *v);
-        free(v);
+        matte_deallocate(v);
     }
 
     len = matte_array_get_size(vm->extFuncs);
@@ -1629,7 +1630,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         
-        free(matte_table_iter_get_value(iter));
+        matte_deallocate(matte_table_iter_get_value(iter));
     }
     matte_table_destroy(vm->defaultImport_table);
 
@@ -1652,7 +1653,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         
-        free(matte_table_iter_get_value(iter));
+        matte_deallocate(matte_table_iter_get_value(iter));
     }
     matte_table_destroy(vm->importPath2ID);
 
@@ -1661,7 +1662,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         
-        free(matte_table_iter_get_value(iter));
+        matte_deallocate(matte_table_iter_get_value(iter));
     }
     
     matte_table_destroy(vm->externalFunctions);
@@ -1674,7 +1675,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t *, i);
         matte_string_destroy(frame->prettyName);
         matte_array_destroy(frame->valueStack);
-        free(frame);
+        matte_deallocate(frame);
     }
 
     len = matte_array_get_size(vm->extStubs);
@@ -1694,7 +1695,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         if (vm->string_tempVals[i])
             matte_string_destroy(vm->string_tempVals[i]);
     }
-    free(vm);
+    matte_deallocate(vm);
 }
 
 const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t fileid) {
@@ -2033,7 +2034,7 @@ matteValue_t matte_vm_run_fileid(
         import__pop_path(vm->importPaths);
     }
 
-    matteValue_t * ref = (matteValue_t*)malloc(sizeof(matteValue_t));
+    matteValue_t * ref = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
     *ref = result;
     matte_table_insert_by_uint(vm->imported, fileid, ref);
     matte_value_object_push_lock(vm->store, *ref);
@@ -2210,7 +2211,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
     matte_value_object_set(vm->store, callstack, key, val, 0);
     
     
-    matteValue_t * arr = (matteValue_t*)malloc(sizeof(matteValue_t) * len);
+    matteValue_t * arr = (matteValue_t*)matte_allocate(sizeof(matteValue_t) * len);
     matteString_t * str;
     if (detail.binID == MATTE_VALUE_TYPE_STRING) {
         str = matte_string_create_from_c_str("%s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, detail)));        
@@ -2250,7 +2251,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
 
     matteArray_t arrA = MATTE_ARRAY_CAST(arr, matteValue_t, len);
     matte_value_into_new_object_array_ref(vm->store, &val, &arrA);
-    free(arr);
+    matte_deallocate(arr);
     matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "frames"));
     matte_value_object_set(vm->store, callstack, key, val, 0);
     
@@ -2452,7 +2453,7 @@ void matte_vm_set_external_function(
 
     uint32_t * id = (uint32_t*)matte_table_find(vm->externalFunctions, identifier);
     if (!id) {
-        id = (uint32_t*)malloc(sizeof(uint32_t));
+        id = (uint32_t*)matte_allocate(sizeof(uint32_t));
         *id = matte_array_get_size(vm->externalFunctionIndex);
         matte_array_set_size(vm->externalFunctionIndex, *id+1);
         matte_table_insert(vm->externalFunctions, identifier, id);

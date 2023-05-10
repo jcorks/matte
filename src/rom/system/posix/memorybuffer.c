@@ -40,8 +40,8 @@ typedef struct {
 static void auto_cleanup_buffer(void * ud, void * fd) {
     if (ud) {
         MatteMemoryBuffer * b = ud;
-        free(b->buffer);
-        free(b);
+        matte_deallocate(b->buffer);
+        matte_deallocate(b);
     }
 }
 
@@ -52,13 +52,13 @@ static matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_new_object_ref(store, &out);
     matte_value_object_set_native_finalizer(store, out, auto_cleanup_buffer, NULL);    
-    MatteMemoryBuffer * m = calloc(1, sizeof(MatteMemoryBuffer));
+    MatteMemoryBuffer * m = matte_allocate(sizeof(MatteMemoryBuffer));
     m->idval = MEMORYBUFFER_ID_TAG;
     matte_value_object_set_userdata(store, out, m);    
 
     
     if (data && size) {    
-        m->buffer = malloc(size);
+        m->buffer = matte_allocate(size);
         memcpy(m->buffer, data, size);
         m->alloc = size;
         m->size = size;
@@ -92,8 +92,8 @@ MATTE_EXT_FN(matte_ext__memory_buffer__release) {
     matteValue_t a = args[0];
     MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
     m->idval = 0;
-    free(m->buffer);
-    free(m);
+    matte_deallocate(m->buffer);
+    matte_deallocate(m);
     matte_value_object_set_userdata(store, a, NULL);
     return matte_store_new_value(store);
 }
@@ -105,8 +105,12 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_size) {
 
     uint64_t length = matte_value_as_number(store, args[1]);
     if (m->alloc < length) {
+        uint64_t oldLength = m->alloc;
         m->alloc = length;
-        m->buffer = realloc(m->buffer, length);
+        uint8_t * newBuffer = (uint8_t*)matte_allocate(length);
+        memcpy(newBuffer, m->buffer, oldLength);
+        matte_deallocate(m->buffer);
+        m->buffer = newBuffer;
     }
     // no such thing as uninitialized
     memset(m->buffer+m->size, 0, length - m->size);    
@@ -194,8 +198,12 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append_byte) {
     uint8_t val   = matte_value_as_number(store, args[1]);
 
     if (m->alloc == m->size) {
+        uint64_t prevAlloc = m->alloc;
         m->alloc = 10 + m->alloc*1.1;
-        m->buffer = realloc(m->buffer, m->alloc);
+        uint8_t * newBuffer = (uint8_t*)matte_allocate(m->alloc);
+        memcpy(newBuffer, m->buffer, prevAlloc);
+        matte_deallocate(m->buffer);
+        m->buffer = newBuffer;
     }
     m->buffer[m->size++] = val;
     return matte_store_new_value(store);
@@ -213,8 +221,12 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append) {
 
 
     if (mA->alloc < mA->size + mB->size) {
+        uint64_t oldAlloc = mA->alloc;
         mA->alloc = mA->size + mB->size;
-        mA->buffer = realloc(mA->buffer, mA->alloc);
+        uint8_t * newBuffer = matte_allocate(mA->alloc);
+        memcpy(newBuffer, mA->buffer, oldAlloc);
+        matte_deallocate(mA->buffer);
+        mA->buffer = newBuffer;
     }
     memcpy(mA->buffer+mA->size, mB->buffer, mB->size);
     mA->size += mB->size;
@@ -275,12 +287,12 @@ MATTE_EXT_FN(matte_ext__memory_buffer__as_utf8) {
     matteValue_t a = args[0];
     MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
 
-    char * buf = malloc(m->size+1);
+    char * buf = matte_allocate(m->size+1);
     buf[m->size] = 0;
     memcpy(buf, m->buffer, m->size);
     
     matteString_t * outStr = matte_string_create_from_c_str("%s", buf);
-    free(buf);
+    matte_deallocate(buf);
     
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_string(store, &out, outStr);

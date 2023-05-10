@@ -43,8 +43,8 @@ MATTE_EXT_FN(matte_filesystem__directoryenumerate) {
         uint32_t len = matte_array_get_size(dirfiles);
         for(i = 0; i < len; ++i) {
             DirectoryInfo * d = &matte_array_at(dirfiles, DirectoryInfo, i);
-            free(d->path);
-            free(d->name);
+            matte_deallocate(d->path);
+            matte_deallocate(d->name);
         }
         
         matte_array_set_size(dirfiles, 0);
@@ -52,7 +52,7 @@ MATTE_EXT_FN(matte_filesystem__directoryenumerate) {
 
 
     const int MAXLEN = 32768;
-    char * cwd = malloc(MAXLEN);
+    char * cwd = matte_allocate(MAXLEN);
     cwd = getcwd(cwd, MAXLEN-1);
     uint32_t len = strlen(cwd);
 
@@ -179,13 +179,13 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectisfile) {
 
 MATTE_EXT_FN(matte_filesystem__getcwd) {
     const int MAXLEN = 32768;
-    char * path = malloc(MAXLEN);
+    char * path = matte_allocate(MAXLEN);
     path[MAXLEN-1] = 0;
     matteStore_t * store = matte_vm_get_store(vm);
     char * cwd = getcwd(path, MAXLEN-1);
     matteValue_t v = matte_store_new_value(store);
     matte_value_into_string(store, &v, MATTE_VM_STR_CAST(vm, cwd));
-    free(path);
+    matte_deallocate(path);
     return v;
 }
 
@@ -235,13 +235,13 @@ MATTE_EXT_FN(matte_filesystem__readstring) {
         return matte_store_new_value(store);
     }
 
-    char * bytesStr = malloc(len+1);
+    char * bytesStr = matte_allocate(len+1);
     memcpy(bytesStr, bytes, len);
-    free(bytes);
+    matte_deallocate(bytes);
     bytesStr[len] = 0;
     
     matteString_t * compiled = matte_string_create_from_c_str("%s", bytesStr);
-    free(bytesStr);
+    matte_deallocate(bytesStr);
     
 
     matteValue_t out = matte_store_new_value(store);
@@ -267,7 +267,7 @@ MATTE_EXT_FN(matte_filesystem__readbytes) {
     }
 
     matteValue_t out = matte_system_shared__create_memory_buffer_from_raw(vm, bytes, len);
-    free(bytes);
+    matte_deallocate(bytes);
     return out;
 }
 
@@ -299,12 +299,12 @@ MATTE_EXT_FN(matte_filesystem__getfullpath) {
 
     char * canon = realpath(matte_string_get_c_str(str), NULL);
     if (canon == NULL) {
-        free(canon);
+        matte_deallocate(canon);
         return matte_store_new_value(store);
     }
     matteString_t * out = matte_string_create();
     matte_string_concat_printf(out, "%s", canon);
-    free(canon);
+    matte_deallocate(canon);
     matteValue_t outV = matte_store_new_value(store);
     matte_value_into_string(store, &outV, out);
     return outV;
@@ -383,8 +383,8 @@ void matte_system__filesystem_cleanup(matteVM_t * vm, void * v) {
     uint32_t len = matte_array_get_size(dirfiles);
     for(i = 0; i < len; ++i) {
         DirectoryInfo * d = &matte_array_at(dirfiles, DirectoryInfo, i);
-        free(d->path);
-        free(d->name);
+        matte_deallocate(d->path);
+        matte_deallocate(d->name);
     }        
     matte_array_destroy(dirfiles);
 }

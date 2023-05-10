@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_bytecode_stub.h"
 #include "matte_opcode.h"
 #include "matte_compiler__syntax_graph.h"
+#include "matte.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -424,7 +425,7 @@ static matteToken_t * new_token(
     uint32_t character, 
     matteTokenType_t type
 ) {
-    matteToken_t * t = (matteToken_t*)calloc(1, sizeof(matteToken_t));
+    matteToken_t * t = (matteToken_t*)matte_allocate(sizeof(matteToken_t));
     t->line = line;
     t->character = character;
     t->ttype = type;
@@ -451,16 +452,16 @@ static void destroy_token(
     matteToken_t * t
 ) {
     matte_token_new_data(t, NULL, -1);
-    free(t);
+    matte_deallocate(t);
 }
 
 
 
 matteTokenizer_t * matte_tokenizer_create(const uint8_t * data, uint32_t byteCount) {
-    matteTokenizer_t * t = (matteTokenizer_t*)calloc(1, sizeof(matteTokenizer_t));
+    matteTokenizer_t * t = (matteTokenizer_t*)matte_allocate(sizeof(matteTokenizer_t));
     t->line = 1;
     t->character = 1;
-    t->source = (uint8_t*)malloc(byteCount+sizeof(int32_t));
+    t->source = (uint8_t*)matte_allocate(byteCount+sizeof(int32_t));
     uint32_t end = 0;
     memcpy(t->source, data, byteCount);
     memcpy(t->source+byteCount, &end, sizeof(int32_t));
@@ -470,8 +471,8 @@ matteTokenizer_t * matte_tokenizer_create(const uint8_t * data, uint32_t byteCou
 }
 
 void matte_tokenizer_destroy(matteTokenizer_t * t) {
-    free(t->source);
-    free(t);
+    matte_deallocate(t->source);
+    matte_deallocate(t);
 }
 
 uint32_t matte_tokenizer_current_line(const matteTokenizer_t * t) {
@@ -1534,7 +1535,7 @@ matteSyntaxGraphWalker_t * matte_syntax_graph_walker_create(
     void (*onError)(const matteString_t * errMessage, uint32_t line, uint32_t ch, void * userdata),
     void * userdata
 ) {
-    matteSyntaxGraphWalker_t * out = (matteSyntaxGraphWalker_t *)calloc(1, sizeof(matteSyntaxGraphWalker_t));
+    matteSyntaxGraphWalker_t * out = (matteSyntaxGraphWalker_t *)matte_allocate(sizeof(matteSyntaxGraphWalker_t));
     out->tokenizer = t;
     out->first = out->last = NULL;
     out->onError = onError;
@@ -1556,7 +1557,7 @@ void matte_syntax_graph_walker_destroy(matteSyntaxGraphWalker_t * t) {
         iter = next;
     }
     matte_table_destroy(t->tried);
-    free(t);
+    matte_deallocate(t);
 }
 
 
@@ -2122,7 +2123,7 @@ static void function_block_destroy(matteFunctionBlock_t * t) {
     matte_array_destroy(t->capture_isConst);
     if (t->typestrict_types) 
         matte_array_destroy(t->typestrict_types);
-    free(t);
+    matte_deallocate(t);
 
 }
 
@@ -2551,7 +2552,7 @@ static matteExpressionNode_t * new_expression_node(
     // xfer ownership
     matteArray_t * value
 ) {
-    matteExpressionNode_t * out = (matteExpressionNode_t*)calloc(1, sizeof(matteExpressionNode_t));
+    matteExpressionNode_t * out = (matteExpressionNode_t*)matte_allocate(sizeof(matteExpressionNode_t));
     out->preOp = preOp;
     out->postOp = postOp;
     out->appearanceID = appearanceID;
@@ -3962,7 +3963,7 @@ static matteArray_t * compile_expression(
     // whew... now cleanup thanks
     // at this point, all nodes "value" attributes have been cleaned and transfered.
     for(i = 0; i < len; ++i) {
-        free(matte_array_at(nodes, matteExpressionNode_t *, i));
+        matte_deallocate(matte_array_at(nodes, matteExpressionNode_t *, i));
     }
     matte_array_destroy(nodes);
 
@@ -4119,7 +4120,7 @@ static matteFunctionBlock_t * compile_function_block(
     matteToken_t ** src
 ) {
     matteToken_t * iter = *src;
-    matteFunctionBlock_t * b = (matteFunctionBlock_t*)calloc(1, sizeof(matteFunctionBlock_t));
+    matteFunctionBlock_t * b = (matteFunctionBlock_t*)matte_allocate(sizeof(matteFunctionBlock_t));
     b->args = matte_array_create(sizeof(matteString_t *));
     b->strings = matte_array_create(sizeof(matteString_t *));
     b->locals = matte_array_create(sizeof(matteString_t *));
@@ -4440,7 +4441,7 @@ void * matte_function_block_array_to_bytecode(
 
 
     *size = matte_array_get_size(byteout);
-    uint8_t * out = (uint8_t*)malloc(*size);
+    uint8_t * out = (uint8_t*)matte_allocate(*size);
     memcpy(out, matte_array_get_data(byteout), *size);
 
     matte_array_destroy(byteout);

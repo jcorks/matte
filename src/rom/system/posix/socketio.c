@@ -290,7 +290,7 @@ MATTE_EXT_FN(matte_socket__server_create) {
     } 
     
     
-    MatteSocketServer * s = malloc(sizeof(MatteSocketServer));
+    MatteSocketServer * s = matte_allocate(sizeof(MatteSocketServer));
     *s = listens;
     s->poolid = 1003;
     s->integID = INTEGRITY_ID_SOCKET_OBJECT;
@@ -323,7 +323,7 @@ MATTE_EXT_FN(matte_socket__server_update) {
             matte_array_destroy(client->indata);
             matte_array_destroy(client->outdata);
             matte_string_destroy(client->address);
-            free(client);
+            matte_deallocate(client);
             matte_array_remove(s->clients, i);
             i--;   
             len--;
@@ -336,7 +336,7 @@ MATTE_EXT_FN(matte_socket__server_update) {
     socklen_t slen = sizeof(struct sockaddr_in);
     if ((newfd = accept(s->fd, &inaddr, &slen)) != -1) {
         char addrString[15];
-        MatteSocketServer_Client * client = calloc(1, sizeof(MatteSocketServer_Client));
+        MatteSocketServer_Client * client = matte_allocate(sizeof(MatteSocketServer_Client));
         if (slen >= sizeof(struct sockaddr_in)) {
             const char * t =  inet_ntoa(inaddr.sin_addr);
             if (t) {
@@ -839,10 +839,10 @@ static const char * matte_socket__client_start_tls(MatteSocketClient * s) {
     X509_NAME_print_ex(outbio, certname, 0, 0);
     BIO_printf(outbio, "\n");
 
-    SSL_free(ssl);
+    SSL_matte_deallocate(ssl);
     close(server);
-    X509_free(cert);
-    SSL_CTX_free(ctx);
+    X509_matte_deallocate(cert);
+    SSL_CTX_matte_deallocate(ctx);
     BIO_printf(outbio, "Finished SSL/TLS connection with server: %s.\n", dest_url);
     return(0);
     */
@@ -1022,7 +1022,7 @@ MATTE_EXT_FN(matte_socket__client_create) {
         } 
     }    
 
-    MatteSocketClient * cl = calloc(1, sizeof(MatteSocketClient));
+    MatteSocketClient * cl = matte_allocate(sizeof(MatteSocketClient));
     cl->socketfd = socketfd;
     
     if (tls) {
@@ -1032,7 +1032,7 @@ MATTE_EXT_FN(matte_socket__client_create) {
             matte_vm_raise_error_string(vm, realErr);
             matte_string_destroy(realErr);
             close(socketfd);
-            free(cl);
+            matte_deallocate(cl);
             return matte_store_new_value(store);        
         }
         cl->tls = 1;
@@ -1060,7 +1060,7 @@ MATTE_EXT_FN(matte_socket__client_delete) {
     if (cl->socketfd) close(cl->socketfd);
     matte_array_destroy(cl->indata);
     matte_array_destroy(cl->outdata);
-    free(cl);
+    matte_deallocate(cl);
 
     return matte_store_new_value(store);
 }

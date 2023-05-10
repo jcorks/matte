@@ -219,7 +219,7 @@ static void * matte_thread(void * userData) {
         *startData->errorStringRef = str;
         *startData->stateRef = MWAS_FAILED;
         
-        free(startData);  
+        matte_deallocate(startData);  
         matte_string_destroy(fromPath);
         return NULL;
     }
@@ -232,12 +232,12 @@ static void * matte_thread(void * userData) {
         matte_thread_compiler_error,
         startData
     );
-    free(src);
+    matte_deallocate(src);
     
     if (!outByteLen || !outBytes) {
         *startData->stateRef = MWAS_FAILED;
-        free(src);
-        free(startData);          
+        matte_deallocate(src);
+        matte_deallocate(startData);          
         matte_string_destroy(fromPath);
         return NULL;
     }
@@ -255,7 +255,7 @@ static void * matte_thread(void * userData) {
     
 
     matteArray_t * arr = matte_bytecode_stubs_from_bytecode(store, FILEIDS, outBytes, outByteLen);
-    free(outBytes);
+    matte_deallocate(outBytes);
     matte_vm_add_stubs(vm, arr);
     matte_array_destroy(arr);
 
@@ -303,7 +303,7 @@ static void * matte_thread(void * userData) {
     matte_destroy(m);
     if (!*startData->errorStringRef)
         *startData->stateRef = MWAS_FINISHED;  
-    free(startData);  
+    matte_deallocate(startData);  
     return NULL;
 }
 
@@ -329,8 +329,8 @@ MATTE_EXT_FN(matte_async__start) {
     matteValue_t path  = args[0];
     matteValue_t input = args[1];
 
-    MatteWorkerChildInfo * ch = calloc(1, sizeof(MatteWorkerChildInfo));
-    MatteAsyncStartData * init = calloc(1, sizeof(MatteAsyncStartData));
+    MatteWorkerChildInfo * ch = matte_allocate(sizeof(MatteWorkerChildInfo));
+    MatteAsyncStartData * init = matte_allocate(sizeof(MatteAsyncStartData));
     init->errorStringRef = &ch->errorString;
     init->messageFromChildToParentRef = &ch->messageFromChildToParent;
     init->messageFromParentToChildRef = &ch->messageFromParentToChild;
