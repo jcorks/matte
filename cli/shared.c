@@ -94,10 +94,10 @@ matteValue_t parse_parameter_line(matteVM_t * vm, const char * line) {
 }
 
 matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t v = matte_heap_new_value(heap);
+    matteStore_t * store = matte_vm_get_store(vm);
+    matteValue_t v = matte_store_new_value(store);
     if (count == 0) return v;
-    matte_value_into_new_object_ref(heap, &v);
+    matte_value_into_new_object_ref(store, &v);
 
     uint32_t i = 0;
     uint32_t n = 0;
@@ -127,13 +127,13 @@ matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
         }
 
         if (isName == 0) {
-            matteValue_t heapKey = matte_heap_new_value(heap);
-            matteValue_t heapVal = matte_heap_new_value(heap);
+            matteValue_t storeKey = matte_store_new_value(store);
+            matteValue_t storeVal = matte_store_new_value(store);
 
-            matte_value_into_string(heap, &heapKey, key);
-            matte_value_into_string(heap, &heapVal, iter);
+            matte_value_into_string(store, &storeKey, key);
+            matte_value_into_string(store, &storeVal, iter);
 
-            matte_value_object_set(heap, v, heapKey, heapVal, 1);
+            matte_value_object_set(store, v, storeKey, storeVal, 1);
             matte_string_destroy(key);
             matte_string_clear(iter);
             key = NULL;

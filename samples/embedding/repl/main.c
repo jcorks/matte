@@ -29,7 +29,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <matte.h>
 #include <matte_vm.h>
-#include <matte_heap.h>
+#include <matte_store.h>
 #include <matte_string.h>
 
 #include <stdio.h>
@@ -54,11 +54,11 @@ static int KEEP_GOING = 1;
 // when a user calls "exit()" this signals the end of the repl.
 static matteValue_t repl_exit(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     KEEP_GOING = 0;
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
     
     
     
-    return matte_heap_new_value(heap);
+    return matte_store_new_value(store);
 };
 
 
@@ -73,18 +73,18 @@ int main() {
     matte_set_io(m, NULL, NULL, NULL);
     
     matteVM_t * vm = matte_get_vm(m);
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
     
     // since the repl cannot make any new variables
-    matteValue_t state = matte_heap_new_value(heap);
+    matteValue_t state = matte_store_new_value(store);
 
     // turns the value into a newly created object.
-    matte_value_into_new_object_ref(heap, &state);
+    matte_value_into_new_object_ref(store, &state);
     
-    // tells the heap that the object SHOULD NOT be 
+    // tells the store that the object SHOULD NOT be 
     // garbage collected under any circumstance.
     // This is important for values that live outside the VM
-    matte_value_object_push_lock(heap, state);
+    matte_value_object_push_lock(store, state);
     
     
     // register the repl_exit

@@ -189,7 +189,7 @@ static void exec_command_print_error(
 ) {
     matte_t * m = data;
     if(event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED)
-        matte_print(m, "Error while evaluating print command: %s", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), val))));
+        matte_print(m, "Error while evaluating print command: %s", matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_store(vm), matte_value_as_string(matte_vm_get_store(vm), val))));
 }
 
 static int exec_command(matte_t * m) {
@@ -336,7 +336,7 @@ static void default_debug_callback(
 ) {
     matte_t * m = data;
     if (event == MATTE_VM_DEBUG_EVENT__ERROR_RAISED) {
-        const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), val));
+        const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_store(vm), matte_value_as_string(matte_vm_get_store(vm), val));
         matte_print(m, "ERROR RAISED FROM VIRTUAL MACHINE: %s", str ? matte_string_get_c_str(str) : "<no string info given>");
     }
 }
@@ -358,7 +358,7 @@ static void debug_on_event(
             m->stackframe++;
 
         debug_print_area(m);
-        const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), matte_value_as_string(matte_vm_get_heap(vm), val));
+        const matteString_t * str = matte_value_string_get_string_unsafe(matte_vm_get_store(vm), matte_value_as_string(matte_vm_get_store(vm), val));
         matte_print(m, "ERROR RAISED FROM VIRTUAL MACHINE: %s", str ? matte_string_get_c_str(str) : "<no string info given>");
         while(exec_command(m));
         return;    
@@ -431,11 +431,11 @@ static void default_unhandled_error(
 ) {
     matte_t * m = d;
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matteValue_t s = matte_value_object_access_string(matte_vm_get_heap(vm), val, MATTE_VM_STR_CAST(vm, "summary"));
+        matteValue_t s = matte_value_object_access_string(matte_vm_get_store(vm), val, MATTE_VM_STR_CAST(vm, "summary"));
         if (s.binID && s.binID == MATTE_VALUE_TYPE_STRING) {
             matte_print(m, 
                 "Unhandled error: %s", 
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), s))
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_store(vm), s))
             );
             return;
         }
@@ -520,7 +520,7 @@ const char * matte_introspect_value(matte_t * m, matteValue_t val) {
         matte_string_destroy(m->introspectResult);
     m->introspectResult = matte_string_clone(
         matte_value_string_get_string_unsafe(
-            matte_vm_get_heap(m->vm),
+            matte_vm_get_store(m->vm),
             matte_run_source_with_parameters(m, "return import(module:'Matte.Core.Introspect')(value:parameters);", val)
         )
     );
@@ -574,7 +574,7 @@ matteValue_t matte_call(
     va_list args;
     va_start(args, func);
     
-    matteHeap_t * heap = matte_vm_get_heap(m->vm);
+    matteStore_t * store = matte_vm_get_store(m->vm);
     matteArray_t * names = matte_array_create(sizeof(matteValue_t));
     matteArray_t * vals  = matte_array_create(sizeof(matteValue_t));
 
@@ -582,8 +582,8 @@ matteValue_t matte_call(
     matteValue_t val;
     while((str = va_arg(args, char *))) {
         matteString_t * strm = matte_string_create_from_c_str("%s", str);
-        matteValue_t strmval = matte_heap_new_value(heap);
-        matte_value_into_string(heap, &strmval, strm);
+        matteValue_t strmval = matte_store_new_value(store);
+        matte_value_into_string(store, &strmval, strm);
         matte_string_destroy(strm);
         val = va_arg(args, matteValue_t);    
         matte_array_push(names, strmval);
@@ -601,11 +601,11 @@ matteValue_t matte_call(
 
 
 matteValue_t matte_run_source(matte_t * m, const char * source) {
-    return matte_run_source_with_parameters(m, source, matte_heap_new_value(matte_vm_get_heap(m->vm)));
+    return matte_run_source_with_parameters(m, source, matte_store_new_value(matte_vm_get_store(m->vm)));
 }
 
 matteValue_t matte_run_bytecode(matte_t * m, const uint8_t * bytecode, uint32_t bytecodeSize) {
-    return matte_run_bytecode_with_parameters(m, bytecode, bytecodeSize, matte_heap_new_value(matte_vm_get_heap(m->vm)));
+    return matte_run_bytecode_with_parameters(m, bytecode, bytecodeSize, matte_store_new_value(matte_vm_get_store(m->vm)));
 }
 
 
@@ -627,7 +627,7 @@ matteValue_t matte_run_bytecode_with_parameters(matte_t * m, const uint8_t * byt
     uint32_t fid = matte_vm_get_new_file_id(m->vm, fname);
 
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-        matte_vm_get_heap(m->vm),
+        matte_vm_get_store(m->vm),
         fid,
         bytecode,
         bytecodeSize
@@ -661,7 +661,7 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
         m
     );
     if (!bytecodeSize || !bytecode) {
-        return matte_heap_new_value(matte_vm_get_heap(m->vm));
+        return matte_store_new_value(matte_vm_get_store(m->vm));
     }
     
     
@@ -669,7 +669,7 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
     uint32_t fid = matte_vm_get_new_file_id(m->vm, fname);
 
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-        matte_vm_get_heap(m->vm),
+        matte_vm_get_store(m->vm),
         fid,
         bytecode,
         bytecodeSize

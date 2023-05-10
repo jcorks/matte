@@ -27,7 +27,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-#include "matte_heap_string.h"
+#include "matte_store_string.h"
 #include "matte_string.h"
 #include "matte_table.h"
 #include "matte_string.h"
@@ -36,14 +36,14 @@ DEALINGS IN THE SOFTWARE.
 #include <string.h>
 #include <stdio.h>
 
-struct matteStringHeap_t{
+struct matteStringStore_t{
     matteTable_t * strbufferToID;
     matteArray_t * strings;
 } ;
 
 
-matteStringHeap_t * matte_string_heap_create() {
-    matteStringHeap_t * h = calloc(1, sizeof(matteStringHeap_t));
+matteStringStore_t * matte_string_store_create() {
+    matteStringStore_t * h = calloc(1, sizeof(matteStringStore_t));
     h->strings = matte_array_create(sizeof(matteString_t *));
     h->strbufferToID = matte_table_create_hash_c_string();
     matteString_t * str = NULL;
@@ -51,7 +51,7 @@ matteStringHeap_t * matte_string_heap_create() {
     return h;
 }
 
-uint32_t matte_string_heap_internalize(matteStringHeap_t * h, const matteString_t * str) {
+uint32_t matte_string_store_internalize(matteStringStore_t * h, const matteString_t * str) {
     uint32_t id = (uintptr_t) matte_table_find(h->strbufferToID, matte_string_get_c_str(str));
     if (id == 0) {
         matteString_t * interned = matte_string_clone(str);
@@ -63,7 +63,7 @@ uint32_t matte_string_heap_internalize(matteStringHeap_t * h, const matteString_
         return id;
     }
 }
-uint32_t matte_string_heap_internalize_cstring(matteStringHeap_t * h, const char * strc) {
+uint32_t matte_string_store_internalize_cstring(matteStringStore_t * h, const char * strc) {
     matteString_t * str = matte_string_create_from_c_str(strc);
     uint32_t id = (uintptr_t) matte_table_find(h->strbufferToID, matte_string_get_c_str(str));
     if (id == 0) {
@@ -78,7 +78,7 @@ uint32_t matte_string_heap_internalize_cstring(matteStringHeap_t * h, const char
     }
 }
 
-void matte_string_heap_destroy(matteStringHeap_t * h) {
+void matte_string_store_destroy(matteStringStore_t * h) {
     uint32_t i;
     uint32_t len = matte_array_get_size(h->strings);
     for(i = 1; i < len; ++i) {
@@ -91,13 +91,13 @@ void matte_string_heap_destroy(matteStringHeap_t * h) {
 }
 
 
-const matteString_t * matte_string_heap_find(const matteStringHeap_t * h, uint32_t i) {
+const matteString_t * matte_string_store_find(const matteStringStore_t * h, uint32_t i) {
     if (i >= matte_array_get_size(h->strings)) return NULL;
     return matte_array_at(h->strings, matteString_t *, i);
 }
 
 #ifdef MATTE_DEBUG
-void matte_string_heap_print(matteStringHeap_t * h) {
+void matte_string_store_print(matteStringStore_t * h) {
     uint32_t i;
     uint32_t len = matte_array_get_size(h->strings);
     for(i = 0; i < len; ++i) {

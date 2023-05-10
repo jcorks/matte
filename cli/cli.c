@@ -40,11 +40,11 @@ static int KEEP_GOING = 1;
 // when a user calls "exit()" this signals the end of the repl.
 static matteValue_t repl_exit(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     KEEP_GOING = 0;
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
     
     
     
-    return matte_heap_new_value(heap);
+    return matte_store_new_value(store);
 };
 
 
@@ -53,11 +53,11 @@ static int repl() {
     matte_set_io(m, NULL, NULL, NULL);    
 
     matteVM_t * vm = matte_get_vm(m);
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t state = matte_heap_new_value(heap);
+    matteStore_t * store = matte_vm_get_store(vm);
+    matteValue_t state = matte_store_new_value(store);
 
-    matte_value_into_new_object_ref(heap, &state);
-    matte_value_object_push_lock(heap, state);
+    matte_value_into_new_object_ref(store, &state);
+    matte_value_object_push_lock(store, state);
     
     matte_add_external_function(m, "repl_exit", repl_exit, NULL, NULL);
     matteValue_t exitFunc = matte_run_source(m, "return getExternalFunction(name:'repl_exit');");
@@ -236,7 +236,7 @@ int main(int argc, char ** args) {
         
         matteValue_t params = parse_parameters(vm, args+2, argc-2);
         matteValue_t v = matte_vm_import(vm, MATTE_VM_STR_CAST(vm, args[i+1]), params);
-        matte_heap_recycle(matte_vm_get_heap(vm), v);
+        matte_store_recycle(matte_vm_get_store(vm), v);
         matte_destroy(m);
     }
     return 0;

@@ -144,8 +144,8 @@ static void onErrorCatch(
     matteValue_t value, 
     void * data
 ) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_value_object_access_string(heap, value, MATTE_VM_STR_CAST(vm, "detail"))));
+    matteStore_t * store = matte_vm_get_store(vm);
+    const matteString_t * str = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, matte_value_object_access_string(store, value, MATTE_VM_STR_CAST(vm, "detail"))));
     printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
     printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
     uint32_t stacksize = matte_vm_get_stackframe_size(vm);
@@ -227,11 +227,11 @@ static matteValue_t test_external_function(
     const matteValue_t * args,
     void * data
 ) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t a = matte_heap_new_value(heap);
-    matte_value_into_number(heap, &a,
-        matte_value_as_number(heap, args[0]) + 
-        matte_value_as_number(heap, args[1])
+    matteStore_t * store = matte_vm_get_store(vm);
+    matteValue_t a = matte_store_new_value(store);
+    matte_value_into_number(store, &a,
+        matte_value_as_number(store, args[0]) + 
+        matte_value_as_number(store, args[1])
     );
     return a;
 }
@@ -264,7 +264,7 @@ int main() {
 
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
-        matteHeap_t * heap = matte_vm_get_heap(vm);
+        matteStore_t * store = matte_vm_get_store(vm);
         const matteString_t * externalNames[] = {
             MATTE_VM_STR_CAST(vm, "a"),
             MATTE_VM_STR_CAST(vm, "b")
@@ -296,12 +296,12 @@ int main() {
         }
         
 
-        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(heap, matte_vm_get_new_file_id(vm, infile), outBytes, outByteLen);
+        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(store, matte_vm_get_new_file_id(vm, infile), outBytes, outByteLen);
         matte_vm_add_stubs(vm, arr);
         matte_array_destroy(arr);
         free(outBytes);
 
-        matteValue_t v = matte_vm_run_fileid(vm, i+1, matte_heap_new_value(matte_vm_get_heap(vm)), NULL);
+        matteValue_t v = matte_vm_run_fileid(vm, i+1, matte_store_new_value(matte_vm_get_store(vm)), NULL);
 
         char * outstr = dump_string(matte_string_get_c_str(outfile));
         if (!outstr) {
@@ -311,9 +311,9 @@ int main() {
         matteString_t * outputText = matte_string_create();
         matte_string_concat_printf(outputText, outstr);
 
-        const matteString_t * resultText = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, v));
+        const matteString_t * resultText = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, v));
         if (!matte_string_test_eq(outputText, resultText)) {
-            const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, v));
+            const matteString_t * str = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, v));
             printf("Test failed!!\nExpected output   : %s\nReal output       : %s\n", outstr, matte_string_get_c_str(str));
             exit(1);
         }
@@ -324,7 +324,7 @@ int main() {
         free(outstr);
         TESTID++;
         matte_string_destroy(outputText);
-        matte_heap_recycle(heap, v);
+        matte_store_recycle(store, v);
         matte_destroy(m);
         printf("Done.\n");
         fflush(stdout);

@@ -28,16 +28,16 @@ DEALINGS IN THE SOFTWARE.
 
 */
 MATTE_EXT_FN(matte_utility__system) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, args[0]));
+    matteStore_t * store = matte_vm_get_store(vm);
+    const matteString_t * str = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, args[0]));
     if (!str) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "system() requires the first argument to be string coercible."));
-        return matte_heap_new_value(heap);
+        return matte_store_new_value(store);
     }
 
-    matteValue_t out = matte_heap_new_value(heap);
+    matteValue_t out = matte_store_new_value(store);
     matte_value_into_boolean(
-        heap, 
+        store, 
         &out,
         system(matte_string_get_c_str(str)) == 0
     );
@@ -48,17 +48,17 @@ MATTE_EXT_FN(matte_utility__system) {
 
 
 MATTE_EXT_FN(matte_utility__exit) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    exit(matte_value_as_number(heap, args[0]));
-    return matte_heap_new_value(heap);
+    matteStore_t * store = matte_vm_get_store(vm);
+    exit(matte_value_as_number(store, args[0]));
+    return matte_store_new_value(store);
 }
 
 
 
 MATTE_EXT_FN(matte_utility__os) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t v = matte_heap_new_value(heap);
-    matte_value_into_string(heap, &v, MATTE_VM_STR_CAST(vm, "unix-like"));
+    matteStore_t * store = matte_vm_get_store(vm);
+    matteValue_t v = matte_store_new_value(store);
+    matte_value_into_string(store, &v, MATTE_VM_STR_CAST(vm, "unix-like"));
     return v;
 }
 

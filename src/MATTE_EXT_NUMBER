@@ -29,8 +29,8 @@ DEALINGS IN THE SOFTWARE.
 */
 
 static matteValue_t vm_ext_call__number__pi(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, M_PI);    
+    matteValue_t out = matte_store_new_value(vm->store);    
+    matte_value_into_number(vm->store, &out, M_PI);    
     return out;
 }
 
@@ -39,8 +39,8 @@ static matteValue_t vm_ext_call__number__pi(matteVM_t * vm, matteValue_t fn, con
 static matteValue_t vm_ext_call__number__atan2(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];
     matteValue_t b = args[1];
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, atan2(matte_value_as_number(vm->heap, a), matte_value_as_number(vm->heap, b)));    
+    matteValue_t out = matte_store_new_value(vm->store);    
+    matte_value_into_number(vm->store, &out, atan2(matte_value_as_number(vm->store, a), matte_value_as_number(vm->store, b)));    
     return out;
 }
 
@@ -48,24 +48,24 @@ static matteValue_t vm_ext_call__number__atan2(matteVM_t * vm, matteValue_t fn, 
 static matteValue_t vm_ext_call__number__parse(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];;
 
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matteValue_t aconv = matte_value_as_string(vm->heap, a);
+    matteValue_t out = matte_store_new_value(vm->store);
+    matteValue_t aconv = matte_value_as_string(vm->store, a);
 
-    const matteString_t * m = matte_value_string_get_string_unsafe(vm->heap, aconv);
+    const matteString_t * m = matte_value_string_get_string_unsafe(vm->store, aconv);
     double fout;
     if (sscanf(matte_string_get_c_str(m), "%lf", &fout) == 1) {
-        matte_value_into_number(vm->heap, &out, fout);
+        matte_value_into_number(vm->store, &out, fout);
     } else {
         matte_vm_raise_error_cstring(vm, "Could not interpret String as a Number.");                
-        matte_heap_recycle(vm->heap, aconv);    
+        matte_store_recycle(vm->store, aconv);    
     }
 
     return out;
 }
 
 static matteValue_t vm_ext_call__number__random(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, rand() / (double)(RAND_MAX));    
+    matteValue_t out = matte_store_new_value(vm->store);    
+    matte_value_into_number(vm->store, &out, rand() / (double)(RAND_MAX));    
     return out;
 }
 

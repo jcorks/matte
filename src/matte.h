@@ -34,7 +34,7 @@ DEALINGS IN THE SOFTWARE.
 typedef struct matte_t matte_t;
 typedef struct matteVM_t matteVM_t;
 
-#include "matte_heap.h"
+#include "matte_store.h"
 
 
 // Creates a new Matte isntance

@@ -37,9 +37,9 @@ DEALINGS IN THE SOFTWARE.
 #include <assert.h>
 
 // ASSUMES THAT STRING IDS AS GIVEN BY 
-// THE HEAP PERSIST THROUGHOUT THE HEAP'S LIFETIME
+// THE STORE PERSIST THROUGHOUT THE STORE'S LIFETIME
 // AS IN THE CURRENT IMPLEMENTATION. this will need 
-// to change if the heap string handling changes!
+// to change if the store string handling changes!
 
 
 struct matteBytecodeStub_t {
@@ -74,7 +74,7 @@ static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
 }
 
 
-static matteValue_t chomp_string(matteHeap_t * heap, uint8_t ** bytes, uint32_t * left) {
+static matteValue_t chomp_string(matteStore_t * store, uint8_t ** bytes, uint32_t * left) {
     matteString_t * str;
     uint32_t len = 0;
     ADVANCE(uint32_t, len);
@@ -84,15 +84,15 @@ static matteValue_t chomp_string(matteHeap_t * heap, uint8_t ** bytes, uint32_t 
     str = matte_string_create_from_c_str("%s", utf8raw);
     free(utf8raw);
 
-    matteValue_t v = matte_heap_new_value(heap);
-    matte_value_into_string(heap, &v, str);
+    matteValue_t v = matte_store_new_value(store);
+    matte_value_into_string(store, &v, str);
     matte_string_destroy(str);
     return v;
 }
 
 
 
-static matteBytecodeStub_t * bytes_to_stub(matteHeap_t * heap, uint32_t fileID, uint8_t ** bytes, uint32_t * left) {
+static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID, uint8_t ** bytes, uint32_t * left) {
     matteBytecodeStub_t * out = calloc(1, sizeof(matteBytecodeStub_t));
     uint32_t i;
     uint8_t ver = 0;
@@ -118,17 +118,17 @@ static matteBytecodeStub_t * bytes_to_stub(matteHeap_t * heap, uint32_t fileID, 
     ADVANCE(uint8_t, out->argCount);
     out->argNames = malloc(sizeof(matteValue_t)*out->argCount);
     for(i = 0; i < out->argCount; ++i) {
-        out->argNames[i] = chomp_string(heap, bytes, left);    
+        out->argNames[i] = chomp_string(store, bytes, left);    
     }        
     ADVANCE(uint8_t, out->localCount);
     out->localNames = malloc(sizeof(matteValue_t)*out->localCount);
     for(i = 0; i < out->localCount; ++i) {
-        out->localNames[i] = chomp_string(heap, bytes, left);    
+        out->localNames[i] = chomp_string(store, bytes, left);    
     }        
     ADVANCE(uint32_t, out->stringCount);
     out->strings = malloc(sizeof(matteValue_t)*out->stringCount);
     for(i = 0; i < out->stringCount; ++i) {
-        out->strings[i] = chomp_string(heap, bytes, left);    
+        out->strings[i] = chomp_string(store, bytes, left);    
     }       
     ADVANCE(uint16_t, out->capturedCount);
     if (out->capturedCount) {
@@ -170,14 +170,14 @@ void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
 
 
 matteArray_t * matte_bytecode_stubs_from_bytecode(
-    matteHeap_t * heap,
+    matteStore_t * store,
     uint32_t fileID,
     const uint8_t * bytecodeRaw, 
     uint32_t len
 ) {
     matteArray_t * arr = matte_array_create(sizeof(matteBytecodeStub_t *));
     while(len) {
-        matteBytecodeStub_t * s = bytes_to_stub(heap, fileID, (uint8_t**)(&bytecodeRaw), &len);
+        matteBytecodeStub_t * s = bytes_to_stub(store, fileID, (uint8_t**)(&bytecodeRaw), &len);
         matte_array_push(arr, s);
     }
     return arr;

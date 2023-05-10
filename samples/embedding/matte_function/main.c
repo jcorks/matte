@@ -60,13 +60,13 @@ int main() {
     
     // prepare arguments to run the function
     matteVM_t * vm = matte_get_vm(m);
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
 
-    matteValue_t arg0 = matte_heap_new_value(heap);
-    matteValue_t arg1 = matte_heap_new_value(heap);
+    matteValue_t arg0 = matte_store_new_value(store);
+    matteValue_t arg1 = matte_store_new_value(store);
     
-    matte_value_into_number(heap, &arg0, 12);
-    matte_value_into_number(heap, &arg1, 34);
+    matte_value_into_number(store, &arg0, 12);
+    matte_value_into_number(store, &arg1, 34);
 
 
     // call the function, binding arguments to their proper names

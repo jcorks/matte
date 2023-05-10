@@ -29,7 +29,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include "../matte_string.h"
 #include "../matte_vm.h"
-#include "../matte_heap.h"
+#include "../matte_store.h"
 #include "../matte.h"
 #include "../matte_compiler.h"
 #include "../matte_bytecode_stub.h"

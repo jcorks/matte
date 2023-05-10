@@ -30,7 +30,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_vm.h"
 #include "matte_table.h"
 #include "matte_array.h"
-#include "matte_heap.h"
+#include "matte_store.h"
 #include "matte_bytecode_stub.h"
 #include "matte_string.h"
 #include "matte_opcode.h"
@@ -60,7 +60,7 @@ struct matteVM_t {
     
     
     // for all values
-    matteHeap_t * heap;
+    matteStore_t * store;
 
     // queued thrown object. if none, error.binID == 0
     matteValue_t catchable;
@@ -295,7 +295,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
         // initialize
         frame->pc = 0;
         frame->prettyName = matte_string_create();
-        frame->context = matte_heap_new_value(vm->heap); // will contain captures
+        frame->context = matte_store_new_value(vm->store); // will contain captures
         frame->stub = NULL;
         frame->valueStack = matte_array_create(sizeof(matteValue_t));
     } else {
@@ -334,14 +334,14 @@ static matteBytecodeStub_t * vm_find_stub(matteVM_t * vm, uint32_t fileid, uint3
 
 
 static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respObject) {
-    if (!matte_value_is_callable(vm->heap, v)) {
+    if (!matte_value_is_callable(vm->store, v)) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen expressions require that the listened-to expression is a function. "));
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 
     if (respObject.binID != MATTE_VALUE_TYPE_EMPTY && respObject.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response expression is an object."));
-        return matte_heap_new_value(vm->heap);    
+        return matte_store_new_value(vm->store);    
     }
     
     
@@ -349,22 +349,22 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
     matteValue_t * onError = NULL;    
     
     if (respObject.binID != MATTE_VALUE_TYPE_EMPTY) {
-        onSend  = matte_value_object_access_direct(vm->heap, respObject, vm->specialString_onsend, 0);
-        if (onSend && onSend->binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->heap, *onSend)) {
+        onSend  = matte_value_object_access_direct(vm->store, respObject, vm->specialString_onsend, 0);
+        if (onSend && onSend->binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->store, *onSend)) {
             matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onSend' attribute be a Function."));
-            return matte_heap_new_value(vm->heap);    
+            return matte_store_new_value(vm->store);    
         }
-        onError = matte_value_object_access_direct(vm->heap, respObject, vm->specialString_onerror, 0);
-        if (onError && onError->binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->heap, *onError)) {
+        onError = matte_value_object_access_direct(vm->store, respObject, vm->specialString_onerror, 0);
+        if (onError && onError->binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->store, *onError)) {
             matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onError' attribute be a Function."));
-            return matte_heap_new_value(vm->heap);    
+            return matte_store_new_value(vm->store);    
         }
     }
     
     matteValue_t out = matte_vm_call(vm, v, matte_array_empty(), matte_array_empty(), MATTE_VM_STR_CAST(vm, "listen"));
     if (vm->pendingCatchable) {
 
-        matte_heap_recycle(vm->heap, out);            
+        matte_store_recycle(vm->store, out);            
         matteValue_t catchable = vm->catchable;
         vm->catchable.binID = 0;
         vm->pendingCatchable = 0;
@@ -379,15 +379,15 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
         // 2) run a response function and return its result
         if (!vm->pendingCatchableIsError && onSend) {
             out = matte_vm_call(vm, *onSend, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (message)"));
-            matte_value_object_pop_lock(vm->heap, catchable);
-            matte_heap_recycle(vm->heap, catchable);
+            matte_value_object_pop_lock(vm->store, catchable);
+            matte_store_recycle(vm->store, catchable);
             return out;
         } if (vm->pendingCatchableIsError && onError) {
             // the error is caught. Undo the error flag 
             vm->pendingCatchableIsError = 0;
             out = matte_vm_call(vm, *onError, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (error)"));
-            matte_value_object_pop_lock(vm->heap, catchable);
-            matte_heap_recycle(vm->heap, catchable);
+            matte_value_object_pop_lock(vm->store, catchable);
+            matte_store_recycle(vm->store, catchable);
             return out;
         } else {
             if (vm->pendingCatchableIsError) {
@@ -396,11 +396,11 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
                 vm->pendingCatchable = 1;
             } else {
                 // OK, popped but not recycled. 
-                matte_value_object_pop_lock(vm->heap, catchable);           
+                matte_value_object_pop_lock(vm->store, catchable);           
                 return catchable;
             }
         }
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
         
     } else {
         // OK, already new from vm_call
@@ -447,7 +447,7 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
 
       default:
         matte_vm_raise_error_cstring(vm, "unhandled OPR operator");                        
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 }
 
@@ -462,7 +462,7 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
 
       default:
         matte_vm_raise_error_cstring(vm, "unhandled OPR operator");                        
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 }
 
@@ -506,10 +506,10 @@ static const char * opcode_to_str(int oc) {
 */
 
 #define STACK_SIZE() matte_array_get_size(frame->valueStack)
-#define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_value_object_pop_lock(vm->heap, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
-#define STACK_POP_NORET() matte_value_object_pop_lock(vm->heap, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_POP_NORET() matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
 #define STACK_PEEK(__n__) (matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1-(__n__)))
-#define STACK_PUSH(__v__) matte_value_object_push_lock(vm->heap, __v__); matte_array_push(frame->valueStack, __v__);
+#define STACK_PUSH(__v__) matte_value_object_push_lock(vm->store, __v__); matte_array_push(frame->valueStack, __v__);
 
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
     matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
@@ -527,16 +527,16 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         // TODO: optimize out
         #ifdef MATTE_DEBUG__VM
             if (matte_array_get_size(frame->valueStack))
-                matte_value_print(vm->heap, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1));
+                matte_value_print(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1));
             printf("from %s, line %d, CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", str ? matte_string_get_c_str(str) : "???", inst->lineNumber, vm->stacksize, frame->pc, opcode_to_str(inst->opcode), matte_array_get_size(frame->valueStack));
             fflush(stdout);
         #endif
         if (vm->debug) {
             if (vm->lastLine != inst->lineNumber) {
-                matteValue_t db = matte_heap_new_value(vm->heap);
+                matteValue_t db = matte_store_new_value(vm->store);
                 vm->debug(vm, MATTE_VM_DEBUG_EVENT__LINE_CHANGE, matte_bytecode_stub_get_file_id(frame->stub), inst->lineNumber, db, vm->debugData);
                 vm->lastLine = inst->lineNumber;
-                matte_heap_recycle(vm->heap, db);
+                matte_store_recycle(vm->store, db);
             }
         }
 
@@ -557,8 +557,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t referrable = (uint32_t)inst->data;
             matteValue_t * v = matte_vm_stackframe_get_referrable(vm, 0, referrable);
             if (v) {
-                matteValue_t copy = matte_heap_new_value(vm->heap);
-                matte_value_into_copy(vm->heap, &copy, *v);
+                matteValue_t copy = matte_store_new_value(vm->store);
+                matte_value_into_copy(vm->store, &copy, *v);
                 STACK_PUSH(copy);
             } else {
                 matte_vm_raise_error_cstring(vm, "VM Error: Tried to push non-existant referrable.");
@@ -575,7 +575,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             } else {
                 matteVMStackFrame_t f = matte_vm_get_stackframe(vm, vm->namedRefIndex+1);
                 if (f.context.binID) {
-                    matteValue_t v0 = matte_value_frame_get_named_referrable(vm->heap, 
+                    matteValue_t v0 = matte_value_frame_get_named_referrable(vm->store, 
                         &f, 
                         v
                     ); 
@@ -586,7 +586,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
 
           case MATTE_OPCODE_NEM: {
-            matteValue_t v = matte_heap_new_value(vm->heap);
+            matteValue_t v = matte_store_new_value(vm->store);
             STACK_PUSH(v);
             break;
           }
@@ -600,8 +600,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }
           case MATTE_OPCODE_NBL: {
-            matteValue_t v = matte_heap_new_value(vm->heap);
-            matte_value_into_boolean(vm->heap, &v, inst->data!=0.0);
+            matteValue_t v = matte_store_new_value(vm->store);
+            matte_value_into_boolean(vm->store, &v, inst->data!=0.0);
             STACK_PUSH(v);
             break;
           }
@@ -618,10 +618,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }
           case MATTE_OPCODE_NOB: {
-            matteValue_t v = matte_heap_new_value(vm->heap);
-            matte_value_into_new_object_ref(vm->heap, &v);
-            #ifdef MATTE_DEBUG__HEAP
-                matte_heap_track_neutral(vm->heap, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+            matteValue_t v = matte_store_new_value(vm->store);
+            matte_value_into_new_object_ref(vm->store, &v);
+            #ifdef MATTE_DEBUG__STORE
+                matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
             #endif
             STACK_PUSH(v);
             break;
@@ -651,7 +651,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
 
             if (sfscount) {
-                matteValue_t v = matte_heap_new_value(vm->heap);
+                matteValue_t v = matte_store_new_value(vm->store);
                 uint32_t i;
                 if (STACK_SIZE() < sfscount) {
                     matte_vm_raise_error_cstring(vm, "VM internal error: too few values on stack to service SFS opcode!");
@@ -665,9 +665,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
                 // xfer ownership of type values
                 matteArray_t arr = MATTE_ARRAY_CAST(vals, matteValue_t, sfscount);
-                matte_value_into_new_typed_function_ref(vm->heap, &v, stub, &arr);
-                #ifdef MATTE_DEBUG__HEAP
-                    matte_heap_track_neutral(vm->heap, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+                matte_value_into_new_typed_function_ref(vm->store, &v, stub, &arr);
+                #ifdef MATTE_DEBUG__STORE
+                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
                 #endif
 
                 free(vals);
@@ -679,10 +679,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 STACK_PUSH(v);
                 
             } else {
-                matteValue_t v = matte_heap_new_value(vm->heap);
-                matte_value_into_new_function_ref(vm->heap, &v, stub);
-                #ifdef MATTE_DEBUG__HEAP
-                    matte_heap_track_neutral(vm->heap, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+                matteValue_t v = matte_store_new_value(vm->store);
+                matte_value_into_new_function_ref(vm->store, &v, stub);
+                #ifdef MATTE_DEBUG__STORE
+                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
                 #endif
 
                 STACK_PUSH(v);
@@ -698,7 +698,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             
             matteValue_t obj = STACK_PEEK(1);
             matte_value_object_push(
-                vm->heap,
+                vm->store,
                 obj,
                 STACK_PEEK(0)
             );
@@ -715,7 +715,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             
             matteValue_t obj = STACK_PEEK(2);
             matte_value_object_set(
-                vm->heap,
+                vm->store,
                 obj,
                 STACK_PEEK(1),
                 STACK_PEEK(0),
@@ -735,20 +735,20 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
              
             matteValue_t p = STACK_POP();
             matteValue_t target = STACK_PEEK(0);
-            matte_value_object_push_lock(vm->heap, p);
+            matte_value_object_push_lock(vm->store, p);
                        
-            uint32_t len = matte_value_object_get_number_key_count(vm->heap, p);
+            uint32_t len = matte_value_object_get_number_key_count(vm->store, p);
             uint32_t i;
-            uint32_t keylen = matte_value_object_get_number_key_count(vm->heap, target);
+            uint32_t keylen = matte_value_object_get_number_key_count(vm->store, target);
             for(i = 0; i < len; ++i) {
                 matte_value_object_insert(
-                    vm->heap,
+                    vm->store,
                     target, 
                     keylen++,
-                    matte_value_object_access_index(vm->heap, p, i)
+                    matte_value_object_access_index(vm->store, p, i)
                 );
             }
-            matte_value_object_pop_lock(vm->heap, p);
+            matte_value_object_pop_lock(vm->store, p);
             break;            
           }
   
@@ -760,30 +760,30 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
              
             matteValue_t p = STACK_POP();
-            matte_value_object_push_lock(vm->heap, p);
-            matteValue_t keys = matte_value_object_keys(vm->heap, p);
-            matte_value_object_push_lock(vm->heap, keys);
-            matteValue_t vals = matte_value_object_values(vm->heap, p);
-            matte_value_object_push_lock(vm->heap, vals);
+            matte_value_object_push_lock(vm->store, p);
+            matteValue_t keys = matte_value_object_keys(vm->store, p);
+            matte_value_object_push_lock(vm->store, keys);
+            matteValue_t vals = matte_value_object_values(vm->store, p);
+            matte_value_object_push_lock(vm->store, vals);
 
             matteValue_t target = STACK_PEEK(0);
                        
-            uint32_t len = matte_value_object_get_number_key_count(vm->heap, keys);
+            uint32_t len = matte_value_object_get_number_key_count(vm->store, keys);
             uint32_t i;
             matteValue_t item;            
             for(i = 0; i < len; ++i) {
                 matte_value_object_set(
-                    vm->heap,
+                    vm->store,
                     target,
-                    matte_value_object_access_index(vm->heap, keys, i),
-                    matte_value_object_access_index(vm->heap, vals, i),
+                    matte_value_object_access_index(vm->store, keys, i),
+                    matte_value_object_access_index(vm->store, vals, i),
                     1
                 );
             }
             
-            matte_value_object_pop_lock(vm->heap, keys);
-            matte_value_object_pop_lock(vm->heap, vals);
-            matte_value_object_pop_lock(vm->heap, p);
+            matte_value_object_pop_lock(vm->store, keys);
+            matte_value_object_pop_lock(vm->store, vals);
+            matte_value_object_pop_lock(vm->store, p);
             break;            
           }
           
@@ -793,14 +793,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t v;
             
             switch(typecode) {
-              case 0: v = *matte_heap_get_empty_type(vm->heap); break;           
-              case 1: v = *matte_heap_get_boolean_type(vm->heap); break;           
-              case 2: v = *matte_heap_get_number_type(vm->heap); break;           
-              case 3: v = *matte_heap_get_string_type(vm->heap); break;           
-              case 4: v = *matte_heap_get_object_type(vm->heap); break;           
-              case 5: v = *matte_heap_get_function_type(vm->heap); break;           
-              case 6: v = *matte_heap_get_type_type(vm->heap); break;           
-              case 7: v = *matte_heap_get_any_type(vm->heap); break;           
+              case 0: v = *matte_store_get_empty_type(vm->store); break;           
+              case 1: v = *matte_store_get_boolean_type(vm->store); break;           
+              case 2: v = *matte_store_get_number_type(vm->store); break;           
+              case 3: v = *matte_store_get_string_type(vm->store); break;           
+              case 4: v = *matte_store_get_object_type(vm->store); break;           
+              case 5: v = *matte_store_get_function_type(vm->store); break;           
+              case 6: v = *matte_store_get_type_type(vm->store); break;           
+              case 7: v = *matte_store_get_any_type(vm->store); break;           
                 
             }
             STACK_PUSH(v);
@@ -843,11 +843,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             matteValue_t function = STACK_PEEK(i);
 
-            #ifdef MATTE_DEBUG__HEAP
+            #ifdef MATTE_DEBUG__STORE
                 matteString_t * info = matte_string_create_from_c_str("FUNCTION CALLED @");
                 if (matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)))
                     matte_string_concat(info, matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)));
-                matte_heap_track_neutral(vm->heap, function, matte_string_get_c_str(info), inst->lineNumber);
+                matte_store_track_neutral(vm->store, function, matte_string_get_c_str(info), inst->lineNumber);
                 matte_string_destroy(info);
             #endif
 
@@ -856,13 +856,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             for(i = 0; i < argcount; ++i) {
                 STACK_POP_NORET();
                 matteValue_t v = matte_array_at(args, matteValue_t, i);
-                matte_heap_recycle(vm->heap, v);
+                matte_store_recycle(vm->store, v);
                 STACK_POP_NORET(); // always a string
             }
             matte_array_destroy(args);
             matte_array_destroy(argnames);
             STACK_POP_NORET();
-            matte_heap_recycle(vm->heap, function);
+            matte_store_recycle(vm->store, function);
             STACK_PUSH(result);
             break;
           }
@@ -898,12 +898,12 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                   case MATTE_OPERATOR_ASSIGNMENT_BLEFT: vOut = vm_operator__assign_bleft(vm, ref, v); break;
                   case MATTE_OPERATOR_ASSIGNMENT_BRIGHT: vOut = vm_operator__assign_bright(vm, ref, v); break;
                   default:
-                    vOut = matte_heap_new_value(vm->heap);
+                    vOut = matte_store_new_value(vm->store);
                     matte_vm_raise_error_cstring(vm, "VM error: tried to access non-existent referrable operation (corrupt bytecode?).");                        
 
                 }                
                 STACK_POP_NORET();
-                matte_heap_recycle(vm->heap, v);
+                matte_store_recycle(vm->store, v);
                 STACK_PUSH(vOut); // new value is pushed
             } else {
                 matte_vm_raise_error_cstring(vm, "VM error: tried to access non-existent referrable.");    
@@ -914,7 +914,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t popCount = (uint32_t)inst->data;
             while (popCount && STACK_SIZE()) {
                 matteValue_t m = STACK_POP();
-                matte_heap_recycle(vm->heap, m);
+                matte_store_recycle(vm->store, m);
                 popCount--;
             }
             break;
@@ -925,8 +925,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 break;
             }       
             matteValue_t m = STACK_PEEK(0);
-            matteValue_t cpy = matte_heap_new_value(vm->heap);
-            matte_value_into_copy(vm->heap, &cpy, m);
+            matteValue_t cpy = matte_store_new_value(vm->store);
+            matte_value_into_copy(vm->store, &cpy, m);
             STACK_PUSH(cpy);
             break;
           }   
@@ -948,10 +948,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             if (opr == MATTE_OPERATOR_ASSIGNMENT_NONE) {
                 
-                const matteValue_t * lk = matte_value_object_set(vm->heap, object, key, val, isBracket);
-                matteValue_t lknp = matte_heap_new_value(vm->heap);
+                const matteValue_t * lk = matte_value_object_set(vm->store, object, key, val, isBracket);
+                matteValue_t lknp = matte_store_new_value(vm->store);
                 if (lk) {
-                    matte_value_into_copy(vm->heap, &lknp, *lk);
+                    matte_value_into_copy(vm->store, &lknp, *lk);
                 }
                 STACK_POP_NORET();
                 STACK_POP_NORET();
@@ -960,16 +960,16 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             
             } else {
-                matteValue_t * ref = matte_value_object_access_direct(vm->heap, object, key, isBracket);
+                matteValue_t * ref = matte_value_object_access_direct(vm->store, object, key, isBracket);
                 matteValue_t refH = {};
                 int isDirect = 1;
                 if (!ref) {
                     isDirect = 0;
-                    refH = matte_value_object_access(vm->heap, object, key, isBracket);
+                    refH = matte_value_object_access(vm->store, object, key, isBracket);
                     ref = &refH;
                 }
-                matte_value_object_push_lock(vm->heap, *ref);
-                matteValue_t out = matte_heap_new_value(vm->heap);
+                matte_value_object_push_lock(vm->store, *ref);
+                matteValue_t out = matte_store_new_value(vm->store);
                 switch(opr) {                    
                   case MATTE_OPERATOR_ASSIGNMENT_ADD: out = vm_operator__assign_add(vm, ref, val); break;
                   case MATTE_OPERATOR_ASSIGNMENT_SUB: out = vm_operator__assign_sub(vm, ref, val); break;
@@ -986,13 +986,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matte_vm_raise_error_cstring(vm, "VM error: tried to access non-existent assignment operation (corrupt bytecode?).");                        
                 }               
                 
-                matte_value_object_pop_lock(vm->heap, *ref);
+                matte_value_object_pop_lock(vm->store, *ref);
                 // Slower path for things like accessors
                 // Indirect access means the ref being worked with is essentially a copy, so 
                 // we need to set the object value back after the operator has been applied.
                 if (!isDirect) {
                     matte_value_object_set(
-                        vm->heap,
+                        vm->store,
                         object,
                         key, 
                         refH,
@@ -1000,7 +1000,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     );
                 }
                 if (refH.binID) { 
-                    matte_heap_recycle(vm->heap, refH); 
+                    matte_store_recycle(vm->store, refH); 
                 }
                 STACK_POP_NORET();
                 STACK_POP_NORET();
@@ -1010,9 +1010,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
 
 
-            matte_heap_recycle(vm->heap, key);
-            matte_heap_recycle(vm->heap, object);  
-            matte_heap_recycle(vm->heap, val);
+            matte_store_recycle(vm->store, key);
+            matte_store_recycle(vm->store, object);  
+            matte_store_recycle(vm->store, val);
 
             break;
           }    
@@ -1026,12 +1026,12 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t isBracket = (uint32_t)inst->data;
             matteValue_t key = STACK_PEEK(0);
             matteValue_t object = STACK_PEEK(1);            
-            matteValue_t output = matte_value_object_access(vm->heap, object, key, isBracket);
+            matteValue_t output = matte_value_object_access(vm->store, object, key, isBracket);
             
             STACK_POP_NORET();
             STACK_POP_NORET();
-            matte_heap_recycle(vm->heap, key);
-            matte_heap_recycle(vm->heap, object);            
+            matte_store_recycle(vm->store, key);
+            matte_store_recycle(vm->store, object);            
             STACK_PUSH(output);
             break;
           }    
@@ -1056,17 +1056,17 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_SKP: {
             uint32_t count = (uint32_t)inst->data;
             matteValue_t condition = STACK_PEEK(0);
-            if (!matte_value_as_boolean(vm->heap, condition)) {
+            if (!matte_value_as_boolean(vm->store, condition)) {
                 frame->pc += count;
             }
             STACK_POP_NORET();
-            matte_heap_recycle(vm->heap, condition);
+            matte_store_recycle(vm->store, condition);
             break;
           }
           case MATTE_OPCODE_SCA: {
             uint32_t count = (uint32_t)inst->data;
             matteValue_t condition = STACK_PEEK(0);
-            if (!matte_value_as_boolean(vm->heap, condition)) {
+            if (!matte_value_as_boolean(vm->store, condition)) {
                 frame->pc += count;
             }
             break;
@@ -1074,7 +1074,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_SCO: {
             uint32_t count = (uint32_t)inst->data;
             matteValue_t condition = STACK_PEEK(0);
-            if (matte_value_as_boolean(vm->heap, condition)) {
+            if (matte_value_as_boolean(vm->store, condition)) {
                 frame->pc += count;
             }
             break;
@@ -1084,11 +1084,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t src  = STACK_PEEK(0);
             matteValue_t dest = STACK_PEEK(1);
             
-            matte_value_object_set_table(vm->heap, dest, src);
+            matte_value_object_set_table(vm->store, dest, src);
             
             
             STACK_POP_NORET();
-            matte_heap_recycle(vm->heap, src);
+            matte_store_recycle(vm->store, src);
             break;
           }
 
@@ -1100,7 +1100,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           
           case MATTE_OPCODE_QRY: {
             matteValue_t o = STACK_PEEK(0);
-            matteValue_t output = matte_value_query(vm->heap, &o, (uint32_t)inst->data);
+            matteValue_t output = matte_value_query(vm->store, &o, (uint32_t)inst->data);
             STACK_POP_NORET();            
 
             STACK_PUSH(output);
@@ -1151,8 +1151,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         );
                         STACK_POP_NORET();
                         STACK_POP_NORET();
-                        matte_heap_recycle(vm->heap, a);
-                        matte_heap_recycle(vm->heap, b);
+                        matte_store_recycle(vm->store, a);
+                        matte_store_recycle(vm->store, b);
                         STACK_PUSH(v); // ok
                     }
                     break;                
@@ -1176,7 +1176,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         );
                         STACK_POP_NORET();
                         STACK_PUSH(v);
-                        matte_heap_recycle(vm->heap, a);
+                        matte_store_recycle(vm->store, a);
                     }
                     break;                
                 }
@@ -1209,18 +1209,18 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         uint32_t i;
         uint32_t len = matte_array_get_size(frame->valueStack);
         for(i = 0; i < len-1; ++i) { 
-            matte_value_object_pop_lock(vm->heap, matte_array_at(frame->valueStack, matteValue_t, i));
-            matte_heap_recycle(vm->heap, matte_array_at(frame->valueStack, matteValue_t, i));
+            matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, i));
+            matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_t, i));
         }
-        matte_value_object_pop_lock(vm->heap, matte_array_at(frame->valueStack, matteValue_t, len-1));
+        matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, len-1));
         matte_array_set_size(frame->valueStack, 0);
 
         if (vm->pendingCatchable) 
-            output = matte_heap_new_value(vm->heap);
+            output = matte_store_new_value(vm->store);
         
         // ok since not removed from normal value stack stuff
     } else {
-        output = matte_heap_new_value(vm->heap);
+        output = matte_store_new_value(vm->store);
     }
 
     // it's VERY important that the restart condition is not run when 
@@ -1284,7 +1284,7 @@ static void vm_add_built_in(
     
     
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-        vm->heap,
+        vm->store,
         0,
         matte_array_get_data(arr), 
         matte_array_get_size(arr)
@@ -1296,7 +1296,7 @@ static void vm_add_built_in(
     matte_array_at(vm->extStubs, matteBytecodeStub_t *, index) = out;
 
     matteValue_t func = {};
-    matte_value_into_new_external_function_ref(vm->heap, &func, out);
+    matte_value_into_new_external_function_ref(vm->store, &func, out);
     matte_array_at(vm->extFuncs, matteValue_t, index) = func;
 }
 
@@ -1312,7 +1312,7 @@ matteVM_t * matte_vm_create() {
     vm->interruptOps = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
     vm->externalFunctions = matte_table_create_hash_matte_string();
     vm->externalFunctionIndex = matte_array_create(sizeof(ExternalFunctionSet_t));
-    vm->heap = matte_heap_create(vm);
+    vm->store = matte_store_create(vm);
 
     vm->extStubs = matte_array_create(sizeof(matteBytecodeStub_t *));
     vm->extFuncs = matte_array_create(sizeof(matteValue_t));
@@ -1325,20 +1325,20 @@ matteVM_t * matte_vm_create() {
     vm->nextID = 1;
     vm->cleanupFunctionSets = matte_array_create(sizeof(MatteCleanupFunctionSet));
     
-    vm->specialString_from = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_from, MATTE_VM_STR_CAST(vm, "from"));
-    vm->specialString_message = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_message, MATTE_VM_STR_CAST(vm, "message"));
-    vm->specialString_parameters = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_parameters, MATTE_VM_STR_CAST(vm, "parameters"));
-    vm->specialString_base = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_base, MATTE_VM_STR_CAST(vm, "base"));
+    vm->specialString_from = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &vm->specialString_from, MATTE_VM_STR_CAST(vm, "from"));
+    vm->specialString_message = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &vm->specialString_message, MATTE_VM_STR_CAST(vm, "message"));
+    vm->specialString_parameters = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &vm->specialString_parameters, MATTE_VM_STR_CAST(vm, "parameters"));
+    vm->specialString_base = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &vm->specialString_base, MATTE_VM_STR_CAST(vm, "base"));
 
 
-    vm->specialString_onsend = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_onsend, MATTE_VM_STR_CAST(vm, "onSend"));
-    vm->specialString_onerror = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_onerror, MATTE_VM_STR_CAST(vm, "onError"));
+    vm->specialString_onsend = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &vm->specialString_onsend, MATTE_VM_STR_CAST(vm, "onSend"));
+    vm->specialString_onerror = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &vm->specialString_onerror, MATTE_VM_STR_CAST(vm, "onError"));
 
     
     // add built in functions
@@ -1374,11 +1374,11 @@ matteVM_t * matte_vm_create() {
 
     const matteString_t * name = MATTE_VM_STR_CAST(vm, "name");
     const matteString_t * value = MATTE_VM_STR_CAST(vm, "value");
-    vm->specialString_value = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_value, value);
+    vm->specialString_value = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &vm->specialString_value, value);
     const matteString_t * previous = MATTE_VM_STR_CAST(vm, "previous");
-    vm->specialString_previous = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &vm->specialString_previous, previous);
+    vm->specialString_previous = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &vm->specialString_previous, previous);
 
     const matteString_t * stringName = MATTE_VM_STR_CAST(vm, "string");
     
@@ -1579,8 +1579,8 @@ void matte_vm_destroy(matteVM_t * vm) {
     }
     matte_array_destroy(vm->cleanupFunctionSets);
     if (vm->pendingCatchable) {
-        matte_value_object_pop_lock(vm->heap, vm->catchable);
-        matte_heap_recycle(vm->heap, vm->catchable);
+        matte_value_object_pop_lock(vm->store, vm->catchable);
+        matte_store_recycle(vm->store, vm->catchable);
         vm->catchable.binID = 0;
     }
     
@@ -1593,8 +1593,8 @@ void matte_vm_destroy(matteVM_t * vm) {
         matte_table_iter_proceed(iter)) {
         
         matteValue_t * v = matte_table_iter_get_value(iter);
-        matte_value_object_pop_lock(vm->heap, *v);
-        matte_heap_recycle(vm->heap, *v);
+        matte_value_object_pop_lock(vm->store, *v);
+        matte_store_recycle(vm->store, *v);
         free(v);
     }
 
@@ -1604,7 +1604,7 @@ void matte_vm_destroy(matteVM_t * vm) {
 
 
     matte_table_destroy(vm->imported);
-    matte_heap_destroy(vm->heap);
+    matte_store_destroy(vm->store);
     
 
     
@@ -1716,7 +1716,7 @@ void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr) {
     }
 }
 
-matteHeap_t * matte_vm_get_heap(matteVM_t * vm) {return vm->heap;}
+matteStore_t * matte_vm_get_store(matteVM_t * vm) {return vm->store;}
 
 
 matteValue_t matte_vm_call(
@@ -1726,20 +1726,20 @@ matteValue_t matte_vm_call(
     const matteArray_t * argNames,
     const matteString_t * prettyName
 ) {
-    if (vm->pendingCatchable) return matte_heap_new_value(vm->heap);
-    int callable = matte_value_is_callable(vm->heap, func); 
+    if (vm->pendingCatchable) return matte_store_new_value(vm->store);
+    int callable = matte_value_is_callable(vm->store, func); 
     if (!callable) {
         matteString_t * err = matte_string_create_from_c_str("Error: cannot call non-function value ");
         if (prettyName)
             matte_string_concat(err, prettyName);
         matte_vm_raise_error_string(vm, err);
         matte_string_destroy(err);
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 
     if (matte_array_get_size(args) != matte_array_get_size(argNames)) {
         matte_vm_raise_error_cstring(vm, "VM call as mismatching arguments and parameter names.");            
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 
     // special case: type object as a function
@@ -1748,31 +1748,31 @@ matteValue_t matte_vm_call(
             if (matte_array_at(argNames, matteValue_t, 0).value.id != vm->specialString_from.value.id) {
                 matte_vm_raise_error_cstring(vm, "Type conversion failed: unbound parameter to function ('from')");            
             }
-            return matte_value_to_type(vm->heap, matte_array_at(args, matteValue_t, 0), func);
+            return matte_value_to_type(vm->store, matte_array_at(args, matteValue_t, 0), func);
         } else {
             matte_vm_raise_error_cstring(vm, "Type conversion failed (no value given to convert).");
-            return matte_heap_new_value(vm->heap);
+            return matte_store_new_value(vm->store);
         }
     }
 
 
     // normal function
-    matteValue_t d = matte_heap_new_value(vm->heap);
-    matte_value_into_copy(vm->heap, &d, func);
+    matteValue_t d = matte_store_new_value(vm->store);
+    matte_value_into_copy(vm->store, &d, func);
 
 
-    if (matte_bytecode_stub_get_file_id(matte_value_get_bytecode_stub(vm->heap, d)) == 0) {
+    if (matte_bytecode_stub_get_file_id(matte_value_get_bytecode_stub(vm->store, d)) == 0) {
         // fileid 0 is a special fileid that never refers to a real file.
         // this is used to call external c functions. stubID refers to 
         // which index within externalFunction.
         // In this case, a new stackframe is NOT pushed.
-        uint32_t external = matte_bytecode_stub_get_id(matte_value_get_bytecode_stub(vm->heap, d));
+        uint32_t external = matte_bytecode_stub_get_id(matte_value_get_bytecode_stub(vm->store, d));
         if (external >= matte_array_get_size(vm->externalFunctionIndex)) {
-            matte_heap_recycle(vm->heap, d);
-            return matte_heap_new_value(vm->heap);            
+            matte_store_recycle(vm->store, d);
+            return matte_store_new_value(vm->store);            
         }
         ExternalFunctionSet_t * set = &matte_array_at(vm->externalFunctionIndex, ExternalFunctionSet_t, external);
-        matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->heap, func);
+        matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, func);
         matteArray_t * argsReal = matte_array_create(sizeof(matteValue_t));
         uint32_t i, n;
         uint32_t lenReal = matte_array_get_size(args);
@@ -1788,7 +1788,7 @@ matteValue_t matte_vm_call(
                     matte_array_at(argsReal, matteValue_t, n) = v;
                     // sicne this function doesn't use a referrable, we need to set roots manually.
                     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
-                        matte_value_object_push_lock(vm->heap, v);
+                        matte_value_object_push_lock(vm->store, v);
                     }
 
                     break;
@@ -1800,18 +1800,18 @@ matteValue_t matte_vm_call(
                 // couldnt find the requested name. Throw an error.
                 if (len)
                     str = matte_string_create_from_c_str(
-                        "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
+                        "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
                     );
                 else {
                     str = matte_string_create_from_c_str(
-                        "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
+                        "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
                     );                
                 }
 
                 for(n = 0; n < len; ++n) {
                     matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
                     matte_string_concat_printf(str, " \"");
-                    matte_string_concat(str, matte_value_string_get_string_unsafe(vm->heap, name));
+                    matte_string_concat(str, matte_value_string_get_string_unsafe(vm->store, name));
                     matte_string_concat_printf(str, "\" ");
                 }
                 
@@ -1819,41 +1819,41 @@ matteValue_t matte_vm_call(
                 matte_string_destroy(str);
                 
                 matte_array_destroy(argsReal);
-                return matte_heap_new_value(vm->heap);
+                return matte_store_new_value(vm->store);
                 
             }
         }
         
         
         
-        matte_value_object_push_lock(vm->heap, d);
+        matte_value_object_push_lock(vm->store, d);
         matteValue_t result = {};
         if (callable == 2) {
-            int ok = matte_value_object_function_pre_typecheck_unsafe(vm->heap, d, argsReal);
+            int ok = matte_value_object_function_pre_typecheck_unsafe(vm->store, d, argsReal);
             if (ok) 
                 result = set->userFunction(vm, d, matte_array_get_data(argsReal), set->userData);
-            matte_value_object_function_post_typecheck_unsafe(vm->heap, d, result);
+            matte_value_object_function_post_typecheck_unsafe(vm->store, d, result);
         } else {
             result = set->userFunction(vm, d, matte_array_get_data(argsReal), set->userData);        
         }
-        matte_value_object_pop_lock(vm->heap, d);
+        matte_value_object_pop_lock(vm->store, d);
 
 
         len = matte_array_get_size(argsReal);
         for(i = 0; i < len; ++i) {
             int bid = matte_array_at(argsReal, matteValue_t, i).binID;
             if (bid == MATTE_VALUE_TYPE_OBJECT) {
-                matte_value_object_pop_lock(vm->heap, matte_array_at(argsReal, matteValue_t, i));
+                matte_value_object_pop_lock(vm->store, matte_array_at(argsReal, matteValue_t, i));
             }
-            matte_heap_recycle(vm->heap, matte_array_at(argsReal, matteValue_t, i));
+            matte_store_recycle(vm->store, matte_array_at(argsReal, matteValue_t, i));
         }
         matte_array_destroy(argsReal);
-        matte_heap_recycle(vm->heap, d);
+        matte_store_recycle(vm->store, d);
         return result;
     } else {
 
         matteArray_t * referrables = matte_array_create(sizeof(matteValue_t));
-        matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->heap, d);
+        matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, d);
 
         // slot 0 is always the context
         uint32_t i, n;
@@ -1877,11 +1877,11 @@ matteValue_t matte_vm_call(
                 matteString_t * str;
                 if (len) 
                     str = matte_string_create_from_c_str(
-                        "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
+                        "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
                     );
                 else {
                     str = matte_string_create_from_c_str(
-                        "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, matte_array_at(argNames, matteValue_t, i)))
+                        "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
                     );                
                 }
                 
@@ -1889,7 +1889,7 @@ matteValue_t matte_vm_call(
                 for(n = 0; n < len; ++n) {
                     matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
                     matte_string_concat_printf(str, " \"");
-                    matte_string_concat(str, matte_value_string_get_string_unsafe(vm->heap, name));
+                    matte_string_concat(str, matte_value_string_get_string_unsafe(vm->store, name));
                     matte_string_concat_printf(str, "\" ");
                 }
 
@@ -1897,7 +1897,7 @@ matteValue_t matte_vm_call(
                 matte_string_destroy(str); 
                 
                 matte_array_destroy(referrables);
-                return matte_heap_new_value(vm->heap);
+                return matte_store_new_value(vm->store);
             }
         }
 
@@ -1908,14 +1908,14 @@ matteValue_t matte_vm_call(
                 matteValue_t,
                 len 
             );
-            ok = matte_value_object_function_pre_typecheck_unsafe(vm->heap, 
+            ok = matte_value_object_function_pre_typecheck_unsafe(vm->store, 
                 d, 
                 &arr  
             );
         }
         len = matte_bytecode_stub_local_count(stub);
         for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_heap_new_value(vm->heap);
+            matteValue_t v = matte_store_new_value(vm->store);
             matte_array_push(referrables, v);
         }
         
@@ -1928,13 +1928,13 @@ matteValue_t matte_vm_call(
 
         frame->context = d;
         frame->stub = stub;
-        frame->referrable = matte_heap_new_value(vm->heap);
+        frame->referrable = matte_store_new_value(vm->store);
         matte_array_at(referrables, matteValue_t, 0) = frame->context;
 
         // ref copies of values happen here.
-        matte_value_into_new_object_array_ref(vm->heap, &frame->referrable, referrables);
+        matte_value_into_new_object_array_ref(vm->store, &frame->referrable, referrables);
 
-        #ifdef MATTE_DEBUG__HEAP
+        #ifdef MATTE_DEBUG__STORE
         printf("Context    for frame %d is: %d\n", vm->stacksize, frame->context.value.id);
         printf("Referrable for frame %d is: %d\n", vm->stacksize, frame->referrable.value.id);
         {
@@ -1944,7 +1944,7 @@ matteValue_t matte_vm_call(
             if (matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))) {
                 matte_string_concat(info, matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)));
             }
-            matte_heap_track_neutral(vm->heap, frame->referrable, matte_string_get_c_str(info), inst->lineNumber);
+            matte_store_track_neutral(vm->store, frame->referrable, matte_string_get_c_str(info), inst->lineNumber);
             matte_string_destroy(info);
         }
         #endif
@@ -1954,26 +1954,26 @@ matteValue_t matte_vm_call(
         matte_array_destroy(referrables);
 
         // establishes the reference path of objects not allowed to be cleaned up
-        matte_value_object_push_lock(vm->heap, frame->referrable);
-        matte_value_object_push_lock(vm->heap, frame->context);        
-        matteValue_t result = matte_heap_new_value(vm->heap);
+        matte_value_object_push_lock(vm->store, frame->referrable);
+        matte_value_object_push_lock(vm->store, frame->context);        
+        matteValue_t result = matte_store_new_value(vm->store);
         if (callable == 2) {
             if (ok) 
                 result = vm_execution_loop(vm);
             if (!vm->pendingCatchable)            
-                matte_value_object_function_post_typecheck_unsafe(vm->heap, d, result);
+                matte_value_object_function_post_typecheck_unsafe(vm->store, d, result);
         } else {
             result = vm_execution_loop(vm);        
         }
-        matte_value_object_pop_lock(vm->heap, frame->referrable);
-        matte_value_object_pop_lock(vm->heap, frame->context);
+        matte_value_object_pop_lock(vm->store, frame->referrable);
+        matte_value_object_pop_lock(vm->store, frame->context);
 
         // cleanup;
-        matte_heap_recycle(vm->heap, frame->context);
-        matte_heap_recycle(vm->heap, frame->referrable);
-        matte_value_object_push_lock(vm->heap, result);
-        matte_heap_garbage_collect(vm->heap);
-        matte_value_object_pop_lock(vm->heap, result);
+        matte_store_recycle(vm->store, frame->context);
+        matte_store_recycle(vm->store, frame->referrable);
+        matte_value_object_push_lock(vm->store, result);
+        matte_store_garbage_collect(vm->store);
+        matte_value_object_pop_lock(vm->store, result);
         vm_pop_frame(vm);
 
 
@@ -1990,11 +1990,11 @@ matteValue_t matte_vm_call(
                     vm->unhandledData                   
                 );                
             }     
-            matte_value_object_pop_lock(vm->heap, vm->catchable);
+            matte_value_object_pop_lock(vm->store, vm->catchable);
             vm->catchable.binID = 0;
             vm->pendingCatchable = 0;
             vm->pendingCatchableIsError = 0;
-            return matte_heap_new_value(vm->heap);
+            return matte_store_new_value(vm->store);
         }
         return result; // ok, vm_execution_loop returns new
     } 
@@ -2010,14 +2010,14 @@ matteValue_t matte_vm_run_fileid(
         matteValue_t * precomp = matte_table_find_by_uint(vm->imported, fileid);
         if (precomp) return *precomp;
     }
-    matteValue_t func = matte_heap_new_value(vm->heap);
+    matteValue_t func = matte_store_new_value(vm->store);
     matteBytecodeStub_t * stub = vm_find_stub(vm, fileid, 0);
     if (!stub) {
         matte_vm_raise_error_cstring(vm, "Script has no toplevel context to run.");
         return func;
     }
-    matte_value_into_new_function_ref(vm->heap, &func, stub);
-    matte_value_object_push_lock(vm->heap, func);
+    matte_value_into_new_function_ref(vm->store, &func, stub);
+    matte_value_object_push_lock(vm->store, func);
 
 
     matteArray_t argNames = MATTE_ARRAY_CAST(&vm->specialString_parameters, matteValue_t, 1);
@@ -2036,10 +2036,10 @@ matteValue_t matte_vm_run_fileid(
     matteValue_t * ref = malloc(sizeof(matteValue_t));
     *ref = result;
     matte_table_insert_by_uint(vm->imported, fileid, ref);
-    matte_value_object_push_lock(vm->heap, *ref);
+    matte_value_object_push_lock(vm->store, *ref);
 
-    matte_value_object_pop_lock(vm->heap, func);
-    matte_heap_recycle(vm->heap, func);
+    matte_value_object_pop_lock(vm->store, func);
+    matte_store_recycle(vm->store, func);
     return result;
 }
 
@@ -2067,15 +2067,15 @@ matteValue_t matte_vm_import(
     const matteString_t * path, 
     matteValue_t parameters
 ) {
-    matteValue_t pathStr = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &pathStr, path);
+    matteValue_t pathStr = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &pathStr, path);
     matteValue_t args[] = {
         pathStr,
         parameters
     };
-    matte_value_object_push_lock(vm->heap, parameters);
-    matteValue_t v =  vm_ext_call__import(vm, matte_heap_new_value(vm->heap), args, NULL);
-    matte_value_object_pop_lock(vm->heap, parameters);
+    matte_value_object_push_lock(vm->store, parameters);
+    matteValue_t v =  vm_ext_call__import(vm, matte_store_new_value(vm->store), args, NULL);
+    matte_value_object_pop_lock(vm->store, parameters);
 
 
     if (!vm->stacksize && vm->pendingCatchable) {
@@ -2088,11 +2088,11 @@ matteValue_t matte_vm_import(
                 vm->unhandledData                   
             );                
         }     
-        matte_value_object_pop_lock(vm->heap, vm->catchable);
+        matte_value_object_pop_lock(vm->store, vm->catchable);
         vm->catchable.binID = 0;
         vm->pendingCatchable = 0;
         vm->pendingCatchableIsError = 0;
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
     return v;
 }
@@ -2105,8 +2105,8 @@ static void debug_compile_error(
     void * data
 ) {
     matteVM_t * vm = data;
-    matteValue_t v = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &v, s);
+    matteValue_t v = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &v, s);
     vm->debug(
         vm,
         MATTE_VM_DEBUG_EVENT__ERROR_RAISED,
@@ -2115,7 +2115,7 @@ static void debug_compile_error(
         v,
         vm->debugData
     );
-    matte_heap_recycle(vm->heap, v);
+    matte_store_recycle(vm->store, v);
 }
 
 matteValue_t matte_vm_run_scoped_debug_source(
@@ -2125,7 +2125,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
     void(*onError)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *),
     void * onErrorData
 ) {
-    matte_heap_push_lock_gc(vm->heap);
+    matte_store_push_lock_gc(vm->store);
     vm->namedRefIndex = callstackIndex;
     void(*realDebug)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *) = vm->debug;
     void * realDebugData = vm->debugData;
@@ -2151,27 +2151,27 @@ matteValue_t matte_vm_run_scoped_debug_source(
     matteValue_t result;
     if (jitSize) {
         matteArray_t * jitstubs = matte_bytecode_stubs_from_bytecode(
-            vm->heap, MATTE_VM_DEBUG_FILE, jitBuffer, jitSize
+            vm->store, MATTE_VM_DEBUG_FILE, jitBuffer, jitSize
         );
         
         matte_vm_add_stubs(vm, jitstubs);
-        result = matte_vm_run_fileid(vm, MATTE_VM_DEBUG_FILE, matte_heap_new_value(vm->heap), NULL);
+        result = matte_vm_run_fileid(vm, MATTE_VM_DEBUG_FILE, matte_store_new_value(vm->store), NULL);
 
     } else {
-        result = matte_heap_new_value(vm->heap);
+        result = matte_store_new_value(vm->store);
     }
     
     // revert vm state 
     vm->debug = realDebug;
     vm->debugData = realDebugData;
-    matte_value_object_pop_lock(vm->heap, vm->catchable);        
-    matte_heap_recycle(vm->heap, vm->catchable);      
+    matte_value_object_pop_lock(vm->store, vm->catchable);        
+    matte_store_recycle(vm->store, vm->catchable);      
     
       
     vm->pendingCatchable = pendingCatchable;
     vm->catchable = catchable;
     vm->pendingCatchableIsError = pendingCatchableIsError;
-    matte_heap_pop_lock_gc(vm->heap);
+    matte_store_pop_lock_gc(vm->store);
 
     return result;
 }
@@ -2194,26 +2194,26 @@ matteValue_t matte_vm_run_scoped_debug_source(
 */
 
 matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_new_object_ref(vm->heap, &out);
+    matteValue_t out = matte_store_new_value(vm->store);
+    matte_value_into_new_object_ref(vm->store, &out);
     
-    matteValue_t callstack = matte_heap_new_value(vm->heap);
-    matte_value_into_new_object_ref(vm->heap, &callstack);
+    matteValue_t callstack = matte_store_new_value(vm->store);
+    matte_value_into_new_object_ref(vm->store, &callstack);
     
-    matteValue_t key = matte_heap_new_value(vm->heap);
-    matteValue_t val = matte_heap_new_value(vm->heap);
+    matteValue_t key = matte_store_new_value(vm->store);
+    matteValue_t val = matte_store_new_value(vm->store);
 
     uint32_t i;
     uint32_t len = matte_vm_get_stackframe_size(vm);
-    matte_value_into_string(vm->heap, &key, MATTE_VM_STR_CAST(vm, "length"));
-    matte_value_into_number(vm->heap, &val, len);
-    matte_value_object_set(vm->heap, callstack, key, val, 0);
+    matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "length"));
+    matte_value_into_number(vm->store, &val, len);
+    matte_value_object_set(vm->store, callstack, key, val, 0);
     
     
     matteValue_t * arr = malloc(sizeof(matteValue_t) * len);
     matteString_t * str;
     if (detail.binID == MATTE_VALUE_TYPE_STRING) {
-        str = matte_string_create_from_c_str("%s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->heap, detail)));        
+        str = matte_string_create_from_c_str("%s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, detail)));        
     } else {
         str = matte_string_create_from_c_str("<no string data available>\n");    
     }
@@ -2221,14 +2221,14 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
     for(i = 0; i < len; ++i) {
         matteVMStackFrame_t framesrc = matte_vm_get_stackframe(vm, i);
 
-        matteValue_t frame = matte_heap_new_value(vm->heap);
-        matte_value_into_new_object_ref(vm->heap, &frame);
+        matteValue_t frame = matte_store_new_value(vm->store);
+        matte_value_into_new_object_ref(vm->store, &frame);
 
         const matteString_t * filename = matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(framesrc.stub));
         
-        matte_value_into_string(vm->heap, &key, MATTE_VM_STR_CAST(vm, "file"));
-        matte_value_into_string(vm->heap, &val, filename ? filename : MATTE_VM_STR_CAST(vm, "<unknown>"));        
-        matte_value_object_set(vm->heap, frame, key, val, 0);
+        matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "file"));
+        matte_value_into_string(vm->store, &val, filename ? filename : MATTE_VM_STR_CAST(vm, "<unknown>"));        
+        matte_value_object_set(vm->store, frame, key, val, 0);
         
 
         
@@ -2236,38 +2236,38 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
         uint32_t instcount = 0;
         const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(framesrc.stub, &instcount);        
         
-        matte_value_into_string(vm->heap, &key, MATTE_VM_STR_CAST(vm, "lineNumber"));        
+        matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "lineNumber"));        
         int lineNumber = 0;
         if (framesrc.pc - 1 < instcount) {
             lineNumber = inst[framesrc.pc-1].lineNumber;                
         } 
-        matte_value_into_number(vm->heap, &val, lineNumber);
-        matte_value_object_set(vm->heap, frame, key, val, 0);
+        matte_value_into_number(vm->store, &val, lineNumber);
+        matte_value_object_set(vm->store, frame, key, val, 0);
         arr[i] = frame;        
         
         matte_string_concat_printf(str, " (%d) -> %s, line %d\n", i, filename ? matte_string_get_c_str(filename) : "<unknown>", lineNumber); 
     }
 
     matteArray_t arrA = MATTE_ARRAY_CAST(arr, matteValue_t, len);
-    matte_value_into_new_object_array_ref(vm->heap, &val, &arrA);
+    matte_value_into_new_object_array_ref(vm->store, &val, &arrA);
     free(arr);
-    matte_value_into_string(vm->heap, &key, MATTE_VM_STR_CAST(vm, "frames"));
-    matte_value_object_set(vm->heap, callstack, key, val, 0);
+    matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "frames"));
+    matte_value_object_set(vm->store, callstack, key, val, 0);
     
 
     
     
-    matte_value_into_string(vm->heap, &key, MATTE_VM_STR_CAST(vm, "callstack"));    
-    matte_value_object_set(vm->heap, out, key, callstack, 0);
+    matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "callstack"));    
+    matte_value_object_set(vm->store, out, key, callstack, 0);
 
 
-    matte_value_into_string(vm->heap, &key, MATTE_VM_STR_CAST(vm, "summary"));
-    matte_value_into_string(vm->heap, &val, str);
+    matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "summary"));
+    matte_value_into_string(vm->store, &val, str);
     matte_string_destroy(str);
-    matte_value_object_set(vm->heap, out, key, val, 0);
+    matte_value_object_set(vm->store, out, key, val, 0);
 
-    matte_value_into_string(vm->heap, &key, MATTE_VM_STR_CAST(vm, "detail"));
-    matte_value_object_set(vm->heap, out, key, detail, 0);    
+    matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "detail"));
+    matte_value_object_set(vm->store, out, key, detail, 0);    
 
     return out;
 }
@@ -2280,7 +2280,7 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
 
     matteValue_t info = vm_info_new_object(vm, val);
     vm->catchable = info;
-    matte_value_object_push_lock(vm->heap, info);
+    matte_value_object_push_lock(vm->store, info);
     if (!vm->stacksize) {
         vm->errorLastFile = 0;
         vm->errorLastLine = -1;
@@ -2334,10 +2334,10 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
 }
 
 void matte_vm_raise_error_string(matteVM_t * vm, const matteString_t * str) {
-    matteValue_t b = matte_heap_new_value(vm->heap);
-    matte_value_into_string(vm->heap, &b, str);
+    matteValue_t b = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &b, str);
     matte_vm_raise_error(vm, b);
-    matte_heap_recycle(vm->heap, b);
+    matte_store_recycle(vm->store, b);
 }
 
 void matte_vm_raise_error_cstring(matteVM_t * vm, const char * str) {
@@ -2371,9 +2371,9 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 
     // get context
     if (referrableID < frames[i]->referrableSize) {
-        return matte_value_object_array_at_unsafe(vm->heap, frames[i]->referrable, referrableID);        
+        return matte_value_object_array_at_unsafe(vm->store, frames[i]->referrable, referrableID);        
     } else {
-        matteValue_t * ref = matte_value_get_captured_value(vm->heap, frames[i]->context, referrableID - frames[i]->referrableSize);
+        matteValue_t * ref = matte_value_get_captured_value(vm->store, frames[i]->context, referrableID - frames[i]->referrableSize);
 
         // bad referrable
         if (!ref) {
@@ -2396,13 +2396,13 @@ void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t ref
 
     // get context
     if (referrableID < frames[i]->referrableSize) {
-        matteValue_t vkey = matte_heap_new_value(vm->heap);
-        matte_value_into_number(vm->heap, &vkey, referrableID);
-        matte_value_object_set(vm->heap, frames[i]->referrable, vkey, val, 1);
-        matte_heap_recycle(vm->heap, vkey);
+        matteValue_t vkey = matte_store_new_value(vm->store);
+        matte_value_into_number(vm->store, &vkey, referrableID);
+        matte_value_object_set(vm->store, frames[i]->referrable, vkey, val, 1);
+        matte_store_recycle(vm->store, vkey);
         //matte_value_into_copy(matte_value_object_array_at_unsafe(frames[i]->referrable, referrableID), val);
     } else {
-        matte_value_set_captured_value(vm->heap, 
+        matte_value_set_captured_value(vm->store, 
             frames[i]->context, 
             referrableID - frames[i]->referrableSize,
             val
@@ -2477,7 +2477,7 @@ matteValue_t matte_vm_get_external_function_as_value(
 ) {
     uint32_t * id = matte_table_find(vm->externalFunctions, identifier);
     if (!id) {
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 
     return matte_array_at(vm->extFuncs, matteValue_t, *id);

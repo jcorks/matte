@@ -38,14 +38,14 @@ static int vm_ext_call__forever_restart_condition(
 }
 static matteValue_t vm_ext_call__forever(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];
-    if (!matte_value_is_callable(vm->heap, a)) {
+    if (!matte_value_is_callable(vm->store, a)) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'forever' requires only argument to be a function."));
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 
     vm->pendingRestartCondition = vm_ext_call__forever_restart_condition;
-    matte_heap_recycle(vm->heap, matte_vm_call(vm, a, matte_array_empty(),matte_array_empty(), MATTE_VM_STR_CAST(vm, "forever")));
-    return matte_heap_new_value(vm->heap);
+    matte_store_recycle(vm->store, matte_vm_call(vm, a, matte_array_empty(),matte_array_empty(), MATTE_VM_STR_CAST(vm, "forever")));
+    return matte_store_new_value(vm->store);
 }
 
 
@@ -63,15 +63,15 @@ static int vm_ext_call__for_restart_condition__up(
 ) {
     ForLoopData * d = data;
     if (res.binID != 0) {
-        d->i = matte_value_as_number(vm->heap, res);
+        d->i = matte_value_as_number(vm->store, res);
     } else {
         d->i += d->offset;
     }
     if (d->usesi) {
-        matteValue_t v = matte_heap_new_value(vm->heap);
-        matte_value_into_number(vm->heap, &v, d->i);
-        matte_value_object_set_index_unsafe(vm->heap, frame->referrable, 1, v);
-        matte_heap_recycle(vm->heap, v);
+        matteValue_t v = matte_store_new_value(vm->store);
+        matte_value_into_number(vm->store, &v, d->i);
+        matte_value_object_set_index_unsafe(vm->store, frame->referrable, 1, v);
+        matte_store_recycle(vm->store, v);
     }
     return d->i < d->end;
 }
@@ -85,15 +85,15 @@ static int vm_ext_call__for_restart_condition__down(
 ) {
     ForLoopData * d = data;
     if (res.binID != 0) {
-        d->i = matte_value_as_number(vm->heap, res);
+        d->i = matte_value_as_number(vm->store, res);
     } else {
         d->i += d->offset;
     }
     if (d->usesi) {
-        matteValue_t v = matte_heap_new_value(vm->heap);
-        matte_value_into_number(vm->heap, &v, d->i);
-        matte_value_object_set_index_unsafe(vm->heap, frame->referrable, 1, v);
-        matte_heap_recycle(vm->heap, v);
+        matteValue_t v = matte_store_new_value(vm->store);
+        matte_value_into_number(vm->store, &v, d->i);
+        matte_value_object_set_index_unsafe(vm->store, frame->referrable, 1, v);
+        matte_store_recycle(vm->store, v);
     }
     return d->i > d->end;
 }
@@ -105,7 +105,7 @@ static int vm_ext_call__for_restart_condition__down(
 
 
 static matteValue_t vm_ext_call__noop(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    return matte_heap_new_value(vm->heap);
+    return matte_store_new_value(vm->store);
 }
 
 static matteValue_t vm_ext_call__breakpoint(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
@@ -121,21 +121,21 @@ static matteValue_t vm_ext_call__breakpoint(matteVM_t * vm, matteValue_t fn, con
             MATTE_VM_DEBUG_EVENT__BREAKPOINT,
             matte_bytecode_stub_get_file_id(frame.stub),
             line,
-            matte_heap_new_value(vm->heap),
+            matte_store_new_value(vm->store),
             vm->debugData                   
         );
     }    
 
-    return matte_heap_new_value(vm->heap);
+    return matte_store_new_value(vm->store);
 }
 
 
 static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];
-    const matteString_t * str = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
+    const matteString_t * str = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
     // string conversion likely threw an error.
     if (vm->pendingCatchable) {
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 
     uint32_t * id = matte_table_find(vm->externalFunctions, str);
@@ -144,22 +144,22 @@ static matteValue_t vm_ext_call__getexternalfunction(matteVM_t * vm, matteValue_
         matte_string_concat(strerr, str);
         matte_vm_raise_error_string(vm, strerr);
         matte_string_destroy(strerr);
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matte_value_into_new_function_ref(vm->heap, &out, matte_array_at(vm->extStubs, matteBytecodeStub_t *, *id));
+    matteValue_t out = matte_store_new_value(vm->store);
+    matte_value_into_new_function_ref(vm->store, &out, matte_array_at(vm->extStubs, matteBytecodeStub_t *, *id));
 
     free(id);
     matte_table_remove(vm->externalFunctions, str);    
     return out;
 }
 static matteValue_t vm_ext_call__print(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    const matteString_t * str = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, args[0]));
+    const matteString_t * str = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, args[0]));
     if (str && vm->userPrint) {
         vm->userPrint(vm, str, vm->userPrintData);
     }
-    return matte_heap_new_value(vm->heap);
+    return matte_store_new_value(vm->store);
 }
 static matteValue_t vm_ext_call__send(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
      if (vm->pendingCatchable) {
@@ -167,18 +167,18 @@ static matteValue_t vm_ext_call__send(matteVM_t * vm, matteValue_t fn, const mat
             assert(!"VM has a new message sent before previous message could be caught. This is not allowed and is /probably/ indicative of internal VM error.");
         #endif
     }
-    matteValue_t b = matte_heap_new_value(vm->heap);
-    matte_value_into_copy(vm->heap, &b, args[0]);    
-    matte_value_object_push_lock(vm->heap, b);
+    matteValue_t b = matte_store_new_value(vm->store);
+    matte_value_into_copy(vm->store, &b, args[0]);    
+    matte_value_object_push_lock(vm->store, b);
     vm->catchable = b;
     vm->pendingCatchable = 1;
     vm->pendingCatchableIsError = 0;
-    return matte_heap_new_value(vm->heap);
+    return matte_store_new_value(vm->store);
 }
 
 static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matte_vm_raise_error(vm, args[0]);
-    return matte_heap_new_value(vm->heap);
+    return matte_store_new_value(vm->store);
 }
 
 
@@ -404,7 +404,7 @@ static void import__pop_path(matteArray_t * paths) {
 static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t fn, const matteString_t * str, const matteString_t * rawName, matteValue_t a, matteValue_t params) {
 
     if (vm->pendingCatchable) {
-        return matte_heap_new_value(vm->heap);
+        return matte_store_new_value(vm->store);
     }
 
 
@@ -418,8 +418,8 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
             //printf("import() returning pre-computed value\n");
             //fflush(stdout);
         #endif
-        matteValue_t cpy = matte_heap_new_value(vm->heap);
-        matte_value_into_copy(vm->heap, &cpy, *v);
+        matteValue_t cpy = matte_store_new_value(vm->store);
+        matte_value_into_copy(vm->store, &cpy, *v);
         return cpy;
     }
     
@@ -475,7 +475,7 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
             matte_string_concat_printf(err, "Could not find script '%s'.", matte_string_get_c_str(str));
             matte_vm_raise_error_string(vm, err);    
             matte_string_destroy(err);
-            return matte_heap_new_value(vm->heap);    
+            return matte_store_new_value(vm->store);    
         }
 
         if (fileid == 0) {
@@ -483,7 +483,7 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
             matte_string_concat_printf(str, "A file ID must be assigned by import.");
             matte_vm_raise_error_string(vm, str);    
             matte_string_destroy(str);
-            return matte_heap_new_value(vm->heap);    
+            return matte_store_new_value(vm->store);    
         }  
 
         // see if the user specified a fileID alias.
@@ -493,8 +493,8 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
         if (fileid) {
             v = matte_table_find_by_uint(vm->imported, fileid);
             if (v) {
-                matteValue_t cpy = matte_heap_new_value(vm->heap);
-                matte_value_into_copy(vm->heap, &a, *v);
+                matteValue_t cpy = matte_store_new_value(vm->store);
+                matte_value_into_copy(vm->store, &a, *v);
                 return cpy;
             }      
 
@@ -535,7 +535,7 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
 
 
     if (rom && romLen) {
-        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(vm->heap, fileid, rom, romLen);
+        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(vm->store, fileid, rom, romLen);
         if (!readonlyROM) free(rom);
         matte_vm_add_stubs(vm, stubs);
         matte_array_destroy(stubs);
@@ -551,14 +551,14 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
 
 
     // already would have raised an error, no need for another.
-    return matte_heap_new_value(vm->heap);    
+    return matte_store_new_value(vm->store);    
 
 }
 
 static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];
     matteValue_t params = args[1];
-    const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->heap, matte_value_as_string(vm->heap, a));
+    const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
     matteString_t * locationExpanded = import__push_path(vm->importPaths, strSrc);
 
     matteValue_t out = vm_ext_call__import_path_boxed(vm, fn, locationExpanded, strSrc, a, params);

@@ -27,28 +27,28 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-#ifndef H_MATTE__STRING_HEAP__INCLUDED
-#define H_MATTE__STRING_HEAP__INCLUDED
+#ifndef H_MATTE__STRING_STORE__INCLUDED
+#define H_MATTE__STRING_STORE__INCLUDED
 
 #include <stdint.h>
 typedef struct matteString_t matteString_t;
-typedef struct matteStringHeap_t matteStringHeap_t;
+typedef struct matteStringStore_t matteStringStore_t;
 
-matteStringHeap_t * matte_string_heap_create();
+matteStringStore_t * matte_string_store_create();
 
-void matte_string_heap_destroy(matteStringHeap_t *);
+void matte_string_store_destroy(matteStringStore_t *);
 
-uint32_t matte_string_heap_internalize(matteStringHeap_t *, const matteString_t *);
+uint32_t matte_string_store_internalize(matteStringStore_t *, const matteString_t *);
 
-// same as matte_string_heap_internalize(), but accepts a c string for convenience
-uint32_t matte_string_heap_internalize_cstring(matteStringHeap_t *, const char *);
+// same as matte_string_store_internalize(), but accepts a c string for convenience
+uint32_t matte_string_store_internalize_cstring(matteStringStore_t *, const char *);
 
 
 // null if fail
-const matteString_t * matte_string_heap_find(const matteStringHeap_t *, uint32_t);
+const matteString_t * matte_string_store_find(const matteStringStore_t *, uint32_t);
 
 #ifdef MATTE_DEBUG
-void matte_string_heap_print(matteStringHeap_t * h);
+void matte_string_store_print(matteStringStore_t * h);
 #endif
 
 

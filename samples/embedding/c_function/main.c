@@ -29,7 +29,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <matte.h>
 #include <matte_vm.h>
-#include <matte_heap.h>
+#include <matte_store.h>
 #include <matte_string.h>
 
 #include <stdio.h>
@@ -44,8 +44,8 @@ DEALINGS IN THE SOFTWARE.
 
 
 matteValue_t c_function(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    // the Matte Heap interfaces with internal values.
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    // the Matte Store interfaces with internal values.
+    matteStore_t * store = matte_vm_get_store(vm);
     
     // we dont know if the arguments are actually strings,
     // so we only continue if they really are strings.
@@ -57,7 +57,7 @@ matteValue_t c_function(matteVM_t * vm, matteValue_t fn, const matteValue_t * ar
 
         // external functions ALWAYS need to return a matte value,
         // even in error.
-        return matte_heap_new_value(heap);
+        return matte_store_new_value(store);
     }
     
     
@@ -65,8 +65,8 @@ matteValue_t c_function(matteVM_t * vm, matteValue_t fn, const matteValue_t * ar
     // strings from them. This function is labeled as "unsafe" because 
     // it doesnt do any error checking for you in the case that it isnt 
     // a string value. This is why we check ourselves ahead of time.
-    const matteString_t * arg0_str = matte_value_string_get_string_unsafe(heap, args[0]);
-    const matteString_t * arg1_str = matte_value_string_get_string_unsafe(heap, args[1]);
+    const matteString_t * arg0_str = matte_value_string_get_string_unsafe(store, args[0]);
+    const matteString_t * arg1_str = matte_value_string_get_string_unsafe(store, args[1]);
     
     
     // the purpose of the C function is to append these 2 strings,
@@ -76,10 +76,10 @@ matteValue_t c_function(matteVM_t * vm, matteValue_t fn, const matteValue_t * ar
     
     
     // now we need to convert this string into a matte value.
-    matteValue_t outputValue = matte_heap_new_value(heap);
-    matte_value_into_string(heap, &outputValue, output);
+    matteValue_t outputValue = matte_store_new_value(store);
+    matte_value_into_string(store, &outputValue, output);
     
-    // now we can free the string. It's copied and interned into the heap, 
+    // now we can free the string. It's copied and interned into the store, 
     // so this string is no longer needed.
     matte_string_destroy(output);
     

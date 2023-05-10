@@ -56,10 +56,10 @@ static void encode_value__clean_string(matteString_t * str) {
     }
 }
 
-static matteString_t * encode_value(matteHeap_t * heap, matteValue_t val) {
+static matteString_t * encode_value(matteStore_t * store, matteValue_t val) {
     switch(val.binID) {
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        return matte_string_create_from_c_str("%s", matte_value_as_boolean(heap, val) == 1 ? "true" : "false");
+        return matte_string_create_from_c_str("%s", matte_value_as_boolean(store, val) == 1 ? "true" : "false");
         
     
       case MATTE_VALUE_TYPE_NUMBER: 
@@ -70,7 +70,7 @@ static matteString_t * encode_value(matteHeap_t * heap, matteValue_t val) {
         }
 
       case MATTE_VALUE_TYPE_STRING: {
-        matteString_t * clean = matte_string_clone(matte_value_string_get_string_unsafe(heap, val));
+        matteString_t * clean = matte_string_clone(matte_value_string_get_string_unsafe(store, val));
         encode_value__clean_string(clean);
         matteString_t * out = matte_string_create_from_c_str("\"%s\"", matte_string_get_c_str(clean));
         matte_string_destroy(clean);
@@ -82,31 +82,31 @@ static matteString_t * encode_value(matteHeap_t * heap, matteValue_t val) {
       case MATTE_VALUE_TYPE_OBJECT: {
         matteString_t * out = matte_string_create();
         // if is array
-        if (matte_value_object_get_key_count(heap, val) == matte_value_object_get_number_key_count(heap, val)) {
+        if (matte_value_object_get_key_count(store, val) == matte_value_object_get_number_key_count(store, val)) {
             matte_string_append_char(out, '[');
             
-            uint32_t len = matte_value_object_get_key_count(heap, val);
+            uint32_t len = matte_value_object_get_key_count(store, val);
             uint32_t i;
             for(i = 0; i < len; ++i) {
                 if (i != 0)
                     matte_string_append_char(out, ',');
 
-                matteValue_t * subval = matte_value_object_array_at_unsafe(heap, val, i);
-                matteString_t * substr = encode_value(heap, *subval);
+                matteValue_t * subval = matte_value_object_array_at_unsafe(store, val, i);
+                matteString_t * substr = encode_value(store, *subval);
                 matte_string_concat(out, substr);
                 matte_string_destroy(substr);
             }
             
             matte_string_append_char(out, ']');            
         } else {
-            matteValue_t keys = matte_value_object_keys(heap, val);
+            matteValue_t keys = matte_value_object_keys(store, val);
             
-            uint32_t len = matte_value_object_get_key_count(heap, keys);
+            uint32_t len = matte_value_object_get_key_count(store, keys);
             uint32_t i;
             matte_string_append_char(out, '{');
             
             for(i = 0; i < len; ++i) {
-                matteValue_t * key = matte_value_object_array_at_unsafe(heap, keys, i);
+                matteValue_t * key = matte_value_object_array_at_unsafe(store, keys, i);
                 if (key->binID != MATTE_VALUE_TYPE_STRING) continue;
 
                 if (i != 0)
@@ -114,7 +114,7 @@ static matteString_t * encode_value(matteHeap_t * heap, matteValue_t val) {
                     
                     
                 // key
-                matteString_t * keystr = matte_string_clone(matte_value_string_get_string_unsafe(heap, *key));
+                matteString_t * keystr = matte_string_clone(matte_value_string_get_string_unsafe(store, *key));
                 encode_value__clean_string(keystr);
                 matte_string_concat_printf(
                     out,
@@ -127,8 +127,8 @@ static matteString_t * encode_value(matteHeap_t * heap, matteValue_t val) {
 
 
                 // value;
-                matteValue_t keyval = matte_value_object_access(heap, val, *key, 1);
-                matteString_t * keyvalstr = encode_value(heap, keyval);
+                matteValue_t keyval = matte_value_object_access(store, val, *key, 1);
+                matteString_t * keyvalstr = encode_value(store, keyval);
                 matte_string_concat(out, keyvalstr);
                 matte_string_destroy(keyvalstr);
             }
@@ -143,10 +143,10 @@ static matteString_t * encode_value(matteHeap_t * heap, matteValue_t val) {
 }
 
 MATTE_EXT_FN(matte_json__encode) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteString_t * str = encode_value(heap, args[0]);   
-    matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_string(heap, &out, str);
+    matteStore_t * store = matte_vm_get_store(vm);
+    matteString_t * str = encode_value(store, args[0]);   
+    matteValue_t out = matte_store_new_value(store);
+    matte_value_into_string(store, &out, str);
     matte_string_destroy(str);
     return out;
 }
@@ -166,9 +166,9 @@ static void iter_trim_space(StringIter * iter) {
         iter->index++;
 }
 
-matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter) {
+matteValue_t decode_value(matteVM_t * vm, matteStore_t * store, StringIter * iter) {
     iter_trim_space(iter);
-    matteValue_t out = matte_heap_new_value(heap);
+    matteValue_t out = matte_store_new_value(store);
 
     switch(iter_peek(iter, 0)) {
       case '"': {
@@ -204,7 +204,7 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
             if (iter_peek(iter, count) == '"') break;
         }
         
-        matte_value_into_string(heap, &out, substr);
+        matte_value_into_string(store, &out, substr);
         matte_string_destroy(substr);
         iter->index += count+1;
         
@@ -229,7 +229,7 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
             iter_peek(iter, 3) == 'e') {
             iter->index += 4;
 
-            matte_value_into_boolean(heap, &out, 1);            
+            matte_value_into_boolean(store, &out, 1);            
         } else {
             matte_vm_raise_error_cstring(vm, "Unrecognized token (expected true)");
         }
@@ -243,7 +243,7 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
             iter_peek(iter, 4) == 'e') {
             iter->index += 5;
 
-            matte_value_into_boolean(heap, &out, 0);            
+            matte_value_into_boolean(store, &out, 0);            
         } else {
             matte_vm_raise_error_cstring(vm, "Unrecognized token (expected true)");
         }
@@ -296,14 +296,14 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
         
         const matteString_t * numstr = matte_string_get_substr(iter->str, start, start+count-1);
         double num = strtod(matte_string_get_c_str(numstr), NULL);
-        matte_value_into_number(heap, &out, num);
+        matte_value_into_number(store, &out, num);
         iter->index += matte_string_get_length(numstr);
         break;
       }
         
         
       case '{': {
-        matte_value_into_new_object_ref(heap, &out);
+        matte_value_into_new_object_ref(store, &out);
         iter->index++;
         iter_trim_space(iter);
 
@@ -314,16 +314,16 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
         }
       
         while(iter->index <= matte_string_get_length(iter->str)) {
-            matteValue_t key = decode_value(vm, heap, iter);
+            matteValue_t key = decode_value(vm, store, iter);
             iter_trim_space(iter);
             
             // skip :
             iter->index++;
 
-            matteValue_t value = decode_value(vm, heap, iter);
+            matteValue_t value = decode_value(vm, store, iter);
             iter_trim_space(iter);
             
-            matte_value_object_set(heap, out, key, value, 1);
+            matte_value_object_set(store, out, key, value, 1);
             
             
             int next = iter_peek(iter, 0);
@@ -352,7 +352,7 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
         // empty object
         if (iter_peek(iter, 0) == ']') {
             iter->index++;
-            matte_value_into_new_object_ref(heap, &out);
+            matte_value_into_new_object_ref(store, &out);
             break;
         }
 
@@ -361,7 +361,7 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
         while(iter->index < matte_string_get_length(iter->str)) {
 
 
-            matteValue_t next = decode_value(vm, heap, iter);
+            matteValue_t next = decode_value(vm, store, iter);
             iter_trim_space(iter);
             matte_array_push(arr, next);
 
@@ -381,7 +381,7 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
                 break;
         }
 
-        matte_value_into_new_object_array_ref(heap, &out, arr);
+        matte_value_into_new_object_array_ref(store, &out, arr);
         matte_array_destroy(arr);
         break;      
       }
@@ -394,12 +394,12 @@ matteValue_t decode_value(matteVM_t * vm, matteHeap_t * heap, StringIter * iter)
 }
 
 MATTE_EXT_FN(matte_json__decode) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    const matteString_t * str = matte_value_string_get_string_unsafe(heap, args[0]);   
+    matteStore_t * store = matte_vm_get_store(vm);
+    const matteString_t * str = matte_value_string_get_string_unsafe(store, args[0]);   
     StringIter iter;
     iter.str = str;
     iter.index = 0;
-    matteValue_t out = decode_value(vm, heap, &iter);
+    matteValue_t out = decode_value(vm, store, &iter);
     return out;
 }
 

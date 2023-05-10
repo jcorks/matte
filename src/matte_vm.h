@@ -34,7 +34,7 @@ DEALINGS IN THE SOFTWARE.
 typedef struct matteArray_t matteArray_t;
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 typedef struct matteVMStackFrame_t matteVMStackFrame_t;
-#include "matte_heap.h"
+#include "matte_store.h"
 #include "matte_opcode.h"
 
 
@@ -75,8 +75,8 @@ matteVM_t * matte_vm_create();
 
 void matte_vm_destroy(matteVM_t*);
 
-// Returns the heap owned by the VM.
-matteHeap_t * matte_vm_get_heap(matteVM_t *);
+// Returns the store owned by the VM.
+matteStore_t * matte_vm_get_store(matteVM_t *);
 
 // Adds an array of matteBytecodeStub_t * to the vm.
 // Ownership of the stubs is transferred.
@@ -323,7 +323,7 @@ matteValue_t matte_vm_get_external_function_as_value(
     const matteString_t * identifier
 );
 
-// Functions for a built-in references. These are locked into the heap 
+// Functions for a built-in references. These are locked into the store 
 matteValue_t * matte_vm_get_external_builtin_function_as_value(
     matteVM_t * vm,
     matteExtCall_t ext
