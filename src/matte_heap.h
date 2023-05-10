@@ -59,6 +59,7 @@ typedef enum {
     MATTE_VALUE_TYPE_TYPE
 } matteValue_Type_t;
 
+#define matte_value_type(__V__) ((__V__).binID)
 
 #define matte_value_is_function(__V__) ((__V__).binID == MATTE_VALUE_TYPE_OBJECT && ((__V__).value.id/2)*2 == (__V__.value.id))
 

@@ -27,21 +27,40 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-#ifndef H_MATTE_CLI_SHARED
-#define H_MATTE_CLI_SHARED
-#include <stdint.h>
-#include "../src/matte.h"
-#include "../src/matte_vm.h"
-#include "../src/matte_bytecode_stub.h"
-#include "../src/matte_array.h"
-#include "../src/matte_string.h"
-#include "../src/matte_compiler.h"
-//#include "system/thread.h"
+/*
+    Simple example that runs matte source within a
+    C executable.
 
-#define MATTE_EXT_FN(__T__) static matteValue_t __T__(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData)
+*/
 
+#include <matte.h>
+#include <stddef.h>
+#include <stdio.h>
 
-void * dump_bytes(const char * filename, uint32_t * len);
-matteValue_t parse_parameters(matteVM_t *, char ** args, uint32_t count);
-matteValue_t parse_parameter_line(matteVM_t * vm, const char * line);
-#endif
+int main() {
+    // create a matte instance
+    matte_t * m = matte_create();
+    
+    // set defaults for output and events to be 
+    // through stdio. If something other than stdio is 
+    // required for anything, they can be manually set 
+    // through the Matte VM interface functions.
+    matte_set_io(m, NULL, NULL, NULL);
+    
+    
+    // matte_run_source is a quick way to run raw 
+    // source. The IO output function is used if an 
+    // issue is encountered.
+    matteValue_t result = matte_run_source(m, 
+        "@:add ::(a, b) {"
+        "  return a + b;"
+        "};"
+        ""
+        "return add(a:5, b:6);"
+    );
+    
+    
+    printf("%s\n", matte_introspect_value(m, result));
+
+    return 0;
+}

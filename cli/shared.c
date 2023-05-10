@@ -96,6 +96,7 @@ matteValue_t parse_parameter_line(matteVM_t * vm, const char * line) {
 matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
     matteValue_t v = matte_heap_new_value(heap);
+    if (count == 0) return v;
     matte_value_into_new_object_ref(heap, &v);
 
     uint32_t i = 0;

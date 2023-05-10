@@ -141,6 +141,18 @@ matteValue_t matte_vm_run_fileid(
 );
 
 
+// Stages a fileID as a module, meaning that 
+// an import of the given importName will trigger 
+// the import (and subsequent running) of that 
+// fileID. Note that the importName can differ 
+// from the fileID
+void matte_vm_stage_fileid_as_module(
+    matteVM_t *,
+    uint32_t fileid,
+    const matteString_t * importName
+);
+
+
 // Calls a function and evaluates its result immediately.
 matteValue_t matte_vm_call(
     matteVM_t *,
