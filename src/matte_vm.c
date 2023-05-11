@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_bytecode_stub.h"
 #include "matte_string.h"
 #include "matte_opcode.h"
+#include "matte.h"
 #include "matte_compiler.h"
 #include "matte.h"
 #include "./rom/native.h"
@@ -42,8 +43,10 @@ DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <assert.h>
 
+
 #define matte_string_temp_max_calls 128
 struct matteVM_t {
+    matte_t * matte;
 
     // stubIndex[fileid] -> [stubid]
     matteTable_t * stubIndex;
@@ -1304,9 +1307,9 @@ static void vm_add_built_in(
 #include "MATTE_EXT_NUMBER"
 #include "MATTE_EXT_OBJECT"
 #include "MATTE_EXT_STRING"
-matteVM_t * matte_vm_create() {
+matteVM_t * matte_vm_create(matte_t * m) {
     matteVM_t * vm = (matteVM_t*)matte_allocate(sizeof(matteVM_t));
-
+    vm->matte = m;
 
     vm->callstack = matte_array_create(sizeof(matteVMStackFrame_t *));
     vm->stubIndex = matte_table_create_hash_pointer();
@@ -2143,6 +2146,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
  
     uint32_t jitSize = 0;
     uint8_t * jitBuffer = matte_compiler_run_with_named_references(
+        matte_get_syntax_graph(vm->matte),
         (uint8_t*)matte_string_get_c_str(src), // TODO: UTF8
         matte_string_get_length(src),
         &jitSize,

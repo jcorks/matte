@@ -40,7 +40,7 @@ typedef struct matteVMStackFrame_t matteVMStackFrame_t;
 
 
 typedef struct matteVM_t matteVM_t;
-
+typedef struct matte_t matte_t;
 
 
 typedef enum {
@@ -71,7 +71,7 @@ typedef  uint8_t * (*matteImportFunction_t)(
 
 
 
-matteVM_t * matte_vm_create();
+matteVM_t * matte_vm_create(matte_t *);
 
 void matte_vm_destroy(matteVM_t*);
 
@@ -153,7 +153,9 @@ void matte_vm_stage_fileid_as_module(
 );
 
 
-// Calls a function and evaluates its result immediately.
+/// Functions are called immediately and only return once computation is finished.
+/// This includes any sub-calls to matte_call / matte_vm_call. The return value 
+/// of the function is returned. 
 matteValue_t matte_vm_call(
     matteVM_t *,
     matteValue_t function,

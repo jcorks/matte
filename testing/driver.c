@@ -162,12 +162,7 @@ static void test_string(matteVM_t * vm) {
 }
 
 
-static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata) {
-    printf("TEST COMPILE FAILURE ON TEST: %d\n:", TESTID);
-    printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
-    fflush(stdout);
-    exit(1);
-}
+
 
 static void onErrorCatch(
     matteVM_t * vm, 
@@ -296,7 +291,12 @@ int main() {
         uint32_t lenBytes;
         uint8_t * src = dump_bytes(matte_string_get_c_str(infile), &lenBytes);
         if (!src) break;
-
+        
+        char * srcstr = malloc(lenBytes+1);
+        memcpy(srcstr, src, lenBytes);
+        srcstr[lenBytes] = 0;
+        
+        free(src);
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
         matteStore_t * store = matte_vm_get_store(vm);
@@ -316,15 +316,13 @@ int main() {
         printf("Running test %s...", matte_string_get_c_str(infile));
         fflush(stdout);
         uint32_t outByteLen;
-        uint8_t * outBytes = matte_compiler_run(
-            src,
-            lenBytes,
+        uint8_t * outBytes = matte_compile_source(
+            m,
             &outByteLen,
-            onError,
-            NULL
+            srcstr
         );
 
-        free(src);
+        free(srcstr);
         if (!outByteLen || !outBytes) {
             printf("Couldn't compile source %s\n", matte_string_get_c_str(infile));
             exit(1);

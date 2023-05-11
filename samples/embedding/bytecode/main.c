@@ -43,8 +43,7 @@ int main() {
     
     // set defaults for output and events to be 
     // through stdio. If something other than stdio is 
-    // required for anything, they can be manually set 
-    // through the Matte VM interface functions.
+    // required for anything, they can be set here
     matte_set_io(m, NULL, NULL, NULL);
     
     
@@ -72,6 +71,9 @@ int main() {
     free(bytecode);
 
     printf("%s\n", matte_introspect_value(m, result));
+
+    // destroy the instance and cleanup
+    matte_destroy(m); 
 
     return 0;
 }

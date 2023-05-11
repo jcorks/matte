@@ -32,9 +32,14 @@ DEALINGS IN THE SOFTWARE.
 
 #include <stdint.h>
 #include "matte_string.h"
+typedef struct matteSyntaxGraph_t matteSyntaxGraph_t;
+
+
 // attempts to take UTF8 source and compile it into 
 // bytecode.
 uint8_t * matte_compiler_run(
+    // The cached syntax graph to use
+    matteSyntaxGraph_t * graph,
     // raw source. Does not neet to be nul-terminated.
     const uint8_t * source, 
     // Length of source in bytes.
@@ -62,6 +67,8 @@ uint8_t * matte_compiler_run(
 // Recall that referrable names are not guaranteed to be valid 
 // and can be changed at any time.
 uint8_t * matte_compiler_run_with_named_references(
+    // The cached syntax graph to use
+    matteSyntaxGraph_t * graph,
     // raw source. Does not neet to be nul-terminated.
     const uint8_t * source, 
     // Length of source in bytes.
@@ -83,6 +90,8 @@ uint8_t * matte_compiler_run_with_named_references(
 // compilation and print the results. This is useful for debugging.
 // but not much else.
 matteString_t * matte_compiler_tokenize(
+    // The cached syntax graph to use
+    matteSyntaxGraph_t * graph,
     // the source text.
     const uint8_t * source, 
     // The length of the source text.

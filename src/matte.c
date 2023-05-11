@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_string.h"
 #include "matte_array.h"
 #include "matte_compiler.h"
+#include "matte_compiler__syntax_graph.h"
 #include "matte_bytecode_stub.h"
 #include <stdlib.h>
 #include <stdarg.h>
@@ -68,6 +69,8 @@ struct matte_t {
     // Function to clear output. Always populated
     void   (*clear)(matte_t *);
     
+    // cached syntax graph.
+    matteSyntaxGraph_t * graph;
     
     // whether the debug context is enabled.
     int isDebug;
@@ -469,10 +472,11 @@ static void default_print_callback(matteVM_t * vm, const matteString_t * str, vo
 
 matte_t * matte_create() {
     matte_t * m = (matte_t*)matte_allocate(1*sizeof(matte_t));
-    m->vm = matte_vm_create();
     m->output = default_output;
     m->input = default_input;
     m->formatBuffer = (char *)matte_allocate(MATTE_PRINT_LIMIT+1);
+    m->graph = matte_syntax_graph_create();
+    m->vm = matte_vm_create(m);
     return m;
 }
 
@@ -483,6 +487,8 @@ matteVM_t * matte_get_vm(matte_t * m) {
 
 void matte_destroy(matte_t * m) {
     matte_vm_destroy(m->vm);
+    matte_syntax_graph_destroy(m->graph);
+    matte_deallocate(m->formatBuffer);
     matte_deallocate(m);
 }
 
@@ -612,6 +618,7 @@ matteValue_t matte_run_bytecode(matte_t * m, const uint8_t * bytecode, uint32_t 
 
 uint8_t * matte_compile_source(matte_t * m, uint32_t * bytecodeSize, const char * source) {
     return matte_compiler_run(
+        m->graph,
         (uint8_t*)source,
         strlen(source),
         bytecodeSize,
@@ -654,6 +661,7 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
     
     uint32_t bytecodeSize;
     uint8_t * bytecode = matte_compiler_run(
+        m->graph,
         (uint8_t*)source,
         strlen(source),
         &bytecodeSize,
@@ -722,6 +730,7 @@ static void* alloc_default(uint64_t size) {
 void * matte_allocate(uint64_t size) {
     if (!matte_allocate_fn)
         matte_allocate_fn = alloc_default;
+    if (!size) return NULL;
     uint8_t * data = (uint8_t*)matte_allocate_fn(size);
     if (!data) return data;
     memset(data, 0, size);
@@ -744,5 +753,8 @@ void matte_set_allocator(
     matte_deallocate_fn = deallocator;
 }
 
+matteSyntaxGraph_t * matte_get_syntax_graph(matte_t * m) {
+    return m->graph;
+}
 
 

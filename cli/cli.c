@@ -87,7 +87,8 @@ static int repl() {
             );
             printf("%s\n\n", matte_introspect_value(m, result));        
         }
-    }    
+    }   
+    matte_destroy(m); 
     
     return 0;
 
@@ -182,6 +183,7 @@ int main(int argc, char ** args) {
                 exit(1);
             }
             matteString_t * str = matte_compiler_tokenize(
+                matte_get_syntax_graph(m),
                 dump,
                 fsize,
                 tokenize_error,

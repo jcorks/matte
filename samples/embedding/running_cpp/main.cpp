@@ -107,8 +107,7 @@ int main() {
     
     // set defaults for output and events to be 
     // through stdio. If something other than stdio is 
-    // required for anything, setting these arguments 
-    // will accomplish this.
+    // required for anything, they can be set here
     matte_set_io(m, NULL, NULL, NULL);
     
     // Assigns a C++ function to an external name 
@@ -142,6 +141,9 @@ int main() {
     
     // return the sorted array as an introspected string.
     std::cout << std::string(matte_introspect_value(m, result)) << std::endl;
+
+    // destroy the instance and cleanup
+    matte_destroy(m); 
 
     return 0;
 }

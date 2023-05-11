@@ -1054,6 +1054,69 @@ matteSyntaxGraph_t * matte_syntax_graph_create() {
 }
 
 
+static void matte_syntax_graph_node_destroy(matteSyntaxGraphNode_t * node) {
+    uint32_t i, len;
+    switch(node->type) {
+      case MATTE_SYNTAX_GRAPH_NODE__TOKEN:
+      case MATTE_SYNTAX_GRAPH_NODE__TOKEN_ALIAS:
+        matte_deallocate(node->token.refs);
+        break;
+      case MATTE_SYNTAX_GRAPH_NODE__SPLIT:
+        len = node->split.count;
+        for(i = 0; i < len; ++i) {
+            matte_syntax_graph_node_destroy(node->split.nodes[i]);
+        }
+        matte_deallocate(node->split.nodes);
+        
+      
+      default:;
+    }
+    
+    // dumb but convenient, and node lengths are pretty small (N < 30)
+    if (node->next)
+        matte_syntax_graph_node_destroy(node->next);
+    matte_deallocate(node);
+}
+
+static void matte_syntax_graph_root_destroy(matteSyntaxGraphRoot_t * root) {
+    matte_string_destroy(root->name);
+    uint32_t i;
+    uint32_t len = matte_array_get_size(root->pathNames);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(root->pathNames, matteString_t *, i));
+    }
+    matte_array_destroy(root->pathNames);
+    
+    matteSyntaxGraphNode_t * node;
+    len = matte_array_get_size(root->paths);
+    for(i = 0; i < len; ++i) {
+        node = matte_array_at(root->paths, matteSyntaxGraphNode_t *, i);
+        matte_syntax_graph_node_destroy(node);
+    }
+    matte_array_destroy(root->paths);
+    
+    matte_deallocate(root);
+    
+}
+
+void matte_syntax_graph_destroy(matteSyntaxGraph_t * graph) {
+    uint32_t i;
+    uint32_t len = matte_array_get_size(graph->tokenNames);
+    for(i = 0; i < len; ++i) {
+        matte_string_destroy(matte_array_at(graph->tokenNames, matteString_t *, i));
+    }
+    matte_array_destroy(graph->tokenNames);
+
+    len = matte_array_get_size(graph->constructRoots);
+    for(i = 0; i < len; ++i) {
+        matte_syntax_graph_root_destroy(matte_array_at(graph->constructRoots, matteSyntaxGraphRoot_t*, i));
+    }
+    matte_array_destroy(graph->constructRoots);
+    matte_deallocate(graph);
+    
+}
+
+
 
 void matte_syntax_graph_add_construct_path(
     matteSyntaxGraph_t * g,

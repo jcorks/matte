@@ -206,7 +206,7 @@ typedef struct matteSyntaxGraphRoot_t {
     matteString_t * name;
     // array of matteSyntaxGraphNode_t *
     matteArray_t * paths;
-    // array of matteSyntaxGraphNode_t *
+    // array of matteString_t *
     matteArray_t * pathNames;
 } matteSyntaxGraphRoot_t;
 
@@ -221,4 +221,6 @@ matteSyntaxGraphRoot_t * matte_syntax_graph_get_root(
     uint32_t id
 );
 int matte_syntax_graph_is_construct(matteSyntaxGraph_t * g, int id);
+
+void matte_syntax_graph_destroy(matteSyntaxGraph_t *);
 #endif

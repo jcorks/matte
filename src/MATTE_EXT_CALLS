@@ -519,6 +519,7 @@ static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t 
             data.vm = vm;
             data.filename = (matteString_t *)str;
             rom = matte_compiler_run(
+                matte_get_syntax_graph(vm->matte),
                 src, 
                 srcLen, 
                 &romLen, 

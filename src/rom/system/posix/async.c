@@ -224,8 +224,10 @@ static void * matte_thread(void * userData) {
         return NULL;
     }
 
+    matte_t * m = matte_create();
     uint32_t outByteLen;
     uint8_t * outBytes = matte_compiler_run(
+        matte_get_syntax_graph(m),
         src,
         lenBytes,
         &outByteLen,
@@ -244,7 +246,6 @@ static void * matte_thread(void * userData) {
 
 
     
-    matte_t * m = matte_create();
     matteVM_t * vm = matte_get_vm(m);
     matteStore_t * store = matte_vm_get_store(vm);
 
