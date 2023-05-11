@@ -236,7 +236,6 @@ static void * matte_thread(void * userData) {
     
     if (!outByteLen || !outBytes) {
         *startData->stateRef = MWAS_FAILED;
-        matte_deallocate(src);
         matte_deallocate(startData);          
         matte_string_destroy(fromPath);
         return NULL;

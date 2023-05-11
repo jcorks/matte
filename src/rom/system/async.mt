@@ -81,11 +81,11 @@ DEALINGS IN THE SOFTWARE.
     @:push = ::(value) {
         o[o.length] = value;
     };
-    Object.setAttributes(of:o,
+    o->setAttributes(
         attributes : {
             '.' : {
                 get ::(key) {
-                    when(key == 'length') Object.keycount(of:o);
+                    when(key == 'length') o->keycount;
                     when(key == 'push') push;
                     error(detail:'this is an array.. what u doing?? (internal async error)');
                 }

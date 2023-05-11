@@ -39,7 +39,7 @@ if (OS.name == 'unix-like')
     OS.run(command:'firefox &')
 else 
     OS.run(command:'notepad.exe')
-
+;
 
 // OS.exit() will terminate the running program and deliver the 
 // exit code to the OS.

@@ -39,7 +39,6 @@ return class(
     
         // constants
         @:constant = 1;
-	breakpoint();
 
 
         this.constructor = ::(initial) {

@@ -50,7 +50,7 @@ AsyncWorker.installHook(
 );
 
 @out = 0;
-for(in:[0, input.count], do:::(i) {
+[0, input.count]->for(do:::(i) {
     out += i;
 });
 AsyncWorker.update(); // checks for new messages
