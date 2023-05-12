@@ -242,6 +242,32 @@ void matte_add_module(
 );
 
 
+
+/// Sets the import function for the instance.
+/// By default, Matte calls to import only look for 
+/// the built-in modules and any added modules.
+/// However, it's typically more useful to 
+/// work with other sources of bytecode and 
+/// Matte source.
+void matte_set_importer(
+    /// The matte instance
+    matte_t *,
+    
+    /// The function to call when the VM has requested 
+    /// an import. The function should return the fileid 
+    /// represented by the Matte bytecode to run.
+    /// For a custom importer, it will be necessary to 
+    /// manually convert source / bytecode to a fileID by 
+    /// hand using the matte_vm_* family of functions.
+    ///
+    /// When NULL, a default file-based importer will be used.
+    uint32_t(*)(matte_t *, const char * name, void * userData),
+    
+    // Optional user data for the importer function
+    void * userData
+);
+
+
 /// Convenience function that runs the given bytecode.
 /// Internally, it is given a unique name and
 /// runs the new fileID immediately. If an unhandled error 

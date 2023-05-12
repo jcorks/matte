@@ -59,11 +59,19 @@ typedef enum {
 } matteVMDebugEvent_t;
 
 
-typedef  uint8_t * (*matteImportFunction_t)(
+// The import handler function
+//
+// The import function returns the fileID 
+// represented by this name.
+// The most common use of this is to load in the corresponding 
+// import bytecode stubs at the same time.
+//
+typedef uint32_t (*matteImportFunction_t)(
+    // The VM instance
     matteVM_t *,
-    const matteString_t * importPath,
-    uint32_t * preexistingFileID,
-    uint32_t * dataLength,
+    // The name of the module being requested
+    const matteString_t * name,
+    
     void * usrdata
 );
 
@@ -79,7 +87,7 @@ void matte_vm_destroy(matteVM_t*);
 matteStore_t * matte_vm_get_store(matteVM_t *);
 
 // Adds an array of matteBytecodeStub_t * to the vm.
-// Ownership of the stubs is transferred.
+// Ownership of the stubs is transferred (but not the array)
 void matte_vm_add_stubs(matteVM_t *, const matteArray_t *);
 
 // Sets the implementation for the import function.
@@ -90,30 +98,14 @@ void matte_vm_set_import(
 );
 
 
-// Returns the default call for import. This is useful when 
-// setting an user import that has behavior happen when importing 
-// but doesnt necessarily deviate from standard behavior.
-matteImportFunction_t matte_vm_get_default_import();
 
-
-// Expands a given filename as if it were from an import 
-// call. This does not impact the import path chain.
-// The returned path is a fully-qualified path.
-// The result should be cleaned up by the caller.
-matteString_t * matte_vm_import_expand_path(
-    matteVM_t * vm, 
-    const matteString_t * module
-);
-
-// Gets the current import path.
-const matteString_t * matte_vm_get_import_path(matteVM_t * vm);
-
-// Performs an import, which evaluates the source at the given path 
+// Performs an import, which evaluates the source of the given name 
 // and returns its value, as if calling import() within 
-// source.
+// source. If an import was already performed on that name,
+// the pre-computed value of the previous import is returned.
 matteValue_t matte_vm_import(
     matteVM_t *, 
-    const matteString_t * path, 
+    const matteString_t * name, 
     matteValue_t parameters
 );
 
@@ -125,10 +117,6 @@ matteValue_t matte_vm_import(
 // A function object is created as the toplevel for the 
 // root stub functional; the function is then run.
 //
-// Optionally, an importPath may be provided, which can 
-// be used a current directory for any import() calls within this 
-// fileid. Once the function returns, the import path is 
-// popped from the import path stack.
 //
 //
 // This is equivalent to pushing the args onto the stack and 
@@ -136,21 +124,9 @@ matteValue_t matte_vm_import(
 matteValue_t matte_vm_run_fileid(
     matteVM_t *, 
     uint32_t fileid, 
-    matteValue_t parameters,
-    const matteString_t * importPath
+    matteValue_t parameters
 );
 
-
-// Stages a fileID as a module, meaning that 
-// an import of the given importName will trigger 
-// the import (and subsequent running) of that 
-// fileID. Note that the importName can differ 
-// from the fileID
-void matte_vm_stage_fileid_as_module(
-    matteVM_t *,
-    uint32_t fileid,
-    const matteString_t * importName
-);
 
 
 /// Functions are called immediately and only return once computation is finished.

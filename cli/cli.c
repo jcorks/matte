@@ -51,6 +51,7 @@ static matteValue_t repl_exit(matteVM_t * vm, matteValue_t fn, const matteValue_
 static int repl() {
     matte_t * m = matte_create();
     matte_set_io(m, NULL, NULL, NULL);    
+    matte_set_importer(m, NULL, NULL);
 
     matteVM_t * vm = matte_get_vm(m);
     matteStore_t * store = matte_vm_get_store(vm);
@@ -148,6 +149,7 @@ int main(int argc, char ** args) {
 
     matte_t * m = matte_create();
     matte_set_io(m, NULL, NULL, NULL); // standard IO is fine
+    matte_set_importer(m, NULL, NULL); // standard file import is fine
     
     if (!strcmp(tool, "--help") ||
         !strcmp(tool, "help") ||

@@ -69,10 +69,16 @@ struct matte_t {
     // Function to clear output. Always populated
     void   (*clear)(matte_t *);
     
+    // importer function for when set_importer is called
+    uint32_t (*importer)(matte_t *, const char *, void *);
+    
+    // importer user data
+    void * importerData;
+    
     // cached syntax graph.
     matteSyntaxGraph_t * graph;
     
-    // whether the debug context is enabled.
+    // whether the debug contexT is enabled.
     int isDebug;
     
     // Tracks how many matte_source_run and related functions have been called.
@@ -308,25 +314,6 @@ static void debug_split_lines(matte_t * m, uint32_t fileid, const uint8_t * data
 }
 
 
-static uint8_t * debug_on_import(
-    matteVM_t * vm,
-    const matteString_t * importPath,
-    uint32_t * preexistingFileID,
-    uint32_t * dataLength,
-    void * usrdata
-) {
-    uint8_t * out = matte_vm_get_default_import()(
-        vm,
-        importPath,
-        preexistingFileID,
-        dataLength,
-        usrdata
-    );
-
-    debug_split_lines((matte_t*)usrdata, *preexistingFileID, out, *dataLength);
-    return out;
-}
-
 
 
 
@@ -466,8 +453,108 @@ static void default_print_callback(matteVM_t * vm, const matteString_t * str, vo
 }
 
 
+static uint32_t matte_importer(
+    // The VM instance
+    matteVM_t * vm,
+    // The name of the module being requested
+    const matteString_t * name,
+    
+    void * usrdata
+) {
+    matte_t * m = (matte_t*)usrdata;
+    return m->importer(m, matte_string_get_c_str(name), m->importerData);
+}
+
+static uint32_t default_importer(
+    matte_t * m,
+    const char * name,
+    void * userdata
+) {
+    
+    // dump bytes
+    FILE * f = fopen(name, "rb");
+    if (!f) {
+        printf("Could not open input file %s\n", name);
+        return 0;
+    }
+    char chunk[2048];
+    int chunkSize;
+    uint32_t bytelen = 0;    
+    while(chunkSize = (fread(chunk, 1, 2048, f))) bytelen += chunkSize;
+    fseek(f, 0, SEEK_SET);
 
 
+    uint8_t * bytes = (uint8_t*)matte_allocate(bytelen);
+    uint32_t iter = 0;
+    while(chunkSize = (fread(chunk, 1, 2048, f))) {
+        memcpy(bytes+iter, chunk, chunkSize);
+        iter += chunkSize;
+    }
+    fclose(f);
+
+    
+    uint32_t fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));   
+    // determine if bytecode or raw source.
+    // handle bytecodecase
+    if (bytelen >= 6 &&
+        bytes[0] == 'M'  &&
+        bytes[1] == 'A'  &&
+        bytes[2] == 'T'  &&
+        bytes[3] == 0x01 &&
+        bytes[4] == 0x06 &&
+        bytes[5] == 'B') {
+        
+        
+        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+            matte_vm_get_store(m->vm),
+            fileid,
+            bytes,
+            bytelen
+        );
+        if (stubs) {
+            matte_vm_add_stubs(m->vm, stubs);
+        } else {
+            fileid = 0; // failed.
+            matte_print(m, "Failed to assemble bytecode %s.", name); 
+        }        
+    // raw source
+    } else {
+        uint32_t bytecodeLen;
+        uint8_t * bytecode = matte_compiler_run(
+            m->graph,
+            bytes,
+            bytelen,
+            &bytecodeLen,
+            default_compile_error,            
+            m
+        );
+        
+        if (!bytes || ! bytecodeLen)
+            fileid = 0; // failed.
+        else {
+            if (m->isDebug)
+                debug_split_lines(m, fileid, bytes, bytelen);
+        
+        
+            matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+                matte_vm_get_store(m->vm),
+                fileid,
+                bytecode,
+                bytecodeLen
+            );
+            if (stubs) {
+            matte_vm_add_stubs(m->vm, stubs);
+            } else {
+                fileid = 0; // failed.
+                matte_print(m, "Failed to assemble bytecode %s.", name); 
+            }           
+        }
+        matte_deallocate(bytecode);
+    }
+
+    matte_deallocate(bytes);
+    return fileid;
+}
 
 
 matte_t * matte_create() {
@@ -611,6 +698,23 @@ matteValue_t matte_run_source(matte_t * m, const char * source) {
     return matte_run_source_with_parameters(m, source, matte_store_new_value(matte_vm_get_store(m->vm)));
 }
 
+
+
+
+void matte_set_importer(
+    matte_t * m,
+    uint32_t(*importer)(matte_t *, const char * name, void *),
+    void * userData
+) {
+    if (importer == NULL) {
+        importer = default_importer;
+    }
+    m->importerData = userData;
+    m->importer = importer;
+    matte_vm_set_import(m->vm, matte_importer, m);
+}
+
+
 matteValue_t matte_run_bytecode(matte_t * m, const uint8_t * bytecode, uint32_t bytecodeSize) {
     return matte_run_bytecode_with_parameters(m, bytecode, bytecodeSize, matte_store_new_value(matte_vm_get_store(m->vm)));
 }
@@ -647,8 +751,7 @@ matteValue_t matte_run_bytecode_with_parameters(matte_t * m, const uint8_t * byt
     matteValue_t out = matte_vm_run_fileid(
         m->vm,
         fid,
-        input,
-        fname
+        input
     );
     
     matte_string_destroy(fname);
@@ -689,15 +792,13 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
 
     
     if (m->isDebug) {
-        // do split manually since will bypass normal import 
         debug_split_lines(m, fid, (const uint8_t*)source, strlen(source));
     }
     
     matteValue_t out = matte_vm_run_fileid(
         m->vm,
         fid,
-        input,
-        fname
+        input
     );
     
     matte_string_destroy(fname);
@@ -706,6 +807,23 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
 }
 
 
+void matte_add_module(
+    matte_t * m, 
+    const char * name, 
+    const uint8_t * bytecode, 
+    uint32_t bytecodeSize
+) {
+    uint32_t fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
+    matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+        matte_vm_get_store(m->vm),
+        fileid,
+        bytecode,
+        bytecodeSize
+    );
+    matte_vm_add_stubs(m->vm, stubs);
+    matte_array_destroy(stubs);
+}
+
 
 
 
@@ -713,7 +831,6 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
 void matte_debugging_enable(matte_t * m) {
     m->isDebug = 1;
     m->lines = matte_table_create_hash_pointer(); // needs editing
-    matte_vm_set_import(m->vm, debug_on_import, m);
     matte_vm_set_debug_callback(
         m->vm,
         debug_on_event,

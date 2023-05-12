@@ -101,7 +101,7 @@ typedef struct {
     matteVM_t * fromVM;
 
     // import path to the source. New thread frees
-    char * from;
+    matteString_t * from;
     
     // input string from parent
     matteString_t * input;
@@ -211,11 +211,11 @@ static void * matte_thread(void * userData) {
     MatteAsyncStartData * startData = userData;
     uint32_t lenBytes;
     *startData->stateRef = MWAS_UNKNOWN;
-    uint8_t * src = dump_bytes(startData->from, &lenBytes);
-    matteString_t * fromPath = matte_string_create_from_c_str("%s", startData->from);
+    uint8_t * src = dump_bytes(matte_string_get_c_str(startData->from), &lenBytes);
+    matteString_t * fromPath = matte_string_create_from_c_str("%s", matte_string_get_c_str(startData->from));
     if (!src || !lenBytes) {
         matteString_t * str = matte_string_create();
-        matte_string_concat_printf(str, "Could not read from file %s", startData->from);        
+        matte_string_concat_printf(str, "Could not read from file %s", matte_string_get_c_str(startData->from));        
         *startData->errorStringRef = str;
         *startData->stateRef = MWAS_FAILED;
         
@@ -250,7 +250,7 @@ static void * matte_thread(void * userData) {
     matteStore_t * store = matte_vm_get_store(vm);
 
     // first compile all and add them 
-    int FILEIDS = matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, startData->from));
+    int FILEIDS = matte_vm_get_new_file_id(vm, startData->from);
 
     
 
@@ -281,7 +281,7 @@ static void * matte_thread(void * userData) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::asyncworker_send_message"),   1, matte_asyncworker__send_message, startData);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::asyncworker_check_message"),   0, matte_asyncworker__check_message, startData);
 
-    matteValue_t v = matte_vm_run_fileid(vm, FILEIDS, params, fromPath);
+    matteValue_t v = matte_vm_run_fileid(vm, FILEIDS, params);
     matte_string_destroy(fromPath);
 
     
@@ -334,9 +334,7 @@ MATTE_EXT_FN(matte_async__start) {
     init->errorStringRef = &ch->errorString;
     init->messageFromChildToParentRef = &ch->messageFromChildToParent;
     init->messageFromParentToChildRef = &ch->messageFromParentToChild;
-    matteString_t * expanded = matte_vm_import_expand_path(vm, matte_value_string_get_string_unsafe(store, matte_value_as_string(store, path)));
-    init->from = strdup(matte_string_get_c_str(expanded));
-    matte_string_destroy(expanded);
+    init->from = matte_string_clone(matte_value_string_get_string_unsafe(store, path));
     init->input = matte_string_clone(matte_value_string_get_string_unsafe(store, input));
     init->stateRef = &(ch->state);
     init->fromVM = vm;

@@ -211,13 +211,6 @@ MATTE_EXT_FN(matte_filesystem__cwdup) {
     return matte_store_new_value(store);
 }
 
-MATTE_EXT_FN(matte_filesystem__getimportpath) {
-    matteStore_t * store = matte_vm_get_store(vm);
-    matteValue_t v = matte_store_new_value(store);
-    const matteString_t * path = matte_vm_get_import_path(vm);
-    matte_value_into_string(store, &v, path ? path : MATTE_VM_STR_CAST(vm, ""));
-    return v;
-}
 
 MATTE_EXT_FN(matte_filesystem__readstring) {
     matteStore_t * store = matte_vm_get_store(vm);
@@ -394,7 +387,6 @@ static void matte_system__filesystem(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_getcwd"),   0, matte_filesystem__getcwd, dirfiles);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_setcwd"),   1, matte_filesystem__setcwd, dirfiles);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_cwdup"),    0, matte_filesystem__cwdup, dirfiles);
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_getimportpath"),    0, matte_filesystem__getimportpath, dirfiles);
 
 
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_directoryenumerate"),    0, matte_filesystem__directoryenumerate, dirfiles);

@@ -38,8 +38,8 @@ DEALINGS IN THE SOFTWARE.
 #include "matte.h"
 
 
-#define array_resize_amt 1.4
-#define array_presize_amt 16
+#define array_resize_amt 1.3
+#define array_presize_amt 1
 
 
 

@@ -32,7 +32,6 @@ DEALINGS IN THE SOFTWARE.
 
 @_getcwd = getExternalFunction(name:"__matte_::filesystem_getcwd");
 @_setcwd = getExternalFunction(name:"__matte_::filesystem_setcwd");
-@_getimportpath = getExternalFunction(name:"__matte_::filesystem_getimportpath");
 @_directoryEnumerate = getExternalFunction(name:"__matte_::filesystem_directoryenumerate");
 @_directoryObjectCount  = getExternalFunction(name:"__matte_::filesystem_directoryobjectcount");
 @_directoryObjectName   = getExternalFunction(name:"__matte_::filesystem_directoryobjectname");
@@ -61,13 +60,6 @@ return class(
                 }
             },
             
-            // gets the current import path. This is the current path that imported 
-            // the module first.
-            importPath : {
-                get :: {
-                    return _getimportpath();
-                }
-            },
             
             // changes directory to the directory above.
             // Throws an error on failure.

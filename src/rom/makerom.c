@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include "../matte_string.h"
 #include "../matte_compiler.h"
+#include "../matte_compiler__syntax_graph.h"
 
 // dummy allocator / deallocator
 void * matte_allocate(uint32_t size) {return calloc(size, 1);}
@@ -118,7 +119,7 @@ int main() {
         "const uint8_t MATTE_ROM__data[] = {\n"
     );
 
-
+    matteSyntaxGraph_t * graph = matte_syntax_graph_create();
     
     char ** iter = files;
     int count = 0;
@@ -128,6 +129,7 @@ int main() {
         uint8_t * data = dump_bytes(iter[0], &len);
         uint32_t romCompiledLen = 0;
         uint8_t * romCompiledBytes = matte_compiler_run(
+            graph,
             data,
             len,
             &romCompiledLen,

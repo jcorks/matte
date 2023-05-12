@@ -96,20 +96,12 @@ struct matteVM_t {
 
     // table of all run script results in the VM.
     matteTable_t * imported;
-    matteTable_t * importPath2ID;
-    matteTable_t * id2importPath;
+    matteTable_t * importName2ID;
+    matteTable_t * id2importName;
 
     // import for scripts
-    uint8_t * (*userImport)(
-        matteVM_t *,
-        const matteString_t * importPath,
-        uint32_t * preexistingFileID,
-        uint32_t * dataLength,
-        void * usrdata
-    );
-    void * userImportData;
-    matteTable_t * defaultImport_table;
-    matteArray_t * importPaths;
+    matteImportFunction_t importFunction;
+    void * importFunctionData;
     uint32_t nextID;
 
     int pendingCatchable;
@@ -196,64 +188,14 @@ const matteString_t * matte_vm_cstring_to_string_temporary(matteVM_t * vm, const
 
 void matte_vm_set_import(
     matteVM_t * vm,
-    uint8_t * (*import)(
-        matteVM_t *,
-        const matteString_t * importPath,
-        uint32_t * preexistingFileID,
-        uint32_t * dataLength,
-        void * usrdata
-    ),
+    matteImportFunction_t import,
     void * userData
 ) {
-    vm->userImport = import;
-    vm->userImportData = userData;
+    vm->importFunction = import;
+    vm->importFunctionData = userData;
 }
 
-static uint8_t * vm_default_import(
-    matteVM_t * vm,
-    const matteString_t * importPath,
-    uint32_t * fileid,
-    uint32_t * dataLength,
-    void * usrdata
-) {
-    uint32_t * id = (uint32_t*)matte_table_find(vm->defaultImport_table, importPath);
-    if (id) {
-        *dataLength = 0;
-        *fileid = *id;
-        return NULL;
-    }
 
-
-    FILE * f = fopen(matte_string_get_c_str(importPath), "rb");
-    if (!f) {
-        *dataLength = 0;
-        return NULL;
-    }
-
-    #define DEFAULT_DUMP_SIZE 1024
-    char * msg = (char*)matte_allocate(DEFAULT_DUMP_SIZE);
-    uint32_t totalLen = 0;
-    uint32_t len;
-    while((len = fread(msg, 1, DEFAULT_DUMP_SIZE, f))) {
-        totalLen += len;
-    }
-    fseek(f, SEEK_SET, 0);
-    uint8_t * outBuffer = (uint8_t*)matte_allocate(totalLen);
-    uint8_t * iter = outBuffer;
-    while((len = fread(msg, 1, DEFAULT_DUMP_SIZE, f))) {
-        memcpy(iter, msg, len);
-        iter += len;
-    }
-    matte_deallocate(msg);
-    fclose(f);
-    id = (uint32_t*)matte_allocate(sizeof(uint32_t));
-    *id = matte_vm_get_new_file_id(vm, importPath);
-    matte_table_insert(vm->defaultImport_table, importPath, id);
-
-    *fileid = *id;
-    *dataLength = totalLen;
-    return outBuffer;
-}
 
 // todo: how to we implement this in a way that we dont "waste"
 // IDs by failed /excessive calls to this when the IDs arent used?
@@ -263,18 +205,15 @@ uint32_t matte_vm_get_new_file_id(matteVM_t * vm, const matteString_t * name) {
     uint32_t * fileidPtr = (uint32_t*)matte_allocate(sizeof(uint32_t));
     *fileidPtr = fileid;
 
-    matte_table_insert(vm->importPath2ID, name, fileidPtr);   
-    matte_table_insert_by_uint(vm->id2importPath, fileid, matte_string_clone(name));
+    matte_table_insert(vm->importName2ID, name, fileidPtr);   
+    matte_table_insert_by_uint(vm->id2importName, fileid, matte_string_clone(name));
 
     return fileid;
 }
 
-matteImportFunction_t matte_vm_get_default_import() {
-    return vm_default_import;
-}
 
 uint32_t matte_vm_get_file_id_by_name(matteVM_t * vm, const matteString_t * name) {
-    uint32_t * p = (uint32_t*)matte_table_find(vm->importPath2ID, name);   
+    uint32_t * p = (uint32_t*)matte_table_find(vm->importName2ID, name);   
     if (!p) return 0xffffffff;
     return *p;
 }
@@ -1320,12 +1259,9 @@ matteVM_t * matte_vm_create(matte_t * m) {
 
     vm->extStubs = matte_array_create(sizeof(matteBytecodeStub_t *));
     vm->extFuncs = matte_array_create(sizeof(matteValue_t));
-    vm->importPath2ID = matte_table_create_hash_matte_string();
-    vm->id2importPath = matte_table_create_hash_pointer();
+    vm->importName2ID = matte_table_create_hash_matte_string();
+    vm->id2importName = matte_table_create_hash_pointer();
     vm->imported = matte_table_create_hash_pointer();
-    vm->userImport = vm_default_import;
-    vm->defaultImport_table = matte_table_create_hash_matte_string();
-    vm->importPaths = matte_array_create(sizeof(matteString_t *));
     vm->nextID = 1;
     vm->cleanupFunctionSets = matte_array_create(sizeof(MatteCleanupFunctionSet));
     
@@ -1571,6 +1507,36 @@ matteVM_t * matte_vm_create(matte_t * m) {
     //vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
     matte_bind_native_functions(vm);
 
+
+
+    
+    // add the default roms
+    {
+        uint32_t i;
+        uint32_t len = MATTE_ROM__COUNT;
+        for(i = 0; i < len; ++i) {
+            matteString_t * name = matte_string_create_from_c_str("%s", MATTE_ROM__names[i]);
+
+            // found!
+            uint32_t srcLen = MATTE_ROM__sizes[i];
+            // promise to be safe
+            uint8_t * src = (uint8_t*)MATTE_ROM__data + MATTE_ROM__offsets[i];
+
+            uint32_t fileid = matte_vm_get_new_file_id(vm, name);
+            
+            matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+                vm->store,
+                fileid,
+                src,
+                srcLen
+            );        
+            matte_string_destroy(name);    
+            matte_vm_add_stubs(vm, stubs);
+            matte_array_destroy(stubs);
+        }
+   }
+
+
     return vm;
 }
 
@@ -1629,36 +1595,24 @@ void matte_vm_destroy(matteVM_t * vm) {
     }
     matte_table_destroy(vm->stubIndex);
 
-    for(matte_table_iter_start(iter, vm->defaultImport_table);
-        !matte_table_iter_is_end(iter);
-        matte_table_iter_proceed(iter)) {
-        
-        matte_deallocate(matte_table_iter_get_value(iter));
-    }
-    matte_table_destroy(vm->defaultImport_table);
-
-    len = matte_array_get_size(vm->importPaths);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(vm->importPaths, matteString_t *, i));
-    }
-    matte_array_destroy(vm->importPaths);
 
 
-    for(matte_table_iter_start(iter, vm->id2importPath);
+
+    for(matte_table_iter_start(iter, vm->id2importName);
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         
         matte_string_destroy((matteString_t*)matte_table_iter_get_value(iter));
     }
-    matte_table_destroy(vm->id2importPath);
+    matte_table_destroy(vm->id2importName);
 
-    for(matte_table_iter_start(iter, vm->importPath2ID);
+    for(matte_table_iter_start(iter, vm->importName2ID);
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         
         matte_deallocate(matte_table_iter_get_value(iter));
     }
-    matte_table_destroy(vm->importPath2ID);
+    matte_table_destroy(vm->importName2ID);
 
 
     for(matte_table_iter_start(iter, vm->externalFunctions);
@@ -1702,7 +1656,7 @@ void matte_vm_destroy(matteVM_t * vm) {
 }
 
 const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t fileid) {
-    return (matteString_t*)matte_table_find_by_uint(vm->id2importPath, fileid);
+    return (matteString_t*)matte_table_find_by_uint(vm->id2importName, fileid);
 }
 
 void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr) {
@@ -2007,8 +1961,7 @@ matteValue_t matte_vm_call(
 matteValue_t matte_vm_run_fileid(
     matteVM_t * vm, 
     uint32_t fileid, 
-    matteValue_t parameters,
-    const matteString_t * importPath
+    matteValue_t parameters
 ) {
     if (fileid != MATTE_VM_DEBUG_FILE) {
         matteValue_t * precomp = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
@@ -2024,22 +1977,22 @@ matteValue_t matte_vm_run_fileid(
     matte_value_object_push_lock(vm->store, func);
 
 
+    
+    matteValue_t * ref = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
+    if (ref) {
+        matte_value_object_pop_lock(vm->store, *ref);
+    } else {
+        ref = (matteValue_t*)matte_allocate(sizeof(matteValue_t));    
+        *ref = matte_store_new_value(vm->store);
+        matte_table_insert_by_uint(vm->imported, fileid, ref);
+    }
+
     matteArray_t argNames = MATTE_ARRAY_CAST(&vm->specialString_parameters, matteValue_t, 1);
     matteArray_t args = MATTE_ARRAY_CAST(&parameters, matteValue_t, 1);
 
-    matteString_t * locationExpanded;
-    if (importPath) {
-        locationExpanded = import__push_path(vm->importPaths, importPath);
-    }
     matteValue_t result = matte_vm_call(vm, func, &args, &argNames, matte_vm_get_script_name_by_id(vm, fileid));
-    if (importPath) {
-        matte_string_destroy(locationExpanded);
-        import__pop_path(vm->importPaths);
-    }
 
-    matteValue_t * ref = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
     *ref = result;
-    matte_table_insert_by_uint(vm->imported, fileid, ref);
     matte_value_object_push_lock(vm->store, *ref);
 
     matte_value_object_pop_lock(vm->store, func);
@@ -2047,24 +2000,8 @@ matteValue_t matte_vm_run_fileid(
     return result;
 }
 
-matteString_t * matte_vm_import_expand_path(
-    matteVM_t * vm, 
-    const matteString_t * module
-) {
-    matteString_t * locationExpanded = import__push_path(vm->importPaths, module);
-    import__pop_path(vm->importPaths);
-    return locationExpanded;
-}
 
-const matteString_t * matte_vm_get_import_path(matteVM_t * vm) {
-    matteArray_t * paths = vm->importPaths;
-    if (matte_array_get_size(paths)) {
-        return matte_array_at(paths, matteString_t *, matte_array_get_size(paths)-1);
-    } else {
-        return NULL;
-    }
 
-}
 
 matteValue_t matte_vm_import(
     matteVM_t * vm, 
@@ -2160,8 +2097,8 @@ matteValue_t matte_vm_run_scoped_debug_source(
         );
         
         matte_vm_add_stubs(vm, jitstubs);
-        result = matte_vm_run_fileid(vm, MATTE_VM_DEBUG_FILE, matte_store_new_value(vm->store), NULL);
-
+        result = matte_vm_run_fileid(vm, MATTE_VM_DEBUG_FILE, matte_store_new_value(vm->store));
+        matte_array_destroy(jitstubs);
     } else {
         result = matte_store_new_value(vm->store);
     }

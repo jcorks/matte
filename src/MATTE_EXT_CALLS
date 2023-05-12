@@ -190,383 +190,54 @@ static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, const ma
 
 #include "MATTE_ROM"
 
-typedef struct {
-    matteVM_t * vm;
-    matteString_t * filename;
-} VMImportCompilerData;
 
-static void import_compile_error(
-    const matteString_t * str,
-    uint32_t line,
-    uint32_t ch,
-    void * data
-) {
-    VMImportCompilerData * vmdata = (VMImportCompilerData*)data;
-    matteVM_t * vm = vmdata->vm;
-    matteString_t * strM = matte_string_create();
-    matte_string_concat_printf(strM, "Error while compiling imported file:\n%s,line %d:%d:\n%s", matte_string_get_c_str(vmdata->filename), line, ch, matte_string_get_c_str(str));
-    matte_vm_raise_error_string(vm, strM);    
-    matte_string_destroy(strM);
-    
-}
-
-
-
-#ifdef MATTE_USE_SYSTEM_EXTENSIONS
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
-#include <unistd.h>
-#include <limits.h>
-static matteString_t * import__getcwd_generic() {
-    char * path = matte_allocate(PATH_MAX+1);
-    path[0] = 0;
-    getcwd(path, PATH_MAX);
-    matteString_t * st = matte_string_create_from_c_str(path);
-    matte_deallocate(path);
-    return st;
-}
-
-static void import__path_append(matteString_t * path, const matteString_t * item) {
-    matte_string_concat_printf(path, "/");
-    matte_string_concat(path, item);
-}
-
-static matteString_t * import__get_directory(const matteString_t * path) {
-    int i;
-    for(i = matte_string_get_length(path)-1; i >= 0; i--) {
-        if (matte_string_get_char(path, i) == '/') {
-            return matte_string_clone(matte_string_get_substr(path, 0, i));
-        }
-    }
-    return matte_string_create();
-}
-
-static int import__is_canonical(const matteString_t * path) {
-    char * pathc = strdup(matte_string_get_c_str(path));
-    char * pathc_real = matte_allocate(PATH_MAX+1);
-    pathc_real[0] = 0;
-    realpath(pathc, pathc_real);
-
-    int result = !strcmp(pathc, pathc_real);
-    matte_deallocate(pathc_real);
-    matte_deallocate(pathc);
-    return result;
-}
-
-static int import__path_canonicalize(matteString_t * path) {
-    char * pathc = strdup(matte_string_get_c_str(path));
-    char * pathc_real = matte_allocate(PATH_MAX+1);
-    pathc_real[0] = 0;
-    int result;
-    if (realpath(pathc, pathc_real)) {
-        matte_string_clear(path);
-        matte_string_concat_printf(path, pathc_real);
-        result = 1;
-    } else {
-        result = 0;
-    }
-
-    matte_deallocate(pathc_real);
-    matte_deallocate(pathc);
-    return result;
-}
-
-#elif defined __WIN32__
-#include <windows.h>
-#include <direct.h>
-static matteString_t * import__getcwd_generic() {
-    char * path = matte_allocate(PATH_MAX+1);
-    path[0] = 0;
-    _getcwd(path, PATH_MAX);
-    matteString_t * st = matte_string_create_from_c_str(path);
-    matte_deallocate(path);
-    return st;
-}
-
-static void import__path_append(matteString_t * path, const matteString_t * item) {
-    matte_string_concat_printf(path, "\\");
-    matte_string_concat(path, item);
-}
-
-static matteString_t * import__get_directory(const matteString_t * path) {
-    int i;
-    for(i = matte_string_get_length(path)-1; i >= 0; i--) {
-        if (matte_string_get_char(path, i) == '\\') {
-            return matte_string_clone(matte_string_get_substr(path, 0, i));
-        }
-    }
-    return matte_string_create();
-}
-
-static int import__is_canonical(const matteString_t * path) {
-    char * pathc = strdup(matte_string_get_c_str(path));
-    char * pathc_real = matte_allocate(PATH_MAX+1);
-    pathc_real[0] = 0;
-    GetFullPathNameA(pathc, PATH_MAX, pathc_real, NULL);
-
-    int result = !strcmp(pathc, pathc_real);
-    matte_deallocate(pathc_real);
-    matte_deallocate(pathc);
-    return result;
-}
-
-static int import__path_canonicalize(matteString_t * path) {
-    char * pathc = strdup(matte_string_get_c_str(path));
-    char * pathc_real = matte_allocate(PATH_MAX+1);
-    pathc_real[0] = 0;
-    int result;
-    if (GetFullPathNameA(pathc, PATH_MAX, pathc_real, NULL)) {
-        matte_string_clear(path);
-        matte_string_concat_printf(path, pathc_real);
-        result = 1;
-    } else {
-        result = 0;
-    }
-
-    matte_deallocate(pathc_real);
-    matte_deallocate(pathc);
-    return result;
-}
-
-#endif
-#else
-static matteString_t * import__getcwd_generic() {
-    return matte_string_create();
-}
-
-static void import__path_append(matteString_t * path, const matteString_t * item) {
-    
-}
-
-static matteString_t * import__get_directory(const matteString_t * path) {
-    return matte_string_clone(path);
-}
-
-static int import__is_canonical(const matteString_t * path) {
-    return 1;
-
-}
-
-static int import__path_canonicalize(matteString_t * path) {
-    return 1;
-}
-
-#endif
-
-// has multiple features:
-// - It will always return a "canonical" (full) path based on the top of the path stack + loc.
-//   If loc is already a canonical path that points to an item, this function returns a 
-//   copy of that string 
-//
-// - If a canonical path cannot be made, the input string is returned and current base path pushed
-// - If a canonical path can by made, its returned and paths has a new path pushed representing the 
-//   directory portion of the path.
-static matteString_t * import__push_path(matteArray_t * paths, const matteString_t * loc) {
-    // first, check if loc is a full (canonical) path
-    if (import__is_canonical(loc)) {
-        matteString_t * base = import__get_directory(loc);
-        matte_array_push(paths, base);
-        return matte_string_clone(loc);
-    }
-
-
-    matteString_t * out;
-    if (matte_array_get_size(paths) == 0) {
-        out = import__getcwd_generic();
-    } else {
-        out = matte_string_clone(matte_array_at(paths, matteString_t *, matte_array_get_size(paths)-1));
-    }
-
-    import__path_append(out, loc);
-
-    // returns true if actually refers to something
-    if (import__path_canonicalize(out)) {
-        matteString_t * base = import__get_directory(out);
-        matte_array_push(paths, base);
-    } else {
-        // if it doesnt, this still needs to push SOMETHING, so push the current directory.
-        matteString_t * base = import__get_directory(out);
-        matte_string_set(out, loc);
-        matte_array_push(paths, base);
-    }
-
-    return out;
-}
-
-
-static void import__pop_path(matteArray_t * paths) {
-    if (!matte_array_get_size(paths)) return;
-
-    matte_string_destroy(matte_array_at(paths, matteString_t *, matte_array_get_size(paths)-1));
-    matte_array_set_size(paths, matte_array_get_size(paths)-1);
-}
-
-
-static matteValue_t vm_ext_call__import_path_boxed(matteVM_t * vm, matteValue_t fn, const matteString_t * str, const matteString_t * rawName, matteValue_t a, matteValue_t params) {
-
+static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (vm->pendingCatchable) {
         return matte_store_new_value(vm->store);
     }
 
+    matteValue_t a = args[0];
+    matteValue_t params = args[1];
+    const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
 
 
     // first, see if the requested script has been preloaded
-    uint32_t * fileidPtr = (uint32_t*)matte_table_find(vm->importPath2ID, str);
+    uint32_t * fileidPtr = (uint32_t*)matte_table_find(vm->importName2ID, strSrc);
     uint32_t fileid = fileidPtr ? *fileidPtr : 0;
+    
+    // if the name does not have a fileid associated with it,
+    // call the import function.
+    if (!fileid) {
+        if (vm->importFunction) {
+            fileid = vm->importFunction(
+                vm,
+                strSrc,
+                vm->importFunctionData
+            );        
+        }
+    }
+    
+    if (!fileid) {
+        matteString_t * str = matte_string_create_from_c_str("Could not import '%s'.", matte_string_get_c_str(strSrc));
+        matte_vm_raise_error_string(vm, str);
+        matte_string_destroy(str);
+        return matte_store_new_value(vm->store);
+    }
+    
+    
     matteValue_t * v = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
     if (v) {
         #ifdef MATTE_DEBUG
             //printf("import() returning pre-computed value\n");
             //fflush(stdout);
         #endif
-        matteValue_t cpy = matte_store_new_value(vm->store);
-        matte_value_into_copy(vm->store, &cpy, *v);
-        return cpy;
-    }
-    
-    
-    // then, the built-in available imports are checked.
-    
-    uint32_t srcLen = 0;
-    uint8_t * src = NULL;
-    int readonlyROM = 0;
-    {
-        uint32_t i;
-        uint32_t len = MATTE_ROM__COUNT;
-        for(i = 0; i < len; ++i) {
-            if (!strcmp(MATTE_ROM__names[i], matte_string_get_c_str(rawName))) {
-                // found!
-                srcLen = MATTE_ROM__sizes[i];
-                // promise to be safe
-                src = (uint8_t*)MATTE_ROM__data + MATTE_ROM__offsets[i];
-
-                fileid = matte_vm_get_new_file_id(vm, str);
-
-                #ifdef MATTE_DEBUG
-                    //printf("import() found ROM source for %s\n", matte_string_get_c_str(str));
-                    //fflush(stdout);
-                #endif
-                break;
-            }
-        }
-   }
-
-    uint8_t * rom = NULL;
-    uint32_t romLen = 0;
-
-    // if we have a built-in import, its actually always a 
-    // pre-compiled rom. So we can use it directly
-    if (src && srcLen) {
-        readonlyROM = 1;
-        rom = src;
-        romLen = srcLen;
     } else {
-        // finally, just use the user
-        fileid = 0;
-        src = vm->userImport(
-            vm,
-            str,
-            &fileid,
-            &srcLen,
-            vm->userImportData
-        );
-        
-        if (!src || !srcLen) {
-            matteString_t * err = matte_string_create();
-            matte_string_concat_printf(err, "Could not find script '%s'.", matte_string_get_c_str(str));
-            matte_vm_raise_error_string(vm, err);    
-            matte_string_destroy(err);
-            return matte_store_new_value(vm->store);    
-        }
-
-        if (fileid == 0) {
-            matteString_t * str = matte_string_create();
-            matte_string_concat_printf(str, "A file ID must be assigned by import.");
-            matte_vm_raise_error_string(vm, str);    
-            matte_string_destroy(str);
-            return matte_store_new_value(vm->store);    
-        }  
-
-        // see if the user specified a fileID alias.
-        // the userImport can opt to give back an existing fileID.
-        // in this case, if the fileID exists, the existing 
-        // source is used.
-        if (fileid) {
-            v = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
-            if (v) {
-                matteValue_t cpy = matte_store_new_value(vm->store);
-                matte_value_into_copy(vm->store, &a, *v);
-                return cpy;
-            }      
-
-        } 
-
-
-            
-        
-        const uint8_t * tag = src;
-        if (
-            srcLen < 7     || 
-            tag[0] != 'M'  ||
-            tag[1] != 'A'  ||
-            tag[2] != 'T'  ||
-            tag[3] != 0x01 ||
-            tag[4] != 0x06 ||
-            tag[5] != 'B'  ||
-            tag[6] != 1
-        ) {
-            romLen = 0;
-            VMImportCompilerData data;
-            data.vm = vm;
-            data.filename = (matteString_t *)str;
-            rom = matte_compiler_run(
-                matte_get_syntax_graph(vm->matte),
-                src, 
-                srcLen, 
-                &romLen, 
-                import_compile_error,
-                &data
-            );
-            matte_deallocate(src);        
-        } else {
-            rom = src;
-            romLen = srcLen;
-        }
-    }
-    
-
-
-    if (rom && romLen) {
-        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(vm->store, fileid, rom, romLen);
-        if (!readonlyROM) matte_deallocate(rom);
-        matte_vm_add_stubs(vm, stubs);
-        matte_array_destroy(stubs);
-
-        matteValue_t cached = matte_vm_run_fileid(
-            vm,
-            fileid,
-            params,
-            NULL
-        );
-        return cached;
+        v = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
+       *v = matte_vm_run_fileid(vm, fileid, params);
+       matte_table_insert_by_uint(vm->imported, fileid, v);
     }
 
-
-    // already would have raised an error, no need for another.
-    return matte_store_new_value(vm->store);    
-
-}
-
-static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];
-    matteValue_t params = args[1];
-    const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
-    matteString_t * locationExpanded = import__push_path(vm->importPaths, strSrc);
-
-    matteValue_t out = vm_ext_call__import_path_boxed(vm, fn, locationExpanded, strSrc, a, params);
-
-    matte_string_destroy(locationExpanded);
-    import__pop_path(vm->importPaths);
-    return out;
+    return *v;
 }
 
 

@@ -299,6 +299,7 @@ int main() {
         free(src);
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
+        matte_set_importer(m, NULL, NULL);
         matteStore_t * store = matte_vm_get_store(vm);
         const matteString_t * externalNames[] = {
             MATTE_VM_STR_CAST(vm, "a"),
@@ -328,13 +329,13 @@ int main() {
             exit(1);
         }
         
-
-        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(store, matte_vm_get_new_file_id(vm, infile), outBytes, outByteLen);
+        uint32_t fileid = matte_vm_get_new_file_id(vm, infile);
+        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(store, fileid, outBytes, outByteLen);
         matte_vm_add_stubs(vm, arr);
         matte_array_destroy(arr);
         matte_deallocate(outBytes);
 
-        matteValue_t v = matte_vm_run_fileid(vm, i+1, matte_store_new_value(matte_vm_get_store(vm)), NULL);
+        matteValue_t v = matte_vm_run_fileid(vm, fileid, matte_store_new_value(matte_vm_get_store(vm)));
 
         char * outstr = dump_string(matte_string_get_c_str(outfile));
         if (!outstr) {
