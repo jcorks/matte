@@ -207,7 +207,8 @@ matteValue_t matte_run_source(
 /// Convenience function that compiles the source into bytecode.
 /// A default handler for the compilation is invoked if 
 /// an error occurs. Errors will result in a NULL 
-/// return value.
+/// return value. matte_deallocate should be called on 
+/// the resultant buffer to release it when done.
 ///
 uint8_t * matte_compile_source(
     /// Instance to compile with.
@@ -265,6 +266,83 @@ void matte_set_importer(
     
     // Optional user data for the importer function
     void * userData
+);
+
+
+/// Loads a package file and preloads all its 
+/// sources. Any trailing packages are also loaded.
+/// If any of the embedded packages fail to be 
+/// correctly read, a value of type empty
+/// and an error within the VM is raised. 
+/// matte_load_package will try to read and load 
+/// as much as it can and will stop on error.
+/// The main.mt is preloaded as the name of the package, while 
+/// all other sources are labeled as [package name].[source name]
+/// when preloaded.
+/// An object containing the parsed JSON describing 
+/// the package.
+/// Package JSON objects have the following attributes:
+/*
+    {
+        'name':         String,
+        'author':       String,
+        'maintainer':   String,
+        'description':  String,
+
+        'version', Object,
+    
+        'depends',      Object, 
+        'sources',      Object
+    }
+*/
+///
+matteValue_t matte_load_package(
+    /// The instance to load the package into.
+    matte_t *,
+    /// A buffer containing the bytes the consist of the package.
+    const uint8_t * packageBytes,
+    /// The number of bytes in the buffer.
+    uint32_t packageByteLength
+);
+
+
+/// Returns the parsed JSON package object.
+/// If no such one exists, the empty value is returned.
+///
+matteValue_t matte_get_package_info(
+    /// The instance to retrieve package info from
+    matte_t *,
+    /// The name of the package.
+    const char * packageName
+);
+    
+    
+/// Creates a new array of matteString_t *
+/// containing the dependency package names.
+/// If no such package has been loaded, NULL is returned.
+/// In the case an array is returned, the caller is 
+/// responsible for cleaning up the array and strings.
+matteArray_t * matte_get_package_dependencies(
+    /// The instance to query
+    matte_t *,
+    
+    /// The name of the package
+    const char * packageName
+);    
+
+/// Checks to see whether the package has all its 
+/// dependencies met. This checks all loaded packages 
+/// and their versions to see if it is safe to 
+/// run. If it is not, an error is thrown 
+/// and 0 is returned.
+/// While it is not necessary to call this on any package,
+/// it is helpful as a preflight check to make sure the 
+/// package will run properly.
+int matte_check_package(
+    /// The instance to check.
+    matte_t *,
+    /// The package to check
+    const char * packageName
 );
 
 

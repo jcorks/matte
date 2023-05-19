@@ -125,7 +125,6 @@ return class(
         
         };
         
-        this.cwd = _getimportpath();
     }
 
 ).new();

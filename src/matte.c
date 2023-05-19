@@ -55,6 +55,18 @@ typedef struct {
 static void * (*matte_allocate_fn)  (uint64_t) = NULL;
 static void   (*matte_deallocate_fn)(void *)   = NULL;
 
+typedef struct {
+    // Name of the package
+    matteString_t * name;
+    // The major version of the package
+    int versionMajor;
+    // The minor version of the package
+    int versionMinor;
+    // The parsed package json
+    matteValue_t packageJson;
+} mattePackageInfo_t;
+
+
 
 struct matte_t {
     matteVM_t * vm;
@@ -112,6 +124,9 @@ struct matte_t {
     
     // Current prompt input
     char * currentInput;
+    
+    // package name string -> mattePackageInfo_t *
+    matteTable_t * packages;
 };
 
 
@@ -470,6 +485,9 @@ static uint32_t default_importer(
     const char * name,
     void * userdata
 ) {
+
+    // first check if we're dealing with a package.
+
     
     // dump bytes
     FILE * f = fopen(name, "rb");
@@ -564,6 +582,7 @@ matte_t * matte_create() {
     m->formatBuffer = (char *)matte_allocate(MATTE_PRINT_LIMIT+1);
     m->graph = matte_syntax_graph_create();
     m->vm = matte_vm_create(m);
+    m->packages = matte_table_create_hash_c_string();
     return m;
 }
 
@@ -873,5 +892,373 @@ void matte_set_allocator(
 matteSyntaxGraph_t * matte_get_syntax_graph(matte_t * m) {
     return m->graph;
 }
+
+
+
+
+
+matteValue_t matte_load_package(
+    matte_t * m,
+    const uint8_t * packageBytes,
+    uint32_t packageByteLength
+) {
+    const uint8_t * iter = packageBytes;
+    uint32_t bytesLeft = packageByteLength;
+    
+    #define matte_load_package__read(__T__, __O__) \
+        {\
+        if (bytesLeft < (__T__)) {\
+            matte_vm_raise_error_cstring(m->vm, "Package is truncated.");\
+            goto L_FAIL;\
+        }\
+        memcpy(&(__O__), iter, (__T__));\
+        iter += (__T__);\
+        bytesLeft -= (__T__);\
+        }
+    
+    
+    while(bytesLeft) {
+        if (packageByteLength < 7+4) {
+            matte_vm_raise_error_cstring(m->vm, "Buffer is not a package.");
+            return matte_store_new_value(matte_vm_get_store(m->vm));
+        }
+
+        if (!(iter[0] == 23 &&
+              iter[1] == 14 &&
+              iter[2] == 'M' &&
+              iter[3] == 'P' &&
+              iter[4] == 'K' &&
+              iter[5] == 'G' &&
+              iter[6] == 1)) { // we only support version 1 right now!
+            matte_vm_raise_error_cstring(m->vm, "Package header is invalid.");
+            return matte_store_new_value(matte_vm_get_store(m->vm));          
+        }
+        iter += 7;
+        uint32_t size = *((uint32_t*)iter);
+        iter += 4;
+        bytesLeft -= 11;
+        if (size > bytesLeft) {
+            matte_vm_raise_error_cstring(m->vm, "Package header is truncated.");
+            return matte_store_new_value(matte_vm_get_store(m->vm));              
+        }
+        
+        // extract JSON
+        uint8_t * utf8Buffer = NULL;
+        uint8_t * dataBuffer = NULL;
+        utf8Buffer = matte_allocate(size+1);
+        memcpy(utf8Buffer, iter, size); 
+        bytesLeft -= size;
+        iter += size;   
+        
+        matteString_t * json = matte_string_create_from_c_str("%s", utf8Buffer);
+        matte_deallocate(utf8Buffer);
+        utf8Buffer = NULL;
+        
+        matteStore_t * store = matte_vm_get_store(m->vm);
+        matteValue_t inputJson = matte_store_new_value(store);
+        matte_value_into_string(store, &inputJson, json);
+        matte_string_destroy(json);
+        
+        matteValue_t jsonObject = matte_run_source_with_parameters(
+            m,
+            "return (import(module:'Matte.Core.JSON')).decode(string:parameters);",
+            inputJson
+        );
+        matte_value_object_push_lock(store, jsonObject); // keep
+        
+        // could not parse JSON
+        if (matte_value_type(jsonObject) == MATTE_VALUE_TYPE_EMPTY) {
+            return matte_store_new_value(store);
+        }
+        
+        matteValue_t nextVal;
+        matteValue_t nv1;
+        
+        
+        
+        mattePackageInfo_t * package = matte_allocate(sizeof(mattePackageInfo_t));
+        // extract name and version info from package 
+        package->packageJson = jsonObject;
+        
+        nextVal = matte_value_object_access_string(store, jsonObject, MATTE_VM_STR_CAST(m->vm, "name"));
+        if (matte_value_type(nextVal) == MATTE_VALUE_TYPE_EMPTY) {
+            matte_vm_raise_error_cstring(m->vm, "Package is missing name parameter.");
+            goto L_FAIL;
+        }
+        nextVal = matte_value_as_string(store, nextVal);
+        if (matte_value_type(nextVal) == MATTE_VALUE_TYPE_EMPTY) {
+            matte_vm_raise_error_cstring(m->vm, "Package name parameter is not a string.");
+            goto L_FAIL;
+        }
+        package->name = matte_string_clone(matte_value_string_get_string_unsafe(store, nextVal));
+        
+        
+        nextVal = matte_value_object_access_string(store, jsonObject, MATTE_VM_STR_CAST(m->vm, "version"));
+        if (matte_value_type(nextVal) != MATTE_VALUE_TYPE_OBJECT) {
+            matte_vm_raise_error_cstring(m->vm, "Package version isnt an object.");
+            goto L_FAIL;    
+        }
+
+        if (matte_value_object_get_number_key_count(store, nextVal) < 3) {
+            matte_vm_raise_error_cstring(m->vm, "Package version should contain at least 3 values.");
+            goto L_FAIL;    
+        }
+        
+        nv1 = matte_value_object_access_index(store, nextVal, 0);
+        if (matte_value_type(nv1) != MATTE_VALUE_TYPE_NUMBER) {
+            matte_vm_raise_error_cstring(m->vm, "Package major version MUST be a number.");
+            goto L_FAIL;            
+        }
+        package->versionMajor = matte_value_as_number(store, nv1);
+
+        nv1 = matte_value_object_access_index(store, nextVal, 1);
+        if (matte_value_type(nv1) != MATTE_VALUE_TYPE_NUMBER) {
+            matte_vm_raise_error_cstring(m->vm, "Package minor version MUST be a number.");
+            goto L_FAIL;            
+        }
+        package->versionMinor = matte_value_as_number(store, nv1);
+
+
+
+
+
+
+        // next, load all sources
+        uint32_t sourceCount;
+        matte_load_package__read(sizeof(uint32_t), sourceCount);
+        
+        
+        uint32_t i;
+        for(i = 0; i < sourceCount; ++i) {
+            uint32_t bufferLength;
+            matte_load_package__read(sizeof(uint32_t), bufferLength);
+            utf8Buffer = matte_allocate(bufferLength+1);
+            matte_load_package__read(bufferLength, utf8Buffer[0]);
+
+            uint32_t dataLength;
+            matte_load_package__read(sizeof(uint32_t), dataLength);
+            dataBuffer = matte_allocate(dataLength);
+            matte_load_package__read(dataLength, dataBuffer[0]);
+            
+            
+            matteString_t * str;
+            
+            if (!strcmp(utf8Buffer, "main.mt")) {
+                str = matte_string_clone(package->name);
+            } else {
+                str = matte_string_create_from_c_str(
+                    "%s.%s", 
+                    matte_string_get_c_str(package->name);
+                    utf8_buffer
+                );
+            }
+            matte_add_module(
+                m,
+                matte_string_get_c_str(str),
+                dataBuffer,
+                dataLength
+            );
+        }
+
+        uint8_t more;
+        matte_load_package__read(1, more);
+
+        matte_table_insert(
+            m->packages,
+            matte_string_get_c_str(package->name),
+            package
+        );
+
+        if (!more) break;
+        continue;
+      L_FAIL:
+        if (utf8Buffer)
+            matte_deallocate(utf8Buffer);
+        if (package->name)
+            matte_string_destroy(package->name);
+        matte_value_object_pop_lock(jsonObject);
+        matte_deallocate(package);
+        return matte_store_new_value(store);
+
+        
+    }
+    
+}
+
+
+matteValue_t matte_get_package_info(
+    matte_t * m,
+    const char * packageName
+) {
+    
+    mattePackageInfo_t * package = (mattePackageInfo_t*)matte_table_lookup(
+        m->packages,
+        packageName
+    );
+    if (package == NULL) return matte_store_new_value(matte_vm_get_store(m->vm));
+    
+    return package->json;
+}
+    
+
+int matte_check_package(
+    matte_t * m,
+    const char * packageName
+) {
+    matteStore_t * store = matte_vm_get_store(m->vm);
+    mattePackageInfo_t * package = (mattePackageInfo_t*)matte_table_lookup(
+        m->packages,
+        packageName
+    );
+    if (package == NULL) {
+        matteString_t * errms = matte_string_create_from_c_str("Couldn't find package %s", packageName);
+        matte_vm_raise_error_string(m->vm, errms);
+        matte_string_destroy(errms);
+        return 0;
+    }
+
+    matteValue_t depends = matte_value_object_access_string(package->json, MATTE_VM_STR_CAST(m->vm, "depends"));
+    if (matte_value_type(depends) != MATTE_VALUE_TYPE_OBJECT) {
+        matteString_t * errms = matte_string_create_from_c_str("Package %s is malformed (missing depends attribute)", packageName);
+        matte_vm_raise_error_string(m->vm, errms);
+        matte_string_destroy(errms);
+        return 0;    
+    }
+    
+    
+    
+    uint32_t i;
+    uint32_t len = matte_value_object_get_number_key_count(store, package->json);
+    for(i = 0; i < len; ++i) {
+        matteValue_t dependency = matte_value_object_access_index(store, depends i);
+        if (matte_value_type(dependency) != MATTE_VALUE_TYPE_OBJECT ||
+            matte_value_object_get_number_key_count(dependency) < 2) {
+            matteString_t * errms = matte_string_create_from_c_str("Package %s is malformed (dependency %d is not an array of at least 2)", packageName, (int)i);
+            matte_vm_raise_error_string(m->vm, errms);
+            matte_string_destroy(errms);
+            return 0;                
+        }
+        
+        matteValue_t name = matte_value_object_access_index(dependency, 0);
+        if (matte_value_type(name) != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * errms = matte_string_create_from_c_str("Package %s is malformed (dependency %d's name is not a string)", packageName, (int)i);
+            matte_vm_raise_error_string(m->vm, errms);
+            matte_string_destroy(errms);
+            return 0;
+        }
+        
+        const matteString_t * nameStr = matte_value_string_get_string_unsafe(store, name);
+        mattePackageInfo_t * pkgInfo = (mattePackageInfo_t*)matte_table_lookup(
+            m->packages,
+            matte_string_get_c_str(nameStr)
+        );
+        
+        
+        if (pkgInfo == NULL) {
+            matteString_t * errms = matte_string_create_from_c_str("Package %s missing dependency '%s'", packageName, matte_string_get_c_str(nameStr));
+            matte_vm_raise_error_string(m->vm, errms);
+            matte_string_destroy(errms);
+            return 0;        
+        }
+        
+        
+        matteValue_t versionRequirement = matte_value_object_access_index(store, dependency, 1);
+        if (matte_value_type(versionRequirement) != MATTE_VALUE_TYPE_OBJECT ||
+            matte_value_object_get_number_key_count(versionRequirement) < 2) {
+            matteString_t * errms = matte_string_create_from_c_str("Package %s is malformed (dependency %d's version requirement is not an array of at least 2)", packageName, (int)i);
+            matte_vm_raise_error_string(m->vm, errms);
+            matte_string_destroy(errms);
+            return 0;        
+        }
+        
+        matteValue_t majorVersionVal = matte_value_object_access_index(store, versionRequirement, 0);
+        matteValue_t minorVersionVal = matte_value_object_access_index(store, versionRequirement, 1);
+        
+        if (matte_value_type(majorVersionVal) != MATTE_VALUE_TYPE_NUMBER||
+            matte_value_type(minorVersionVal) != MATTE_VALUE_TYPE_NUMBER) {
+            matteString_t * errms = matte_string_create_from_c_str("Package %s is malformed (dependency %d's version requirement does not consist of a major and minor number)", packageName, (int)i);
+            matte_vm_raise_error_string(m->vm, errms);
+            matte_string_destroy(errms);
+            return 0;                    
+        }
+        
+        int majorVersion = matte_value_as_number(store, majorVersionVal);
+        int minorVersion = matte_value_as_number(store, minorVersionVal);
+        
+        if (majorVersion > pkgInfo->versionMajor ||
+            (majorVersion == pkgInfo->versionMajor &&
+             minorVersion > pkgInfo->versionMinor)) {
+
+            matteString_t * errms = matte_string_create_from_c_str("Package %s requires package \"%s\"  v%d.%d, but the currently loaded version is %d.%d", 
+                packageName, matte_string_get_c_str(nameStr),
+                majorVersion, minorVersion,
+                pkgInfo->versionMajor, pkgInfo->versionMinor                
+            );
+            matte_vm_raise_error_string(m->vm, errms);
+            matte_string_destroy(errms);
+            return 0;                                             
+        }
+    }
+    return 1;
+}
+
+
+
+
+
+matteArray_t * matte_get_package_dependencies(
+    matte_t * m,
+    const char * packageName
+) {
+    matteStore_t * store = matte_vm_get_store(m->vm);
+    mattePackageInfo_t * package = (mattePackageInfo_t*)matte_table_lookup(
+        m->packages,
+        packageName
+    );
+    if (package == NULL) {
+        return NULL;
+    }
+
+    matteValue_t depends = matte_value_object_access_string(package->json, MATTE_VM_STR_CAST(m->vm, "depends"));
+    if (matte_value_type(depends) != MATTE_VALUE_TYPE_OBJECT) {
+        return NULL;    
+    }
+    
+    
+    
+    uint32_t i;
+    uint32_t len = matte_value_object_get_number_key_count(store, package->json);
+
+    matteArray_t * output = matte_array_new(matte_a
+
+    for(i = 0; i < len; ++i) {
+        matteValue_t dependency = matte_value_object_access_index(store, depends i);
+        if (matte_value_type(dependency) != MATTE_VALUE_TYPE_OBJECT ||
+            matte_value_object_get_number_key_count(dependency) < 2) {
+            goto L_FAIL;
+        }
+        
+        matteValue_t name = matte_value_object_access_index(dependency, 0);
+        if (matte_value_type(name) != MATTE_VALUE_TYPE_STRING) {
+            goto L_FAIL;
+        }
+        
+        matteString_t * nameStr = matte_string_clone(matte_value_string_get_string_unsafe(store, name));
+        matte_array_push(output, nameStr);
+    }
+    
+    return output;
+    
+  L_FAIL:
+    i = 0;
+    len = matte_array_get_size(output);
+    for(; i < len; ++i) {
+        matteString_t * str = matte_array_at(output, matteString_t *, i);
+        matte_string_destroy(str);    
+    }
+    matte_array_destroy(output);
+    return NULL;
+}
+
 
 

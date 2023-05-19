@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 @:_mbuffer_set = getExternalFunction(name:"__matte_::mbuffer_set");
 @:_mbuffer_subset = getExternalFunction(name:"__matte_::mbuffer_subset");
 @:_mbuffer_append_byte = getExternalFunction(name:"__matte_::mbuffer_append_byte");
+@:_mbuffer_append_utf8 = getExternalFunction(name:"__matte_::mbuffer_append_utf8");
 @:_mbuffer_append = getExternalFunction(name:"__matte_::mbuffer_append");
 @:_mbuffer_remove = getExternalFunction(name:"__matte_::mbuffer_remove");
 @:_mbuffer_get_size = getExternalFunction(name:"__matte_::mbuffer_get_size");
@@ -134,10 +135,15 @@ DEALINGS IN THE SOFTWARE.
             
             
             
-            appendByte ::(val => Number){
+            appendByte ::(value => Number){
                 checkReleased(t:this);
-                _mbuffer_append_byte(a:buffer, b:val);
+                _mbuffer_append_byte(a:buffer, b:value);
                 length += 1;
+            },
+            
+            appendUTF8 ::(value => String) {
+                checkReleased(t:this);
+                length += _mbuffer_append_utf8(a:buffer, b:value);
             },
             
             utf8 : {

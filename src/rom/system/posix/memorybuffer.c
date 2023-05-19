@@ -210,6 +210,29 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append_byte) {
 }
 
 
+
+MATTE_EXT_FN(matte_ext__memory_buffer__append_utf8) {
+    matteStore_t * store = matte_vm_get_store(vm);
+    matteValue_t a = args[0];
+    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+
+    matteString_t * val   = matte_value_string_get_string_unsafe(store, args[1]);
+    uint32_t length = matte_string_get_utf8_length(val);
+
+    if (m->alloc <= m->size + length) {
+        uint64_t prevAlloc = m->alloc;
+        m->alloc = 10 + (m->alloc+length)*1.1;
+        uint8_t * newBuffer = (uint8_t*)matte_allocate(m->alloc);
+        memcpy(newBuffer, m->buffer, prevAlloc);
+        matte_deallocate(m->buffer);
+        m->buffer = newBuffer;
+    }
+    memcpy(m->buffer+m->size, matte_string_get_utf8_data(val), length);
+    m->size+=length;
+    return matte_store_new_value(store);
+}
+
+
 MATTE_EXT_FN(matte_ext__memory_buffer__append) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
@@ -443,6 +466,7 @@ static void matte_system__memorybuffer(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_set"),           4, matte_ext__memory_buffer__set,        NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_subset"),        3, matte_ext__memory_buffer__subset,     NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_append_byte"),   2, matte_ext__memory_buffer__append_byte,NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_append_utf8"),   2, matte_ext__memory_buffer__append_utf8,NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_append"),        2, matte_ext__memory_buffer__append     ,NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_remove"),        3, matte_ext__memory_buffer__remove,     NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::mbuffer_get_size"),      1, matte_ext__memory_buffer__get_size,   NULL);

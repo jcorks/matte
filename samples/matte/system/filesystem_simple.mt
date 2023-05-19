@@ -39,8 +39,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 // The Filesystem current working directory (cwd) always starts 
-// within the path of the file that first includes it. 
-// The cwd property is editable.
+// where the Matte interpreter is started.
 print(message: 'Currently working within: '+Filesystem.cwd);
 
 
