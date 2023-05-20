@@ -1,7 +1,15 @@
 #ifndef H_MATTE_CLI_SETTINGS
 #define H_MATTE_CLI_SETTINGS
+typedef struct matte_t matte_t;
+typedef struct matteSettings_t matteSettings_t;
+
+
+
+
 
 typedef struct matteSettings_t matteSettings_t;
+
+
 
 
 // Reads the settings file from 

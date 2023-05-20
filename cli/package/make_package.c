@@ -5,7 +5,7 @@
 
 int main(int argc, char ** argv) {
     uint32_t byteLen;
-    uint8_t * bytes = dump_bytes("package.mt", &byteLen);
+    uint8_t * bytes = dump_bytes("package.mt", &byteLen, 1);
     if (!byteLen || !bytes) {
         printf("Couldnt open package.mt\n");
         exit(1);

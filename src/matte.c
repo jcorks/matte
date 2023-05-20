@@ -35,6 +35,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_compiler.h"
 #include "matte_compiler__syntax_graph.h"
 #include "matte_bytecode_stub.h"
+#include "matte_store.h"
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -1048,8 +1049,8 @@ matteValue_t matte_load_package(
             } else {
                 str = matte_string_create_from_c_str(
                     "%s.%s", 
-                    matte_string_get_c_str(package->name);
-                    utf8_buffer
+                    matte_string_get_c_str(package->name),
+                    utf8Buffer
                 );
             }
             matte_add_module(
@@ -1076,7 +1077,7 @@ matteValue_t matte_load_package(
             matte_deallocate(utf8Buffer);
         if (package->name)
             matte_string_destroy(package->name);
-        matte_value_object_pop_lock(jsonObject);
+        matte_value_object_pop_lock(store, jsonObject);
         matte_deallocate(package);
         return matte_store_new_value(store);
 
@@ -1091,13 +1092,13 @@ matteValue_t matte_get_package_info(
     const char * packageName
 ) {
     
-    mattePackageInfo_t * package = (mattePackageInfo_t*)matte_table_lookup(
+    mattePackageInfo_t * package = (mattePackageInfo_t*)matte_table_find(
         m->packages,
         packageName
     );
     if (package == NULL) return matte_store_new_value(matte_vm_get_store(m->vm));
     
-    return package->json;
+    return package->packageJson;
 }
     
 
@@ -1106,7 +1107,7 @@ int matte_check_package(
     const char * packageName
 ) {
     matteStore_t * store = matte_vm_get_store(m->vm);
-    mattePackageInfo_t * package = (mattePackageInfo_t*)matte_table_lookup(
+    mattePackageInfo_t * package = (mattePackageInfo_t*)matte_table_find(
         m->packages,
         packageName
     );
@@ -1117,7 +1118,7 @@ int matte_check_package(
         return 0;
     }
 
-    matteValue_t depends = matte_value_object_access_string(package->json, MATTE_VM_STR_CAST(m->vm, "depends"));
+    matteValue_t depends = matte_value_object_access_string(store, package->packageJson, MATTE_VM_STR_CAST(m->vm, "depends"));
     if (matte_value_type(depends) != MATTE_VALUE_TYPE_OBJECT) {
         matteString_t * errms = matte_string_create_from_c_str("Package %s is malformed (missing depends attribute)", packageName);
         matte_vm_raise_error_string(m->vm, errms);
@@ -1128,18 +1129,18 @@ int matte_check_package(
     
     
     uint32_t i;
-    uint32_t len = matte_value_object_get_number_key_count(store, package->json);
+    uint32_t len = matte_value_object_get_number_key_count(store, package->packageJson);
     for(i = 0; i < len; ++i) {
-        matteValue_t dependency = matte_value_object_access_index(store, depends i);
+        matteValue_t dependency = matte_value_object_access_index(store, depends, i);
         if (matte_value_type(dependency) != MATTE_VALUE_TYPE_OBJECT ||
-            matte_value_object_get_number_key_count(dependency) < 2) {
+            matte_value_object_get_number_key_count(store, dependency) < 2) {
             matteString_t * errms = matte_string_create_from_c_str("Package %s is malformed (dependency %d is not an array of at least 2)", packageName, (int)i);
             matte_vm_raise_error_string(m->vm, errms);
             matte_string_destroy(errms);
             return 0;                
         }
         
-        matteValue_t name = matte_value_object_access_index(dependency, 0);
+        matteValue_t name = matte_value_object_access_index(store, dependency, 0);
         if (matte_value_type(name) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * errms = matte_string_create_from_c_str("Package %s is malformed (dependency %d's name is not a string)", packageName, (int)i);
             matte_vm_raise_error_string(m->vm, errms);
@@ -1148,7 +1149,7 @@ int matte_check_package(
         }
         
         const matteString_t * nameStr = matte_value_string_get_string_unsafe(store, name);
-        mattePackageInfo_t * pkgInfo = (mattePackageInfo_t*)matte_table_lookup(
+        mattePackageInfo_t * pkgInfo = (mattePackageInfo_t*)matte_table_find(
             m->packages,
             matte_string_get_c_str(nameStr)
         );
@@ -1164,7 +1165,7 @@ int matte_check_package(
         
         matteValue_t versionRequirement = matte_value_object_access_index(store, dependency, 1);
         if (matte_value_type(versionRequirement) != MATTE_VALUE_TYPE_OBJECT ||
-            matte_value_object_get_number_key_count(versionRequirement) < 2) {
+            matte_value_object_get_number_key_count(store, versionRequirement) < 2) {
             matteString_t * errms = matte_string_create_from_c_str("Package %s is malformed (dependency %d's version requirement is not an array of at least 2)", packageName, (int)i);
             matte_vm_raise_error_string(m->vm, errms);
             matte_string_destroy(errms);
@@ -1211,7 +1212,7 @@ matteArray_t * matte_get_package_dependencies(
     const char * packageName
 ) {
     matteStore_t * store = matte_vm_get_store(m->vm);
-    mattePackageInfo_t * package = (mattePackageInfo_t*)matte_table_lookup(
+    mattePackageInfo_t * package = (mattePackageInfo_t*)matte_table_find(
         m->packages,
         packageName
     );
@@ -1219,7 +1220,7 @@ matteArray_t * matte_get_package_dependencies(
         return NULL;
     }
 
-    matteValue_t depends = matte_value_object_access_string(package->json, MATTE_VM_STR_CAST(m->vm, "depends"));
+    matteValue_t depends = matte_value_object_access_string(store, package->packageJson, MATTE_VM_STR_CAST(m->vm, "depends"));
     if (matte_value_type(depends) != MATTE_VALUE_TYPE_OBJECT) {
         return NULL;    
     }
@@ -1227,18 +1228,18 @@ matteArray_t * matte_get_package_dependencies(
     
     
     uint32_t i;
-    uint32_t len = matte_value_object_get_number_key_count(store, package->json);
+    uint32_t len = matte_value_object_get_number_key_count(store, package->packageJson);
 
-    matteArray_t * output = matte_array_new(matte_a
+    matteArray_t * output = matte_array_create(sizeof(matteString_t *));
 
     for(i = 0; i < len; ++i) {
-        matteValue_t dependency = matte_value_object_access_index(store, depends i);
+        matteValue_t dependency = matte_value_object_access_index(store, depends, i);
         if (matte_value_type(dependency) != MATTE_VALUE_TYPE_OBJECT ||
-            matte_value_object_get_number_key_count(dependency) < 2) {
+            matte_value_object_get_number_key_count(store, dependency) < 2) {
             goto L_FAIL;
         }
         
-        matteValue_t name = matte_value_object_access_index(dependency, 0);
+        matteValue_t name = matte_value_object_access_index(store, dependency, 0);
         if (matte_value_type(name) != MATTE_VALUE_TYPE_STRING) {
             goto L_FAIL;
         }

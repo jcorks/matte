@@ -31,6 +31,7 @@ DEALINGS IN THE SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include "shared.h"
+#include "settings.h"
 
 
 
@@ -65,10 +66,16 @@ static int load_package_recursive(matte_t * m, const char * name) {
     if (packagesPath != NULL) {
         matteString_t * packagePath = matte_string_create_from_c_str("%s%s", packagesPath, name);
         uint32_t byteLen;
-        uint8_t * bytes = (uint8_t*)dump_bytes(name, &byteLen);
+        uint8_t * bytes = (uint8_t*)dump_bytes(matte_string_get_c_str(packagePath), &byteLen, 0);
+        matte_string_destroy(packagePath);
+        if (bytes == NULL || byteLen == 0) {
+            return 0;
+        }
+
+
+        matte_load_package(m, bytes, byteLen);
         
-        matte_load_package(m, bytes, bateLen);
-        
+
         
         // load dependencies
         matteArray_t * dependencies = matte_get_package_dependencies(m, name);
@@ -87,7 +94,7 @@ static int load_package_recursive(matte_t * m, const char * name) {
     }
     return 0;
 
-);
+}
 
 static uint32_t cli_importer(
     matte_t * m,
@@ -98,7 +105,7 @@ static uint32_t cli_importer(
     
     // first check if this name aliases something within 
     // the package path.
-    if (!settings) settings = matte_settings_load();
+    if (!settings) settings = matte_settings_load(m);
     if (settings) {
         if (load_package_recursive(m, name)) {
             return matte_vm_get_file_id_by_name(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), name)); 
@@ -110,13 +117,13 @@ static uint32_t cli_importer(
     if (import_namespace && strstr(name, matte_string_get_c_str(import_namespace)) == name) {
         // remove namespace
         matteString_t * str = matte_string_create_from_c_str("%s", name);
-        matte_string_remove_n_chars(str, 0, matte_string_get_c_str(import_namespace));
+        matte_string_remove_n_chars(str, 0, matte_string_get_length(import_namespace));
         
-        bytes = (uint8_t*)dump_bytes(matte_string_get_c_str(str), &byteLen);
+        bytes = (uint8_t*)dump_bytes(matte_string_get_c_str(str), &byteLen, 0);
         matte_string_destroy(str);
     } else {
         // dump bytes
-        bytes = (uint8_t*)dump_bytes(name, &byteLen);
+        bytes = (uint8_t*)dump_bytes(name, &byteLen, 0);
     }
     if (byteLen == 0 || bytes == NULL) {
         return 0;
@@ -128,7 +135,7 @@ static uint32_t cli_importer(
     uint32_t fileid = matte_vm_get_new_file_id(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), name));   
     // determine if bytecode or raw source OR package.
     // handle bytecodecase
-    if (bytelen >= 6 &&
+    if (byteLen >= 6 &&
         bytes[0] == 'M'  &&
         bytes[1] == 'A'  &&
         bytes[2] == 'T'  &&
@@ -141,23 +148,26 @@ static uint32_t cli_importer(
             matte_vm_get_store(matte_get_vm(m)),
             fileid,
             bytes,
-            bytelen
+            byteLen
         );
         if (stubs) {
             matte_vm_add_stubs(matte_get_vm(m), stubs);
         } else {
             fileid = 0; // failed.
-            matte_print(m, "Failed to assemble bytecode %s.", name); 
+            //matte_print(m, "Failed to assemble bytecode %s.", name); 
         }        
     // raw source
     } else {
+        char * source = matte_allocate(byteLen+1);
+        memcpy(source, bytes, byteLen);
         uint32_t bytecodeLen;
         uint8_t * bytecode = matte_compile_source(
             m,
-            bytes,
-            bytelen,
-            &bytecodeLen
+            &bytecodeLen,
+            source
         );
+        matte_deallocate(bytes);
+        matte_deallocate(source);
         
         if (!bytes || ! bytecodeLen)
             fileid = 0; // failed.
@@ -173,7 +183,7 @@ static uint32_t cli_importer(
             matte_vm_add_stubs(matte_get_vm(m), stubs);
             } else {
                 fileid = 0; // failed.
-                matte_print(m, "Failed to assemble bytecode %s.", name); 
+                //matte_print(m, "Failed to assemble bytecode %s.", name); 
             }           
         }
         matte_deallocate(bytecode);
@@ -277,19 +287,21 @@ static void tokenize_error(const matteString_t * str, uint32_t line, uint32_t ch
 
 
 matteValue_t packager_compile(
-    matteVM_t * m, 
+    matteVM_t * vm, 
     matteValue_t fn, 
     const matteValue_t * args, 
     void * userData
 ) {
-    const matteString_t * source = matte_value_string_get_string_unsafe(args[0]);
-    const matteString_t * output = matte_value_string_get_string_unsafe(args[1]);
+    matte_t * m = (matte_t *) userData;
+    matteStore_t * store = matte_vm_get_store(vm);
+    const matteString_t * input  = matte_value_string_get_string_unsafe(store, args[0]);
+    const matteString_t * output = matte_value_string_get_string_unsafe(store, args[1]);
     
     
     uint32_t srcLen = 0;
-    uint8_t * source = dump_bytes(matte_string_get_c_str(source), &srcLen);
+    uint8_t * source = dump_bytes(matte_string_get_c_str(input), &srcLen, 0);
     if (srcLen == 0 || !source) {
-        printf("Could not open source %s for compilation.\n", matte_string_get_c_str(source);    
+        printf("Could not open source %s for compilation.\n", matte_string_get_c_str(input));    
         exit(1);
     }
     char * srcStr = matte_allocate(srcLen+1);
@@ -307,7 +319,7 @@ matteValue_t packager_compile(
         printf("Could not access output file %s\n", matte_string_get_c_str(output));
         exit(1);
     }
-    if (fwrite(bytes, byteLen, 1 out) != byteLen) {    
+    if (fwrite(bytes, byteLen, 1, out) != byteLen) {    
         printf("Could not access output file %s\n", matte_string_get_c_str(output));
         exit(1);
     }
@@ -317,17 +329,19 @@ matteValue_t packager_compile(
     return matte_store_new_value(matte_vm_get_store(matte_get_vm(m)));
     
 }
-matteValue_t packager_run_debug(matteVM_t * m, matteValue_t fn, const matteValue_t * args, void * userData) {
+matteValue_t packager_run_debug(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matte_t * m = (matte_t *)userData;
+    matteStore_t * store = matte_vm_get_store(vm);
     matte_debugging_enable(m);
-    matteVM_t * vm = matte_get_vm(m);
     return matte_vm_import(
         vm,
-        matte_value_string_get_string_unsafe(args[0]),
-        matte_store_new_value(matte_vm_get_store(vm))
+        matte_value_string_get_string_unsafe(store, args[0]),
+        matte_store_new_value(store)
     );
     
 }
-matteValue_t packager_set_import(matteVM_t *, matteValue_t fn, const matteValue_t * args, void * userData) {
+matteValue_t packager_set_import(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteStore_t * store = matte_vm_get_store(vm);    
     if (import_namespace)
         matte_string_destroy(import_namespace);
     import_namespace = matte_string_create_from_c_str(
@@ -335,8 +349,9 @@ matteValue_t packager_set_import(matteVM_t *, matteValue_t fn, const matteValue_
         matte_string_get_c_str(matte_value_string_get_string_unsafe(store, args[0]))
     );
 }
-matteValue_t packager_get_system_path(matteVM_t *, matteValue_t fn, const matteValue_t * args, void * userData) {
-    if (!settings) settings = matte_settings_load();
+matteValue_t packager_get_system_path(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matte_t * m = (matte_t*)userData;
+    if (!settings) settings = matte_settings_load(m);
 
     matteString_t * outstr = matte_string_create_from_c_str(matte_settings_get_package_path(settings));
     matteStore_t * store = matte_vm_get_store(matte_get_vm(m));
@@ -346,23 +361,23 @@ matteValue_t packager_get_system_path(matteVM_t *, matteValue_t fn, const matteV
     return out;
 }
 
-#include "package.mt.h"
+#include "package/package.mt.h"
 
 static int packager(matte_t * m, int argc, char ** args) {
-    matte_add_external_function(m, "package_matte_compile",         packager_compile, NULL, "source", "output", NULL);
-    matte_add_external_function(m, "package_matte_run_debug",       packager_run_debug, NULL, "source", NULL);
-    matte_add_external_function(m, "package_matte_set_import",      packager_set_import, NULL, "namespace", NULL);
-    matte_add_external_function(m, "package_matte_get_system_path", packager_get_system_path, NULL, NULL);    
+    matte_add_external_function(m, "package_matte_compile",         packager_compile, m, "source", "output", NULL);
+    matte_add_external_function(m, "package_matte_run_debug",       packager_run_debug, m, "source", NULL);
+    matte_add_external_function(m, "package_matte_set_import",      packager_set_import, m, "namespace", NULL);
+    matte_add_external_function(m, "package_matte_get_system_path", packager_get_system_path, m, NULL);    
 
 
     // convert args into
 
 
-    matte_run_bytecode(m,
+    /*matte_run_bytecode(m,
         PACKAGE_MT_BYTES,
-        PACKAGE_MT_SIZE,
+        PACKAGE_MT_SIZE,*/
         
-
+    return 1;
 }
 
 
@@ -410,7 +425,7 @@ int main(int argc, char ** args) {
         uint32_t len = argc-2;
         for(i = 0; i < len; ++i) {
             uint32_t fsize;
-            uint8_t * dump = dump_bytes(args[2+i], &fsize);
+            uint8_t * dump = dump_bytes(args[2+i], &fsize, 1);
             if (!dump) {
                 printf("Could not open input file %s\n", args[2+i]);
                 exit(1);
@@ -435,7 +450,7 @@ int main(int argc, char ** args) {
             exit(1);
         }
         uint32_t sourceLen;
-        uint8_t * source = dump_bytes(args[2], &sourceLen);
+        uint8_t * source = dump_bytes(args[2], &sourceLen, 1);
         if (!source) {
             printf("Couldn't open input file %s\n", args[2]);
             exit(1);

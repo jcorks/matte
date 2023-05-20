@@ -1,7 +1,7 @@
-@:filesystem = import(module:'Matte.System.Filesystem');
-@:memory     = import(module:'Matte.System.MemoryBuffer');
-@:class      = import(module:'Matte.Core.Class');
-
+@:filesystem   = import(module:'Matte.System.Filesystem');
+@:MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
+@:class        = import(module:'Matte.Core.Class');
+@:JSON         = import(module:'Matte.Core.JSON');
 
 @:compile         = getExternalFunction(name:'package_matte_compile');
 @:run_debug       = getExternalFunction(name:'package_matte_run_debug');
@@ -15,7 +15,7 @@
     name: 'Matte.Package.DataStream',
     define:::(this) {
         @iter = 0;
-        @buffer = memory.new();
+        @buffer = MemoryBuffer.new();
         this.interface = {
             pushU8 ::(value => Number) {
                 buffer.appendByte(value);
@@ -23,31 +23,31 @@
             },
 
             pushU32 ::(value => Number) {
-                memory.size += 4;
-                memory.writeU32(offset:iter, value);
+                buffer.size += 4;
+                buffer.writeU32(offset:iter, value);
                 iter += 4;
             },
             
             
             pushString ::(value => String) {
-                @:mem = memory.new();
+                @:mem = MemoryBuffer.new();
                 mem.appendUTF8(value);
                 this.pushU32(value:mem.size);
                 iter += mem.size;
-                memory.append(other:mem);
+                buffer.append(other:mem);
                 mem.release();
             },
             
             pushBytes ::(value => MemoryBuffer.type()) {
-                memory.size += value.size;
-                memory.append(other:value);
+                buffer.size += value.size;
+                buffer.append(other:value);
                 iter += value.size;
             },
             
             buffer : {
                 get ::<- buffer
             }
-        }
+        };
     }
 );
 
@@ -55,7 +55,7 @@
 // throws an error on a bad json file
 @:checkPackageJSON ::(object) {
     // error checking for json.
-    @:checkMissing(base => Object, props => Object) <- 
+    @:checkMissing = ::(base => Object, props => Object) <- 
         props->foreach(do:::(i, prop) {
             if (base[prop[0]] == empty)
                 error(detail:'package.json missing ' + prop[0] + ' property');
@@ -90,7 +90,7 @@
         
       
         
-}
+};
 
 
 @:commands = {

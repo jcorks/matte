@@ -216,7 +216,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append_utf8) {
     matteValue_t a = args[0];
     MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
 
-    matteString_t * val   = matte_value_string_get_string_unsafe(store, args[1]);
+    const matteString_t * val   = matte_value_string_get_string_unsafe(store, args[1]);
     uint32_t length = matte_string_get_utf8_length(val);
 
     if (m->alloc <= m->size + length) {

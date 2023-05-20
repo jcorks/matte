@@ -41,7 +41,7 @@ DEALINGS IN THE SOFTWARE.
 #define MATTE_EXT_FN(__T__) static matteValue_t __T__(matteVM_t * vm, matteValue_t fn, matteArray_t * args, void * userData)
 
 
-void * dump_bytes(const char * filename, uint32_t * len);
+void * dump_bytes(const char * filename, uint32_t * len, int terminateOnFail);
 matteValue_t parse_parameters(matteVM_t *, char ** args, uint32_t count);
 matteValue_t parse_parameter_line(matteVM_t * vm, const char * line);
 #endif

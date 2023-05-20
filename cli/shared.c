@@ -32,11 +32,16 @@ DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-void * dump_bytes(const char * filename, uint32_t * len) {
+void * dump_bytes(const char * filename, uint32_t * len, int terminateOnFail) {
     FILE * f = fopen(filename, "rb");
     if (!f) {
-        printf("Could not open input file %s\n", filename);
-        exit(1);    
+        if (terminateOnFail) {
+            printf("Could not open input file %s\n", filename);
+            exit(1);    
+        } else {
+            *len = 0;
+            return NULL;
+        }
     }
     char chunk[2048];
     int chunkSize;
@@ -45,7 +50,7 @@ void * dump_bytes(const char * filename, uint32_t * len) {
     fseek(f, 0, SEEK_SET);
 
 
-    void * out = malloc(*len);
+    void * out = matte_allocate(*len);
     uint32_t iter = 0;
     while(chunkSize = (fread(chunk, 1, 2048, f))) {
         memcpy(out+iter, chunk, chunkSize);
