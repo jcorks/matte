@@ -244,7 +244,7 @@ enum {
 #define QUERY_STATE(__o__, __s__) (((__o__)->state & (__s__)) != 0)
 
 
-struct matteObject_t{
+struct matteObject_t {
     // any user data. Defaults to null
     void * userdata;
     
@@ -1752,6 +1752,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
     matte_store_recycle(store, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_function(store->bin);
+
     v->value.id = d->storeID;
     d->function.stub = stub;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
@@ -2065,14 +2066,14 @@ void matte_value_object_set_native_finalizer(matteStore_t * store, matteValue_t 
 
 void matte_value_object_set_userdata(matteStore_t * store, matteValue_t v, void * userData) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
+        matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
         m->userdata = userData;
     }
 }
 
 void * matte_value_object_get_userdata(matteStore_t * store, matteValue_t v) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
+        matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
         return m->userdata;
     }
     return NULL;
@@ -3809,7 +3810,6 @@ static void object_cleanup(matteStore_t * h) {
                 }
                 matte_table_clear(m->table.keyvalues_object);
             }
-
             matte_store_bin_recycle(h->bin, m->storeID);
 
         }
