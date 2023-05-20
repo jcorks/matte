@@ -166,7 +166,6 @@ static uint32_t cli_importer(
             &bytecodeLen,
             source
         );
-        matte_deallocate(bytes);
         matte_deallocate(source);
         
         if (!bytes || ! bytecodeLen)
@@ -181,6 +180,7 @@ static uint32_t cli_importer(
             );
             if (stubs) {
             matte_vm_add_stubs(matte_get_vm(m), stubs);
+            matte_array_destroy(stubs);
             } else {
                 fileid = 0; // failed.
                 //matte_print(m, "Failed to assemble bytecode %s.", name); 

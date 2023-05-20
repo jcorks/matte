@@ -2360,7 +2360,7 @@ void matte_vm_set_external_function_autoname(
     void * userData
 ) {
     if (argCount > 26) return;
-    matteString_t * arr[argCount];
+    matteString_t * arr[argCount+1];
     uint32_t i;
     const char * names[] = {
         "a", "b", "c", "d", "e", "f", "g", "h",

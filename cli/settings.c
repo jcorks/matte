@@ -3,6 +3,10 @@
 #include "../src/matte_store.h"
 #include "../src/matte_vm.h"
 #include "shared.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
 #ifdef __WIN32__
     #include <windows.h>
 #endif
