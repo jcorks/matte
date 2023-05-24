@@ -1,5 +1,5 @@
 all:
 	gcc ./package/make_package.c ./shared.c ../src/*.c ../src/rom/native.c -o ./package/make_package -lm
 	cd ./package && ./make_package
-	gcc -g -fsanitize=undefined -fsanitize=address -DMATTE_USE_SYSTEM_EXTENSIONS -fmax-errors=5 ./*.c ../src/*.c ../src/rom/native.c -o ./matte -lm -lpthread -lssl -lcrypto
+	gcc  -DMATTE_USE_SYSTEM_EXTENSIONS -fmax-errors=5 ./*.c ../src/*.c ../src/rom/native.c -o ./matte -lm -lpthread -lssl -lcrypto
 	

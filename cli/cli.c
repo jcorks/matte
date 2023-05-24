@@ -105,8 +105,11 @@ static uint32_t cli_importer(
     
     // first check if this name aliases something within 
     // the package path.
-    if (!settings) settings = matte_settings_load(m);
-    if (settings) {
+    if (!settings) {
+        settings = (void*)0x1;
+        settings = matte_settings_load(m);
+    }
+    if (settings && settings != (void*)0x1) {
         if (load_package_recursive(m, name)) {
             return matte_vm_get_file_id_by_name(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), name)); 
         }

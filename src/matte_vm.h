@@ -121,6 +121,8 @@ matteValue_t matte_vm_import(
 //
 // This is equivalent to pushing the args onto the stack and 
 // inserting a CAL instruction.
+// The value is owned and reserved by the VM,
+// so it shoud not be recycled.
 matteValue_t matte_vm_run_fileid(
     matteVM_t *, 
     uint32_t fileid, 

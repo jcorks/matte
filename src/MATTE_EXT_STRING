@@ -361,6 +361,7 @@ static matteValue_t vm_ext_call__string__setcharat(matteVM_t * vm, matteValue_t 
     matte_string_set_char(str, key, matte_string_get_char(r, 0));
     matte_value_into_string(vm->store, &strV, str);
     matte_string_destroy(str);
+    matte_store_recycle(vm->store, rs);
     return strV;
 }
 
@@ -380,6 +381,7 @@ static matteValue_t vm_ext_call__string__combine(matteVM_t * vm, matteValue_t fn
         if (vm->pendingCatchable) break;
         matteValue_t v = matte_value_as_string(vm->store, matte_value_object_access_index(vm->store, args[0], i));
         matte_string_concat(str, matte_value_string_get_string_unsafe(vm->store, v));
+        matte_store_recycle(vm->store, v);
     }
     
     matteValue_t outstr = {};
