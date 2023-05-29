@@ -38,10 +38,17 @@ matteStringStore_t * matte_string_store_create();
 
 void matte_string_store_destroy(matteStringStore_t *);
 
-uint32_t matte_string_store_internalize(matteStringStore_t *, const matteString_t *);
+uint32_t matte_string_store_ref(matteStringStore_t *, const matteString_t *);
 
 // same as matte_string_store_internalize(), but accepts a c string for convenience
-uint32_t matte_string_store_internalize_cstring(matteStringStore_t *, const char *);
+uint32_t matte_string_store_ref_cstring(matteStringStore_t *, const char *);
+
+void matte_string_store_ref_id(matteStringStore_t *, uint32_t);
+
+
+void matte_string_store_unref(matteStringStore_t *, uint32_t);
+
+const matteString_t * matte_string_store_find(const matteStringStore_t *, uint32_t);
 
 
 // null if fail

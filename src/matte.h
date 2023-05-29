@@ -296,6 +296,8 @@ void matte_set_importer(
     }
 */
 ///
+/// The value is owned and reserved by the VM,
+/// so it shoud not be recycled.
 matteValue_t matte_load_package(
     /// The instance to load the package into.
     matte_t *,
@@ -309,6 +311,8 @@ matteValue_t matte_load_package(
 /// Returns the parsed JSON package object.
 /// If no such one exists, the empty value is returned.
 ///
+/// The value is owned and reserved by the VM,
+/// so it shoud not be recycled.
 matteValue_t matte_get_package_info(
     /// The instance to retrieve package info from
     matte_t *,
@@ -351,6 +355,8 @@ int matte_check_package(
 /// runs the new fileID immediately. If an unhandled error 
 /// occurs, empty is returned.
 ///
+/// The value is owned and reserved by the VM,
+/// so it shoud not be recycled.
 matteValue_t matte_run_bytecode(
     /// The instance to run the bytecode on.
     matte_t *, 
@@ -366,6 +372,8 @@ matteValue_t matte_run_bytecode(
 
 /// same as matte_run_bytecode, except with a parameters object.
 ///
+/// The value is owned and reserved by the VM,
+/// so it shoud not be recycled.
 matteValue_t matte_run_bytecode_with_parameters(
     /// The instance
     matte_t *, 
@@ -383,6 +391,8 @@ matteValue_t matte_run_bytecode_with_parameters(
 
 /// Same as matte_run_source, except with a parameters object
 ///
+/// The value is owned and reserved by the VM,
+/// so it shoud not be recycled.
 matteValue_t matte_run_source_with_parameters(
     /// The instance to run with.
     matte_t *, 

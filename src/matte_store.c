@@ -592,6 +592,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
         } else {
             value = store_new_value_pointer(store);
             *value = out;
+            matte_string_store_ref_id(store->stringStore, key.value.id);
             matte_table_insert_by_uint(m->table.keyvalues_string, key.value.id, value);
             return value;
         }
@@ -780,7 +781,7 @@ static void add_table_refs(
 
 
         
-        matte_table_insert_by_uint(table, matte_string_store_internalize_cstring(stringStore, *names), (void*)(uintptr_t)*ids);
+        matte_table_insert_by_uint(table, matte_string_store_ref_cstring(stringStore, *names), (void*)(uintptr_t)*ids);
     
         names++;
         ids++;
@@ -839,18 +840,18 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     matte_value_into_new_type(out, &out->type_type, dummy, dummy);
     matte_value_into_new_type(out, &out->type_any, dummy, dummy);
 
-    out->specialString_empty.value.id = matte_string_store_internalize_cstring(out->stringStore, "empty");
-    out->specialString_nothing.value.id = matte_string_store_internalize_cstring(out->stringStore, "");
-    out->specialString_true.value.id = matte_string_store_internalize_cstring(out->stringStore, "true");
-    out->specialString_false.value.id = matte_string_store_internalize_cstring(out->stringStore, "false");
+    out->specialString_empty.value.id = matte_string_store_ref_cstring(out->stringStore, "empty");
+    out->specialString_nothing.value.id = matte_string_store_ref_cstring(out->stringStore, "");
+    out->specialString_true.value.id = matte_string_store_ref_cstring(out->stringStore, "true");
+    out->specialString_false.value.id = matte_string_store_ref_cstring(out->stringStore, "false");
 
-    out->specialString_type_boolean.value.id = matte_string_store_internalize_cstring(out->stringStore, "Boolean");
-    out->specialString_type_empty.value.id = matte_string_store_internalize_cstring(out->stringStore, "Empty");
-    out->specialString_type_number.value.id = matte_string_store_internalize_cstring(out->stringStore, "Number");
-    out->specialString_type_string.value.id = matte_string_store_internalize_cstring(out->stringStore, "String");
-    out->specialString_type_object.value.id = matte_string_store_internalize_cstring(out->stringStore, "Object");
-    out->specialString_type_type.value.id = matte_string_store_internalize_cstring(out->stringStore, "Type");
-    out->specialString_type_function.value.id = matte_string_store_internalize_cstring(out->stringStore, "Function");
+    out->specialString_type_boolean.value.id = matte_string_store_ref_cstring(out->stringStore, "Boolean");
+    out->specialString_type_empty.value.id = matte_string_store_ref_cstring(out->stringStore, "Empty");
+    out->specialString_type_number.value.id = matte_string_store_ref_cstring(out->stringStore, "Number");
+    out->specialString_type_string.value.id = matte_string_store_ref_cstring(out->stringStore, "String");
+    out->specialString_type_object.value.id = matte_string_store_ref_cstring(out->stringStore, "Object");
+    out->specialString_type_type.value.id = matte_string_store_ref_cstring(out->stringStore, "Type");
+    out->specialString_type_function.value.id = matte_string_store_ref_cstring(out->stringStore, "Function");
 
     out->specialString_empty.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_nothing.binID = MATTE_VALUE_TYPE_STRING;
@@ -868,29 +869,29 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->specialString_type_type.binID = MATTE_VALUE_TYPE_STRING;
 
 
-    out->specialString_set.value.id = matte_string_store_internalize_cstring(out->stringStore, "set");
+    out->specialString_set.value.id = matte_string_store_ref_cstring(out->stringStore, "set");
     out->specialString_set.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_get.value.id = matte_string_store_internalize_cstring(out->stringStore, "get");
+    out->specialString_get.value.id = matte_string_store_ref_cstring(out->stringStore, "get");
     out->specialString_get.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_bracketAccess.value.id = matte_string_store_internalize_cstring(out->stringStore, "[]");
+    out->specialString_bracketAccess.value.id = matte_string_store_ref_cstring(out->stringStore, "[]");
     out->specialString_bracketAccess.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_dotAccess.value.id = matte_string_store_internalize_cstring(out->stringStore, ".");
+    out->specialString_dotAccess.value.id = matte_string_store_ref_cstring(out->stringStore, ".");
     out->specialString_dotAccess.binID = MATTE_VALUE_TYPE_STRING;
 
 
-    out->specialString_foreach.value.id = matte_string_store_internalize_cstring(out->stringStore, "foreach");
+    out->specialString_foreach.value.id = matte_string_store_ref_cstring(out->stringStore, "foreach");
     out->specialString_foreach.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_keys.value.id = matte_string_store_internalize_cstring(out->stringStore, "keys");
+    out->specialString_keys.value.id = matte_string_store_ref_cstring(out->stringStore, "keys");
     out->specialString_keys.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_values.value.id = matte_string_store_internalize_cstring(out->stringStore, "values");
+    out->specialString_values.value.id = matte_string_store_ref_cstring(out->stringStore, "values");
     out->specialString_values.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_name.value.id = matte_string_store_internalize_cstring(out->stringStore, "name");
+    out->specialString_name.value.id = matte_string_store_ref_cstring(out->stringStore, "name");
     out->specialString_name.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_inherits.value.id = matte_string_store_internalize_cstring(out->stringStore, "inherits");
+    out->specialString_inherits.value.id = matte_string_store_ref_cstring(out->stringStore, "inherits");
     out->specialString_inherits.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_key.value.id = matte_string_store_internalize_cstring(out->stringStore, "key");
+    out->specialString_key.value.id = matte_string_store_ref_cstring(out->stringStore, "key");
     out->specialString_key.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_value.value.id = matte_string_store_internalize_cstring(out->stringStore, "value");
+    out->specialString_value.value.id = matte_string_store_ref_cstring(out->stringStore, "value");
     out->specialString_value.binID = MATTE_VALUE_TYPE_STRING;
     
     add_table_refs(out->type_number_methods, out->stringStore, BUILTIN_NUMBER__NAMES, BUILTIN_NUMBER__IDS);
@@ -1017,7 +1018,7 @@ void matte_value_into_new_type_(matteStore_t * store, matteValue_t * v, matteVal
         matte_store_recycle(store, val);
     } else {
         matteString_t * str = matte_string_create_from_c_str("<anonymous type %d>", v->value.id);
-        data.name.value.id = matte_string_store_internalize(store->stringStore, str);
+        data.name.value.id = matte_string_store_ref(store->stringStore, str);
         data.name.binID = MATTE_VALUE_TYPE_STRING;
         matte_string_destroy(str);        
     }
@@ -1050,7 +1051,7 @@ void matte_value_into_boolean_(matteStore_t * store, matteValue_t * v, int val) 
 void matte_value_into_string_(matteStore_t * store, matteValue_t * v, const matteString_t * str) {
     matte_store_recycle(store, *v);
     v->binID = MATTE_VALUE_TYPE_STRING;
-    v->value.id = matte_string_store_internalize(store->stringStore, str);
+    v->value.id = matte_string_store_ref(store->stringStore, str);
 }
 matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuery_t query) {
     matteValue_t out = matte_store_new_value(store);
@@ -2141,7 +2142,7 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
         }
         matteValue_t out;
         out.binID = MATTE_VALUE_TYPE_STRING;
-        out.value.id = matte_string_store_internalize(store->stringStore, str);
+        out.value.id = matte_string_store_ref(store->stringStore, str);
         matte_string_destroy(str);        
         return out;        
       }
@@ -2149,7 +2150,9 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
         return v.value.boolean ? store->specialString_true : store->specialString_false;
       }
       case MATTE_VALUE_TYPE_STRING: {
-        return v;
+        matteValue_t out = matte_store_new_value(store);
+        matte_value_into_copy(store, &out, v);
+        return out;
       }
       
 
@@ -2341,7 +2344,11 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
     switch(v.binID) {
       case MATTE_VALUE_TYPE_TYPE: {// built-in functions
         matteValue_t * b = matte_value_object_access_direct(store, v, key, isBracketAccess);
-        if (b) return *b;
+        if (b) {
+            matteValue_t out = matte_store_new_value(store);
+            matte_value_into_copy(store, &out, *b);
+            return out;        
+        }
         return matte_store_new_value(store);        
       }
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -2564,6 +2571,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
             matteValue_t key = matte_store_new_value(store);
             key.binID = MATTE_VALUE_TYPE_STRING;
             key.value.id = matte_table_iter_get_key_uint(iter);
+            matte_string_store_ref_id(store->stringStore, key.value.id);
             matte_array_push(keys, key);                
         }
         matte_table_iter_destroy(iter);
@@ -2799,6 +2807,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
             }
             matte_store_recycle(store, *value);
             store_recycle_value_pointer(store, value);
+            matte_string_store_unref(store->stringStore, key.value.id);
         }
         return;
       }
@@ -3147,8 +3156,8 @@ void matte_value_object_sort_unsafe(matteStore_t * store, matteValue_t v, matteV
     matteValue_t names[2];
     names[0].binID = MATTE_VALUE_TYPE_STRING;
     names[1].binID = MATTE_VALUE_TYPE_STRING;
-    names[0].value.id = matte_string_store_internalize_cstring(store->stringStore, "a");
-    names[1].value.id = matte_string_store_internalize_cstring(store->stringStore, "b");
+    names[0].value.id = matte_string_store_ref_cstring(store->stringStore, "a");
+    names[1].value.id = matte_string_store_ref_cstring(store->stringStore, "b");
     params.names = MATTE_ARRAY_CAST(names, matteValue_t, 2);
     
     matteValue_Sort_t * sortArray = (matteValue_Sort_t*)matte_allocate(sizeof(matteValue_Sort_t)*len);
@@ -3211,10 +3220,13 @@ void matte_value_object_push(
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(store, m, &val);
     }
+    
+    matteValue_t vv = matte_store_new_value(store);
+    matte_value_into_copy(store, &vv, val);
     if (!m->table.keyvalues_number) m->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
     matte_array_push(
         m->table.keyvalues_number,
-        val
+        vv
     );
 }
 
@@ -3306,8 +3318,11 @@ void matte_value_into_copy_(matteStore_t * store, matteValue_t * to, matteValue_
       case MATTE_VALUE_TYPE_NUMBER: 
       case MATTE_VALUE_TYPE_TYPE: 
       case MATTE_VALUE_TYPE_BOOLEAN: 
+        *to = from;
+        break;
       case MATTE_VALUE_TYPE_STRING: 
         *to = from;
+        matte_string_store_ref_id(store->stringStore, from.value.id);
         return;
 
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -3438,7 +3453,9 @@ void matte_store_recycle_(
     int line_
 #endif    
 ) {
-    
+    if (v.binID == MATTE_VALUE_TYPE_STRING) {
+        matte_string_store_unref(store->stringStore, v.value.id);
+    }
     /*if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
         if (!m) return;
@@ -3775,6 +3792,7 @@ static void object_cleanup(matteStore_t * h) {
                     matte_table_iter_is_end(iter) == 0;
                     matte_table_iter_proceed(iter)
                 ) {
+                    matte_string_store_unref(h->stringStore, (uint32_t)(uintptr_t)matte_table_iter_get_key(iter));
                     matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
                     //matte_store_recycle(h, *v);
                     object_unlink_parent_value(h, m, v);                

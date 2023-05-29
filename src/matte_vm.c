@@ -450,7 +450,7 @@ static const char * opcode_to_str(int oc) {
 
 #define STACK_SIZE() matte_array_get_size(frame->valueStack)
 #define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
-#define STACK_POP_NORET() matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_POP_NORET() matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1));  matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
 #define STACK_PEEK(__n__) (matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1-(__n__)))
 #define STACK_PUSH(__v__) matte_value_object_push_lock(vm->store, __v__); matte_array_push(frame->valueStack, __v__);
 
@@ -552,12 +552,15 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_NST: {
             uint32_t stringID = inst->data;
 
+            // NO XFER
             matteValue_t v = matte_bytecode_stub_get_string(frame->stub, stringID);
             if (!v.binID) {
                 matte_vm_raise_error_cstring(vm, "NST opcode refers to non-existent string (corrupt bytecode?)");
                 break;
             }
-            STACK_PUSH(v);
+            matteValue_t out = matte_store_new_value(vm->store);
+            matte_value_into_copy(vm->store, &out, v);
+            STACK_PUSH(out);
             break;
           }
           case MATTE_OPCODE_NOB: {
@@ -692,6 +695,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 );
             }
             matte_value_object_pop_lock(vm->store, p);
+            matte_store_recycle(vm->store, p);
             break;            
           }
   
@@ -727,6 +731,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matte_value_object_pop_lock(vm->store, keys);
             matte_value_object_pop_lock(vm->store, vals);
             matte_value_object_pop_lock(vm->store, p);
+            matte_store_recycle(vm->store, p);
             break;            
           }
           
@@ -798,14 +803,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             for(i = 0; i < argcount; ++i) {
                 STACK_POP_NORET();
-                matteValue_t v = matte_array_at(args, matteValue_t, i);
-                matte_store_recycle(vm->store, v);
                 STACK_POP_NORET(); // always a string
             }
             matte_array_destroy(args);
             matte_array_destroy(argnames);
             STACK_POP_NORET();
-            matte_store_recycle(vm->store, function);
             STACK_PUSH(result);
             break;
           }
@@ -824,8 +826,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 switch(op + (int)MATTE_OPERATOR_ASSIGNMENT_NONE) {
                   case MATTE_OPERATOR_ASSIGNMENT_NONE: {
                     matte_vm_stackframe_set_referrable(vm, 0, refn, v);
-                    vOut = v;
-                    v.binID = 0;
+                    vOut = matte_store_new_value(vm->store);
+                    matte_value_into_copy(vm->store, &vOut, v);
                     break;
                   }
                     
@@ -846,7 +848,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
                 }                
                 STACK_POP_NORET();
-                matte_store_recycle(vm->store, v);
                 STACK_PUSH(vOut); // new value is pushed
             } else {
                 matte_vm_raise_error_cstring(vm, "VM error: tried to access non-existent referrable.");    
@@ -950,13 +951,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 STACK_POP_NORET();
                 STACK_PUSH(out);
             }
-
-
-
-            matte_store_recycle(vm->store, key);
-            matte_store_recycle(vm->store, object);  
-            matte_store_recycle(vm->store, val);
-
             break;
           }    
 
@@ -973,8 +967,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             
             STACK_POP_NORET();
             STACK_POP_NORET();
-            matte_store_recycle(vm->store, key);
-            matte_store_recycle(vm->store, object);            
             STACK_PUSH(output);
             break;
           }    
@@ -1003,7 +995,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 frame->pc += count;
             }
             STACK_POP_NORET();
-            matte_store_recycle(vm->store, condition);
             break;
           }
           case MATTE_OPCODE_SCA: {
@@ -1031,7 +1022,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             
             
             STACK_POP_NORET();
-            matte_store_recycle(vm->store, src);
             break;
           }
 
@@ -1044,14 +1034,18 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_QRY: {
             matteValue_t o = STACK_PEEK(0);
             matteValue_t output = matte_value_query(vm->store, &o, (matteQuery_t)inst->data);
-            STACK_POP_NORET();            
+            o = STACK_POP();            
 
             STACK_PUSH(output);
             // re-insert the base as "base"
             if (matte_value_is_function(output)) {
                 STACK_PUSH(o);
-                STACK_PUSH(vm->specialString_base);
-            } 
+                matteValue_t vv = matte_store_new_value(vm->store);
+                matte_value_into_copy(vm->store, &vv, vm->specialString_base);
+                STACK_PUSH(vv);
+            } else {
+                matte_store_recycle(vm->store, o);
+            }
             
             break;
           }
@@ -1094,8 +1088,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         );
                         STACK_POP_NORET();
                         STACK_POP_NORET();
-                        matte_store_recycle(vm->store, a);
-                        matte_store_recycle(vm->store, b);
                         STACK_PUSH(v); // ok
                     }
                     break;                
@@ -1119,7 +1111,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         );
                         STACK_POP_NORET();
                         STACK_PUSH(v);
-                        matte_store_recycle(vm->store, a);
                     }
                     break;                
                 }
@@ -1747,6 +1738,10 @@ matteValue_t matte_vm_call(
                     // sicne this function doesn't use a referrable, we need to set roots manually.
                     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
                         matte_value_object_push_lock(vm->store, v);
+                    } else if (v.binID == MATTE_VALUE_TYPE_STRING) {
+                        matteValue_t vv = matte_store_new_value(vm->store);
+                        matte_value_into_copy(vm->store, &vv, v);
+                        matte_array_at(argsReal, matteValue_t, n) = vv;                    
                     }
 
                     break;

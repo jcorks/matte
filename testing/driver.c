@@ -358,7 +358,6 @@ int main() {
         free(outstr);
         TESTID++;
         matte_string_destroy(outputText);
-        matte_store_recycle(store, v);
         matte_destroy(m);
         printf("Done.\n");
         fflush(stdout);
