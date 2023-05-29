@@ -548,9 +548,12 @@ static uint32_t default_importer(
             m
         );
         
-        if (!bytes || ! bytecodeLen)
+        if (!bytes || ! bytecodeLen) {
             fileid = 0; // failed.
-        else {
+            matteString_t * str = matte_string_create_from_c_str("Could not import '%s'.", name);
+            matte_vm_raise_error_string(m->vm, str);
+            matte_string_destroy(str);
+        } else {
             if (m->isDebug)
                 debug_split_lines(m, fileid, bytes, bytelen);
         

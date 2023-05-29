@@ -168,9 +168,12 @@ static uint32_t cli_importer(
         );
         matte_deallocate(source);
         
-        if (!bytes || ! bytecodeLen)
-            fileid = 0; // failed.
-        else {        
+        if (!bytes || ! bytecodeLen) {
+            matteString_t * str = matte_string_create_from_c_str("Could not import '%s'.", name);
+            matte_vm_raise_error_string(matte_get_vm(m), str);
+            matte_string_destroy(str);
+            fileid = 0;
+        } else {        
         
             matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
                 matte_vm_get_store(matte_get_vm(m)),
