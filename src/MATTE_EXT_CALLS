@@ -170,9 +170,20 @@ static matteValue_t vm_ext_call__send(matteVM_t * vm, matteValue_t fn, const mat
     matteValue_t b = matte_store_new_value(vm->store);
     matte_value_into_copy(vm->store, &b, args[0]);    
     matte_value_object_push_lock(vm->store, b);
+
     vm->catchable = b;
     vm->pendingCatchable = 1;
     vm->pendingCatchableIsError = 0;
+
+    matteVMStackFrame_t framesrc = matte_vm_get_stackframe(vm, 0);
+    uint32_t instcount;
+    const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(framesrc.stub, &instcount);        
+    int lineNumber = 0;
+    if (framesrc.pc - 1 < instcount) {
+        lineNumber = inst[framesrc.pc-1].lineNumber;                
+    } 
+    vm->errorLastFile = matte_bytecode_stub_get_file_id(framesrc.stub);
+    vm->errorLastLine = lineNumber;
     return matte_store_new_value(vm->store);
 }
 

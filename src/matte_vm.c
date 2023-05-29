@@ -1935,13 +1935,25 @@ matteValue_t matte_vm_call(
         // uh oh... unhandled errors...
         if (!vm->stacksize && vm->pendingCatchable) {
             if (vm->unhandled) {
+                matteValue_t v = vm->catchable;
+                if (!vm->pendingCatchableIsError) {
+                    v = matte_store_new_value(vm->store);
+                    matteString_t * errMessage = matte_string_create_from_c_str("An uncaught message was sent.");
+                    matte_value_into_string(vm->store, &v, errMessage);
+                    matte_string_destroy(errMessage);
+                }
+
+
                 vm->unhandled(
                     vm,
                     vm->errorLastFile,
                     vm->errorLastLine,
-                    vm->catchable,
+                    v,
                     vm->unhandledData                   
-                );                
+                );           
+
+                if (!vm->pendingCatchableIsError)
+                    matte_store_recycle(vm->store, v);     
             }     
             matte_value_object_pop_lock(vm->store, vm->catchable);
             vm->catchable.binID = 0;
