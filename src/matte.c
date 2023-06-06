@@ -493,7 +493,9 @@ static uint32_t default_importer(
     // dump bytes
     FILE * f = fopen(name, "rb");
     if (!f) {
-        printf("Could not open input file %s\n", name);
+        matteString_t * str = matte_string_create_from_c_str("Could not import file '%s'.", name);
+        matte_vm_raise_error_string(m->vm, str);
+        matte_string_destroy(str);
         return 0;
     }
     char chunk[2048];

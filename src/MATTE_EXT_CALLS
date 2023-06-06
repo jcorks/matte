@@ -209,6 +209,13 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
 
     matteValue_t a = args[0];
     matteValue_t params = args[1];
+    
+    if (matte_value_type(a) != MATTE_VALUE_TYPE_STRING) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument to import MUST be a string."));        
+        return matte_store_new_value(vm->store);    
+    }
+    
+    
     const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
 
 
