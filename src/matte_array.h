@@ -239,6 +239,7 @@ struct matteArray_t {
 ///
 #define matte_array_get_data(__A__) ((void*)(__A__)->data)
 
+#define matte_array_shrink_by_one(__A__) ((__A__)->size ? (__A__)->size-- : 0)
 
 /// Creates a temporary array whos data is managed for you.
 /// Temporary arrays are "read only" and should to be modified.

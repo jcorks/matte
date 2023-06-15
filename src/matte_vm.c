@@ -290,6 +290,8 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
     
     matteValue_t * onSend = NULL;
     matteValue_t * onError = NULL;    
+    matteValue_t onErrorVal;
+    matteValue_t onSendVal;
     
     if (respObject.binID != MATTE_VALUE_TYPE_EMPTY) {
         onSend  = matte_value_object_access_direct(vm->store, respObject, vm->specialString_onsend, 0);
@@ -297,11 +299,13 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
             matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onSend' attribute be a Function."));
             return matte_store_new_value(vm->store);    
         }
+        if (onSend) onSendVal = *onSend;
         onError = matte_value_object_access_direct(vm->store, respObject, vm->specialString_onerror, 0);
         if (onError && onError->binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->store, *onError)) {
             matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onError' attribute be a Function."));
             return matte_store_new_value(vm->store);    
         }
+        if (onError) onErrorVal = *onError;
     }
     
     matteValue_t out = matte_vm_call(vm, v, matte_array_empty(), matte_array_empty(), MATTE_VM_STR_CAST(vm, "listen"));
@@ -321,14 +325,14 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
         // 1) return this return value 
         // 2) run a response function and return its result
         if (!vm->pendingCatchableIsError && onSend) {
-            out = matte_vm_call(vm, *onSend, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (message)"));
+            out = matte_vm_call(vm, onSendVal, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (message)"));
             matte_value_object_pop_lock(vm->store, catchable);
             matte_store_recycle(vm->store, catchable);
             return out;
         } if (vm->pendingCatchableIsError && onError) {
             // the error is caught. Undo the error flag 
             vm->pendingCatchableIsError = 0;
-            out = matte_vm_call(vm, *onError, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (error)"));
+            out = matte_vm_call(vm, onErrorVal, &arr, &arrNames, MATTE_VM_STR_CAST(vm, "listen response (error)"));
             matte_value_object_pop_lock(vm->store, catchable);
             matte_store_recycle(vm->store, catchable);
             return out;

@@ -637,13 +637,18 @@ void matte_set_io(
 const char * matte_introspect_value(matte_t * m, matteValue_t val) {
     if (m->introspectResult)
         matte_string_destroy(m->introspectResult);
-    m->introspectResult = matte_string_clone(
-        matte_value_string_get_string_unsafe(
-            matte_vm_get_store(m->vm),
-            matte_run_source_with_parameters(m, "return import(module:'Matte.Core.Introspect')(value:parameters);", val)
-        )
-    );
-    return matte_string_get_c_str(m->introspectResult);
+
+    matteValue_t v = matte_run_source_with_parameters(m, "return import(module:'Matte.Core.Introspect')(value:parameters);", val);
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
+        m->introspectResult = matte_string_clone(
+            matte_value_string_get_string_unsafe(
+                matte_vm_get_store(m->vm),
+                v
+            )
+        );
+        return matte_string_get_c_str(m->introspectResult);
+    }
+    return "";
 }
 
 
