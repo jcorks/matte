@@ -167,6 +167,7 @@ struct matteStore_t {
     // names for all types, on-demand
     // MatteTypeData
     matteArray_t * typecode2data;
+    matteArray_t * external;
     
     matteArray_t * routePather;
     matteTableIter_t * routeIter;
@@ -402,6 +403,8 @@ static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, mat
     switch(key.binID) {
       case MATTE_VALUE_TYPE_EMPTY: return NULL;
       case MATTE_VALUE_TYPE_STRING: {
+
+      
         if (!m->table.keyvalues_string) return NULL;
         void * id = matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
         if (id == NULL) return NULL;
@@ -555,6 +558,10 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             *value = out;
             return value;
         } else {
+            if (!strcmp(matte_string_get_c_str(matte_string_store_find(store->stringStore, key.value.id)), "constructor")) {
+                printf("hi");            
+            }
+
             uint32_t id = store_new_value_pointer(store);
             matteValue_t * ref = store_value_pointer_get_by_pointer(store, (void*)(uintptr_t)id);
             *ref = out;
@@ -793,6 +800,7 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->stringStore = matte_string_store_create();
     out->checkID = 101;
     out->toRemove = matte_array_create(sizeof(matteObject_t*));
+    out->external = matte_array_create(sizeof(matteValue_t));
 
     MatteTypeData dummyD = {};
     matte_array_push(out->typecode2data, dummyD);
@@ -883,8 +891,15 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
 }
 
 void matte_store_destroy(matteStore_t * h) {
-
     h->shutdown = 1;
+    uint32_t i;
+    uint32_t len = matte_array_get_size(h->external);
+    for(i = 0; i < len; ++i) {
+        matteValue_t val = matte_array_at(h->external, matteValue_t, i);
+        matte_value_object_pop_lock(h, val);
+    }
+    matte_array_destroy(h->external);
+    
     while(
         !matte_table_is_empty(h->tricolor[OBJECT_TRICOLOR__GREY]) || 
         !matte_table_is_empty(h->tricolor[OBJECT_TRICOLOR__WHITE])    
@@ -898,8 +913,7 @@ void matte_store_destroy(matteStore_t * h) {
 
     matte_store_bin_destroy(h->bin);
     matte_pool_destroy(h->keyvalues_numberPool);
-    uint32_t i;
-    uint32_t len = matte_array_get_size(h->typecode2data);
+    len = matte_array_get_size(h->typecode2data);
     for(i = 0; i < len; ++i) {
         MatteTypeData d = matte_array_at(h->typecode2data, MatteTypeData, i);
         if (d.isa) {
@@ -1744,12 +1758,16 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
     d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
 
+    if (d->storeID == 280)
+        printf("hi");
+
     v->value.id = d->storeID;
     d->function.stub = stub;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
 
     if (external) {
-        d->rootState = 999;
+        matte_value_object_push_lock(store, *v);
+        matte_array_push(store->external, *v);
     }
 
 
@@ -1920,8 +1938,13 @@ static void print_object_children(matteStore_t * h, matteObject_t * o) {
                 matte_table_iter_proceed(iter)
             ) {
                 matteValue_t * v = store_value_pointer_get_by_pointer(h, matte_table_iter_get_value(iter));
-                print_object_children__print_value("key [string]", *v);
-
+                uint32_t id = (uint32_t)(uintptr_t)matte_table_iter_get_key(iter);
+                matteString_t * role = matte_string_create_from_c_str("key [string %d -> %s]", 
+                    (int)id,
+                    matte_string_get_c_str(matte_string_store_find(h->stringStore, id))
+                );
+                print_object_children__print_value(matte_string_get_c_str(role), *v);
+                matte_string_destroy(role);
             }
         }
         
@@ -2350,6 +2373,10 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
         }
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
         matteValue_t accessor = object_get_access_operator(store, m, isBracketAccess, 1);
+        
+        if (key.binID == MATTE_VALUE_TYPE_STRING && !strcmp("area", matte_string_get_c_str(matte_string_store_find(store->stringStore, key.value.id))))
+            printf("hi");
+        
         if (accessor.binID) {
             matteValue_t args[1] = {
                 key
@@ -2538,7 +2565,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
             return matte_value_object_values(store, v);
         }    
     }
-    matteTableIter_t * iter = store->freeIter;   
+    matteTableIter_t * iter = matte_table_iter_create();;   
     matteArray_t * keys = matte_array_create(sizeof(matteValue_t));
     matteValue_t val;
     // first number 
@@ -2616,6 +2643,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
         matte_store_recycle(store, matte_array_at(keys, matteValue_t, i));
     }
     matte_array_destroy(keys);
+    matte_table_iter_destroy(iter);
     return val;
 }
 
@@ -2652,7 +2680,7 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
             matte_array_push(vals, val);
         }
     }
-    matteTableIter_t * iter = store->freeIter;
+    matteTableIter_t * iter = matte_table_iter_create();;
     // then string
     if (m->table.keyvalues_string && !matte_table_is_empty(m->table.keyvalues_string)) {
         matte_table_iter_start(iter, m->table.keyvalues_string);
@@ -2705,6 +2733,7 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
     for(i = 0; i < len; ++i) {
         matte_store_recycle(store, matte_array_at(vals, matteValue_t, i));
     }
+    matte_table_iter_destroy(iter);
     matte_array_destroy(vals);
     return val;
 }
@@ -2897,7 +2926,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
         }
         args[0].binID = 0;
     }
-    matteTableIter_t * iter = store->freeIter;
+    matteTableIter_t * iter = matte_table_iter_create();
     // then string
     if (m->table.keyvalues_string && !matte_table_is_empty(m->table.keyvalues_string)) {
         matteString_t * e = matte_string_create();
@@ -2981,7 +3010,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
     
     matte_array_destroy(keys);
     matte_array_destroy(values);
-    
+    matte_table_iter_destroy(iter);
     
     matte_value_object_pop_lock(store, v);
 
@@ -3467,6 +3496,7 @@ static void mark_grey_child(matteStore_t * h, matteValue_t val) {
         return;
     
     matteObject_t * o = matte_store_bin_fetch(h->bin,  val.value.id);
+    if (o->color != OBJECT_TRICOLOR__WHITE) return;
 
     OBJECT_REM_TRICOLOR(h, o);
     o->color = OBJECT_TRICOLOR__GREY;
@@ -3477,7 +3507,8 @@ static void mark_grey_child(matteStore_t * h, matteValue_t val) {
 static void mark_grey(matteStore_t * h, matteObject_t * o) {
     uint32_t n;
     
-    if (o->color != OBJECT_TRICOLOR__WHITE) return;
+    if (o->color != OBJECT_TRICOLOR__BLACK) return;
+
 
     matteTableIter_t * iter = h->freeIter;
     if (IS_FUNCTION_OBJECT(o)) {
@@ -3565,6 +3596,8 @@ static void object_cleanup(matteStore_t * h) {
         
         cleanedUP++;
         #ifdef MATTE_DEBUG__STORE
+            if (m->storeID == 146)
+                printf("hi");
 
             printf("--RECYCLING OBJECT %d\n", m->storeID);
 
@@ -3792,9 +3825,112 @@ static void tricolor_march(matteStore_t * h) {
     matte_table_iter_destroy(iter);
 }
 
+static void assert_tricolor_invariant(matteStore_t * h, matteValue_t v);
+
+static void assert_tricolor_invariant__child(matteStore_t * h, matteObject_t * parent, matteValue_t v) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
+    
+    matteObject_t * o = matte_store_bin_fetch(h->bin, v.value.id);
+
+    if ((o->color      == OBJECT_TRICOLOR__BLACK &&
+         parent->color == OBJECT_TRICOLOR__WHITE)
+         
+        ||
+
+
+        (o->color      == OBJECT_TRICOLOR__WHITE &&
+         parent->color == OBJECT_TRICOLOR__BLACK)) {
+        assert(!"Invariant broken.");   
+     }
+     assert_tricolor_invariant(h, v);
+
+}
+
+static void assert_tricolor_invariant(matteStore_t * h, matteValue_t v) {
+    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
+    matteObject_t * o = matte_store_bin_fetch(h->bin, v.value.id);
+    uint32_t n;
+    matteTableIter_t * iter = h->freeIter;
+    if (IS_FUNCTION_OBJECT(o)) {
+        mark_grey_child(h, o->function.origin);
+        mark_grey_child(h, o->function.origin_referrable);
+        uint32_t subl = matte_array_get_size(o->function.captures);
+        // should be unlinked already because of above
+        for(n = 0; n < subl; ++n) {
+            mark_grey_child(h, matte_array_at(o->function.captures, CapturedReferrable_t, n).referrableSrc);
+        }
+    } else {
+        if (o->table.attribSet.binID) {
+            mark_grey_child(h, o->table.attribSet);
+        }
+
+
+        if (o->table.keyvalue_true.binID) {
+            mark_grey_child(h, o->table.keyvalue_true);
+        }
+        if (o->table.keyvalue_false.binID) {
+            mark_grey_child(h, o->table.keyvalue_false);                
+        }
+        if (o->table.keyvalues_number && matte_array_get_size(o->table.keyvalues_number)) {
+            uint32_t subl = matte_array_get_size(o->table.keyvalues_number);
+            for(n = 0; n < subl; ++n) {
+                mark_grey_child(h, matte_array_at(o->table.keyvalues_number, matteValue_t, n));                
+            }
+        }
+
+        if (o->table.keyvalues_string && !matte_table_is_empty(o->table.keyvalues_string)) {
+            for(matte_table_iter_start(iter, o->table.keyvalues_string);
+                matte_table_iter_is_end(iter) == 0;
+                matte_table_iter_proceed(iter)
+            ) {
+                matteValue_t * v = store_value_pointer_get_by_pointer(h, matte_table_iter_get_value(iter));
+                mark_grey_child(h, *v);
+
+            }
+        }
+        
+        if (o->table.keyvalues_types && !matte_table_is_empty(o->table.keyvalues_types)) {
+
+            for(matte_table_iter_start(iter, o->table.keyvalues_types);
+                matte_table_iter_is_end(iter) == 0;
+                matte_table_iter_proceed(iter)
+            ) {
+                matteValue_t * v = store_value_pointer_get_by_pointer(h, matte_table_iter_get_value(iter));
+                mark_grey_child(h, *v);
+            }
+        }
+        if (o->table.keyvalues_object && !matte_table_is_empty(o->table.keyvalues_object)) {
+            for(matte_table_iter_start(iter, o->table.keyvalues_object);
+                matte_table_iter_is_end(iter) == 0;
+                matte_table_iter_proceed(iter)
+            ) {
+                matteValue_t * v = store_value_pointer_get_by_pointer(h, matte_table_iter_get_value(iter));
+                mark_grey_child(h, *v);
+
+            }
+        }
+       
+    }
+}
 
 void matte_store_garbage_collect(matteStore_t * h) {
     if (h->gcLocked) return;
+    
+
+
+    #ifdef MATTE_DEBUG__STORE
+    {
+        matteObject_t * root = h->roots;
+        while(root) {
+            matteValue_t v = {};
+            v.binID = MATTE_VALUE_TYPE_OBJECT;
+            v.value.id = root->storeID;
+            assert_tricolor_invariant(h, v);
+            root = root->nextRoot;
+        }
+    }    
+    #endif
+
 
 
     h->gcLocked = 1;
@@ -4146,7 +4282,7 @@ static void matte_store_report_val(matteStore_t * store, matteTable_t * t) {
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
         MatteStoreTrackInfo_Instance * inst = matte_table_iter_get_value(iter);
-        if (!inst->refCount) continue;
+        //if (!inst->refCount) continue;
         matte_value_print(store, inst->refid);
         uint32_t i;
         uint32_t len = matte_array_get_size(inst->historyFiles);

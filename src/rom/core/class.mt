@@ -90,7 +90,7 @@ DEALINGS IN THE SOFTWARE.
                 get:: (key) {
                     @result = interface[key];
                     when(result == empty) 
-                        error(detail:'' +key+ " does not exist within " + selftype);
+                        error(detail:'' +key+ " does not exist within (get)" + selftype);
                                                     
                     when(result.isFunction) result.fn;
                     @get = result.get;
@@ -101,9 +101,13 @@ DEALINGS IN THE SOFTWARE.
 
                 set:: (key, value) {
                     @result = interface[key];
-                    when(result == empty) 
-                        error(detail:'' +key+ " does not exist within " + selftype);
-                    
+                    when(result == empty) ::<= {
+                        @out = '' + result + 'HUH->';
+                        interface->foreach(do:::(key, val) {
+                            out = out + '|'+key+'->'+val->type;
+                        });
+                        error(detail:'' +key+ " does not exist within (set)" + selftype + ': ' + out);
+                    };                    
                     when(result.isFunction) error(detail:'Interface functions cannot be overwritten.');
                     @set = result.set;
                     when(set == empty) error(detail:'The attribute ' + key + ' is not writable within' + selftype);

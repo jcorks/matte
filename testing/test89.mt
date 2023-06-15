@@ -67,7 +67,10 @@
 
 @out = '';
 @:combinedArea ::(a => Shape.type, b => Shape.type) {
-    out = out + a.area() + b.area(); 
+    out = out + 
+        a.area() + 
+        b.area()
+    ; 
 };
 
 

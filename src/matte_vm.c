@@ -471,6 +471,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
   RELOOP:
     while(frame->pc < instCount) {
         inst = program+frame->pc++;
+        
+        if (inst->lineNumber == 71 || inst->lineNumber == 72)
+            printf("hi");
+        
         // TODO: optimize out
         #ifdef MATTE_DEBUG__VM
             if (matte_array_get_size(frame->valueStack))
@@ -966,6 +970,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             
             uint32_t isBracket = (uint32_t)inst->data;
             matteValue_t key = STACK_PEEK(0);
+            if (key.binID == 3 && key.value.id == 84)
+                printf("hi");
             matteValue_t object = STACK_PEEK(1);            
             matteValue_t output = matte_value_object_access(vm->store, object, key, isBracket);
             
