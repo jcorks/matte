@@ -117,6 +117,15 @@ void * matte_table_find(
     const void * key
 );
 
+
+/// Returns a single value within the table.
+/// If none is found, NULL is returned.
+///
+void * matte_table_get_any(
+    /// The table to query
+    const matteTable_t * table
+);
+
 /// Same as matte_table_find, but treats the key as a signed integer
 /// Convenient for hash_pointer tables where keys are direct pointers.
 /// 

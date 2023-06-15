@@ -38,7 +38,7 @@ DEALINGS IN THE SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
-static int TESTID = 48;
+static int TESTID = 1;
 
 
 

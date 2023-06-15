@@ -433,6 +433,20 @@ void * matte_table_find(const matteTable_t * t, const void * key) {
     return NULL;
 }
 
+void * matte_table_get_any(
+    const matteTable_t * table
+) {
+    uint32_t i;
+    for(i = 0; i < table->nBuckets; ++i) {
+        matteTableEntry_t * src  = table->buckets[i];
+        if (src) {
+            return src->value;
+        }
+    }
+    return NULL;
+}
+
+
 int matte_table_entry_exists(const matteTable_t * t, const void * key) {
     #ifdef MATTE_DEBUG
         assert(t && "matteTable_t pointer cannot be NULL.");
