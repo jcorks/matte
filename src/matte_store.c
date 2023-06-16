@@ -1589,7 +1589,7 @@ void matte_value_into_new_object_ref_(matteStore_t * store, matteValue_t * v) {
                matte_table_find(store->tricolor[1], d) ==
                matte_table_find(store->tricolor[2], d) == NULL);
     #endif
-    d->color = OBJECT_TRICOLOR__GREY;  
+    d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
     v->value.id = d->storeID;
     d->table.typecode = store->type_object.value.id;
@@ -1606,7 +1606,7 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
                matte_table_find(store->tricolor[1], d) ==
                matte_table_find(store->tricolor[2], d) == NULL);
     #endif
-    d->color = OBJECT_TRICOLOR__GREY;  
+    d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
     v->value.id = d->storeID;
     if (typeobj.binID != MATTE_VALUE_TYPE_TYPE) {        
@@ -1630,7 +1630,7 @@ void matte_value_into_new_object_literal_ref_(matteStore_t * store, matteValue_t
                matte_table_find(store->tricolor[1], d) ==
                matte_table_find(store->tricolor[2], d) == NULL);
     #endif
-    d->color = OBJECT_TRICOLOR__GREY; 
+    d->color = OBJECT_TRICOLOR__WHITE; 
     OBJECT_ADD_TRICOLOR(store, d);  
     v->value.id = d->storeID;
     d->table.typecode = store->type_object.value.id;
@@ -1661,7 +1661,7 @@ void matte_value_into_new_object_array_ref_(matteStore_t * store, matteValue_t *
                matte_table_find(store->tricolor[1], d) ==
                matte_table_find(store->tricolor[2], d) == NULL);
     #endif
-    d->color = OBJECT_TRICOLOR__GREY;  
+    d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
     v->value.id = d->storeID;
     d->table.typecode = store->type_object.value.id;
@@ -1782,7 +1782,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
                matte_table_find(store->tricolor[1], d) ==
                matte_table_find(store->tricolor[2], d) == NULL);
     #endif
-    d->color = OBJECT_TRICOLOR__GREY;  
+    d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
 
 
@@ -3817,7 +3817,7 @@ void matte_store_pop_lock_gc(matteStore_t * h) {
 
 
 
-#define TRICOLOR_MARCH_SIZE 100
+#define TRICOLOR_MARCH_SIZE 2800
 static void tricolor_march(matteStore_t * h) {
     uint32_t i;
     matteArray_t * set = matte_array_create(sizeof(matteObject_t*));
@@ -3962,7 +3962,7 @@ void matte_store_garbage_collect(matteStore_t * h) {
 
 
     h->gcLocked = 1;
-    if (h->gcOldCycle%25 == 0 || h->shutdown) {
+    if (h->gcOldCycle%800 == 0 || h->shutdown) {
         h->gcRequestStrength = 0;
 
         tricolor_march(h);
