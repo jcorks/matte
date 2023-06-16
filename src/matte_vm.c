@@ -685,9 +685,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 break;
             }
              
-            matteValue_t p = STACK_POP();
-            matteValue_t target = STACK_PEEK(0);
-            matte_value_object_push_lock(vm->store, p);
+            matteValue_t p = STACK_PEEK(0);
+            matteValue_t target = STACK_PEEK(1);
                        
             uint32_t len = matte_value_object_get_number_key_count(vm->store, p);
             uint32_t i;
@@ -700,7 +699,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matte_value_object_access_index(vm->store, p, i)
                 );
             }
-            matte_value_object_pop_lock(vm->store, p);
+            
+            STACK_POP();
             matte_store_recycle(vm->store, p);
             break;            
           }
@@ -712,14 +712,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 break;
             }
              
-            matteValue_t p = STACK_POP();
-            matte_value_object_push_lock(vm->store, p);
+            matteValue_t p = STACK_PEEK(0);
             matteValue_t keys = matte_value_object_keys(vm->store, p);
             matte_value_object_push_lock(vm->store, keys);
             matteValue_t vals = matte_value_object_values(vm->store, p);
             matte_value_object_push_lock(vm->store, vals);
 
-            matteValue_t target = STACK_PEEK(0);
+            matteValue_t target = STACK_PEEK(1);
                        
             uint32_t len = matte_value_object_get_number_key_count(vm->store, keys);
             uint32_t i;
@@ -736,7 +735,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             
             matte_value_object_pop_lock(vm->store, keys);
             matte_value_object_pop_lock(vm->store, vals);
-            matte_value_object_pop_lock(vm->store, p);
+            STACK_POP();
             matte_store_recycle(vm->store, p);
             break;            
           }
@@ -1147,10 +1146,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         uint32_t i;
         uint32_t len = matte_array_get_size(frame->valueStack);
         for(i = 0; i < len-1; ++i) { 
-            matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, i));
             matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_t, i));
         }
-        matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, len-1));
         matte_array_set_size(frame->valueStack, 0);
 
         if (vm->pendingCatchable) 

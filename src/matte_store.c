@@ -171,6 +171,7 @@ struct matteStore_t {
     matteArray_t * external;
     matteArray_t * kvIter;
     matteArray_t * mgIter;
+    matteArray_t * pendingRoots;
     
     matteArray_t * routePather;
     matteTableIter_t * routeIter;
@@ -807,6 +808,7 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->external = matte_array_create(sizeof(matteValue_t));
     out->kvIter = matte_array_create(sizeof(void*));
     out->mgIter = matte_array_create(sizeof(void*));
+    out->pendingRoots = matte_array_create(sizeof(void*));
 
     MatteTypeData dummyD = {};
     matte_array_push(out->typecode2data, dummyD);
@@ -3773,6 +3775,7 @@ void matte_store_pop_lock_gc(matteStore_t * h) {
 
 
 #define TRICOLOR_MARCH_SIZE 1800
+#define TRICOLOR_ROOT_CHUNK 50
 static void tricolor_march(matteStore_t * h) {
     uint32_t i;
     matteArray_t * set = matte_array_create(sizeof(matteObject_t*));
@@ -3859,7 +3862,18 @@ void matte_store_garbage_collect(matteStore_t * h) {
 
 
     h->gcLocked = 1;
-    if (h->gcOldCycle%600 == 0 || h->shutdown) {
+    
+    if (h->pendingRoots->size) {
+        matteObject_t * t;
+        uint32_t count = 0;
+        while(h->pendingRoots->size && count < TRICOLOR_ROOT_CHUNK) {
+            matteObject_t * root = ((matteObject_t**)h->pendingRoots->data)[h->pendingRoots->size-1];
+            count++;
+            matte_array_shrink_by_one(h->pendingRoots);
+            if (!root->rootState) continue;
+            mark_grey(h, root);
+        }
+    } else if (h->gcOldCycle%600 == 0 || h->shutdown) {
         h->gcRequestStrength = 0;
 
         tricolor_march(h);
@@ -3896,7 +3910,7 @@ void matte_store_garbage_collect(matteStore_t * h) {
             // mark all that touch roots as grey
             matteObject_t * root = h->roots;
             while(root) {
-                mark_grey(h, root);
+                matte_array_push(h->pendingRoots, root);
                 root = root->nextRoot;
             }
 
