@@ -453,10 +453,10 @@ static const char * opcode_to_str(int oc) {
 */
 
 #define STACK_SIZE() matte_array_get_size(frame->valueStack)
-#define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
-#define STACK_POP_NORET() matte_value_object_pop_lock(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1));  matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_POP_NORET() matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
 #define STACK_PEEK(__n__) (matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1-(__n__)))
-#define STACK_PUSH(__v__) matte_value_object_push_lock(vm->store, __v__); matte_array_push(frame->valueStack, __v__);
+#define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__);
 
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
     matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
@@ -918,7 +918,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     refH = matte_value_object_access(vm->store, object, key, isBracket);
                     ref = &refH;
                 }
-                matte_value_object_push_lock(vm->store, *ref);
                 matteValue_t out = matte_store_new_value(vm->store);
                 switch(opr) {                    
                   case MATTE_OPERATOR_ASSIGNMENT_ADD: out = vm_operator__assign_add(vm, ref, val); break;
@@ -936,7 +935,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matte_vm_raise_error_cstring(vm, "VM error: tried to access non-existent assignment operation (corrupt bytecode?).");                        
                 }               
                 
-                matte_value_object_pop_lock(vm->store, *ref);
                 // Slower path for things like accessors
                 // Indirect access means the ref being worked with is essentially a copy, so 
                 // we need to set the object value back after the operator has been applied.
@@ -1880,6 +1878,9 @@ matteValue_t matte_vm_call(
         
 
                 // no calling context yet
+        
+        matteVMStackFrame_t * prevFrame = vm->stacksize == 0 ? NULL :
+            matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);                
         matteVMStackFrame_t * frame = vm_push_frame(vm);
         if (prettyName) {
             matte_string_set(frame->prettyName, prettyName);
@@ -1916,6 +1917,16 @@ matteValue_t matte_vm_call(
         matte_value_object_push_lock(vm->store, frame->referrable);
         matte_value_object_push_lock(vm->store, frame->context);        
         matteValue_t result = matte_store_new_value(vm->store);
+
+
+        // push locks for all current frame 
+        if (prevFrame) {
+            len = matte_array_get_size(prevFrame->valueStack);
+            for(i = 0; i < len; ++i) {
+                matte_value_object_push_lock(vm->store, matte_array_at(prevFrame->valueStack, matteValue_t, i));        
+            }
+        }
+
         if (callable == 2) {
             if (ok) 
                 result = vm_execution_loop(vm);
@@ -1924,6 +1935,14 @@ matteValue_t matte_vm_call(
         } else {
             result = vm_execution_loop(vm);        
         }
+        
+        if (prevFrame) {
+            len = matte_array_get_size(prevFrame->valueStack);
+            for(i = 0; i < len; ++i) {
+                matte_value_object_pop_lock(vm->store, matte_array_at(prevFrame->valueStack, matteValue_t, i));        
+            }
+        };
+        
         matte_value_object_pop_lock(vm->store, frame->referrable);
         matte_value_object_pop_lock(vm->store, frame->context);
 
