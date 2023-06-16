@@ -127,6 +127,7 @@ enum {
     OBJECT_TRICOLOR__BLACK
 };
 
+
 #define OBJECT_ADD_TRICOLOR(__STORE__, __O__) matte_table_insert((__STORE__)->tricolor[(__O__)->color], __O__, __O__)
 #define OBJECT_REM_TRICOLOR(__STORE__, __O__) matte_table_remove((__STORE__)->tricolor[(__O__)->color], __O__)
 
@@ -168,6 +169,8 @@ struct matteStore_t {
     // MatteTypeData
     matteArray_t * typecode2data;
     matteArray_t * external;
+    matteArray_t * kvIter;
+    matteArray_t * mgIter;
     
     matteArray_t * routePather;
     matteTableIter_t * routeIter;
@@ -461,9 +464,11 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
         matte_array_push(child->parents, v);
     #endif
     if (parent->color == OBJECT_TRICOLOR__BLACK || parent->rootState) {
-        OBJECT_REM_TRICOLOR(h, child);
-        child->color = OBJECT_TRICOLOR__GREY;
-        OBJECT_ADD_TRICOLOR(h, child);
+        if (child->rootState == 0) {
+            OBJECT_REM_TRICOLOR(h, child);
+            child->color = OBJECT_TRICOLOR__GREY;
+            OBJECT_ADD_TRICOLOR(h, child);
+        }
     }
     
     child->refcount++;
@@ -558,9 +563,6 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             *value = out;
             return value;
         } else {
-            if (!strcmp(matte_string_get_c_str(matte_string_store_find(store->stringStore, key.value.id)), "constructor")) {
-                printf("hi");            
-            }
 
             uint32_t id = store_new_value_pointer(store);
             matteValue_t * ref = store_value_pointer_get_by_pointer(store, (void*)(uintptr_t)id);
@@ -801,6 +803,8 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->checkID = 101;
     out->toRemove = matte_array_create(sizeof(matteObject_t*));
     out->external = matte_array_create(sizeof(matteValue_t));
+    out->kvIter = matte_array_create(sizeof(void*));
+    out->mgIter = matte_array_create(sizeof(void*));
 
     MatteTypeData dummyD = {};
     matte_array_push(out->typecode2data, dummyD);
@@ -1580,7 +1584,12 @@ void matte_value_into_new_object_ref_(matteStore_t * store, matteValue_t * v) {
     matte_store_recycle(store, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
-    d->color = OBJECT_TRICOLOR__WHITE;  
+    #ifdef MATTE_DEBUG__STORE
+        assert(matte_table_find(store->tricolor[0], d) ==
+               matte_table_find(store->tricolor[1], d) ==
+               matte_table_find(store->tricolor[2], d) == NULL);
+    #endif
+    d->color = OBJECT_TRICOLOR__GREY;  
     OBJECT_ADD_TRICOLOR(store, d);  
     v->value.id = d->storeID;
     d->table.typecode = store->type_object.value.id;
@@ -1592,7 +1601,12 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
     matte_store_recycle(store, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
-    d->color = OBJECT_TRICOLOR__WHITE;  
+    #ifdef MATTE_DEBUG__STORE
+        assert(matte_table_find(store->tricolor[0], d) ==
+               matte_table_find(store->tricolor[1], d) ==
+               matte_table_find(store->tricolor[2], d) == NULL);
+    #endif
+    d->color = OBJECT_TRICOLOR__GREY;  
     OBJECT_ADD_TRICOLOR(store, d);  
     v->value.id = d->storeID;
     if (typeobj.binID != MATTE_VALUE_TYPE_TYPE) {        
@@ -1611,7 +1625,12 @@ void matte_value_into_new_object_literal_ref_(matteStore_t * store, matteValue_t
     matte_store_recycle(store, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
-    d->color = OBJECT_TRICOLOR__WHITE; 
+    #ifdef MATTE_DEBUG__STORE
+        assert(matte_table_find(store->tricolor[0], d) ==
+               matte_table_find(store->tricolor[1], d) ==
+               matte_table_find(store->tricolor[2], d) == NULL);
+    #endif
+    d->color = OBJECT_TRICOLOR__GREY; 
     OBJECT_ADD_TRICOLOR(store, d);  
     v->value.id = d->storeID;
     d->table.typecode = store->type_object.value.id;
@@ -1637,7 +1656,12 @@ void matte_value_into_new_object_array_ref_(matteStore_t * store, matteValue_t *
     matte_store_recycle(store, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
-    d->color = OBJECT_TRICOLOR__WHITE;  
+    #ifdef MATTE_DEBUG__STORE
+        assert(matte_table_find(store->tricolor[0], d) ==
+               matte_table_find(store->tricolor[1], d) ==
+               matte_table_find(store->tricolor[2], d) == NULL);
+    #endif
+    d->color = OBJECT_TRICOLOR__GREY;  
     OBJECT_ADD_TRICOLOR(store, d);  
     v->value.id = d->storeID;
     d->table.typecode = store->type_object.value.id;
@@ -1746,8 +1770,6 @@ void matte_value_into_new_typed_function_ref_(matteStore_t * store, matteValue_t
     
     matte_value_into_new_function_ref(store, v, stub);
     matteObject_t * d = matte_store_bin_fetch_function(store->bin, v->value.id);
-    d->color = OBJECT_TRICOLOR__WHITE;  
-    OBJECT_ADD_TRICOLOR(store, d);  
     d->function.types = matte_array_clone(args);
 }
 
@@ -1755,11 +1777,14 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
     matte_store_recycle(store, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_function(store->bin);
-    d->color = OBJECT_TRICOLOR__WHITE;  
+    #ifdef MATTE_DEBUG__STORE
+        assert(matte_table_find(store->tricolor[0], d) ==
+               matte_table_find(store->tricolor[1], d) ==
+               matte_table_find(store->tricolor[2], d) == NULL);
+    #endif
+    d->color = OBJECT_TRICOLOR__GREY;  
     OBJECT_ADD_TRICOLOR(store, d);  
 
-    if (d->storeID == 280)
-        printf("hi");
 
     v->value.id = d->storeID;
     d->function.stub = stub;
@@ -2374,8 +2399,6 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
         matteValue_t accessor = object_get_access_operator(store, m, isBracketAccess, 1);
         
-        if (key.binID == MATTE_VALUE_TYPE_STRING && !strcmp("area", matte_string_get_c_str(matte_string_store_find(store->stringStore, key.value.id))))
-            printf("hi");
         
         if (accessor.binID) {
             matteValue_t args[1] = {
@@ -2538,6 +2561,11 @@ void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
         m->rootState--;
         if (m->rootState == 0) {
             remove_root_node(store, &store->roots, m);        
+            #ifdef MATTE_DEBUG__STORE
+                assert(matte_table_find(store->tricolor[0], m) ==
+                       matte_table_find(store->tricolor[1], m) ==
+                       matte_table_find(store->tricolor[2], m) == NULL);
+            #endif
             m->color = OBJECT_TRICOLOR__GREY;
             OBJECT_ADD_TRICOLOR(store, m);
             store->gcRequestStrength++;
@@ -2565,7 +2593,6 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
             return matte_value_object_values(store, v);
         }    
     }
-    matteTableIter_t * iter = matte_table_iter_create();;   
     matteArray_t * keys = matte_array_create(sizeof(matteValue_t));
     matteValue_t val;
     // first number 
@@ -2580,12 +2607,17 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
     }
 
     // then string
-    if (m->table.keyvalues_string && !matte_table_is_empty(m->table.keyvalues_string)) {
-        matte_table_iter_start(iter, m->table.keyvalues_string);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+    matteArray_t * keyed = store->kvIter;
+    if (m->table.keyvalues_string) {
+        keyed->size = 0;
+        matte_table_get_all_keys(m->table.keyvalues_string, keyed);
+        uint32_t len = matte_array_get_size(keyed);
+        uint32_t i;
+        void ** iter = matte_array_get_data(keyed);
+        for(i = 0; i < len; ++i, iter++) {
             matteValue_t key = matte_store_new_value(store);
             key.binID = MATTE_VALUE_TYPE_STRING;
-            key.value.id = matte_table_iter_get_key_uint(iter);
+            key.value.id = (uint32_t)(uintptr_t)(*iter);
             matte_string_store_ref_id(store->stringStore, key.value.id);
             matte_array_push(keys, key);                
         }
@@ -2593,11 +2625,15 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
 
 
     // object 
-    if (m->table.keyvalues_object && !matte_table_is_empty(m->table.keyvalues_object)) {
-        matte_table_iter_start(iter, m->table.keyvalues_object);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+    if (m->table.keyvalues_object) {
+        keyed->size = 0;
+        matte_table_get_all_keys(m->table.keyvalues_object, keyed);
+        uint32_t len = matte_array_get_size(keyed);
+        uint32_t i;
+        void ** iter = matte_array_get_data(keyed);
+        for(i = 0; i < len; ++i, iter++) {
             matteValue_t key;
-            matteObject_t * current = matte_store_bin_fetch_table(store->bin, matte_table_iter_get_key_uint(iter));
+            matteObject_t * current = matte_store_bin_fetch_table(store->bin, (uint32_t)(uintptr_t)(*iter));
             key.binID = MATTE_VALUE_TYPE_OBJECT;
             key.value.id = current->storeID;
             #ifdef MATTE_DEBUG__STORE
@@ -2606,8 +2642,23 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
             matte_array_push(keys, key);    
         }
     }
+    // then types
+    if (m->table.keyvalues_types) {
+        keyed->size = 0;    
+        matte_table_get_all_keys(m->table.keyvalues_types, keyed);
+        uint32_t len = matte_array_get_size(keyed);
+        uint32_t i;
+        void ** iter = matte_array_get_data(keyed);
+        for(i = 0; i < len; ++i, iter++) {
+            matteValue_t key;
+            store = store;
+            key.binID = MATTE_VALUE_TYPE_TYPE;
+            key.value.id = (uint32_t)(uintptr_t)(*iter);
 
-
+            matte_array_push(keys, key);                
+        }
+    }
+    
 
 
     // true 
@@ -2623,18 +2674,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
         matte_array_push(keys, key);
     }
     
-    // then types
-    if (m->table.keyvalues_types && !matte_table_is_empty(m->table.keyvalues_types)) {
-        matte_table_iter_start(iter, m->table.keyvalues_types);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
-            matteValue_t key;
-            store = store;
-            key.binID = MATTE_VALUE_TYPE_TYPE;
-            key.value.id = matte_table_iter_get_key_uint(iter);
 
-            matte_array_push(keys, key);                
-        }
-    }
     
     val = matte_store_new_value(store);
     matte_value_into_new_object_array_ref(store, &val, keys);
@@ -2643,7 +2683,6 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
         matte_store_recycle(store, matte_array_at(keys, matteValue_t, i));
     }
     matte_array_destroy(keys);
-    matte_table_iter_destroy(iter);
     return val;
 }
 
@@ -2680,26 +2719,32 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
             matte_array_push(vals, val);
         }
     }
-    matteTableIter_t * iter = matte_table_iter_create();;
+    
+    
+    matteArray_t * keyed = store->kvIter;
+    keyed->size = 0;
     // then string
-    if (m->table.keyvalues_string && !matte_table_is_empty(m->table.keyvalues_string)) {
-        matte_table_iter_start(iter, m->table.keyvalues_string);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
-            val = matte_store_new_value(store);
-            matte_value_into_copy(store, &val, *store_value_pointer_get_by_pointer(store, matte_table_iter_get_value(iter)));
-            matte_array_push(vals, val);                
-        }
+    if (m->table.keyvalues_string) {
+        matte_table_get_all_values(m->table.keyvalues_string, keyed);
+    }
+    // object 
+    if (m->table.keyvalues_object) {
+        matte_table_get_all_values(m->table.keyvalues_object, keyed);
     }
 
+    if (m->table.keyvalues_types) {
+        matte_table_get_all_values(m->table.keyvalues_types, keyed);
+    }
 
-    // object 
-    if (m->table.keyvalues_object && !matte_table_is_empty(m->table.keyvalues_object)) {
-        matte_table_iter_start(iter, m->table.keyvalues_object);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+    if (keyed->size) {
+        uint32_t len = matte_array_get_size(keyed);
+        uint32_t i;
+        void ** iter = matte_array_get_data(keyed);
+        for(i = 0; i < len; ++i, iter++) {
             val = matte_store_new_value(store);
-            matte_value_into_copy(store, &val, *store_value_pointer_get_by_pointer(store, matte_table_iter_get_value(iter)));
-            matte_array_push(vals, val);    
-        }
+            matte_value_into_copy(store, &val, *store_value_pointer_get_by_pointer(store, *iter));
+            matte_array_push(vals, val);                
+        }    
     }
 
 
@@ -2717,15 +2762,7 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
         matte_array_push(vals, val);
     }
     
-    // then types
-    if (m->table.keyvalues_types && !matte_table_is_empty(m->table.keyvalues_types)) {
-        matte_table_iter_start(iter, m->table.keyvalues_types);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
-            val = matte_store_new_value(store);
-            matte_value_into_copy(store, &val, *store_value_pointer_get_by_pointer(store, matte_table_iter_get_value(iter)));
-            matte_array_push(vals, val);                
-        }
-    }
+
 
     val = matte_store_new_value(store);
     matte_value_into_new_object_array_ref(store, &val, vals);
@@ -2733,7 +2770,6 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
     for(i = 0; i < len; ++i) {
         matte_store_recycle(store, matte_array_at(vals, matteValue_t, i));
     }
-    matte_table_iter_destroy(iter);
     matte_array_destroy(vals);
     return val;
 }
@@ -3538,36 +3574,26 @@ static void mark_grey(matteStore_t * h, matteObject_t * o) {
             }
         }
 
-        if (o->table.keyvalues_string && !matte_table_is_empty(o->table.keyvalues_string)) {
-            for(matte_table_iter_start(iter, o->table.keyvalues_string);
-                matte_table_iter_is_end(iter) == 0;
-                matte_table_iter_proceed(iter)
-            ) {
-                matteValue_t * v = store_value_pointer_get_by_pointer(h, matte_table_iter_get_value(iter));
-                mark_grey_child(h, *v);
+        matteArray_t * kv = h->mgIter;
+        kv->size = 0;
 
-            }
+        if (o->table.keyvalues_string) {
+            matte_table_get_all_values(o->table.keyvalues_string, kv);
         }
         
-        if (o->table.keyvalues_types && !matte_table_is_empty(o->table.keyvalues_types)) {
-
-            for(matte_table_iter_start(iter, o->table.keyvalues_types);
-                matte_table_iter_is_end(iter) == 0;
-                matte_table_iter_proceed(iter)
-            ) {
-                matteValue_t * v = store_value_pointer_get_by_pointer(h, matte_table_iter_get_value(iter));
-                mark_grey_child(h, *v);
-            }
+        if (o->table.keyvalues_types) {
+            matte_table_get_all_values(o->table.keyvalues_types, kv);
         }
-        if (o->table.keyvalues_object && !matte_table_is_empty(o->table.keyvalues_object)) {
-            for(matte_table_iter_start(iter, o->table.keyvalues_object);
-                matte_table_iter_is_end(iter) == 0;
-                matte_table_iter_proceed(iter)
-            ) {
-                matteValue_t * v = store_value_pointer_get_by_pointer(h, matte_table_iter_get_value(iter));
-                mark_grey_child(h, *v);
-
-            }
+        
+        if (o->table.keyvalues_object) {
+            matte_table_get_all_values(o->table.keyvalues_object, kv);
+        }
+        
+        uint32_t len = kv->size;
+        void ** iter = matte_array_get_data(kv);
+        for(n = 0; n < len; ++n, iter++) {
+            matteValue_t * v = store_value_pointer_get_by_pointer(h, *iter);
+            mark_grey_child(h, *v);
         }
        
     }
@@ -3596,11 +3622,9 @@ static void object_cleanup(matteStore_t * h) {
         
         cleanedUP++;
         #ifdef MATTE_DEBUG__STORE
-            if (m->storeID == 146)
-                printf("hi");
 
             printf("--RECYCLING OBJECT %d\n", m->storeID);
-
+            assert(m->color == OBJECT_TRICOLOR__WHITE);
             {
                 matteValue_t vl;
                 vl.binID = MATTE_VALUE_TYPE_OBJECT;
@@ -3799,6 +3823,9 @@ static void tricolor_march(matteStore_t * h) {
     matteArray_t * set = matte_array_create(sizeof(matteObject_t*));
     matteTableIter_t * iter = matte_table_iter_create();
     
+    
+    
+    
     for(matte_table_iter_start(iter, h->tricolor[OBJECT_TRICOLOR__GREY]);
         !matte_table_iter_is_end(iter);
         matte_table_iter_proceed(iter)) {
@@ -3825,6 +3852,7 @@ static void tricolor_march(matteStore_t * h) {
     matte_table_iter_destroy(iter);
 }
 
+#ifdef MATTE_DEBUG__STORE
 static void assert_tricolor_invariant(matteStore_t * h, matteValue_t v);
 
 static void assert_tricolor_invariant__child(matteStore_t * h, matteObject_t * parent, matteValue_t v) {
@@ -3912,6 +3940,7 @@ static void assert_tricolor_invariant(matteStore_t * h, matteValue_t v) {
        
     }
 }
+#endif
 
 void matte_store_garbage_collect(matteStore_t * h) {
     if (h->gcLocked) return;
@@ -3932,45 +3961,50 @@ void matte_store_garbage_collect(matteStore_t * h) {
     #endif
 
 
-
     h->gcLocked = 1;
-    h->gcRequestStrength = 0;
+    if (h->gcOldCycle%25 == 0 || h->shutdown) {
+        h->gcRequestStrength = 0;
 
-    tricolor_march(h);
+        tricolor_march(h);
 
-    if (matte_table_is_empty(h->tricolor[OBJECT_TRICOLOR__GREY])) {
-        // move all white set to destroy list
-        matteTableIter_t * iter = h->freeIter;
-        for(matte_table_iter_start(iter, h->tricolor[OBJECT_TRICOLOR__WHITE]);
-            !matte_table_iter_is_end(iter);
-            matte_table_iter_proceed(iter)) {
-            const matteObject_t * obj = matte_table_iter_get_key(iter);
-            matte_array_push(h->toRemove, obj);   
+        if (matte_table_is_empty(h->tricolor[OBJECT_TRICOLOR__GREY])) {
+            // move all white set to destroy list
+            matteArray_t * kv = h->toRemove;
+            kv->size = 0;
+            
+            matte_table_get_all_keys(h->tricolor[OBJECT_TRICOLOR__WHITE], kv);
+
+            object_cleanup(h);    
+            matte_table_clear(h->tricolor[OBJECT_TRICOLOR__WHITE]);
+            
+            // all black become white 
+            kv->size = 0;
+            matte_table_get_all_keys(h->tricolor[OBJECT_TRICOLOR__BLACK], kv);
+            uint32_t i;
+            uint32_t len = matte_array_get_size(kv);            
+            void ** iter = matte_array_get_data(kv);
+            for(i = 0; i < len; ++i, iter++) {
+                matteObject_t * obj =  (matteObject_t*)(*iter); 
+                obj->color = OBJECT_TRICOLOR__WHITE;  
+            }
+            kv->size = 0;
+            
+            matteTable_t * temp = h->tricolor[OBJECT_TRICOLOR__WHITE];
+            h->tricolor[OBJECT_TRICOLOR__WHITE] = h->tricolor[OBJECT_TRICOLOR__BLACK];
+            h->tricolor[OBJECT_TRICOLOR__BLACK] = temp;
+
+            #ifdef MATTE_DEBUG__STORE
+                assert(matte_table_is_empty(h->tricolor[OBJECT_TRICOLOR__BLACK]));
+            #endif
+            // mark all that touch roots as grey
+            matteObject_t * root = h->roots;
+            while(root) {
+                mark_grey(h, root);
+                root = root->nextRoot;
+            }
+
+             
         }
-        object_cleanup(h);    
-        matte_table_clear(h->tricolor[OBJECT_TRICOLOR__WHITE]);
-        
-        // all black become white 
-        for(matte_table_iter_start(iter, h->tricolor[OBJECT_TRICOLOR__BLACK]);
-            !matte_table_iter_is_end(iter);
-            matte_table_iter_proceed(iter)) {
-            matteObject_t * obj =  (matteObject_t*)matte_table_iter_get_key(iter); 
-            obj->color = OBJECT_TRICOLOR__WHITE;  
-        }
-
-        matteTable_t * temp = h->tricolor[OBJECT_TRICOLOR__WHITE];
-        h->tricolor[OBJECT_TRICOLOR__WHITE] = h->tricolor[OBJECT_TRICOLOR__BLACK];
-        h->tricolor[OBJECT_TRICOLOR__BLACK] = temp;
-
-        
-        // mark all that touch roots as grey
-        matteObject_t * root = h->roots;
-        while(root) {
-            mark_grey(h, root);
-            root = root->nextRoot;
-        }
-
-         
     }
     h->gcOldCycle++;
     h->gcLocked = 0;

@@ -30,6 +30,7 @@ DEALINGS IN THE SOFTWARE.
 
 #include "matte_table.h"
 #include "matte_string.h"
+#include "matte_array.h"
 #include "matte.h"
 
 #include <string.h>
@@ -533,7 +534,36 @@ void matte_table_clear(matteTable_t * t) {
     }
 }
 
+void matte_table_get_all_keys(const matteTable_t * t, matteArray_t * arr) {
+    matteTableEntry_t * src;
+    if (t->size == 0) return;
 
+    // look for preexisting entry
+    uint32_t i;
+    for(i = 0; i < t->nBuckets; ++i) {
+        src = t->buckets[i];
+        while(src) {
+            matte_array_push(arr, src->key);
+            src = src->next;
+        }
+    }
+    
+}
+
+
+void matte_table_get_all_values(const matteTable_t * t, matteArray_t * arr) {
+    matteTableEntry_t * src;
+    if (t->size == 0) return;
+    // look for preexisting entry
+    uint32_t i;
+    for(i = 0; i < t->nBuckets; ++i) {
+        src = t->buckets[i];
+        while(src) {
+            matte_array_push(arr, src->value);
+            src = src->next;
+        }
+    }
+}
 
 
 

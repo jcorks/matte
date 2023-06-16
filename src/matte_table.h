@@ -32,6 +32,9 @@ DEALINGS IN THE SOFTWARE.
 #ifndef H_MATTE__TABLE__INCLUDED
 #define H_MATTE__TABLE__INCLUDED
 
+typedef struct matteArray_t matteArray_t;
+
+
 /// Hashtable able to handle various kinds of keys.
 /// For buffer and string keys, key copies are created, so 
 /// the source key does not need to be kept in memory
@@ -125,6 +128,18 @@ void * matte_table_get_any(
     /// The table to query
     const matteTable_t * table
 );
+
+
+void matte_table_get_all_keys(
+    const matteTable_t * table,
+    matteArray_t * output
+);
+
+void matte_table_get_all_values(
+    const matteTable_t * table,
+    matteArray_t * output
+);
+
 
 /// Same as matte_table_find, but treats the key as a signed integer
 /// Convenient for hash_pointer tables where keys are direct pointers.
