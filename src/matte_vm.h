@@ -222,6 +222,7 @@ struct matteVMStackFrame_t {
     // working array of values utilized by this function. (matteValue_t)
     matteArray_t * valueStack;
     
+    matteArray_t * referrableArray;
 
     // Some parts of algorithms may want to start the current calling stack 
     // frame function from the start. If restartCondition is not-null, it 

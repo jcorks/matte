@@ -228,19 +228,20 @@ typedef struct {
 static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
     vm->stacksize++;
     matteVMStackFrame_t * frame;
-    if (matte_array_get_size(vm->callstack) < vm->stacksize) {
-        while(matte_array_get_size(vm->callstack) < vm->stacksize) {
+    if (matte_array_get_size(vm->callstack) < vm->stacksize+1) { // push an extra for stackframe look-ahead
+        while(matte_array_get_size(vm->callstack) < vm->stacksize+1) {
             frame = (matteVMStackFrame_t*)matte_allocate(sizeof(matteVMStackFrame_t));
+            // initialize
+            frame->referrableArray = matte_array_create(sizeof(matteValue_t));
+            frame->pc = 0;
+            frame->prettyName = matte_string_create();
+            frame->context = matte_store_new_value(vm->store); // will contain captures
+            frame->stub = NULL;
+            frame->valueStack = matte_array_create(sizeof(matteValue_t));
+
             matte_array_push(vm->callstack, frame);
         }
         frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
-
-        // initialize
-        frame->pc = 0;
-        frame->prettyName = matte_string_create();
-        frame->context = matte_store_new_value(vm->store); // will contain captures
-        frame->stub = NULL;
-        frame->valueStack = matte_array_create(sizeof(matteValue_t));
     } else {
         frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
         frame->stub = NULL;
@@ -1528,7 +1529,9 @@ matteVM_t * matte_vm_create(matte_t * m) {
         }
    }
 
-
+    // pre-allocate lookahead
+    vm_push_frame(vm);
+    vm_pop_frame(vm);
     return vm;
 }
 
@@ -1804,9 +1807,14 @@ matteValue_t matte_vm_call(
         matte_array_destroy(argsReal);
         matte_store_recycle(vm->store, d);
         return result;
-    } else {
-
-        matteArray_t * referrables = matte_array_create(sizeof(matteValue_t));
+    }
+    matteVMStackFrame_t * prevFrame = vm->stacksize == 0 ? NULL :
+        matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);                
+    
+    {
+        // prepare future frame by looking ahead slightly 
+        // and preparing its referrables.
+        matteArray_t * referrables = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize)->referrableArray;
         matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, d);
 
         // slot 0 is always the context
@@ -1827,6 +1835,7 @@ matteValue_t matte_vm_call(
             }       
             
             if (n == len) {
+                vm_pop_frame(vm);                
                 // couldnt find the requested name. Throw an error.
                 matteString_t * str;
                 if (len) 
@@ -1849,8 +1858,6 @@ matteValue_t matte_vm_call(
 
                 matte_vm_raise_error_string(vm, str);
                 matte_string_destroy(str); 
-                
-                matte_array_destroy(referrables);
                 return matte_store_new_value(vm->store);
             }
         }
@@ -1875,10 +1882,8 @@ matteValue_t matte_vm_call(
         
 
                 // no calling context yet
-        
-        matteVMStackFrame_t * prevFrame = vm->stacksize == 0 ? NULL :
-            matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);                
-        matteVMStackFrame_t * frame = vm_push_frame(vm);
+        matteVMStackFrame_t * frame = vm_push_frame(vm);    
+       
         if (prettyName) {
             matte_string_set(frame->prettyName, prettyName);
         }
@@ -1908,7 +1913,6 @@ matteValue_t matte_vm_call(
         
         
         frame->referrableSize = matte_array_get_size(referrables);
-        matte_array_destroy(referrables);
 
         // establishes the reference path of objects not allowed to be cleaned up
         matte_value_object_push_lock(vm->store, frame->referrable);

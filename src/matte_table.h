@@ -135,11 +135,20 @@ void matte_table_get_all_keys(
     matteArray_t * output
 );
 
+
+void matte_table_get_limited_keys(
+    const matteTable_t * table,
+    matteArray_t * output,
+    int
+);
+
 void matte_table_get_all_values(
     const matteTable_t * table,
     matteArray_t * output
 );
 
+
+int matte_table_get_size(const matteTable_t * table);
 
 /// Same as matte_table_find, but treats the key as a signed integer
 /// Convenient for hash_pointer tables where keys are direct pointers.

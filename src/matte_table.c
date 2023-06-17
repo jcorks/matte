@@ -169,7 +169,14 @@ static int key_cmp_fn_matte_str(const void * a, const void * b, uint32_t len) {
 
 // pointer / value to a table directly
 static uint32_t hash_fn_value(const void * data, uint32_t nu) {
-    return (uint32_t)(int64_t)data;
+    uint32_t hash = 5381;
+    uint8_t * datab = &data;
+    uint32_t i;
+    for(i = 0; i < sizeof(void*); ++i, ++datab) {
+        hash = (hash<<5) + hash + *datab;
+    } 
+    return hash;
+    //return (uint32_t)(int64_t)data;
 }
 
 static int key_cmp_fn_value(const void * a, const void * b, uint32_t nu) {
@@ -241,6 +248,12 @@ static void matte_table_resize(matteTable_t * t) {
 
 
 
+int matte_table_get_size(const matteTable_t * table) {
+    #ifdef MATTE_DEBUG
+        assert(table && "matteTable_t pointer cannot be NULL.");
+    #endif
+    return table->size;
+}   
 
 
 static matteTable_t * matte_table_initialize(matteTable_t * t) {
@@ -535,29 +548,43 @@ void matte_table_clear(matteTable_t * t) {
 }
 
 void matte_table_get_all_keys(const matteTable_t * t, matteArray_t * arr) {
-    matteTableEntry_t * src;
     if (t->size == 0) return;
 
     // look for preexisting entry
     uint32_t i;
     for(i = 0; i < t->nBuckets; ++i) {
-        src = t->buckets[i];
+        matteTableEntry_t * src = t->buckets[i];
         while(src) {
             matte_array_push(arr, src->key);
             src = src->next;
         }
     }
-    
 }
 
 
+void matte_table_get_limited_keys(const matteTable_t * t, matteArray_t * arr, int count) {
+    if (t->size == 0) return;
+
+    // look for preexisting entry
+    uint32_t i;
+    for(i = 0; i < t->nBuckets; ++i) {
+        matteTableEntry_t * src = t->buckets[i];
+        while(src) {
+            matte_array_push(arr, src->key);
+            if (arr->size >= count) return;
+            src = src->next;
+        }
+    }
+}
+
+
+
 void matte_table_get_all_values(const matteTable_t * t, matteArray_t * arr) {
-    matteTableEntry_t * src;
     if (t->size == 0) return;
     // look for preexisting entry
     uint32_t i;
     for(i = 0; i < t->nBuckets; ++i) {
-        src = t->buckets[i];
+        matteTableEntry_t * src = t->buckets[i];
         while(src) {
             matte_array_push(arr, src->value);
             src = src->next;
