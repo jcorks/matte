@@ -210,19 +210,19 @@ struct matteVMStackFrame_t {
     matteString_t * prettyName;
 
 
-    // array object that holds argumentsw and locals.
-    // Retrieving a referrable safely incolves copying a 
-    // reference to this. This guarantees access of the value past 
-    // the lifetime of this function call when applicable
-    matteValue_t referrable;
-    uint32_t referrableSize;
+    // copy of the referrable list owned by the context function 
+    // Is available for quick access, but is owned by the context function
+    // NOTE: these values are ONLY representative of the context referrables 
+    // at the ACTIVATION of the stack frame. Due to the nature of closures 
+    // they will almost always mutate. The only metric that is guaranteed is 
+    // the size of the referrable list, which is static.
+    matteArray_t *  referrables;
 
 
     
     // working array of values utilized by this function. (matteValue_t)
     matteArray_t * valueStack;
     
-    matteArray_t * referrableArray;
 
     // Some parts of algorithms may want to start the current calling stack 
     // frame function from the start. If restartCondition is not-null, it 

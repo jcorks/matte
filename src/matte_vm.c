@@ -232,7 +232,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
         while(matte_array_get_size(vm->callstack) < vm->stacksize+1) {
             frame = (matteVMStackFrame_t*)matte_allocate(sizeof(matteVMStackFrame_t));
             // initialize
-            frame->referrableArray = matte_array_create(sizeof(matteValue_t));
+            frame->referrables = matte_array_create(sizeof(matteValue_t));
             frame->pc = 0;
             frame->prettyName = matte_string_create();
             frame->context = matte_store_new_value(vm->store); // will contain captures
@@ -473,6 +473,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     while(frame->pc < instCount) {
         inst = program+frame->pc++;
         
+        if (inst->lineNumber == 10)
+            printf("hi");
         
         // TODO: optimize out
         #ifdef MATTE_DEBUG__VM
@@ -1711,7 +1713,11 @@ matteValue_t matte_vm_call(
 
     // normal function
     matteValue_t d = matte_store_new_value(vm->store);
-    matte_value_into_copy(vm->store, &d, func);
+    if (matte_value_object_function_was_activated(vm->store, func)) {
+        matte_value_into_cloned_function_ref(vm->store, &d, func);
+    } else {
+        matte_value_into_copy(vm->store, &d, func);    
+    }
 
 
     if (matte_bytecode_stub_get_file_id(matte_value_get_bytecode_stub(vm->store, d)) == 0) {
@@ -1814,7 +1820,8 @@ matteValue_t matte_vm_call(
     {
         // prepare future frame by looking ahead slightly 
         // and preparing its referrables.
-        matteArray_t * referrables = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize)->referrableArray;
+        matteArray_t * referrables = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize)->referrables;
+        referrables->size = 0;
         matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, d);
 
         // slot 0 is always the context
@@ -1890,15 +1897,13 @@ matteValue_t matte_vm_call(
 
         frame->context = d;
         frame->stub = stub;
-        frame->referrable = matte_store_new_value(vm->store);
         matte_array_at(referrables, matteValue_t, 0) = frame->context;
 
         // ref copies of values happen here.
-        matte_value_into_new_object_array_ref(vm->store, &frame->referrable, referrables);
+        matte_value_object_function_activate_closure(vm->store, frame->context, referrables);
 
         #ifdef MATTE_DEBUG__STORE
         printf("Context    for frame %d is: %d\n", vm->stacksize, frame->context.value.id);
-        printf("Referrable for frame %d is: %d\n", vm->stacksize, frame->referrable.value.id);
         {
             uint32_t instcount;
             const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame->stub, &instcount);                    
@@ -1906,16 +1911,13 @@ matteValue_t matte_vm_call(
             if (matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))) {
                 matte_string_concat(info, matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)));
             }
-            matte_store_track_neutral(vm->store, frame->referrable, matte_string_get_c_str(info), inst->lineNumber);
             matte_string_destroy(info);
         }
         #endif
         
         
-        frame->referrableSize = matte_array_get_size(referrables);
 
         // establishes the reference path of objects not allowed to be cleaned up
-        matte_value_object_push_lock(vm->store, frame->referrable);
         matte_value_object_push_lock(vm->store, frame->context);        
         matteValue_t result = matte_store_new_value(vm->store);
 
@@ -1944,12 +1946,10 @@ matteValue_t matte_vm_call(
             }
         };
         
-        matte_value_object_pop_lock(vm->store, frame->referrable);
         matte_value_object_pop_lock(vm->store, frame->context);
 
         // cleanup;
         matte_store_recycle(vm->store, frame->context);
-        matte_store_recycle(vm->store, frame->referrable);
         matte_value_object_push_lock(vm->store, result);
         matte_store_garbage_collect(vm->store);
         matte_value_object_pop_lock(vm->store, result);
@@ -2345,10 +2345,10 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 
 
     // get context
-    if (referrableID < frames[i]->referrableSize) {
-        return matte_value_object_array_at_unsafe(vm->store, frames[i]->referrable, referrableID);        
+    if (referrableID < matte_array_get_size(frames[i]->referrables)) {
+        return matte_value_object_function_get_closure_value(vm->store, frames[i]->context, referrableID);        
     } else {
-        matteValue_t * ref = matte_value_get_captured_value(vm->store, frames[i]->context, referrableID - frames[i]->referrableSize);
+        matteValue_t * ref = matte_value_get_captured_value(vm->store, frames[i]->context, referrableID - matte_array_get_size(frames[i]->referrables));
 
         // bad referrable
         if (!ref) {
@@ -2370,16 +2370,12 @@ void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t ref
 
 
     // get context
-    if (referrableID < frames[i]->referrableSize) {
-        matteValue_t vkey = matte_store_new_value(vm->store);
-        matte_value_into_number(vm->store, &vkey, referrableID);
-        matte_value_object_set(vm->store, frames[i]->referrable, vkey, val, 1);
-        matte_store_recycle(vm->store, vkey);
-        //matte_value_into_copy(matte_value_object_array_at_unsafe(frames[i]->referrable, referrableID), val);
+    if (referrableID < matte_array_get_size(frames[i]->referrables)) {
+        matte_value_object_function_set_closure_value(vm->store, frames[i]->context, referrableID, val);
     } else {
         matte_value_set_captured_value(vm->store, 
             frames[i]->context, 
-            referrableID - frames[i]->referrableSize,
+            referrableID - matte_array_get_size(frames[i]->referrables),
             val
         );
     }

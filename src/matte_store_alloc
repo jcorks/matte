@@ -41,6 +41,7 @@ void matte_value_into_new_type_(matteStore_t *, matteValue_t *, matteValue_t nam
 void matte_value_into_new_object_literal_ref_(matteStore_t *, matteValue_t *, const matteArray_t *);
 void matte_value_into_new_object_array_ref_(matteStore_t *, matteValue_t * v, const matteArray_t *);
 void matte_value_into_new_function_ref_(matteStore_t *, matteValue_t *, matteBytecodeStub_t *);
+void matte_value_into_cloned_function_ref_(matteStore_t *, matteValue_t *, matteValue_t);
 void matte_value_into_new_typed_function_ref_(matteStore_t *, matteValue_t *, matteBytecodeStub_t * stub, const matteArray_t * args);
 void matte_value_into_copy_(matteStore_t *, matteValue_t *, matteValue_t from);
 void matte_value_object_push_lock_(matteStore_t *, matteValue_t v);
@@ -76,6 +77,7 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val);
 #define matte_value_into_new_object_literal_ref(__STORE__, __VAL__, __MARR__) matte_value_into_new_object_literal_ref_(__STORE__, __VAL__, __MARR__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_object_array_ref(__STORE__, __VAL__, __MARR__) matte_value_into_new_object_array_ref_(__STORE__, __VAL__, __MARR__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_function_ref(__STORE__, __VAL__, __MSTUB__) matte_value_into_new_function_ref_(__STORE__, __VAL__, __MSTUB__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_cloned_function_ref(__STORE__, __VAL__, __MSTUB__) matte_value_into_cloned_function_ref_(__STORE__, __VAL__, __MSTUB__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
 // already inc by matte_value_into_new_function
 #define matte_value_into_new_typed_function_ref(__STORE__, __VAL__, __MSTUB__, __MARR0__) matte_value_into_new_typed_function_ref_(__STORE__, __VAL__, __MSTUB__, __MARR0__); matte_store_track_neutral(__STORE__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_copy(__STORE__, __VAL__, __OTHER__) matte_value_into_copy_(__STORE__, __VAL__, __OTHER__);matte_store_track_neutral(__STORE__, *(__VAL__), __FILE__, __LINE__);
@@ -95,7 +97,8 @@ void matte_store_recycle_(matteStore_t *, matteValue_t);
 #define matte_value_into_new_type(__STORE__, __VAL__, __MOPTS__, __MOPTS2__) matte_value_into_new_type_(__STORE__, __VAL__, __MOPTS__, __MOPTS2__)
 #define matte_value_into_new_object_literal_ref(__STORE__, __VAL__, __MARR__) matte_value_into_new_object_literal_ref_(__STORE__, __VAL__, __MARR__)
 #define matte_value_into_new_object_array_ref(__STORE__, __VAL__, __MARR__) matte_value_into_new_object_array_ref_(__STORE__, __VAL__, __MARR__)
-#define matte_value_into_new_function_ref(__STORE__, __VAL__, __MSTUB__) matte_value_into_new_function_ref_(__STORE__, __VAL__, __MSTUB__); 
+#define matte_value_into_new_function_ref(__STORE__, __VAL__, __MSTUB__) matte_value_into_new_function_ref_(__STORE__, __VAL__, __MSTUB__)
+#define matte_value_into_cloned_function_ref(__STORE__, __VAL__, __MSTUB__) matte_value_into_cloned_function_ref_(__STORE__, __VAL__, __MSTUB__)
 #define matte_value_into_new_typed_function_ref(__STORE__, __VAL__, __MSTUB__, __MARR0__) matte_value_into_new_typed_function_ref_(__STORE__, __VAL__, __MSTUB__, __MARR0__);
 #define matte_value_into_copy(__STORE__, __VAL__, __OTHER__) matte_value_into_copy_(__STORE__, __VAL__, __OTHER__); 
 #define matte_value_object_push_lock(__STORE__, __VAL__) matte_value_object_push_lock_(__STORE__, __VAL__);

@@ -111,6 +111,7 @@ void matte_value_into_new_object_array_ref(matteStore_t *, matteValue_t * v, con
 
 void matte_value_into_new_function_ref(matteStore_t *, matteValue_t *, matteBytecodeStub_t *);
 
+
 // Like regular functions exept they are ignored in garbage collection.
 void matte_value_into_new_external_function_ref(matteStore_t *, matteValue_t *, matteBytecodeStub_t *);
 
@@ -135,10 +136,36 @@ void matte_store_recycle(matteStore_t *, matteValue_t);
 void matte_value_object_push_lock(matteStore_t *, matteValue_t);
 void matte_value_object_pop_lock(matteStore_t *, matteValue_t);
 
+// clones an activated function into a new reference
+void matte_value_into_cloned_function_ref(matteStore_t *, matteValue_t * v, matteValue_t source);
+
+
 #endif 
 #include "matte_store_alloc"
 
 
+
+
+
+
+// Activates the closure references for the function, preparing it for calling.
+// Referrables are the shadow references held by the function from local 
+// objects and values.
+// NOTE: values are NOT copied, but are transfered and then linked 
+// to the function. The callers references are transfered (moved)
+void matte_value_object_function_activate_closure(matteStore_t *, matteValue_t v, matteArray_t * );
+
+
+// return whether the function was activated
+int matte_value_object_function_was_activated(matteStore_t *, matteValue_t v);
+
+
+
+
+
+void matte_value_object_function_set_closure_value(matteStore_t *, matteValue_t v, uint32_t, matteValue_t newVal);
+
+matteValue_t * matte_value_object_function_get_closure_value(matteStore_t *, matteValue_t v, uint32_t);
 
 
 
