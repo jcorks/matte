@@ -135,8 +135,10 @@ enum {
 };
 
 
-#define OBJECT_ADD_TRICOLOR(__STORE__, __O__) matte_table_insert((__STORE__)->tricolor[(__O__)->color], __O__, __O__)
-#define OBJECT_REM_TRICOLOR(__STORE__, __O__) matte_table_remove((__STORE__)->tricolor[(__O__)->color], __O__)
+
+
+
+
 
 struct matteStore_t {    
     matteStoreBin_t * bin;
@@ -148,7 +150,7 @@ struct matteStore_t {
     // 0 -> white 
     // 1 -> grey 
     // 2 -> black
-    matteTable_t * tricolor[3];
+    matteObject_t * tricolor[3];
     
     uint16_t gcLocked;
     int pathCheckedPool;
@@ -275,6 +277,10 @@ struct matteObject_t {
     uint64_t checkID;
     matteObject_t * prevRoot;
     matteObject_t * nextRoot;
+
+    matteObject_t * prevColor;
+    matteObject_t * nextColor;
+
     
     void (*nativeFinalizer)(void * objectUserdata, void * functionUserdata);
     void * nativeFinalizerData;
@@ -330,6 +336,35 @@ struct matteObject_t {
 
 };
 
+
+
+static void OBJECT_ADD_TRICOLOR(matteStore_t * h, matteObject_t * m) {
+    matteObject_t * b = h->tricolor[m->color];
+    h->tricolor[m->color] = m;
+    if (b) {
+        b->prevColor = m;
+    }
+    m->nextColor = b;
+    m->prevColor = NULL;
+}
+
+static void OBJECT_REM_TRICOLOR(matteStore_t * h, matteObject_t * m) {
+    if (m == h->tricolor[m->color]) {
+        h->tricolor[m->color] = m->nextColor;
+    }
+    matteObject_t * prev = m->prevColor;
+    if (m->prevColor) {
+        m->prevColor->nextColor = m->nextColor;
+        m->prevColor = NULL;
+    }
+
+    if (m->nextColor) {
+        m->nextColor->prevColor = prev;
+        m->nextColor = NULL;
+    }
+    
+
+}
 
 
 static void print_list(matteStore_t * h) {
@@ -813,9 +848,6 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     matte_array_push(out->valueStore, unused);
     out->typecode2data = matte_array_create(sizeof(MatteTypeData));
 
-    out->tricolor[0] = matte_table_create_hash_pointer();
-    out->tricolor[1] = matte_table_create_hash_pointer();
-    out->tricolor[2] = matte_table_create_hash_pointer();
 
 
     out->routePather = matte_array_create(sizeof(void*));
@@ -930,8 +962,8 @@ void matte_store_destroy(matteStore_t * h) {
     matte_array_destroy(h->external);
     
     while(
-        !matte_table_is_empty(h->tricolor[OBJECT_TRICOLOR__GREY]) || 
-        !matte_table_is_empty(h->tricolor[OBJECT_TRICOLOR__WHITE])    
+        h->tricolor[OBJECT_TRICOLOR__GREY] || 
+        h->tricolor[OBJECT_TRICOLOR__WHITE]    
     )
         matte_store_garbage_collect(h);
 
@@ -1610,9 +1642,7 @@ void matte_value_into_new_object_ref_(matteStore_t * store, matteValue_t * v) {
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(matte_table_find(store->tricolor[0], d) ==
-               matte_table_find(store->tricolor[1], d) ==
-               matte_table_find(store->tricolor[2], d) == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
@@ -1627,9 +1657,7 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(matte_table_find(store->tricolor[0], d) ==
-               matte_table_find(store->tricolor[1], d) ==
-               matte_table_find(store->tricolor[2], d) == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
@@ -1651,9 +1679,7 @@ void matte_value_into_new_object_literal_ref_(matteStore_t * store, matteValue_t
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(matte_table_find(store->tricolor[0], d) ==
-               matte_table_find(store->tricolor[1], d) ==
-               matte_table_find(store->tricolor[2], d) == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE; 
     OBJECT_ADD_TRICOLOR(store, d);  
@@ -1682,9 +1708,7 @@ void matte_value_into_new_object_array_ref_(matteStore_t * store, matteValue_t *
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(matte_table_find(store->tricolor[0], d) ==
-               matte_table_find(store->tricolor[1], d) ==
-               matte_table_find(store->tricolor[2], d) == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
@@ -1828,9 +1852,7 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_function(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(matte_table_find(store->tricolor[0], d) ==
-               matte_table_find(store->tricolor[1], d) ==
-               matte_table_find(store->tricolor[2], d) == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
@@ -1907,9 +1929,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_function(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(matte_table_find(store->tricolor[0], d) ==
-               matte_table_find(store->tricolor[1], d) ==
-               matte_table_find(store->tricolor[2], d) == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     OBJECT_ADD_TRICOLOR(store, d);  
@@ -3931,32 +3951,24 @@ void matte_store_pop_lock_gc(matteStore_t * h) {
 
 
 
-static void tricolor_march(matteStore_t * h) {
+static void matte_store_garbage_collect__tricolor_march(matteStore_t * h) {
     uint32_t count = 0;
-    matteArray_t * set = h->mgChunk;
-    while(count < GC_PARAM__MARCH_SIZE) {        
-        if (set->size == 0) {
-            matte_table_get_all_keys(h->tricolor[OBJECT_TRICOLOR__GREY], set);
-            if (set->size == 0) return;
-        }
-
-        matteObject_t * obj = matte_array_at(h->mgChunk, matteObject_t*, h->mgChunk->size-1);
-        matte_array_shrink_by_one(h->mgChunk);
+    while(count < GC_PARAM__MARCH_SIZE && h->tricolor[OBJECT_TRICOLOR__GREY]) {        
+        matteObject_t * obj = h->tricolor[OBJECT_TRICOLOR__GREY];
+        OBJECT_REM_TRICOLOR(h, obj);
 
         if (obj->color != OBJECT_TRICOLOR__GREY) continue; // was updated since
-        OBJECT_REM_TRICOLOR(h, obj);
         obj->color = OBJECT_TRICOLOR__BLACK;
         count += mark_grey(h, obj);        
         
         if (!obj->rootState)
             OBJECT_ADD_TRICOLOR(h, obj);            
         count += 1;
-                       
     }
-
 }
 
 #ifdef MATTE_DEBUG__STORE
+/*
 static void assert_tricolor_invariant(matteStore_t * h, matteObject_t *);
 
 static void assert_tricolor_invariant__child(matteStore_t * h, matteObject_t * parent, matteObject_t * o) {
@@ -3974,92 +3986,82 @@ static void assert_tricolor_invariant__child(matteStore_t * h, matteObject_t * p
      assert_tricolor_invariant(h, o);
 
 }
+*/
 
-static void assert_tricolor_invariant(matteStore_t * h, matteObject_t * o) {
+#endif
 
-    matteArray_t * kv = h->mgIter;
+
+static void matte_store_garbage_collect__process_roots(matteStore_t * h) {
+    matteObject_t * t;
+    uint32_t count = 0;
+    while(h->pendingRoots->size && count < GC_PARAM__ROOT_CHUNK) {
+        matteObject_t * root = ((matteObject_t**)h->pendingRoots->data)[h->pendingRoots->size-1];
+        count++;
+        matte_array_shrink_by_one(h->pendingRoots);
+        if (!root->rootState) continue;
+        count += mark_grey(h, root);
+    }
+
+}
+
+
+static void matte_store_garbage_collect__restart_cycle(matteStore_t * h) {
+    // move all white set to destroy list
+    matteArray_t * kv = h->toRemove;
     kv->size = 0;
-    uint32_t n;
+    matteObject_t * whiteIter = h->tricolor[OBJECT_TRICOLOR__WHITE];
+    while(whiteIter) {
+        matte_array_push(h->toRemove, whiteIter);
+        matteObject_t * old = whiteIter;
+        whiteIter = whiteIter->nextColor;
+        old->nextColor = NULL;
+        old->prevColor = NULL;
+    }
+    h->tricolor[OBJECT_TRICOLOR__WHITE] = NULL;
     
-    matte_table_get_all_keys(o->children, kv);
+    
+    
+    // all black become white
 
-    uint32_t len = kv->size;
-    void ** iter = matte_array_get_data(kv);
-    for(n = 0; n < len; ++n, iter++) {
-        assert_tricolor_invariant__child(h, o, *iter);
+    
+    matteObject_t * blackIter = h->tricolor[OBJECT_TRICOLOR__BLACK];
+    while(blackIter) {
+        blackIter->color = OBJECT_TRICOLOR__WHITE;  
+        blackIter = blackIter->nextColor;
+    }
+    
+    matteObject_t * temp = h->tricolor[OBJECT_TRICOLOR__WHITE];
+    h->tricolor[OBJECT_TRICOLOR__WHITE] = h->tricolor[OBJECT_TRICOLOR__BLACK];
+    h->tricolor[OBJECT_TRICOLOR__BLACK] = temp;
+
+    #ifdef MATTE_DEBUG__STORE
+        assert(h->tricolor[OBJECT_TRICOLOR__BLACK] == NULL);
+    #endif
+    // mark all that touch roots as grey
+    matteObject_t * root = h->roots;
+    while(root) {
+        matte_array_push(h->pendingRoots, root);
+        root = root->nextRoot;
     }
 }
-#endif
 
 void matte_store_garbage_collect(matteStore_t * h) {
     if (h->gcLocked) return;
     
 
 
-    #ifdef MATTE_DEBUG__STORE
-    {
-        matteObject_t * root = h->roots;
-        while(root) {
-            //assert_tricolor_invariant(h, root);
-            root = root->nextRoot;
-        }
-    }    
-    #endif
-
 
     h->gcLocked = 1;
     
     if (h->pendingRoots->size) {
-        matteObject_t * t;
-        uint32_t count = 0;
-        while(h->pendingRoots->size && count < GC_PARAM__ROOT_CHUNK) {
-            matteObject_t * root = ((matteObject_t**)h->pendingRoots->data)[h->pendingRoots->size-1];
-            count++;
-            matte_array_shrink_by_one(h->pendingRoots);
-            if (!root->rootState) continue;
-            count += mark_grey(h, root);
-        }
+        matte_store_garbage_collect__process_roots(h);
     } else if (h->gcOldCycle%GC_PARAM__CALL_MOD == 0 || h->shutdown) {
         h->gcRequestStrength = 0;
 
-        tricolor_march(h);
+        matte_store_garbage_collect__tricolor_march(h);
 
-        if (matte_table_is_empty(h->tricolor[OBJECT_TRICOLOR__GREY])) {
-            // move all white set to destroy list
-            matteArray_t * kv = h->toRemove;
-            kv->size = 0;
-            
-            matte_table_get_all_keys(h->tricolor[OBJECT_TRICOLOR__WHITE], kv);
-            matte_table_clear(h->tricolor[OBJECT_TRICOLOR__WHITE]);
-            
-            // all black become white
-            kv = h->kvIter; 
-            kv->size = 0;
-            matte_table_get_all_keys(h->tricolor[OBJECT_TRICOLOR__BLACK], kv);
-            uint32_t i;
-            uint32_t len = matte_array_get_size(kv);            
-            void ** iter = matte_array_get_data(kv);
-            for(i = 0; i < len; ++i, iter++) {
-                matteObject_t * obj =  (matteObject_t*)(*iter); 
-                obj->color = OBJECT_TRICOLOR__WHITE;  
-            }
-            kv->size = 0;
-            
-            matteTable_t * temp = h->tricolor[OBJECT_TRICOLOR__WHITE];
-            h->tricolor[OBJECT_TRICOLOR__WHITE] = h->tricolor[OBJECT_TRICOLOR__BLACK];
-            h->tricolor[OBJECT_TRICOLOR__BLACK] = temp;
-
-            #ifdef MATTE_DEBUG__STORE
-                assert(matte_table_is_empty(h->tricolor[OBJECT_TRICOLOR__BLACK]));
-            #endif
-            // mark all that touch roots as grey
-            matteObject_t * root = h->roots;
-            while(root) {
-                matte_array_push(h->pendingRoots, root);
-                root = root->nextRoot;
-            }
-
-             
+        if (h->tricolor[OBJECT_TRICOLOR__GREY] == NULL) {
+            matte_store_garbage_collect__restart_cycle(h);
         }
     }
     object_cleanup(h);    
