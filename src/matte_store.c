@@ -1858,8 +1858,6 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
     v->value.id = d->storeID;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
     
-    if (v->value.id == 102)
-        printf("hi");
     
     
     /* // problem?
@@ -1944,9 +1942,6 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
         matte_value_object_push_lock(store, *v);
         matte_array_push(store->external, *v);
     }
-
-    if (v->value.id == 102)
-        printf("hi");
 
 
 
@@ -4260,7 +4255,9 @@ int matte_store_report(matteStore_t * store) {
 
 
 
-#include "matte_store__gc"
 
 
 #endif
+
+#include "matte_store__gc"
+

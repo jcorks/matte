@@ -43,11 +43,11 @@ DEALINGS IN THE SOFTWARE.
 // Max number of milliseconds to dedicate to 
 // garbage collection before resuming 
 // normal execution.
-#define BUSY_POSSUM__ACTIVEGC_TIME_MS  3.5
+#define BUSY_POSSUM__AWAKE_TIME_MS  3.5
 
 // Minimum number of milliseconds of normal 
 // execution before garbage collection can run once more.
-#define BUSY_POSSUM__DISABLED_TIME_MS  7.5
+#define BUSY_POSSUM__SLEEPY_TIME_MS  7.5
 
 
 // Number of tricolor march visits in a single cycle
@@ -136,7 +136,7 @@ static void matte_store_garbage_collect__rem_from_color(matteStore_t * h, matteO
 
 
 #ifdef MATTE_DEBUG__STORE
-#define BUSY_POSSUM__DISABLED_TIME_MS 0
+#define BUSY_POSSUM__SLEEPY_TIME_MS 0
 #endif
 
 
@@ -189,10 +189,6 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         
         cleanedUP++;
         #ifdef MATTE_DEBUG__STORE
-            if (m->storeID == 59)
-                printf("hi");
-
-
             printf("--RECYCLING OBJECT %d\n", m->storeID);
             assert(m->color == OBJECT_TRICOLOR__WHITE);
             {
@@ -387,7 +383,6 @@ static void busy_possum_tricolor_march(matteStore_t * h) {
 static void busy_possum_restart_cycle(matteStore_t * h) {
     // move all white set to destroy list
     matteArray_t * kv = h->toRemove;
-    kv->size = 0;
     matteObject_t * whiteIter = h->tricolor[OBJECT_TRICOLOR__WHITE];
     while(whiteIter) {
         matte_array_push(h->toRemove, whiteIter);
@@ -433,7 +428,7 @@ void matte_store_garbage_collect(matteStore_t * h) {
 
 
     double ticks = get_ticks();
-    if (!h->shutdown && (ticks - h->ticksGC < BUSY_POSSUM__DISABLED_TIME_MS)) return;
+    if (!h->shutdown && (ticks - h->ticksGC < BUSY_POSSUM__SLEEPY_TIME_MS)) return;
     h->gcLocked = 1;
     h->ticksGC = ticks;
   L_BUSY_POSSUM_CYCLE:
@@ -469,7 +464,7 @@ void matte_store_garbage_collect(matteStore_t * h) {
         }
     } else {
         ticks = get_ticks();
-        if (ticks - h->ticksGC < BUSY_POSSUM__ACTIVEGC_TIME_MS)
+        if (ticks - h->ticksGC < BUSY_POSSUM__AWAKE_TIME_MS)
             goto L_BUSY_POSSUM_CYCLE;
     }
 

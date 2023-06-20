@@ -1948,6 +1948,9 @@ matteValue_t matte_vm_call(
         } else {
             result = vm_execution_loop(vm);        
         }
+
+        matte_value_object_push_lock(vm->store, result);
+        matte_store_garbage_collect(vm->store);
         
         if (prevFrame) {
             len = matte_array_get_size(prevFrame->valueStack);
@@ -1960,8 +1963,6 @@ matteValue_t matte_vm_call(
 
         // cleanup;
         matte_store_recycle(vm->store, frame->context);
-        matte_value_object_push_lock(vm->store, result);
-        matte_store_garbage_collect(vm->store);
         matte_value_object_pop_lock(vm->store, result);
         vm_pop_frame(vm);
 

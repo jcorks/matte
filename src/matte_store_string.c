@@ -72,12 +72,20 @@ uint32_t matte_string_store_ref(matteStringStore_t * h, const matteString_t * st
 uint32_t matte_string_store_ref_cstring(matteStringStore_t * h, const char * strc) {
     uint32_t id = (uintptr_t) matte_table_find(h->strbufferToID, strc);
     if (id == 0) {
-        id = matte_array_get_size(h->strings);
         matteStringInfo_t val = {};
         val.str = matte_string_create_from_c_str("%s", strc);
-        val.id = id;
         val.refs = 1;
-        matte_array_push(h->strings, val);
+
+        if (h->deadIDs->size) {
+            id = matte_array_at(h->deadIDs, uint32_t, h->deadIDs->size-1);
+            matte_array_shrink_by_one(h->deadIDs);        
+            val.id = id;            
+            matte_array_at(h->strings, matteStringInfo_t, id) = val;
+        } else {
+            id = matte_array_get_size(h->strings);        
+            val.id = id;
+            matte_array_push(h->strings, val);
+        }
         matte_table_insert(h->strbufferToID, strc, (void*)(uintptr_t)id);
 
 
@@ -112,6 +120,7 @@ void matte_string_store_unref(matteStringStore_t * h, uint32_t id) {
         #ifdef MATTE_DEBUG__STORE
             printf("STRING %d DONE\n", id);
         #endif    
+        matte_table_remove(h->strbufferToID, matte_string_get_c_str(ref->str));
         matte_string_destroy(ref->str);
         ref->str = NULL;
         matte_array_push(h->deadIDs, id);
