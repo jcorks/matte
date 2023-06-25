@@ -146,15 +146,16 @@ static uint32_t busy_possum_mark_grey(matteStore_t * h, matteObject_t * o) {
     
     if (o->color != OBJECT_TRICOLOR__BLACK) return 0;
 
-    matteArray_t * kv = h->mgIter;
-    kv->size = 0;
+    //matteArray_t * kv = h->mgIter;
+    //kv->size = 0;
     
-    matte_table_get_all_keys(o->children, kv);
+    //matte_table_get_all_keys(o->children, kv);
 
-    uint32_t len = kv->size;
-    void ** iter = matte_array_get_data(kv);
-    for(n = 0; n < len; ++n, iter++) {
-        matteObject_t * c = *iter;
+    //uint32_t len = kv->size;
+    //void ** iter = matte_array_get_data(kv);
+    matteObjectChildNode_t * ch;
+    for(ch = o->children; ch != NULL; ch = ch->next) {
+        matteObject_t * c = ch->data;
         if (c->color != OBJECT_TRICOLOR__WHITE) continue;
         matte_store_garbage_collect__rem_from_color(h, c);
         c->color = OBJECT_TRICOLOR__GREY;
@@ -200,6 +201,7 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         #endif
 
         ENABLE_STATE(m, OBJECT_STATE__RECYCLED);
+
 
 
 
@@ -277,8 +279,8 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                     store_recycle_value_pointer(h, (uint32_t)(uintptr_t)id);
 
                 }
-                matte_table_clear(m->table.keyvalues_string);
-                m->table.stringCount = 0;
+                matte_table_destroy(m->table.keyvalues_string);
+                m->table.keyvalues_string = NULL;
             }
             
             if (m->table.keyvalues_types && !matte_table_is_empty(m->table.keyvalues_types)) {
@@ -293,8 +295,8 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                     object_unlink_parent_value(h, m, v);                      
                     store_recycle_value_pointer(h, (uint32_t)(uintptr_t)id);
                 }
-                matte_table_clear(m->table.keyvalues_types);
-                m->table.typeCount = 0;
+                matte_table_destroy(m->table.keyvalues_types);
+                m->table.keyvalues_types = NULL;
             }
             if (m->table.keyvalues_object && !matte_table_is_empty(m->table.keyvalues_object)) {
                 for(matte_table_iter_start(iter, m->table.keyvalues_object);
@@ -307,20 +309,28 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                     object_unlink_parent_value(h, m, v);  
                     store_recycle_value_pointer(h, (uint32_t)(uintptr_t)id);
                 }
-                matte_table_clear(m->table.keyvalues_object);
-                m->table.objectCount = 0;
+                matte_table_destroy(m->table.keyvalues_object);
+                m->table.keyvalues_object = NULL;
             }
             matte_store_bin_recycle(h->bin, m->storeID);
 
         }
-        if (m->nativeFinalizer) {
-            m->nativeFinalizer(m->userdata, m->nativeFinalizerData);
-            m->nativeFinalizer = NULL;
-            m->nativeFinalizerData = NULL;
+        
+        if (m->ext) {
+            if (m->ext->nativeFinalizer) {
+                m->ext->nativeFinalizer(m->ext->userdata, m->ext->nativeFinalizerData);
+            }
+            matte_deallocate(m->ext);
+            m->ext = NULL;
         }
         // clean up object;
-        matte_table_clear(m->children);
-        m->userdata = NULL;
+        matteObjectChildNode_t * ch = m->children;
+        while(ch) {
+            matteObjectChildNode_t * next = ch->next;
+            matte_deallocate(ch);
+            ch = next;
+        }
+        m->children = NULL;
         m->rootState = 0;
         m->prevRoot = NULL;
         m->nextRoot = NULL;

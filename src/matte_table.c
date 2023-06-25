@@ -46,8 +46,7 @@ DEALINGS IN THE SOFTWARE.
 #define TRUE 1
 #define FALSE 0
 
-#define table_bucket_reserve_size 256
-#define table_bucket_start_size 32      
+#define table_bucket_start_size 16      
 #define table_bucket_max_size 32        //<- larger than this triggers resize
 
 

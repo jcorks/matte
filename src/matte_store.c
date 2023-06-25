@@ -156,7 +156,6 @@ struct matteStore_t {
 
     // pool for value types.
     uint32_t typepool;
-    uint64_t checkID;
 
 
     matteValue_t type_empty;
@@ -262,9 +261,25 @@ enum {
 #define QUERY_STATE(__o__, __s__) (((__o__)->state & (__s__)) != 0)
 
 
-struct matteObject_t {
+typedef struct {
     // any user data. Defaults to null
     void * userdata;
+
+    void (*nativeFinalizer)(void * objectUserdata, void * functionUserdata);
+    void * nativeFinalizerData;
+
+
+} matteObjectExternalData_t;
+
+typedef struct matteObjectChildNode_t matteObjectChildNode_t;
+struct matteObjectChildNode_t {
+    matteObjectChildNode_t * next;
+    matteObject_t * data;
+    uint32_t count;
+};
+
+
+struct matteObject_t {
     
 
     //matteTable_t * refChildren;
@@ -275,21 +290,18 @@ struct matteObject_t {
     uint16_t rootState;
     uint8_t  state;
     uint8_t  color;
-    uint64_t checkID;
     matteObject_t * prevRoot;
     matteObject_t * nextRoot;
 
     matteObject_t * prevColor;
     matteObject_t * nextColor;
 
-    
-    void (*nativeFinalizer)(void * objectUserdata, void * functionUserdata);
-    void * nativeFinalizerData;
+    matteObjectExternalData_t * ext; 
     
     #ifdef MATTE_DEBUG__STORE
         matteArray_t * parents;
     #endif
-    matteTable_t * children;
+    matteObjectChildNode_t * children;
     
     union {
         struct {
@@ -307,9 +319,6 @@ struct matteObject_t {
             
             // custom typecode.
             uint32_t typecode;
-            uint32_t stringCount;
-            uint32_t objectCount;
-            uint32_t typeCount;
         } table;
         
         struct {
@@ -515,8 +524,25 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
             matte_store_garbage_collect__add_to_color(h, child);
         }
     }
-    matte_table_insert(parent->children, child, child);
     
+    matteObjectChildNode_t * ch = parent->children;
+    int added = 0;
+    while(ch) {
+        if (ch->data == child) {
+            added = 1;
+            ch->count++;
+            break;
+        }
+        ch = ch->next;
+    }
+    if (!added) {
+        matteObjectChildNode_t * newC = matte_allocate(sizeof(matteObjectChildNode_t));
+        newC->data = child;
+        newC->next = parent->children;
+        newC->count++;
+        parent->children = newC;
+    }
+        
     child->refcount++;
 }
 
@@ -538,8 +564,31 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
         assert(found);
     #endif
 
-    matte_table_remove(parent->children, child);
-
+    matteObjectChildNode_t * ch = parent->children;
+    matteObjectChildNode_t * prev = NULL;
+    if (ch) {
+        if (ch->data == child) {
+            ch->count--;
+            if (ch->count == 0) {
+                parent->children = ch->next;
+                matte_deallocate(ch);
+            }        
+        } else {
+            while(ch) {
+                if (ch->data == child) {
+                    ch->count--;
+                    if (ch->count == 0) {
+                        if (prev)
+                            prev->next = ch->next;
+                        matte_deallocate(ch);
+                    }
+                    break;
+                }
+                prev = ch;
+                ch = ch->next;
+            }
+        }
+    }
 
 
     if (child->refcount) {
@@ -625,7 +674,6 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             *ref = out;
             matte_string_store_ref_id(store->stringStore, key.value.id);
             matte_table_insert_by_uint(m->table.keyvalues_string, key.value.id, (void*)(uintptr_t)id);
-            m->table.stringCount++;
             return ref;
         }
       }
@@ -698,7 +746,6 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             matteValue_t * ref = store_value_pointer_get_by_pointer(store, (void*)(uintptr_t)id);
             *ref = out;
             matte_table_insert_by_uint(m->table.keyvalues_object, key.value.id, (void*)(uintptr_t)id);
-            m->table.objectCount++;
             return ref;
         }
       }
@@ -719,7 +766,6 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             matteValue_t * ref = store_value_pointer_get_by_pointer(store, (void*)(uintptr_t)id);
             *ref = out;
             matte_table_insert_by_uint(m->table.keyvalues_types, key.value.id, (void*)(uintptr_t)id);
-            m->table.typeCount++;
             return ref;
         }
       }
@@ -853,7 +899,6 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->freeIter = matte_table_iter_create();
     //out->verifiedRoot = matte_table_create_hash_pointer();
     out->stringStore = matte_string_store_create();
-    out->checkID = 101;
     out->toRemove = matte_array_create(sizeof(matteObject_t*));
     out->external = matte_array_create(sizeof(matteValue_t));
     out->kvIter = matte_array_create(sizeof(void*));
@@ -2257,22 +2302,25 @@ void matte_value_object_set_native_finalizer(matteStore_t * store, matteValue_t 
         return;
     }
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
-    m->nativeFinalizer = fb;
-    m->nativeFinalizerData = functionUserdata;        
+    if (!m->ext) m->ext = matte_allocate(sizeof(matteObjectExternalData_t));
+    m->ext->nativeFinalizer = fb;
+    m->ext->nativeFinalizerData = functionUserdata;        
 }
 
 
 void matte_value_object_set_userdata(matteStore_t * store, matteValue_t v, void * userData) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
-        m->userdata = userData;
+        if (!m->ext) m->ext = matte_allocate(sizeof(matteObjectExternalData_t));
+        m->ext->userdata = userData;
     }
 }
 
 void * matte_value_object_get_userdata(matteStore_t * store, matteValue_t v) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
-        return m->userdata;
+        if (!m->ext) return NULL;
+        return m->ext->userdata;
     }
     return NULL;
 }
@@ -2956,9 +3004,9 @@ uint32_t matte_value_object_get_key_count(matteStore_t * store, matteValue_t v) 
         (m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0) +
         (m->table.keyvalue_true.binID?1:0) +
         (m->table.keyvalue_false.binID?1:0) +
-        (m->table.stringCount)+
-        (m->table.objectCount)+
-        (m->table.typeCount);
+        (m->table.keyvalues_string ? matte_table_get_size(m->table.keyvalues_string) : 0)+
+        (m->table.keyvalues_object ? matte_table_get_size(m->table.keyvalues_object) : 0)+
+        (m->table.keyvalues_types ? matte_table_get_size(m->table.keyvalues_types) : 0);
 
     return total;    
 }
@@ -2988,7 +3036,6 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
             matte_store_recycle(store, *value);
             store_recycle_value_pointer(store, id);
             matte_string_store_unref(store->stringStore, key.value.id);
-            m->table.stringCount--;
         }
         return;
       }
@@ -3005,7 +3052,6 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
             }
             matte_store_recycle(store, *value);
             store_recycle_value_pointer(store, id);
-            m->table.typeCount--;
         }
         return;
       }
@@ -3060,7 +3106,6 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
             matte_store_recycle(store, *value);
             matte_table_remove_by_uint(m->table.keyvalues_object, key.value.id);
             store_recycle_value_pointer(store, id);
-            m->table.objectCount--;
         }
         return;
       }
@@ -3758,7 +3803,7 @@ static matteObject_t * create_table() {
     out->table.keyvalues_object = NULL;//matte_table_create_hash_pointer();
     out->table.keyvalue_true.binID = 0;
     out->table.keyvalue_false.binID = 0;   
-    out->children = matte_table_create_hash_pointer();
+    out->children = NULL;
     #ifdef MATTE_DEBUG__STORE
         out->parents = matte_array_create(sizeof(matteValue_t));
     #endif
@@ -3768,7 +3813,7 @@ static matteObject_t * create_table() {
 
 static matteObject_t * create_function() {
     matteObject_t * out = (matteObject_t*)matte_allocate(sizeof(matteObject_t));
-    out->children = matte_table_create_hash_pointer();
+    out->children = NULL;
     out->function.referrables = matte_array_create(sizeof(matteValue_t));
     //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
     //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
@@ -3789,7 +3834,12 @@ static void destroy_object(void * d) {
     #ifdef MATTE_DEBUG__STORE
         matte_array_destroy(out->parents);
     #endif
-    matte_table_destroy(out->children);
+    matteObjectChildNode_t * child = out->children;
+    while(child) {
+        matteObjectChildNode_t * prev = child;
+        child = child->next;
+        matte_deallocate(prev);    
+    }
     if (IS_FUNCTION_OBJECT(out)) {
         matte_array_destroy(out->function.captures);
     
