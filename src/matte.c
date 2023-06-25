@@ -870,6 +870,20 @@ void matte_debugging_enable(matte_t * m) {
 }
 
 
+void matte_debugging_register_source(
+    matte_t * m,
+    uint32_t fileID,
+    const char * source        
+) {
+    debug_split_lines(
+        m,
+        fileID,
+        (const uint8_t *) source,
+        strlen(source)
+    );
+}
+
+
 static void* alloc_default(uint64_t size) {
     return malloc(size);
 }

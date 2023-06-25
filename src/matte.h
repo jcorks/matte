@@ -123,6 +123,33 @@ void matte_debugging_enable(
 );
 
 
+/// When called, associates a fileID with a source file.
+/// For the default importer, this is called for you when 
+/// debugging is enabled.
+///
+/// For cases where the default importer is not used, 
+/// this function can be called manually.
+///
+/// When associated with a file ID, the source is used 
+/// and displayed within the debugger when its activated.
+/// This makes debugging much more convenient, as a viewer 
+/// can follow where in the code the context is stopped and 
+/// stepped through.
+///
+void matte_debugging_register_source(
+    /// The instance to register source lines for.
+    matte_t *,
+
+    /// The fileID of the compiled source or bytecode within the 
+    /// matte instance.
+    uint32_t fileID,
+    
+    /// C-String source that was compiled.
+    const char * source    
+    
+);
+
+
 /// Adds an external C function for use within the VM.
 /// This follows the semantics of matte_vm_set_external_function()
 /// but is more convenient.

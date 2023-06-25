@@ -38,6 +38,9 @@ DEALINGS IN THE SOFTWARE.
 // whether the repl should keep going
 static int KEEP_GOING = 1;
 
+// whether debugging was enabled.
+static int DEBUG = 0;
+
 // Settings instance 
 static matteSettings_t * settings = NULL;
 
@@ -169,6 +172,9 @@ static uint32_t cli_importer(
             &bytecodeLen,
             source
         );
+        if (DEBUG)
+            matte_debugging_register_source(m, fileid, source);
+            
         matte_deallocate(source);
         
         if (!bytes || ! bytecodeLen) {
@@ -339,6 +345,7 @@ matteValue_t packager_run_debug(matteVM_t * vm, matteValue_t fn, const matteValu
     matte_t * m = (matte_t *)userData;
     matteStore_t * store = matte_vm_get_store(vm);
     matte_debugging_enable(m);
+    DEBUG = 1;
     return matte_vm_import(
         vm,
         matte_value_string_get_string_unsafe(store, args[0]),
@@ -415,6 +422,7 @@ int main(int argc, char ** args) {
             exit(1);
         }        
         matte_debugging_enable(m);
+        DEBUG = 1;
         matteVM_t * vm = matte_get_vm(m);
         matte_vm_import(
             vm,
