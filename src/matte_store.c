@@ -53,15 +53,23 @@ DEALINGS IN THE SOFTWARE.
 
 
 
-#ifdef _WIN32 || __WIN32__
-
+#if (_WIN32 || __WIN32__)
+    #include <windows.h>
+    static LARGE_INTEGER freq = {};
+    static double get_ticks() {
+        if (freq.QuadPart == 0)
+            QueryPerformanceFrequency(&freq);
+        LARGE_INTEGER ticks;
+        QueryPerformanceCounter(&ticks);
+        return (ticks.QuadPart * (1.0 / (freq.QuadPart))) * 1000.0;
+    }
 #else 
 #include <sys/time.h>
-static double get_ticks() {
-    struct timeval t; 
-    gettimeofday(&t, NULL);
-    return t.tv_sec*1000LL + t.tv_usec/1000;
-}
+    static double get_ticks() {
+        struct timeval t; 
+        gettimeofday(&t, NULL);
+        return t.tv_sec*1000LL + t.tv_usec/1000;
+    }
 #endif
 
 
