@@ -2146,10 +2146,6 @@ static uint32_t get_local_referrable(
     uint32_t i;
     uint32_t len;
 
-    // special: always refers to the calling context.
-    if (!strcmp(matte_string_get_c_str((const matteString_t*)iter->data), "context")) {
-        return 0;
-    }
 
     //while(block) {
     len = matte_array_get_size(block->args);
@@ -2176,9 +2172,6 @@ static uint32_t get_local_referrable(
 // returns whether the referrable for this block is constant.
 // This will go through existing captures as well.
 static int is_referrable_const(matteFunctionBlock_t * block, uint32_t referrable) {
-    // The "context" referrable is implicitly constant.
-    // be reasonable you sneaky ppl....
-    if (referrable == 0) return 1;
 
     referrable--;    
     // overwriting local-face arguments is okay though!

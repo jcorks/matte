@@ -212,7 +212,7 @@ static void matte_table_resize(matteTable_t * t) {
     
 
     // then resize
-    t->nBuckets *= 2;
+    t->nBuckets *= 1.4;
     matte_deallocate(t->buckets);
     t->buckets = (matteTableEntry_t**)matte_allocate(t->nBuckets * sizeof(matteTableEntry_t*));
 
