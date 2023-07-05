@@ -31,6 +31,7 @@ DEALINGS IN THE SOFTWARE.
 @json        = import(module:"Matte.Core.JSON");
 @eventSystem = import(module:'Matte.Core.EventSystem');
 @introspect  = import(module:'Matte.Core.Introspect');
+@memorybuffer= import(module:'Matte.Core.MemoryBuffer');
 
 return class(
     define:::(this) {
@@ -38,7 +39,8 @@ return class(
             Class       :{get::<- class},   
             JSON        :{get::<- json},
             EventSystem :{get::<- eventSystem},
-            Introspect  :{get::<- introspect}
+            Introspect  :{get::<- introspect},
+            MemoryBuffer:{get::<- memorybuffer}
         };
     }
 ).new();

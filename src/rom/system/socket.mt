@@ -29,7 +29,7 @@ DEALINGS IN THE SOFTWARE.
 */
 @class = import(module:'Matte.Core.Class');
 @EventSystem = import(module:'Matte.Core.EventSystem');
-@MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
+@MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
 @Socket = {
     Server : ::<={
         // Creates a new socket bound to an address and port.

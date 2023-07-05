@@ -48,7 +48,7 @@ DEALINGS IN THE SOFTWARE.
 
 @:class = import(module:'Matte.Core.Class');
 @MemoryBuffer = class(
-    name: 'Matte.System.MemoryBuffer',
+    name: 'Matte.Core.MemoryBuffer',
     define:::(this) {
         @:MBuffer = this.class.type;
         @length = 0;

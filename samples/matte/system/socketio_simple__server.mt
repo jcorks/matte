@@ -31,7 +31,7 @@ DEALINGS IN THE SOFTWARE.
 // which performssockets over the IP.
 @:Socket     = import(module:'Matte.System.Socket');
 @:Time         = import(module:'Matte.System.Time');
-@:MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
+@:MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
 
 
 

@@ -199,7 +199,7 @@ DEALINGS IN THE SOFTWARE.
             instSetIn.bases->push(value:instSet);            
         };
         
-        @runSelf = context;
+        @runSelf = makeInstance;
         if (inherited != empty) ::<={
             inherited->foreach(do:::(k, v) {
                 runSelf(instSetIn:instSet, classObj:v);            

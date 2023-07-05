@@ -37,6 +37,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 #include "./core/json.c"
+#include "./core/memorybuffer.c"
 #ifdef MATTE_USE_SYSTEM_EXTENSIONS
 
 #ifdef __WIN32__
@@ -56,7 +57,6 @@ DEALINGS IN THE SOFTWARE.
 
 ////////////
 #include "./system/winapi/shared.c"
-#include "./system/winapi/memorybuffer.c"
 #include "./system/winapi/consoleio.c"
 #include "./system/winapi/filesystem.c"
 #include "./system/winapi/socketio.c"
@@ -99,7 +99,6 @@ DEALINGS IN THE SOFTWARE.
 
 ////////////
 #include "./system/posix/shared.c"
-#include "./system/posix/memorybuffer.c"
 #include "./system/posix/consoleio.c"
 #include "./system/posix/filesystem.c"
 #include "./system/posix/socketio.c"
@@ -116,10 +115,10 @@ DEALINGS IN THE SOFTWARE.
 
 void matte_bind_native_functions(matteVM_t * vm) {
     matte_system__json(vm);
+    matte_system__memorybuffer(vm);
 
     matte_system__consoleio(vm);
     matte_system__filesystem(vm);
-    matte_system__memorybuffer(vm);
     matte_system__socketio(vm);
     matte_system__time(vm);
     matte_system__utility(vm);
@@ -133,7 +132,7 @@ void matte_bind_native_functions(matteVM_t * vm) {
 #else 
 void matte_bind_native_functions(matteVM_t * vm) {
     matte_system__json(vm);
-
+    matte_system__memorybuffer(vm);
 
 }
 #endif

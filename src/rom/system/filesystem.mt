@@ -28,7 +28,7 @@ DEALINGS IN THE SOFTWARE.
 
 */
 @class = import(module:"Matte.Core.Class");
-@MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
+@MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
 
 @_getcwd = getExternalFunction(name:"__matte_::filesystem_getcwd");
 @_setcwd = getExternalFunction(name:"__matte_::filesystem_setcwd");

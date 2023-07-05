@@ -437,7 +437,7 @@ void matte_store_garbage_collect(matteStore_t * h) {
 
 
 
-    double ticks = get_ticks();
+    double ticks = matte_os_get_ticks();
     if (!h->shutdown && (ticks - h->ticksGC < BUSY_POSSUM__SLEEPY_TIME_MS)) return;
     h->gcLocked = 1;
     h->ticksGC = ticks;
@@ -473,7 +473,7 @@ void matte_store_garbage_collect(matteStore_t * h) {
             // drop out
         }
     } else {
-        ticks = get_ticks();
+        ticks = matte_os_get_ticks();
         if (ticks - h->ticksGC < BUSY_POSSUM__AWAKE_TIME_MS)
             goto L_BUSY_POSSUM_CYCLE;
     }

@@ -27,7 +27,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@MBuffer = import(module:'Matte.System.MemoryBuffer');
+@MBuffer = import(module:'Matte.Core.MemoryBuffer');
 
 
 @:a = MBuffer.new();

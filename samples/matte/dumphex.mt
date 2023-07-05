@@ -27,7 +27,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
+@MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
 @ConsoleIO    = import(module:'Matte.System.ConsoleIO');
 @class        = import(module:'Matte.Core.Class');
 

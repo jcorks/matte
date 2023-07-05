@@ -34,7 +34,7 @@ DEALINGS IN THE SOFTWARE.
 // the memorybuffer_simple.mt to see how they work if more info is 
 // needed.
 @:Filesystem = import(module:'Matte.System.Filesystem');
-@:MBuffer = import(module:'Matte.System.MemoryBuffer');
+@:MBuffer = import(module:'Matte.Core.MemoryBuffer');
 
 
 

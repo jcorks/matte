@@ -31,7 +31,7 @@ DEALINGS IN THE SOFTWARE.
 // which uses sockets over the IP.
 @:ConsoleIO = import(module:'Matte.System.ConsoleIO');
 @:Socket  = import(module:'Matte.System.Socket');
-@:MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
+@:MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
 @:Time = import(module:'Matte.System.Time');
 
 // This is a utility function for processing
