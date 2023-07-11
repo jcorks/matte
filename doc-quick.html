@@ -229,8 +229,6 @@ When called, functions that have arguments have values bound by name to argument
 
 </pre>
 
-The <b>context</b> keyword can always be used to refer to the running function. 
-
 <br>
 <br>
 
@@ -334,11 +332,10 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
 
 <pre id="doc-source">
     // Fibonacci sequence using "when"
-    // "context" always refers to the currently running function.
     @:fib ::(n){
         when(n <  1) 0;
         when(n <= 2) 1;
-        return context(n:n-1) + context(n:n-2);
+        return fib(n:n-1) + fib(n:n-2);
     };
 
     print(message:fib(n:5));
@@ -576,7 +573,7 @@ Here are the different available queries:
     <li><b>attributes:</b> Returns the attributes for this object.</li>
     <li><b>sort(<i>func</i>):</b> Sorts the object's values with number keys according to a comparator. The comparator is given each value.</li>
     <li><b>subset(<i>from</i>, <i>to</i>):</b> Returns a slice of the object's number-keyed values.</li>
-    <li><b>findIndex(<i>value</i>):</b> Returns the index within the object's numbered keys whose value matches the one given. Returns -1 if not found.</li>
+    <li><b>findIndex(<i>value</i>, <i>query</i>):</b> Returns the index within the object's numbered keys whose value matches the one given. Returns -1 if not found. Alternatively, a function can be supplied for 'query', which will return true for the index that matches.</li>
     <li><b>is(<i>type</i>):</b> Returns whether the object is the given Type, taking into account inheritance. </li>
     <li><b>map(<i>func</i>):</b> Applies a function to all members of an object, altering them.</li>
     <li><b>reduce(<i>func</i>):</b> Returns a reduction of the given set.</li>
