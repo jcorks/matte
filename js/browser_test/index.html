@@ -50,9 +50,9 @@
         );
         
         matte.setExternalFunction('external_test!', ['a', 'b'], function(fn, args) {
-            return matte.heap.createNumber(
-                matte.heap.valueAsNumber(args[0]) +
-                matte.heap.valueAsNumber(args[1])
+            return matte.store.createNumber(
+                matte.store.valueAsNumber(args[0]) +
+                matte.store.valueAsNumber(args[1])
             );
         });
 
@@ -63,7 +63,7 @@
         var modsLeft = initialModules.length;
 
         var testList = 1;
-        const fileCount = 117;
+        const fileCount = 118;
         var lock = false;;
         const runTest = function() {
             var result;
@@ -76,12 +76,12 @@
                 readText('/browser_test/test'+test+'.out', function(text) {
                     text = text.replaceAll(' ', '');
                     text = text.replaceAll('\n', '');
-                    if (matte.heap.valueAsString(result).data == text) {
+                    if (matte.store.valueAsString(result).data == text) {
                         if (test >= fileCount) {
                             console.log("Tests complete! All pass.");
                         }
                     } else {
-                        throw new Error('Test ' + test + ' failed! Expected [' + text + '], but received [' + matte.heap.valueAsString(result).data + ']');
+                        throw new Error('Test ' + test + ' failed! Expected [' + text + '], but received [' + matte.store.valueAsString(result).data + ']');
                     }
                     lock = false;
                 });                

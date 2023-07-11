@@ -4020,18 +4020,44 @@ const Matte = {
             });            
 
 
-            vm_addBuiltIn(vm.EXT_CALL.QUERY_FINDINDEX, ['base', 'value'], function(fn, args) {
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_FINDINDEX, ['base', 'value', 'query'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
+                if (args[1].binID == store.TYPE_EMPTY &&
+                    args[2].binID == store.TYPE_EMPTY) {
+                    vm.raiseErrorString("findIndex() cannot have both 'value' and 'query' specified.");
+                    return store.createEmpty();                    
+                }
 
                 const len = store.valueObjectGetNumberKeyCount(args[0]);
-                for(var i = 0; i < len; ++i) {
-                    if (vm_pendingCatchable) break;
-                    const v = store.valueObjectAccessIndex(args[0], i);
-                    if (store.valueAsBoolean(vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ](v, args[1]))) {
-                        return store.createNumber(i);
+
+                if (args[2].binID != store.TYPE_EMPTY) {
+                    const names = [vm_specialString_value];
+                    const vals = [];
+                    if (!store.valueIsCallable(args[2])) {
+                        vm.raiseErrorString("When specified, the query parameter for findIndex() must be callable.");
+                    } else {
+                        for(var i = 0; i < len; ++i) {
+                        
+                            if (vm_pendingCatchable) break;
+                            const v = store.valueObjectAccessIndex(args[0], i);
+                            vals[0] = v;
+
+                            if (store.valueAsBoolean(vm.callFunction(args[2], vals, names))) {
+                                return store.createNumber(i);
+                            }                        
+                        }
+                    }                
+                } else {
+                    for(var i = 0; i < len; ++i) {
+                        if (vm_pendingCatchable) break;
+                        const v = store.valueObjectAccessIndex(args[0], i);
+                        if (store.valueAsBoolean(vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ](v, args[1]))) {
+                            return store.createNumber(i);
+                        }
                     }
                 }
-                return store.createEmpty();
+
+                return store.createNumber(-1);
             });
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_ISA, ['query', 'type'], function(fn, args) {

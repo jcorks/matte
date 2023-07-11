@@ -271,12 +271,14 @@ struct matteObjectChildNode_t {
 };
 
 
+
 struct matteObject_t {
     
 
     //matteTable_t * refChildren;
     //matteTable_t * refParents;
-    uint64_t refcount;
+    uint32_t refcount;
+    uint32_t typecode;
     // id within sorted store.
     uint32_t storeID;
     uint16_t rootState;
@@ -301,16 +303,12 @@ struct matteObject_t {
             matteTable_t * keyvalues_string;
             matteArray_t * keyvalues_number;
             matteTable_t * keyvalues_object;
-            matteValue_t keyvalue_true;
-            matteValue_t keyvalue_false;
+            matteValue_t * keyvalue_true;
+            matteValue_t * keyvalue_false;
             matteTable_t * keyvalues_types;
 
-            matteValue_t attribSet;
+            matteValue_t * attribSet;
             
-
-            
-            // custom typecode.
-            uint32_t typecode;
         } table;
         
         struct {
@@ -474,9 +472,11 @@ static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, mat
       
       case MATTE_VALUE_TYPE_BOOLEAN: {
         if (key.value.boolean) {
-            return &m->table.keyvalue_true;
+            if (m->table.keyvalue_true == NULL) return NULL;
+            return m->table.keyvalue_true;
         } else {
-            return &m->table.keyvalue_false;
+            if (m->table.keyvalue_false == NULL) return NULL;
+            return m->table.keyvalue_false;
         }
       }
       
@@ -702,21 +702,29 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
       case MATTE_VALUE_TYPE_BOOLEAN: {
 
         if (key.value.boolean) {
-            if (m->table.keyvalue_true.binID == MATTE_VALUE_TYPE_OBJECT) {
-                object_unlink_parent_value(store, m, &m->table.keyvalue_true);
-            }
+            if (m->table.keyvalue_true) {
+                if (m->table.keyvalue_true->binID == MATTE_VALUE_TYPE_OBJECT) {
+                    object_unlink_parent_value(store, m, m->table.keyvalue_true);
+                }
 
-            matte_store_recycle(store, m->table.keyvalue_true);
-            m->table.keyvalue_true = out;            
-            return &m->table.keyvalue_true;
+                matte_store_recycle(store, *m->table.keyvalue_true);
+            } else {
+                m->table.keyvalue_true = matte_allocate(sizeof(matteValue_t));
+            }
+            *m->table.keyvalue_true = out;            
+            return m->table.keyvalue_true;
         } else {
-            if (m->table.keyvalue_false.binID == MATTE_VALUE_TYPE_OBJECT) {
-                object_unlink_parent_value(store, m, &m->table.keyvalue_false);
-            }
+            if (m->table.keyvalue_false) {
+                if (m->table.keyvalue_false->binID == MATTE_VALUE_TYPE_OBJECT) {
+                    object_unlink_parent_value(store, m, m->table.keyvalue_false);
+                }
 
-            matte_store_recycle(store, m->table.keyvalue_false);
-            m->table.keyvalue_false = out;            
-            return &m->table.keyvalue_false;
+                matte_store_recycle(store, *m->table.keyvalue_false);
+            } else {
+                m->table.keyvalue_false = matte_allocate(sizeof(matteValue_t));
+            }
+            *m->table.keyvalue_false = out;            
+            return m->table.keyvalue_false;
         }
       }
       
@@ -768,8 +776,8 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
 // returns a type conversion operator if it exists
 static matteValue_t object_get_conv_operator(matteStore_t * store, matteObject_t * m, uint32_t type) {
     matteValue_t out = matte_store_new_value(store);
-    if (m->table.attribSet.binID == 0) return out;
-    matteValue_t * operator_ = &m->table.attribSet;
+    if (m->table.attribSet == NULL || m->table.attribSet->binID == 0) return out;
+    matteValue_t * operator_ = m->table.attribSet;
 
     matteValue_t key;
     store = store;
@@ -784,11 +792,11 @@ static matteValue_t object_get_conv_operator(matteStore_t * store, matteObject_t
 // read if either 0 (write) or 1(read)
 static matteValue_t object_get_access_operator(matteStore_t * store, matteObject_t * m, int isBracket, int read) {
     matteValue_t out = matte_store_new_value(store);
-    if (m->table.attribSet.binID == 0) return out;
+    if (m->table.attribSet == NULL || m->table.attribSet->binID == 0) return out;
 
 
     
-    matteValue_t set = matte_value_object_access(store, m->table.attribSet, isBracket ? store->specialString_bracketAccess : store->specialString_dotAccess, 0);
+    matteValue_t set = matte_value_object_access(store, *m->table.attribSet, isBracket ? store->specialString_bracketAccess : store->specialString_dotAccess, 0);
     if (set.binID) {
         if (set.binID != MATTE_VALUE_TYPE_OBJECT) {
             matte_vm_raise_error_cstring(store->vm, "operator['[]'] and operator['.'] property must be an Object if it is set.");
@@ -1683,7 +1691,7 @@ void matte_value_into_new_object_ref_(matteStore_t * store, matteValue_t * v) {
     d->color = OBJECT_TRICOLOR__WHITE;  
     matte_store_garbage_collect__add_to_color(store, d);  
     v->value.id = d->storeID;
-    d->table.typecode = store->type_object.value.id;
+    d->typecode = store->type_object.value.id;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
 }
 
@@ -1702,9 +1710,9 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
         matteString_t * str = matte_string_create_from_c_str("Cannot instantiate object without a Type. (given value is of type %s)", matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, typeobj))));
         matte_vm_raise_error_string(store->vm, str);
         matte_string_destroy(str);
-        d->table.typecode = store->type_object.value.id;
+        d->typecode = store->type_object.value.id;
     } else {
-        d->table.typecode = typeobj.value.id;
+        d->typecode = typeobj.value.id;
     }
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
 }
@@ -1720,7 +1728,7 @@ void matte_value_into_new_object_literal_ref_(matteStore_t * store, matteValue_t
     d->color = OBJECT_TRICOLOR__WHITE; 
     matte_store_garbage_collect__add_to_color(store, d);  
     v->value.id = d->storeID;
-    d->table.typecode = store->type_object.value.id;
+    d->typecode = store->type_object.value.id;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
     matte_value_object_push_lock(store, *v);
     uint32_t i;
@@ -1749,7 +1757,7 @@ void matte_value_into_new_object_array_ref_(matteStore_t * store, matteValue_t *
     d->color = OBJECT_TRICOLOR__WHITE;  
     matte_store_garbage_collect__add_to_color(store, d);  
     v->value.id = d->storeID;
-    d->table.typecode = store->type_object.value.id;
+    d->typecode = store->type_object.value.id;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
     matte_value_object_push_lock(store, *v);
 
@@ -2134,16 +2142,16 @@ static void print_object_children(matteStore_t * h, matteObject_t * o) {
             print_object_children__print_value("function capture", *matte_value_get_captured_value(h, dummy, n));
         }
     } else {
-        if (o->table.attribSet.binID) {
-            print_object_children__print_value("attrib set", o->table.attribSet);
+        if (o->table.attribSet && o->table.attribSet->binID) {
+            print_object_children__print_value("attrib set", *o->table.attribSet);
         }
 
 
-        if (o->table.keyvalue_true.binID) {
-            print_object_children__print_value("key [true]", o->table.keyvalue_true);
+        if (o->table.keyvalue_true && o->table.keyvalue_true->binID) {
+            print_object_children__print_value("key [true]", *o->table.keyvalue_true);
         }
-        if (o->table.keyvalue_false.binID) {
-            print_object_children__print_value("key [false]",o->table.keyvalue_false);                
+        if (o->table.keyvalue_false && o->table.keyvalue_false->binID) {
+            print_object_children__print_value("key [false]",*o->table.keyvalue_false);                
         }
         if (o->table.keyvalues_number && matte_array_get_size(o->table.keyvalues_number)) {
             uint32_t subl = matte_array_get_size(o->table.keyvalues_number);
@@ -2788,8 +2796,8 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
 
-    if (m->table.attribSet.binID) {
-        matteValue_t set = matte_value_object_access(store, m->table.attribSet, store->specialString_keys, 0);
+    if (m->table.attribSet && m->table.attribSet->binID) {
+        matteValue_t set = matte_value_object_access(store, *m->table.attribSet, store->specialString_keys, 0);
 
         if (set.binID) {
             v = matte_vm_call(store->vm, set, matte_array_empty(), matte_array_empty(), NULL);
@@ -2865,13 +2873,13 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
 
 
     // true 
-    if (m->table.keyvalue_true.binID) {
+    if (m->table.keyvalue_true && m->table.keyvalue_true->binID) {
         matteValue_t key = matte_store_new_value(store);
         matte_value_into_boolean(store, &key, 1);
         matte_array_push(keys, key);
     }
     // false
-    if (m->table.keyvalue_false.binID) {
+    if (m->table.keyvalue_false && m->table.keyvalue_false->binID) {
         matteValue_t key = matte_store_new_value(store);
         matte_value_into_boolean(store, &key, 0);
         matte_array_push(keys, key);
@@ -2895,8 +2903,8 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
         return matte_store_new_value(store);
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-    if (m->table.attribSet.binID) {
-        matteValue_t set = matte_value_object_access(store, m->table.attribSet, store->specialString_values, 0);
+    if (m->table.attribSet && m->table.attribSet->binID) {
+        matteValue_t set = matte_value_object_access(store, *m->table.attribSet, store->specialString_values, 0);
 
         if (set.binID) {
             v = matte_vm_call(store->vm, set, matte_array_empty(), matte_array_empty(), NULL);
@@ -2953,15 +2961,15 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
 
 
     // true 
-    if (m->table.keyvalue_true.binID) {
+    if (m->table.keyvalue_true && m->table.keyvalue_true->binID) {
         val = matte_store_new_value(store);
-        matte_value_into_copy(store, &val, m->table.keyvalue_true);
+        matte_value_into_copy(store, &val, *m->table.keyvalue_true);
         matte_array_push(vals, val);
     }
     // false
-    if (m->table.keyvalue_false.binID) {
+    if (m->table.keyvalue_false && m->table.keyvalue_false->binID) {
         val = matte_store_new_value(store);
-        matte_value_into_copy(store, &val, m->table.keyvalue_false);
+        matte_value_into_copy(store, &val, *m->table.keyvalue_false);
         matte_array_push(vals, val);
     }
     
@@ -2994,8 +3002,8 @@ uint32_t matte_value_object_get_key_count(matteStore_t * store, matteValue_t v) 
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
     uint32_t total = 
         (m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0) +
-        (m->table.keyvalue_true.binID?1:0) +
-        (m->table.keyvalue_false.binID?1:0) +
+        (m->table.keyvalue_true && m->table.keyvalue_true->binID?1:0) +
+        (m->table.keyvalue_false && m->table.keyvalue_false->binID?1:0) +
         (m->table.keyvalues_string ? matte_table_get_size(m->table.keyvalues_string) : 0)+
         (m->table.keyvalues_object ? matte_table_get_size(m->table.keyvalues_object) : 0)+
         (m->table.keyvalues_types ? matte_table_get_size(m->table.keyvalues_types) : 0);
@@ -3069,17 +3077,21 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
       case MATTE_VALUE_TYPE_BOOLEAN: {
 
         if (key.value.boolean) {
-            if (m->table.keyvalue_true.binID == MATTE_VALUE_TYPE_OBJECT) {
-                object_unlink_parent_value(store, m, &m->table.keyvalue_true);                
+            if (m->table.keyvalue_true) {
+                if (m->table.keyvalue_true->binID == MATTE_VALUE_TYPE_OBJECT) {
+                    object_unlink_parent_value(store, m, m->table.keyvalue_true);                
+                }
+                matte_store_recycle(store, *m->table.keyvalue_true);
+                *m->table.keyvalue_true = matte_store_new_value(store);            
             }
-            matte_store_recycle(store, m->table.keyvalue_true);
-            m->table.keyvalue_true = matte_store_new_value(store);            
         } else {
-            if (m->table.keyvalue_false.binID == MATTE_VALUE_TYPE_OBJECT) {
-                object_unlink_parent_value(store, m, &m->table.keyvalue_false);                
-            }
-            matte_store_recycle(store, m->table.keyvalue_false);
-            m->table.keyvalue_false = matte_store_new_value(store);               
+            if (m->table.keyvalue_false) {
+                if (m->table.keyvalue_false->binID == MATTE_VALUE_TYPE_OBJECT) {
+                    object_unlink_parent_value(store, m, m->table.keyvalue_false);                
+                }
+                matte_store_recycle(store, *m->table.keyvalue_false);
+                *m->table.keyvalue_false = matte_store_new_value(store);            
+            }        
         }
         return;
       }
@@ -3110,8 +3122,8 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
     matteObject_t * m = (matteObject_t*)matte_store_bin_fetch_table(store->bin, v.value.id);
 
     // foreach operator
-    if (m->table.attribSet.binID) {
-        matteValue_t set = matte_value_object_access(store, m->table.attribSet, store->specialString_foreach, 0);
+    if (m->table.attribSet && m->table.attribSet->binID) {
+        matteValue_t set = matte_value_object_access(store, *m->table.attribSet, store->specialString_foreach, 0);
 
         if (set.binID) {
             v = matte_vm_call(store->vm, set, matte_array_empty(), matte_array_empty(), NULL);
@@ -3197,17 +3209,17 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
     }
 
     // true 
-    if (m->table.keyvalue_true.binID) {
+    if (m->table.keyvalue_true && m->table.keyvalue_true->binID) {
         matte_value_into_boolean(store, &args[0], 1);
-        args[1] = m->table.keyvalue_true;
+        args[1] = *m->table.keyvalue_true;
         matte_value_object_push_lock(store, args[1]);
         matte_array_push(keys, args[0]);
         matte_array_push(values, args[1]);
     }
     // false
-    if (m->table.keyvalue_false.binID) {
+    if (m->table.keyvalue_false && m->table.keyvalue_false->binID) {
         matte_value_into_boolean(store, &args[0], 1);
-        args[1] = m->table.keyvalue_false;
+        args[1] = *m->table.keyvalue_false;
         matte_value_object_push_lock(store, args[1]);
         matte_array_push(keys, args[0]);
         matte_array_push(values, args[1]);
@@ -3312,19 +3324,20 @@ void matte_value_object_set_attributes(matteStore_t * store, matteValue_t v, mat
     }
     
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-    if (m->table.attribSet.binID) {
-        object_unlink_parent_value(store, m, &m->table.attribSet);
-        matte_store_recycle(store, m->table.attribSet);
+    if (m->table.attribSet && m->table.attribSet->binID) {
+        object_unlink_parent_value(store, m, m->table.attribSet);
+        matte_store_recycle(store, *m->table.attribSet);
     }
-
+    if (!m->table.attribSet)
+        m->table.attribSet = matte_allocate(sizeof(matteValue_t));
     
-    matte_value_into_copy(store, &m->table.attribSet, opObject);
-    object_link_parent_value(store, m, &m->table.attribSet);
+    matte_value_into_copy(store, m->table.attribSet, opObject);
+    object_link_parent_value(store, m, m->table.attribSet);
 }
 
 const matteValue_t * matte_value_object_get_attributes_unsafe(matteStore_t * store, matteValue_t v) {
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-    if (m->table.attribSet.binID) return &m->table.attribSet;
+    if (m->table.attribSet && m->table.attribSet->binID) return m->table.attribSet;
     return NULL;
 }
 
@@ -3650,7 +3663,7 @@ matteValue_t matte_value_get_type(matteStore_t * store, matteValue_t v) {
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
         matteValue_t out;
         out.binID = MATTE_VALUE_TYPE_TYPE;
-        out.value.id = m->table.typecode;
+        out.value.id = m->typecode;
         return out;
       }
 
@@ -3793,8 +3806,8 @@ static matteObject_t * create_table() {
     out->table.keyvalues_types  = NULL;//matte_table_create_hash_pointer();
     out->table.keyvalues_number = NULL;//matte_array_create(sizeof(matteValue_t));
     out->table.keyvalues_object = NULL;//matte_table_create_hash_pointer();
-    out->table.keyvalue_true.binID = 0;
-    out->table.keyvalue_false.binID = 0;   
+    out->table.keyvalue_true = NULL;
+    out->table.keyvalue_false = NULL;   
     out->children = NULL;
     #ifdef MATTE_DEBUG__STORE
         out->parents = matte_array_create(sizeof(matteValue_t));

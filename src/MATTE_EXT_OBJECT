@@ -180,7 +180,8 @@ static matteValue_t vm_ext_call__object__filter(matteVM_t * vm, matteValue_t fn,
     matte_value_into_new_object_ref(vm->store, &out);
     matte_value_object_push_lock(vm->store, out);
     
-    matteArray_t names = MATTE_ARRAY_CAST(&vm->specialString_value, matteValue_t, 1);
+    matteArray_t namesSrc = MATTE_ARRAY_CAST(&vm->specialString_value, matteValue_t, 1);
+    matteArray_t * names = matte_array_clone(&namesSrc);
     
     uint32_t len = matte_value_object_get_number_key_count(vm->store, args[0]);
     uint32_t i;
@@ -190,7 +191,7 @@ static matteValue_t vm_ext_call__object__filter(matteVM_t * vm, matteValue_t fn,
         matteValue_t v = matte_value_object_access_index(vm->store, args[0], i);
         matteArray_t argsv = MATTE_ARRAY_CAST(&v, matteValue_t, 1);
 
-        if (matte_value_as_boolean(vm->store, matte_vm_call(vm, args[1], &argsv, &names, NULL))) {
+        if (matte_value_as_boolean(vm->store, matte_vm_call(vm, args[1], &argsv, names, NULL))) {
             matte_value_object_insert(vm->store, out, ctout++, v);
         }
     }
@@ -198,32 +199,65 @@ static matteValue_t vm_ext_call__object__filter(matteVM_t * vm, matteValue_t fn,
     matte_value_object_pop_lock(vm->store, args[0]);
     matte_value_object_pop_lock(vm->store, args[1]);
     matte_value_object_pop_lock(vm->store, out);
+    
+    matte_array_destroy(names);
     return out;
 }
 
 
 static matteValue_t vm_ext_call__object__findindex(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_object(vm, args)) return matte_store_new_value(vm->store);
+    if (args[1].binID != MATTE_VALUE_TYPE_EMPTY &&
+        args[2].binID != MATTE_VALUE_TYPE_EMPTY) {
+        matte_vm_raise_error_cstring(vm, "findIndex() cannot have both 'value' and 'query' specified.");        
+        return matte_store_new_value(vm->store);                   
+    }
+
+
     matte_value_object_push_lock(vm->store, args[0]);
     matte_value_object_push_lock(vm->store, args[1]);
+    matte_value_object_push_lock(vm->store, args[2]);
+    
     
     
     matteValue_t out = {};   
     matte_value_into_number(vm->store, &out, -1);
     uint32_t len = matte_value_object_get_number_key_count(vm->store, args[0]);
     uint32_t i;
-    for(i = 0; i < len; ++i) {
-        if (vm->pendingCatchable) break;
-        matteValue_t v = matte_value_object_access_index(vm->store, args[0], i);
+    
+    if (args[2].binID) {
+        if (!matte_value_is_callable(vm->store, args[2])) {
+            matte_vm_raise_error_cstring(vm, "When specified, the query parameter for findIndex() must be callable.");        
+        } else {
+            matteArray_t namesSrc = MATTE_ARRAY_CAST(&vm->specialString_value, matteValue_t, 1);
+            matteArray_t * names = matte_array_clone(&namesSrc);
+            for(i = 0; i < len; ++i) {
+                if (vm->pendingCatchable) break;
+                matteValue_t v = matte_value_object_access_index(vm->store, args[0], i);
+                matteArray_t argsv = MATTE_ARRAY_CAST(&v, matteValue_t, 1);
 
-        if (matte_value_as_boolean(vm->store, vm_operator__eq(vm, v, args[1])))  {
-            matte_value_into_number(vm->store, &out, i);
-            break;
+                if (matte_value_as_boolean(vm->store, matte_vm_call(vm, args[2], &argsv, names, NULL))) {
+                    matte_value_into_number(vm->store, &out, i);
+                    break;
+                }
+            }
+            
+            matte_array_destroy(names);
+        }
+    } else {
+        for(i = 0; i < len; ++i) {
+            if (vm->pendingCatchable) break;
+            matteValue_t v = matte_value_object_access_index(vm->store, args[0], i);
+
+            if (matte_value_as_boolean(vm->store, vm_operator__eq(vm, v, args[1])))  {
+                matte_value_into_number(vm->store, &out, i);
+                break;
+            }
         }
     }
-    
     matte_value_object_pop_lock(vm->store, args[0]);
     matte_value_object_pop_lock(vm->store, args[1]);
+    matte_value_object_pop_lock(vm->store, args[2]);
 
     return out;
 }

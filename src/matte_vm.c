@@ -1374,8 +1374,9 @@ matteVM_t * matte_vm_create(matte_t * m) {
 
     
     const matteString_t * findIndex_names[] = {
-        query_name,
+        query_name,        
         value,
+        MATTE_VM_STR_CAST(vm, "query")        
     };
     const matteString_t * is_names[] = {
         query_name,
@@ -1476,7 +1477,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
     temp = MATTE_ARRAY_CAST(sort_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SORT,     &temp, vm_ext_call__object__sort);    
     temp = MATTE_ARRAY_CAST(subset_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SUBSET,     &temp, vm_ext_call__object__subset);    
     temp = MATTE_ARRAY_CAST(filterNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FILTER,     &temp, vm_ext_call__object__filter);    
-    temp = MATTE_ARRAY_CAST(findIndex_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FINDINDEX,     &temp, vm_ext_call__object__findindex);    
+    temp = MATTE_ARRAY_CAST(findIndex_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FINDINDEX,     &temp, vm_ext_call__object__findindex);    
     temp = MATTE_ARRAY_CAST(is_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ISA,     &temp, vm_ext_call__object__is);    
     temp = MATTE_ARRAY_CAST(mapReduceNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__MAP,     &temp, vm_ext_call__object__map);    
     temp = MATTE_ARRAY_CAST(mapReduceNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REDUCE,     &temp, vm_ext_call__object__reduce);    

@@ -237,22 +237,30 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         
         } else {
 
-            if (m->table.attribSet.binID) {
-                //matte_store_recycle(h, m->table.attribSet);
-                object_unlink_parent_value(h, m, &m->table.attribSet);
-                m->table.attribSet.binID = 0;
+            if (m->table.attribSet) {
+                if (m->table.attribSet->binID) {
+                    //matte_store_recycle(h, m->table.attribSet);
+                    object_unlink_parent_value(h, m, m->table.attribSet);
+                }
+                matte_deallocate(m->table.attribSet);
+                m->table.attribSet = NULL;
             }
 
-
-            if (m->table.keyvalue_true.binID) {
-                //matte_store_recycle(h, m->table.keyvalue_true);
-                object_unlink_parent_value(h, m, &m->table.keyvalue_true);
-                m->table.keyvalue_true.binID = 0;
+            if (m->table.keyvalue_true) {
+                if (m->table.keyvalue_true->binID) {
+                    //matte_store_recycle(h, m->table.keyvalue_true);
+                    object_unlink_parent_value(h, m, m->table.keyvalue_true);
+                }
+                matte_deallocate(m->table.keyvalue_true);
+                m->table.keyvalue_true = NULL;
             }
-            if (m->table.keyvalue_false.binID) {
-                //matte_store_recycle(h, m->table.keyvalue_false);
-                object_unlink_parent_value(h, m, &m->table.keyvalue_false);                
-                m->table.keyvalue_false.binID = 0;
+            if (m->table.keyvalue_false) {
+                if (m->table.keyvalue_false->binID) {
+                    //matte_store_recycle(h, m->table.keyvalue_false);
+                    object_unlink_parent_value(h, m, m->table.keyvalue_false);
+                }
+                matte_deallocate(m->table.keyvalue_false);
+                m->table.keyvalue_false = NULL;
             }
             if (m->table.keyvalues_number && matte_array_get_size(m->table.keyvalues_number)) {
                 uint32_t n;
