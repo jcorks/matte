@@ -2905,6 +2905,9 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_OR] = function(a, b) {
                 switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data | store.valueAsNumber(b));
+
                   case store.TYPE_BOOLEAN:
                     return store.createBoolean(a.data | store.valueAsBoolean(b));
 
@@ -2933,6 +2936,9 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_AND] = function(a, b) {
                 switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data & store.valueAsNumber(b));                
+                
                   case store.TYPE_BOOLEAN:
                     return store.createBoolean(a.data & store.valueAsBoolean(b));
 
@@ -3188,6 +3194,8 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_CARET] = function(a, b) {
                 switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data ^ store.valueAsNumber(b));
                   case store.TYPE_BOOLEAN:
                     return store.createBoolean(a.data ^ store.valueAsBoolean(b));
                     
@@ -3199,10 +3207,38 @@ const Matte = {
                 }
                 return store.createEmpty();
             };
+
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_LEFT] = function(a, b) {
+                switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data << store.valueAsNumber(b));
+                    
+                  case store.TYPE_OBJECT:
+                    return vm_runObjectOperator2(a, '<<', b);
+                    
+                  default:
+                    vm_badOperator('<<', a);                  
+                }
+                return store.createEmpty();
+            };
+
+            vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_RIGHT] = function(a, b) {
+                switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data >> store.valueAsNumber(b));
+                    
+                  case store.TYPE_OBJECT:
+                    return vm_runObjectOperator2(a, '>>', b);
+                    
+                  default:
+                    vm_badOperator('>>', a);                  
+                }
+                return store.createEmpty();
+            };
+
+
             
             
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_LEFT]  = function(a, b) {return vm_operatorOverloadOnly2("<<", a, b);}
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_RIGHT] = function(a, b) {return vm_operatorOverloadOnly2(">>", a, b);}
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_POINT]       = function(a, b) {return vm_operatorOverloadOnly2("->", a, b);}
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_TERNARY]     = function(a, b) {return vm_operatorOverloadOnly2("?",  a, b);}
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_TRANSFORM]   = function(a, b) {return vm_operatorOverloadOnly2("<>", a, b);}
@@ -3285,6 +3321,8 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_AND] = function(a, b) {
                 switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data & store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "&=", b);
                   default:
@@ -3295,6 +3333,8 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_OR] = function(a, b) {
                 switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data | store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "|=", b);
                   default:
@@ -3305,6 +3345,8 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_XOR] = function(a, b) {
                 switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data ^ store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "^=", b);
                   default:
@@ -3315,6 +3357,8 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT] = function(a, b) {
                 switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data << store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<<=", b);
                   default:
@@ -3325,6 +3369,8 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT] = function(a, b) {
                 switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(a.data >> store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">>=", b);
                   default:
@@ -3749,7 +3795,7 @@ const Matte = {
                   case vm_operator.MATTE_OPERATOR_MULT:
                   case vm_operator.MATTE_OPERATOR_BITWISE_OR:
                   case vm_operator.MATTE_OPERATOR_OR:
-                  case vm_operator.MATTE_OPERATOR_BITWISE_and:
+                  case vm_operator.MATTE_OPERATOR_BITWISE_AND:
                   case vm_operator.MATTE_OPERATOR_AND:
                   case vm_operator.MATTE_OPERATOR_SHIFT_LEFT:
                   case vm_operator.MATTE_OPERATOR_SHIFT_RIGHT:
