@@ -684,6 +684,16 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
               case 'x':
               case 'e':
               case 'E':
+              case 'a':
+              case 'b':
+              case 'c':
+              case 'd':
+              case 'f':
+              case 'A':
+              case 'B':
+              case 'C':
+              case 'D':
+              case 'F':
               case 'X': {
                 // these CANNOT be the leading char
                 if (matte_string_get_length(out) > 0) {

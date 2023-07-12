@@ -389,8 +389,8 @@ static matteValue_t vm_operator_2(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_OR:         return vm_operator__or          (vm, a, b);
       case MATTE_OPERATOR_BITWISE_AND:return vm_operator__bitwise_and (vm, a, b);
       case MATTE_OPERATOR_AND:        return vm_operator__and         (vm, a, b);
-      case MATTE_OPERATOR_SHIFT_LEFT: return vm_operator__overload_only_2(vm, "<<", a, b);
-      case MATTE_OPERATOR_SHIFT_RIGHT:return vm_operator__overload_only_2(vm, ">>", a, b);
+      case MATTE_OPERATOR_SHIFT_LEFT: return vm_operator__shift_left  (vm, a, b);
+      case MATTE_OPERATOR_SHIFT_RIGHT:return vm_operator__shift_right (vm, a, b);
       case MATTE_OPERATOR_POW:        return vm_operator__pow         (vm, a, b);
       case MATTE_OPERATOR_EQ:         return vm_operator__eq          (vm, a, b);
       case MATTE_OPERATOR_POINT:      return vm_operator__overload_only_2(vm, "->", a, b);

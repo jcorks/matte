@@ -299,6 +299,14 @@ static matteValue_t vm_operator__bitwise_or(matteVM_t * vm, matteValue_t a, matt
             matte_value_as_boolean(vm->store, b)
         );
         break;
+
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            &result, 
+            ((int32_t)matte_value_as_number(vm->store, a)) |
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
         
       
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -349,6 +357,14 @@ static matteValue_t vm_operator__bitwise_and(matteVM_t * vm, matteValue_t a, mat
             matte_value_as_boolean(vm->store, b)
         );
         break;
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            &result, 
+            ((int32_t)matte_value_as_number(vm->store, a)) &
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
+
 
       case MATTE_VALUE_TYPE_OBJECT: {
         result = vm_run_object_operator_2(vm, a, "&", b);
@@ -850,7 +866,14 @@ static matteValue_t vm_operator__caret(matteVM_t * vm, matteValue_t a, matteValu
             matte_value_as_boolean(vm->store, a) ^
             matte_value_as_boolean(vm->store, b)
         );
-        break;      
+        break;
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            &result, 
+            ((int32_t)matte_value_as_number(vm->store, a)) ^
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
       case MATTE_VALUE_TYPE_OBJECT: {
         result = vm_run_object_operator_2(vm, a, "^", b);
         break;
@@ -865,6 +888,53 @@ static matteValue_t vm_operator__caret(matteVM_t * vm, matteValue_t a, matteValu
 }
 
 
+
+static matteValue_t vm_operator__shift_left(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_store_new_value(vm->store);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            &result, 
+            ((int32_t)matte_value_as_number(vm->store, a)) <<
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, "<<", b);
+        break;
+      }      
+      
+      default: 
+        bad_operator(vm, "<<", a);
+        break;
+
+    }
+    return result;
+}
+
+
+static matteValue_t vm_operator__shift_right(matteVM_t * vm, matteValue_t a, matteValue_t b) {
+    matteValue_t result = matte_store_new_value(vm->store);
+    switch(a.binID) {
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            &result, 
+            ((int32_t)matte_value_as_number(vm->store, a)) >>
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
+      case MATTE_VALUE_TYPE_OBJECT: {
+        result = vm_run_object_operator_2(vm, a, ">>", b);
+        break;
+      }      
+      
+      default: 
+        bad_operator(vm, ">>", a);
+        break;
+
+    }
+    return result;
+}
 
 
 
@@ -1039,6 +1109,22 @@ static matteValue_t vm_operator__assign_pow(matteVM_t * vm, matteValue_t * a, ma
 static matteValue_t vm_operator__assign_and(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_store_new_value(vm->store);
     switch(a->binID) {
+
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_value_into_boolean(vm->store, 
+            a, 
+            matte_value_as_boolean(vm->store, *a) &
+            matte_value_as_boolean(vm->store, b)
+        );
+        break;
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            a, 
+            ((int32_t)matte_value_as_number(vm->store, *a)) &
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
+
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
@@ -1060,6 +1146,23 @@ static matteValue_t vm_operator__assign_and(matteVM_t * vm, matteValue_t * a, ma
 static matteValue_t vm_operator__assign_or(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_store_new_value(vm->store);
     switch(a->binID) {
+
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_value_into_boolean(vm->store, 
+            a, 
+            matte_value_as_boolean(vm->store, *a) |
+            matte_value_as_boolean(vm->store, b)
+        );
+        break;
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            a, 
+            ((int32_t)matte_value_as_number(vm->store, *a)) |
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
+
+
       
       case MATTE_VALUE_TYPE_OBJECT: {
 
@@ -1082,6 +1185,21 @@ static matteValue_t vm_operator__assign_or(matteVM_t * vm, matteValue_t * a, mat
 static matteValue_t vm_operator__assign_xor(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_store_new_value(vm->store);
     switch(a->binID) {
+      case MATTE_VALUE_TYPE_BOOLEAN: 
+        matte_value_into_boolean(vm->store, 
+            a, 
+            matte_value_as_boolean(vm->store, *a) ^
+            matte_value_as_boolean(vm->store, b)
+        );
+        break;
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            a, 
+            ((int32_t)matte_value_as_number(vm->store, *a)) ^
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
+
       case MATTE_VALUE_TYPE_OBJECT: {
         result = vm_run_object_operator_2(vm, *a, "^=", b);
         break;
@@ -1100,6 +1218,15 @@ static matteValue_t vm_operator__assign_xor(matteVM_t * vm, matteValue_t * a, ma
 static matteValue_t vm_operator__assign_bleft(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_store_new_value(vm->store);
     switch(a->binID) {
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            a, 
+            ((int32_t)matte_value_as_number(vm->store, *a)) <<
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
+
+
       case MATTE_VALUE_TYPE_OBJECT: {
         result = vm_run_object_operator_2(vm, *a, "<<=", b);
         break;
@@ -1118,6 +1245,15 @@ static matteValue_t vm_operator__assign_bleft(matteVM_t * vm, matteValue_t * a, 
 static matteValue_t vm_operator__assign_bright(matteVM_t * vm, matteValue_t * a, matteValue_t b) {
     matteValue_t result = matte_store_new_value(vm->store);
     switch(a->binID) {      
+      case MATTE_VALUE_TYPE_NUMBER:
+        matte_value_into_number(vm->store, 
+            a, 
+            ((int32_t)matte_value_as_number(vm->store, *a)) >>
+            ((int32_t)matte_value_as_number(vm->store, b))
+        );
+        break;
+
+
       case MATTE_VALUE_TYPE_OBJECT: {
         result = vm_run_object_operator_2(vm, *a, ">>=", b);
         break;
