@@ -2891,6 +2891,9 @@ const Matte = {
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_NOT] = function(a) {
                 switch(a.binID) {
+                  case store.TYPE_NUMBER:
+                    return store.createNumber(~a.data);
+                
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '~');
                     
