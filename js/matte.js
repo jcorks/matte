@@ -4071,8 +4071,8 @@ const Matte = {
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FINDINDEX, ['base', 'value', 'query'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
-                if (args[1].binID == store.TYPE_EMPTY &&
-                    args[2].binID == store.TYPE_EMPTY) {
+                if (args[1].binID != store.TYPE_EMPTY &&
+                    args[2].binID != store.TYPE_EMPTY) {
                     vm.raiseErrorString("findIndex() cannot have both 'value' and 'query' specified.");
                     return store.createEmpty();                    
                 }
