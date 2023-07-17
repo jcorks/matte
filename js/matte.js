@@ -2892,7 +2892,7 @@ const Matte = {
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_NOT] = function(a) {
                 switch(a.binID) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(~a.data);
+                    return store.createNumber(~(a.data));
                 
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '~');
@@ -3064,7 +3064,7 @@ const Matte = {
                     return store.createBoolean(a.data != store.valueAsString(b).data);
 
                   case store.TYPE_BOOLEAN:
-                    return store.createBoolean(a.data == store.valueAsBoolean(b));
+                    return store.createBoolean(a.data != store.valueAsBoolean(b));
 
 
                   case store.TYPE_OBJECT:
@@ -3076,7 +3076,7 @@ const Matte = {
                         } else if (b.binID == store.TYPE_OBJECT) {
                             return store.createBoolean(a != b);
                         } else {
-                            vm.raiseErrorString("== operator with object and non-empty or non-object values is undefined.");
+                            vm.raiseErrorString("!= operator with object and non-empty or non-object values is undefined.");
                             return store.createBoolean(true);
                         }
                     }
