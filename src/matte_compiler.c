@@ -660,12 +660,15 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       case MATTE_TOKEN_LITERAL_NUMBER: {
         // convert into ascii
         int isDone = 0;
+        int decimalCount = 0;
         matteString_t * out = matte_string_create();
         uint8_t * prev;
         while(!isDone) {
             prev = t->iter;
             int c = utf8_next_char(&t->iter);
             switch(c) {
+              case '.':
+                decimalCount ++;
               case '0':
               case '1':
               case '2':
@@ -680,7 +683,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 break;
 
 
-              case '.':
               case 'x':
               case 'e':
               case 'E':
@@ -715,6 +717,12 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         }
         double f;
         uint32_t fhex;
+        // poorly formed number: included 2 decimals.
+        if (decimalCount > 1) {
+            matte_string_destroy(out);
+            t->iter = t->backup;
+            return NULL;
+        }
         if (sscanf(matte_string_get_c_str(out), "%lf", &f) == 1) {
             t->character+=matte_string_get_length(out);
             t->backup = t->iter;
