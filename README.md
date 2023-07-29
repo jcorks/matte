@@ -65,10 +65,10 @@ Here's a more in-depth look:
         
         // Else append
         return previous + value;
-    });
-};
+    })
+}
     
-print(message:combine(items:['Come ', 'try ', 'it ', 'for ', 'yourself!']));
+print(message:combine(items:['Come ', 'try ', 'it ', 'for ', 'yourself!']))
 
 
 
@@ -82,7 +82,7 @@ print(message:combine(items:['Come ', 'try ', 'it ', 'for ', 'yourself!']));
     )
 ; 
 
-print(message:combineAsOneExpression(items:['See ', 'what ', 'you ', 'can ', 'make!']));
+print(message:combineAsOneExpression(items:['See ', 'what ', 'you ', 'can ', 'make!']))
 
 
 
@@ -91,13 +91,13 @@ print(message:combineAsOneExpression(items:['See ', 'what ', 'you ', 'can ', 'ma
 // Also does some basic case accounting
 @:combineUsingAForloop = ::(strings => Object) {
     // If no strings, just return the empty string
-    when (strings->keycount == 0) '';
+    when (strings->keycount == 0) ''
     
     // No need to combine if only one string!
-    when (strings->keycount == 1) strings[0];
+    when (strings->keycount == 1) strings[0]
     
     // initial string is the first in the set
-    @output = strings[0];
+    @output = strings[0]
     
     // Since we have the first value, take a subset of the 
     // list, skipping the first value. Then, 
@@ -108,12 +108,13 @@ print(message:combineAsOneExpression(items:['See ', 'what ', 'you ', 'can ', 'ma
     )->foreach(
         do::(index, string) {
             output = output + string;
-        })
-    ;
-    return output;
-};
+        }
+    )
+    
+    return output
+}
 
-print(message:combineUsingAForloop(strings:['You ', 'never ', 'know ', 'what ', "you'll ", 'find!']));
+print(message:combineUsingAForloop(strings:['You ', 'never ', 'know ', 'what ', "you'll ", 'find!']))
 
 ```
 

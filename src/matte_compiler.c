@@ -489,7 +489,7 @@ uint32_t matte_tokenizer_current_character(const matteTokenizer_t * t) {
 }
 
 
-static void tokenizer_strip(matteTokenizer_t * t) {
+static void tokenizer_strip(matteTokenizer_t * t, int skipNewline) {
     int c;
     for(;;) {
         c = utf8_next_char(&t->iter);
@@ -541,9 +541,14 @@ static void tokenizer_strip(matteTokenizer_t * t) {
             break;
 
           case '\n':
-            t->backup = t->iter;
-            t->line++;
-            t->character = 1;
+            if (skipNewline) {
+                t->backup = t->iter;
+                t->line++;
+                t->character = 1;
+            } else {
+                t->iter = t->backup; 
+                return;   
+            }
             break;
 
           // includes 0
@@ -557,7 +562,7 @@ static void tokenizer_strip(matteTokenizer_t * t) {
 
 // skips space and newlines
 int matte_tokenizer_peek_next(matteTokenizer_t * t) {
-    tokenizer_strip(t);
+    tokenizer_strip(t, 0);
     uint8_t * iterC = t->iter;  
     return utf8_next_char(&iterC);
 }
@@ -568,6 +573,8 @@ static matteToken_t * matte_tokenizer_consume_char(
     matteTokenizer_t * t,
     uint32_t line,
     uint32_t ch,
+    uint32_t preLine,
+    uint32_t preCh,
     matteTokenType_t ty,
     char cha
 ) {
@@ -583,6 +590,8 @@ static matteToken_t * matte_tokenizer_consume_char(
         );            
     } else {
         t->iter = t->backup;
+        t->line = preLine;
+        t->character = preCh;
         return NULL;
     }
 
@@ -592,6 +601,8 @@ static matteToken_t * matte_tokenizer_consume_exact(
     matteTokenizer_t * t,
     uint32_t line,
     uint32_t ch,
+    uint32_t preLine,
+    uint32_t preCh,
     matteTokenType_t ty,
     const char * cha
 ) {
@@ -603,6 +614,8 @@ static matteToken_t * matte_tokenizer_consume_exact(
             cha++;
         } else {
             t->iter = t->backup;
+            t->line = preLine;
+            t->character = preCh;
             return NULL;
         }
     }
@@ -621,6 +634,8 @@ static matteToken_t * matte_tokenizer_consume_word(
     matteTokenizer_t * t,
     uint32_t line,
     uint32_t ch,
+    uint32_t preLine,
+    uint32_t preCh,
     matteTokenType_t ty,
     const char * word
 ) {
@@ -637,6 +652,8 @@ static matteToken_t * matte_tokenizer_consume_word(
             ty
         );
     } else {
+        t->line = preLine;
+        t->character = preCh;
         t->iter = t->backup;        
         matte_string_destroy(str);
         matte_string_destroy(token);
@@ -652,10 +669,13 @@ static matteToken_t * matte_tokenizer_consume_word(
 // NULL is returned. The new token is owned by the matteTokenizer_t * instance and 
 // are no longer valid once the matteTokenizer_t * instance is destroyed. 
 matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
-    tokenizer_strip(t);
+    uint32_t preLine = t->line;
+    uint32_t preCh = t->character;
+    uint8_t * backup = t->backup;
+    tokenizer_strip(t, ty != MATTE_TOKEN_STATEMENT_END);
+    t->backup = backup;
     uint32_t currentLine = t->line;
     uint32_t currentCh = t->character;
-
     switch(ty) {
       case MATTE_TOKEN_LITERAL_NUMBER: {
         // convert into ascii
@@ -721,6 +741,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         if (decimalCount > 1) {
             matte_string_destroy(out);
             t->iter = t->backup;
+            t->line = preLine;
+            t->character = preCh;
             return NULL;
         }
         if (sscanf(matte_string_get_c_str(out), "%lf", &f) == 1) {
@@ -748,6 +770,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 
             matte_string_destroy(out);
             t->iter = t->backup;
+            t->line = preLine;
+            t->character = preCh;
             return NULL;
         }
         break;
@@ -768,6 +792,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             break;
           default:
             t->iter = t->backup;
+            t->line = preLine;
+            t->character = preCh;
             return NULL;            
         }
     
@@ -796,6 +822,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
               case 0:
                 t->iter = t->backup;
                 matte_string_destroy(text);
+                t->line = preLine;
+                t->character = preCh;
                 return NULL;            
                 
               case '\\': // escape character 
@@ -871,6 +899,9 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 );
             } else {
                 t->iter = t->backup;
+                t->line = preLine;
+                t->character = preCh;
+                
                 return NULL;
             }
             break;
@@ -890,186 +921,190 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 );
             } else {
                 t->iter = t->backup;
+                t->line = preLine;
+                t->character = preCh;
                 return NULL;
             }
 
           default:
             t->iter = t->backup;
+            t->line = preLine;
+            t->character = preCh;
             return NULL;
         }
         break;
       }
       case MATTE_TOKEN_LITERAL_EMPTY: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "empty");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "empty");
         break;
       }
 
       case MATTE_TOKEN_EXTERNAL_NOOP: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "noop");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "noop");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_GATE: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "if");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "if");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_FOREVER: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "forever");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "forever");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_MATCH: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "match");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "match");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "getExternalFunction");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "getExternalFunction");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_IMPORT: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "import");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "import");
         break;
       }
 
 
 
       case MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Boolean");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "Boolean");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPEEMPTY: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Empty");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "Empty");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPENUMBER: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Number");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "Number");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPESTRING: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "String");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "String");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPEOBJECT: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Object");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "Object");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPETYPE: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Type");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "Type");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_TYPEFUNCTION: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "Function");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "Function");
         break;
       }
 
 
 
       case MATTE_TOKEN_EXTERNAL_PRINT: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "print");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "print");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_ERROR: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "error");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "error");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_SEND: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "send");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "send");
         break;
       }
       case MATTE_TOKEN_EXTERNAL_BREAKPOINT: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "breakpoint");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "breakpoint");
         break;
       }
       case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '(');
         break;
       } // (
       case MATTE_TOKEN_EXPRESSION_GROUP_END: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ')');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ')');
         break;
 
       } // )
       case MATTE_TOKEN_ASSIGNMENT: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '=');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '=');
         break;
       }
 
       case MATTE_TOKEN_QUERY_OPERATOR: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "->");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "->");
       }
 
       case MATTE_TOKEN_ASSIGNMENT_ADD: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "+=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "+=");
         break;
       }
       case MATTE_TOKEN_ASSIGNMENT_SUB: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "-=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "-=");
         break;
       }
       case MATTE_TOKEN_ASSIGNMENT_MULT:  {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "*=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "*=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_DIV: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "/=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "/=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_MOD: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "%=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "%=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_POW: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "**=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "**=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_AND:  {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "&=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "&=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_OR: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "|=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "|=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_XOR: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "^=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "^=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_BLEFT: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<<=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "<<=");
         break;
       }
 
       case MATTE_TOKEN_ASSIGNMENT_BRIGHT: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, ">>=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, ">>=");
         break;
       }
 
 
       case MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_START: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '[');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '[');
 
         break;
 
       }
 
       case MATTE_TOKEN_OBJECT_ACCESSOR_BRACKET_END: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ']');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ']');
 
         break;          
       }
       case MATTE_TOKEN_OBJECT_SPREAD: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "...");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "...");
 
         break;          
       }
 
       case MATTE_TOKEN_OBJECT_ACCESSOR_DOT: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '.');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '.');
 
         break;
 
@@ -1092,6 +1127,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             break;
           default:
             t->iter = t->backup;
+            t->line = preLine;
+            t->character = preCh;
             return NULL;
 
         }
@@ -1274,6 +1311,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
               default:
                 t->iter = t->backup;
+                t->line = preLine;
+                t->character = preCh;
                 return NULL;         
             }
             break;
@@ -1296,11 +1335,15 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
               default:
                 t->iter = t->backup;
+                t->line = preLine;
+                t->character = preCh;
                 return NULL;              
             }
             break;
           default:
             t->iter = t->backup;
+            t->line = preLine;
+            t->character = preCh;
             return NULL;
 
 
@@ -1339,138 +1382,150 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         } else {
             t->iter = t->backup;
             matte_string_destroy(varname);
+            t->line = preLine;
+            t->character = preCh;
             return NULL;
         }
 
         break;
       }
       case MATTE_TOKEN_OBJECT_LITERAL_BEGIN: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '{');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '{');
         break;          
       }
       case MATTE_TOKEN_OBJECT_LITERAL_END: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '}');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '}');
         break;
       }
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_WITH_SPECIFIER: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, ":::");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, ":::");
         break;  
       }
 
       case MATTE_TOKEN_FUNCTION_LISTEN: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "[::]");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "[::]");
         break;
       }
       
       case MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ',');
         break;
       }
       case MATTE_TOKEN_OBJECT_ARRAY_START: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '[');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '[');
         break;
       }
       case MATTE_TOKEN_OBJECT_ARRAY_END: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ']');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ']');
         break;          
       }
       case MATTE_TOKEN_OBJECT_ARRAY_SEPARATOR: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');       
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ',');       
       }
 
       case MATTE_TOKEN_DECLARE: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '@');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '@');
         break;
       }
       case MATTE_TOKEN_DECLARE_CONST: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "@:");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "@:");
         break;          
       }
 
       case MATTE_TOKEN_FUNCTION_BEGIN: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '{');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '{');
         break;
       }
       case MATTE_TOKEN_FUNCTION_END: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '}');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '}');
         break;
       }
       case MATTE_TOKEN_FUNCTION_ARG_BEGIN: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '(');
         break;
       }
       case MATTE_TOKEN_IMPLICATION_START: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '(');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '(');
         break;
       }
       case MATTE_TOKEN_IMPLICATION_END: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ')');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ')');
         break;
       }
       case MATTE_TOKEN_FUNCTION_ARG_SEPARATOR: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ',');
         break;
       }
       case MATTE_TOKEN_FUNCTION_ARG_END: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ')');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ')');
         break;          
       }
 
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "::");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "::");
         break;  
       }
       case MATTE_TOKEN_GENERAL_SPECIFIER: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ':');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ':');
         break;          
       }
       
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<=");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "<=");
         break;  
       }
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_INLINE: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "<-");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "<-");
         break;  
       }
       case MATTE_TOKEN_FUNCTION_TYPESPEC: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, ty, "=>");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "=>");
         break;  
       }
 
       case MATTE_TOKEN_WHEN: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "when");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "when");
         break;            
       }
       case MATTE_TOKEN_GATE_RETURN: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "else");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "else");
         break; 
       }
       case MATTE_TOKEN_MATCH_BEGIN: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '{');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '{');
         break; 
       }
       case MATTE_TOKEN_MATCH_END: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, '}');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '}');
         break; 
       }
       case MATTE_TOKEN_MATCH_SEPARATOR: {
-        return matte_tokenizer_consume_char(t, currentLine, currentCh, ty, ',');
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, ',');
         break; 
       }
       case MATTE_TOKEN_MATCH_DEFAULT: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "default");
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "default");
         break; 
       }
       case MATTE_TOKEN_RETURN: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, ty, "return");  
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "return");  
         break;
       }
 
       case MATTE_TOKEN_STATEMENT_END: {// newline OR ;
         int c = utf8_next_char(&t->iter);
         switch(c) {
-          /*case '\n':
+          case 0:
+            t->character = 1;
+            t->backup = t->iter;
+            return new_token(
+                matte_string_create_from_c_str(""),
+                currentLine,
+                currentCh,
+                ty
+            );
+
+          case '\n':
             t->line++;
             t->character = 1;
             t->backup = t->iter;
@@ -1479,7 +1534,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                 currentLine,
                 currentCh,
                 ty
-            );*/
+            );
           case ';':
             t->character++;
             t->backup = t->iter;
@@ -1492,6 +1547,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
             break;
           default:
             t->iter = t->backup;
+            t->line = preLine;
+            t->character = preCh;
             return NULL;
         }
         break;
@@ -1505,7 +1562,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
 
 // Returns whether the tokenizer has reached the end of the inout text.
 int matte_tokenizer_is_end(matteTokenizer_t * t){
-    tokenizer_strip(t);
+    tokenizer_strip(t, 0);
     return t->iter[0] == 0;
 }
 
