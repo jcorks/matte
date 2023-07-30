@@ -44,10 +44,10 @@ Main Language Features:
 Here's what it looks like:
 ```
 @:sayHi = ::(greeting => String) {
-    print(message:greeting);
-};
+    print(message:greeting)
+}
 
-sayHi(greeting: 'Hello, world!');
+sayHi(greeting: 'Hello, world!')
 
 ```
 

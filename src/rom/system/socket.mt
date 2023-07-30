@@ -200,12 +200,12 @@ DEALINGS IN THE SOFTWARE.
                 if (messageIn == true) ::<={
                     update = ::{
                         _socket_server_client_update(a:socket, b:id_number);
-                        [0, _socket_server_client_get_pending_message_count(a:socket, b:id_number)]->for(do:::(i){
+                        for(0 : _socket_server_client_get_pending_message_count(a:socket, b:id_number))::(i){
                             this.emit(
                                 event:'onNewMessage',
                                 detail:_socket_server_client_get_next_message(a:socket, b:id_number)
                             );
-                        });
+                        };
                     };
 
                     sendData = ::(m => String) {
@@ -317,7 +317,7 @@ DEALINGS IN THE SOFTWARE.
                         // current client list against prev list.
                         @:newlen = _socket_server_get_client_count(a:socket);
                         @: found = {};
-                        [0, newlen]->for(do:::(i){
+                        for(0 : newlen)::(i){
                             @id = String(from:_socket_server_client_index_to_id(a:socket, b:i));
                             found[id] = true;
 
@@ -330,7 +330,7 @@ DEALINGS IN THE SOFTWARE.
 
                                 this.emit(event:'onNewClient', detail:client);
                             };
-                        }); 
+                        }; 
 
                         // emit update disconnects or update.
                         @i = 0;

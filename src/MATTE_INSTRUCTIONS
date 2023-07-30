@@ -231,6 +231,13 @@ static void write_instruction__ret(matteArray_t * insts, uint32_t lineNumber) {
     matte_array_push(insts, inst);
 }
 
+static void write_instruction__lop(matteArray_t * insts, uint32_t lineNumber) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_LOP;
+    matte_array_push(insts, inst);
+}
+
 
 static void write_instruction__skp_insert(matteArray_t * insts, uint32_t lineNumber, uint32_t ninst) {
     matteBytecodeStubInstruction_t inst;

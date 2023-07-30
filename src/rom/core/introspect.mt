@@ -31,9 +31,9 @@ return ::(value) {
     @already = {};
     @pspace ::(level) {
         @str = '';
-        [0, level]->for(do:::{
+        for(0:level)::{
             str = str + '  ';
-        });
+        };
         return str;
     };
     @helper ::(obj, level) {

@@ -1632,15 +1632,6 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__ANY);
       }
       
-      case MATTE_QUERY__FOR: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
-            matteString_t * str = matte_string_create_from_c_str("for requires base value to be an object.");
-            matte_vm_raise_error_string(store->vm, str);
-            matte_string_destroy(str);
-            return out;
-        }
-        return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__FOR);
-      }
       case MATTE_QUERY__FOREACH: {
         if (v->binID != MATTE_VALUE_TYPE_OBJECT) {
             matteString_t * str = matte_string_create_from_c_str("foreach requires base value to be an object.");

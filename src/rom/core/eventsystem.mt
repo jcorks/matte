@@ -60,10 +60,10 @@ DEALINGS IN THE SOFTWARE.
                 
                 @continue = [::] {
                     when(ev.handlerCount == 0) true;
-                    [ev.handlerCount-1, 0]->for(do:::(i) {
+                    for(ev.handlerCount-1 : 0)::(i) {
                         // when handlers return false, we no longer propogate.           
                         when(!((ev.handlers[i])(detail:detail))) send(message:false);
-                    });
+                    };
                     
                     return true;
                 };
@@ -72,9 +72,9 @@ DEALINGS IN THE SOFTWARE.
                 when(continue == false) false;
                 
                 return (if (ev.mainHandler(detail:detail) != false) ::<= {
-                    [0, ev.hookCount]->for(do:::(i) {
+                    for(0 : ev.hookCount)::(i) {
                         (ev.hooks[i])(detail:detail);
-                    });
+                    };
                     return true;
                 } else ::<= {                
                     return false;
@@ -126,13 +126,13 @@ DEALINGS IN THE SOFTWARE.
                 @: ev = events[event];
                 when(ev == empty) error(detail:"Cannot uninstall hook for non-existent event "+ev);
                 [::] {
-                    [0, ev.hookCount]->for(do:::(i) {
+                    for(0 : ev.hookCount)::(i) {
                         if (ev.hooks[i] == hook) ::<= { 
                             ev.hooks->remove(key:i);
                             ev.hookCount-=1;
                             send();
                         };
-                    });
+                    };
                 };
             },
             
@@ -140,13 +140,13 @@ DEALINGS IN THE SOFTWARE.
                 @: ev = events[event];
                 when(ev == empty) error(detail:"Cannot uninstall handler for non-existent event "+ev);
                 [::]{
-                    [0, ev.handlerCount]->for(do:::(i) {
+                    for(0 : ev.handlerCount)::(i) {
                         if (ev.handlers[i] == handler) ::<= { 
                             ev.handlers->remove(key:i);
                             ev.handlerCount-=1;
                             send();
                         };
-                    });
+                    };
                 };
             }
             

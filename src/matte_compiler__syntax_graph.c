@@ -221,6 +221,8 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_FUNCTION_LISTEN, "Listen Expression Start '[::]'",
 
         MATTE_TOKEN_WHEN, "'when' Statement",
+        MATTE_TOKEN_FOR, "'for' Statement",
+        MATTE_TOKEN_FOR_SEPARATOR, "':' for statement separator",
         MATTE_TOKEN_GATE_RETURN, "'gate' Else Operator",
         MATTE_TOKEN_MATCH_BEGIN, "'match' Content Block '{'",
         MATTE_TOKEN_MATCH_END, "'match' Content Block '}'",
@@ -989,6 +991,21 @@ static void generate_graph(matteSyntaxGraph_t * g) {
     );
     
 
+    matte_syntax_graph_add_construct_path(g, "For Statement", MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,
+        matte_syntax_graph_node_token(MATTE_TOKEN_FOR),
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_BEGIN),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_FOR_SEPARATOR),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+        matte_syntax_graph_node_token(MATTE_TOKEN_STATEMENT_END),
+        matte_syntax_graph_node_end(),
+        NULL 
+    );
 
 
     matte_syntax_graph_add_construct_path(g, "Declaration + Assignment", MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT,

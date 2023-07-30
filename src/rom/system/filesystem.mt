@@ -72,13 +72,13 @@ return class(
                     _directoryEnumerate();
                     @:ct = _directoryObjectCount();
                     @:files = [];
-                    [0, ct]->for(do:::(i){
+                    for(0 : ct)::(i){
                         files[i] = {
                             name : _directoryObjectName(a:i),
                             path : _directoryObjectPath(a:i), // full path
                             isFile : _directoryObjectIsFile(a:i)
                         };
-                    });
+                    };
                     return files;
                 }
             },

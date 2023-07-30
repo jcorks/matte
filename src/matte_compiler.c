@@ -1107,7 +1107,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '.');
 
         break;
-
       }
       case MATTE_TOKEN_GENERAL_OPERATOR1: {
         int c = utf8_next_char(&t->iter);
@@ -1487,6 +1486,15 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "when");
         break;            
       }
+      case MATTE_TOKEN_FOR: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "for");
+        break;            
+      }
+      case MATTE_TOKEN_FOR_SEPARATOR: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, ":");
+        break;  
+      }
+
       case MATTE_TOKEN_GATE_RETURN: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "else");
         break; 
@@ -4117,6 +4125,36 @@ static int compile_statement(
         iter = iter->next; // skip ;
         break;
       }
+      case MATTE_TOKEN_FOR: {
+        uint32_t oln = iter->line;
+        iter = iter->next; // skip for 
+        iter = iter->next; // skip [
+        matteArray_t * from = compile_expression(g, block, functions, &iter);
+        if (!from) {
+            return -1;
+        }
+        iter = iter->next; // skip ..
+        matteArray_t * to = compile_expression(g, block, functions, &iter);
+        if (!to) {
+            return -1;
+        }
+        iter = iter->next; // skip ]
+        matteArray_t * func = compile_expression(g, block, functions, &iter);
+        if (!func) {
+            return -1;
+        }
+
+
+        
+        merge_instructions(block->instructions, from);
+        merge_instructions(block->instructions, to);
+        merge_instructions(block->instructions, func);
+        write_instruction__lop(block->instructions, oln);
+
+        iter = iter->next; // skip ;
+        break;
+      }      
+      
       case MATTE_TOKEN_DECLARE_CONST:
         varConst = 1;
       case MATTE_TOKEN_DECLARE: {

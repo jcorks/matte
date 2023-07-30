@@ -105,9 +105,9 @@ return class(
 
         @idToWorker::(id) {
             return [::]{
-                [0, workers.length]->for(do:::(i){
+                for(0 : workers.length)::(i){
                     if (workers[i].id == id) send(message:workers[i]);
-                });
+                };
 
                 // is parent
             };

@@ -144,6 +144,10 @@ typedef enum {
     // The first operand is pushed to the top of the stack.
     MATTE_OPCODE_OAS,
     
+    // performs a loop, taking the top 3 variables on the stack to define a 
+    // loop: from value[top-3] to value[top-2], run function value[top-1]
+    MATTE_OPCODE_LOP,
+    
     MATTE_OPCODE_ERROR = -1
 
 } matteOpcode_t;
@@ -245,7 +249,6 @@ typedef enum {
     MATTE_EXT_CALL__QUERY__REDUCE,
     MATTE_EXT_CALL__QUERY__ANY,
     MATTE_EXT_CALL__QUERY__ALL,
-    MATTE_EXT_CALL__QUERY__FOR,
     MATTE_EXT_CALL__QUERY__FOREACH,
 
 

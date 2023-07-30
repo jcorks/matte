@@ -1030,6 +1030,65 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }
           
+          case MATTE_OPCODE_LOP: {
+            matteValue_t from = STACK_PEEK(2);
+            matteValue_t to   = STACK_PEEK(1);
+            matteValue_t v    = STACK_PEEK(0);
+          
+          
+            
+            if (!matte_value_is_function(v)) {
+                matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'for' requires the second argument to be a function."));    
+                STACK_POP_NORET();          
+                STACK_POP_NORET();          
+                STACK_POP_NORET();          
+                return matte_store_new_value(vm->store);
+            }
+
+            ForLoopData d = {
+                matte_value_as_number(vm->store, from),
+                matte_value_as_number(vm->store, to),
+                1,
+                matte_bytecode_stub_arg_count(matte_value_get_bytecode_stub(vm->store, v)) != 0
+            };
+
+            if (d.i >= d.end) {
+                vm->pendingRestartCondition = vm_ext_call__for_restart_condition__down;
+                d.offset = -1;
+            } else {
+                vm->pendingRestartCondition = vm_ext_call__for_restart_condition__up;
+            }
+
+            vm->pendingRestartConditionData = &d;
+            matteValue_t iter = matte_store_new_value(vm->store);
+            matte_value_into_number(vm->store, &iter, d.i);
+
+            // dynamically bind the first name
+            // We can't reasonable expect to know what the user places 
+            // as their argument, as it is really common to have 
+            // embedded loops, so it cannot be static. 
+            matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, v);
+            matteValue_t firstArgName = vm->specialString_value;
+            matteArray_t arr;
+            matteArray_t arrNames;
+            
+            if (matte_bytecode_stub_arg_count(stub)) {
+                firstArgName = matte_bytecode_stub_get_arg_name(stub, 0);
+                arr = MATTE_ARRAY_CAST(&iter, matteValue_t, 1);
+                arrNames = MATTE_ARRAY_CAST(&firstArgName, matteValue_t, 1);
+            } else {
+                arr = *matte_array_empty();
+                arrNames = *matte_array_empty();
+            }
+
+
+
+            matteValue_t result = matte_vm_call(vm, v, &arr, &arrNames, NULL);
+            STACK_POP_NORET();          
+            STACK_POP_NORET();          
+            STACK_POP_NORET();          
+          }
+          
           case MATTE_OPCODE_OAS: {
             matteValue_t src  = STACK_PEEK(0);
             matteValue_t dest = STACK_PEEK(1);
@@ -1483,7 +1542,6 @@ matteVM_t * matte_vm_create(matte_t * m) {
     temp = MATTE_ARRAY_CAST(mapReduceNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REDUCE,     &temp, vm_ext_call__object__reduce);    
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ANY,     &temp, vm_ext_call__object__any);    
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ALL,     &temp, vm_ext_call__object__all);    
-    temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FOR,    &temp, vm_ext_call__object__for);
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FOREACH, &temp, vm_ext_call__object__foreach);
 
     
