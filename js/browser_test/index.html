@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>
+            Testing Page
+	</title>
+        <style>
+            body {margin: 0;}
+        </style>
+    </head>
+    <body>
+    <script src="../matte.js"></script>
+    <script> 
+        const readBinary = function(name, onLoad) {
+            const req = new XMLHttpRequest();
+            req.open("GET", name, true);
+            req.responseType = "arraybuffer";
+
+            req.onload = (event) => {
+                console.log('read binary ' + name);
+                const arrayBuffer = req.response; // Note: not req.responseText
+                if (arrayBuffer) {
+                    onLoad(arrayBuffer);
+                };
+            }
+            req.send(null);
+        };
+    
+
+        const readText = function(name, onLoad) {
+            const req = new XMLHttpRequest();
+            req.open("GET", name, true);
+            req.responseType = "text";
+
+            req.onload = (event) => {
+                console.log('read text ' + name);
+                onLoad(req.responseText);
+            }
+            req.send(null);
+        };
+       
+    
+    
+        const matte = Matte.newVM(
+            function(name)  {
+            },
+            
+            function(value) {
+                console.log(value);
+            }
+        );
+        
+        matte.setExternalFunction('external_test!', ['a', 'b'], function(fn, args) {
+            return matte.store.createNumber(
+                matte.store.valueAsNumber(args[0]) +
+                matte.store.valueAsNumber(args[1])
+            );
+        });
+
+        const initialModules = [
+            'Matte.Core.Class',
+            'mytestmodule.mt'
+        ];
+        var modsLeft = initialModules.length;
+
+        var testList = 1;
+        const fileCount = 119;
+        var lock = false;;
+        const runTest = function() {
+            var result;
+            lock = true;
+            const test = testList++;
+            readBinary('/browser_test/test'+test+'.mt.bytes', function(array) {
+                console.log('Performing test ' + test + '...');
+                result = matte.runBytecode(array, null, 'test'+test+'.mt');
+
+                readText('/browser_test/test'+test+'.out', function(text) {
+                    text = text.replaceAll(' ', '');
+                    text = text.replaceAll('\n', '');
+                    if (matte.store.valueAsString(result).data == text) {
+                        if (test >= fileCount) {
+                            console.log("Tests complete! All pass.");
+                        }
+                    } else {
+                        throw new Error('Test ' + test + ' failed! Expected [' + text + '], but received [' + matte.store.valueAsString(result).data + ']');
+                    }
+                    lock = false;
+                });                
+            });
+        };
+        var task = setInterval(function() {
+            if (initialModules.length) {             
+                const mod = initialModules.pop(); 
+                readBinary(mod, function(data) {
+                    console.log('Loading ' + mod);
+                    matte.import(mod, null, data);
+                    modsLeft--;
+                });
+            } 
+            
+            if (modsLeft == 0) {
+                if (testList >= fileCount)
+                    clearInterval(task)
+                else {
+                    if (!lock)
+                        runTest();      
+                }
+            }
+        });
+        
+        
+        
+        
+        
+    </script>
+    </body>
+</html>
+

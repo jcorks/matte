@@ -5,7 +5,7 @@
 @a = 'This is a string';
 
 @output = 'errorDidntHappen';
-[::]{
+{:::}{
     
     // should error out, not allowed.
     output = a->substr(from:'a', to:[]);    
@@ -13,7 +13,7 @@
     onError:::(message) {
         output = 'a';
     }
-};
+}
 
 
 return '' + output + 

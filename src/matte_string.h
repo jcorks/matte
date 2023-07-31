@@ -235,19 +235,39 @@ void matte_string_remove_n_chars(
 
 
 /// Gets the byte length of the data representation 
-/// of this string. Depending on the context, this could 
+/// of this string in UTF8. Depending on the context, this could 
 /// match the length of the string, or it could be wider.
 ///
-uint32_t matte_string_get_byte_length(
+uint32_t matte_string_get_utf8_length(
     /// the string to query.
     const matteString_t * str
 );
 
-/// Gets the byte data pointer for this strings. Its length is equal to 
-/// matte_string_get_byte_length()
+/// Gets the byte data pointer for this string. Its length is equal to 
+/// matte_string_get_utf8_length()
 ///
-void * matte_string_get_byte_data(
+void * matte_string_get_utf8_data(
     /// the string to query.
+    const matteString_t * str
+);
+
+
+/// Adds a UTF8 encoded character to the string 
+/// given a data buffer.
+/// The buffer MUST be at least 4 bytes
+/// to safely parse the data.
+void matte_string_append_utf8_char(
+    /// the string to append data to 
+    matteString_t * str,
+    
+    /// The UTF8 encoded character. Must 
+    /// be at least 4 bytes.
+    uint8_t * utf8Data
+);
+
+// Gets a 32bit hash representing 
+// the string.
+uint32_t matte_string_get_hash(
     const matteString_t * str
 );
 

@@ -5,35 +5,28 @@
 
 @output = '';
 
-[::]{
-    forever();
-} : {
-    onError:::(message) {
-        output = output + 'noarg';
-    }
-};
 
 
-[::]{
-    forever(do:'hi');
+{:::}{
+    forever 'hi';
 } : {
     onError:::(message){
         output = output + 'nofn';
     }
-};
+}
 
-[::]{
-    forever(do:::{
-        [0, 10]->for(do:::{
+{:::}{
+    forever ::{
+        for(0, 10) ::{
 
-        });
+        }
         send();
-    });
+    }
 } : { 
     onError:::(message){
         output = output + 'norun';
     }
-};
+}
 
 
 

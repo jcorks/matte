@@ -19,16 +19,16 @@
             },
             
         default: 'TooBig'              
-    };
-};
+    }
+}
 
 @otherDecider = ::(i) {
     return match(true) {
         (i < 2): 2+2,
         (i > 2): 4+3+4,
         default: 'h' + 'ello'
-    };
-};
+    }
+}
 
 
 return '' + decider(a:30) + decider(a:2) + decider(a:99) + otherDecider(i:3) + decider(a:300);

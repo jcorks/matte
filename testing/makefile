@@ -2,7 +2,7 @@
 
 all:
 	rm -f ./*.gcda
-	gcc -g -O0 -fsanitize=address -fsanitize=undefined  -DMATTE_DEBUG -DMATTE_DEBUG__HEAP -pthread -fmax-errors=5 -fprofile-arcs -ftest-coverage ./*.c ../src/*.c ../src/rom/native.c -o ./test_driver -lm
+	gcc -fsanitize=address -fsanitize=undefined -g -O0 -DMATTE_DEBUG -DMATTE_DEBUG__STORE -pthread -fmax-errors=5 -fprofile-arcs -ftest-coverage ./*.c ../src/*.c ../src/rom/native.c -o ./test_driver -lm
 
 
 

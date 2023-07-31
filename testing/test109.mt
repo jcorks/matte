@@ -3,7 +3,7 @@
 // key / value attributes 
 
 
-@:test = {};
+@:test = {}
 
 
 test->setAttributes(

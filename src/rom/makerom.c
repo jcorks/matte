@@ -1,9 +1,44 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "../matte_string.h"
 #include "../matte_compiler.h"
+#include "../matte_compiler__syntax_graph.h"
+
+// dummy allocator / deallocator
+void * matte_allocate(uint32_t size) {return calloc(size, 1);}
+void matte_deallocate(void * data) {free(data);}
+
 
 static void * dump_bytes(const char * filename, uint32_t * len) {
     FILE * f = fopen(filename, "rb");
@@ -51,15 +86,15 @@ int main() {
     
 
     char * files[] = {
-        "core/class.mt",      "Matte.Core.Class",
-        "core/json.mt",       "Matte.Core.JSON",
-        "core/eventsystem.mt","Matte.Core.EventSystem",
-        "core/introspect.mt","Matte.Core.Introspect",
-        "core/core.mt",       "Matte.Core",
+        "core/class.mt",        "Matte.Core.Class",
+        "core/json.mt",         "Matte.Core.JSON",
+        "core/eventsystem.mt",  "Matte.Core.EventSystem",
+        "core/introspect.mt",   "Matte.Core.Introspect",
+        "core/memorybuffer.mt", "Matte.Core.MemoryBuffer",
+        "core/core.mt",         "Matte.Core",
         #ifdef MATTE_USE_SYSTEM_EXTENSIONS
             "system/consoleio.mt",      "Matte.System.ConsoleIO",       
             "system/filesystem.mt",     "Matte.System.Filesystem",       
-            "system/memorybuffer.mt",   "Matte.System.MemoryBuffer",       
             "system/socket.mt",         "Matte.System.Socket",       
             "system/time.mt",           "Matte.System.Time",       
             "system/utility.mt",        "Matte.System.OS",               
@@ -84,7 +119,7 @@ int main() {
         "const uint8_t MATTE_ROM__data[] = {\n"
     );
 
-
+    matteSyntaxGraph_t * graph = matte_syntax_graph_create();
     
     char ** iter = files;
     int count = 0;
@@ -94,6 +129,7 @@ int main() {
         uint8_t * data = dump_bytes(iter[0], &len);
         uint32_t romCompiledLen = 0;
         uint8_t * romCompiledBytes = matte_compiler_run(
+            graph,
             data,
             len,
             &romCompiledLen,

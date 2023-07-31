@@ -4,7 +4,7 @@
 
 
 @errMessage;
-@n100 = [::] {
+@n100 = {:::} {
     error(detail:'Testing');    
     return 50;
 } : {
@@ -16,7 +16,7 @@
             message.callstack.frames[0].lineNumber;
         return 100;
     }
-};
+}
 return ''+n100 + errMessage;
 
 

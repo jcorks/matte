@@ -1,3 +1,32 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 #include "../src/matte.h"
 #include "../src/matte_vm.h"
 #include "../src/matte_bytecode_stub.h"
@@ -12,10 +41,42 @@
 static int TESTID = 1;
 
 
+
+int64_t BYTES_USED = 0;
+uint64_t ALLOCS = 0;
+uint64_t FREES = 0;
+uint64_t PEAK_USAGE = 0;
+
+void * test_allocator(uint64_t size) {
+    BYTES_USED += size;
+    ALLOCS++;
+    if (BYTES_USED > PEAK_USAGE)
+        PEAK_USAGE = BYTES_USED;
+    
+    uint8_t * buffer = malloc(size + sizeof(uint64_t));
+    memcpy(buffer, &size, sizeof(uint32_t));
+    return buffer + sizeof(uint64_t);
+}
+
+void test_deallocator(void * buffer) {
+    uint8_t * realBuffer = ((uint8_t*)buffer) - sizeof(uint64_t);
+    uint32_t size = 0;
+    memcpy(&size, realBuffer, sizeof(uint32_t));
+    
+    BYTES_USED -= size;
+    FREES++;
+    free(realBuffer);
+}
+
+
+
+
+
+
 static void test_string_utf8(matteVM_t * vm) {
     matteString_t * str = matte_string_create();
     assert(matte_string_get_length(str) == 0);
-    assert(matte_string_get_byte_length(str) == 0);
+    assert(matte_string_get_utf8_length(str) == 0);
     assert(!strcmp(matte_string_get_c_str(str), ""));
     
     matte_string_concat_printf(str, "hello%d안녕world𐍈ㄅㄞˇ!!!", 4);
@@ -60,7 +121,7 @@ static void test_string_utf8(matteVM_t * vm) {
 static void test_string(matteVM_t * vm) {
     matteString_t * str = matte_string_create();
     assert(matte_string_get_length(str) == 0);
-    assert(matte_string_get_byte_length(str) == 0);
+    assert(matte_string_get_utf8_length(str) == 0);
     assert(!strcmp(matte_string_get_c_str(str), ""));
     
     matte_string_concat_printf(str, "hello%dworld!!!", 4);
@@ -101,12 +162,7 @@ static void test_string(matteVM_t * vm) {
 }
 
 
-static void onError(const matteString_t * s, uint32_t line, uint32_t ch, void * userdata) {
-    printf("TEST COMPILE FAILURE ON TEST: %d\n:", TESTID);
-    printf("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
-    fflush(stdout);
-    exit(1);
-}
+
 
 static void onErrorCatch(
     matteVM_t * vm, 
@@ -115,8 +171,8 @@ static void onErrorCatch(
     matteValue_t value, 
     void * data
 ) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, matte_value_object_access_string(heap, value, MATTE_VM_STR_CAST(vm, "detail"))));
+    matteStore_t * store = matte_vm_get_store(vm);
+    const matteString_t * str = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, matte_value_object_access_string(store, value, MATTE_VM_STR_CAST(vm, "detail"))));
     printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
     printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
     uint32_t stacksize = matte_vm_get_stackframe_size(vm);
@@ -198,17 +254,20 @@ static matteValue_t test_external_function(
     const matteValue_t * args,
     void * data
 ) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t a = matte_heap_new_value(heap);
-    matte_value_into_number(heap, &a,
-        matte_value_as_number(heap, args[0]) + 
-        matte_value_as_number(heap, args[1])
+    matteStore_t * store = matte_vm_get_store(vm);
+    matteValue_t a = matte_store_new_value(store);
+    matte_value_into_number(store, &a,
+        matte_value_as_number(store, args[0]) + 
+        matte_value_as_number(store, args[1])
     );
     return a;
 }
 
 int main() {
     uint32_t i = 0;
+    
+    matte_set_allocator(test_allocator, test_deallocator);
+    
     matte_t * m = matte_create();
     test_string(matte_get_vm(m));
     test_string_utf8(matte_get_vm(m));
@@ -232,10 +291,16 @@ int main() {
         uint32_t lenBytes;
         uint8_t * src = dump_bytes(matte_string_get_c_str(infile), &lenBytes);
         if (!src) break;
-
+        
+        char * srcstr = malloc(lenBytes+1);
+        memcpy(srcstr, src, lenBytes);
+        srcstr[lenBytes] = 0;
+        
+        free(src);
         matte_t * m = matte_create();
         matteVM_t * vm = matte_get_vm(m);
-        matteHeap_t * heap = matte_vm_get_heap(vm);
+        matte_set_importer(m, NULL, NULL);
+        matteStore_t * store = matte_vm_get_store(vm);
         const matteString_t * externalNames[] = {
             MATTE_VM_STR_CAST(vm, "a"),
             MATTE_VM_STR_CAST(vm, "b")
@@ -252,27 +317,25 @@ int main() {
         printf("Running test %s...", matte_string_get_c_str(infile));
         fflush(stdout);
         uint32_t outByteLen;
-        uint8_t * outBytes = matte_compiler_run(
-            src,
-            lenBytes,
+        uint8_t * outBytes = matte_compile_source(
+            m,
             &outByteLen,
-            onError,
-            NULL
+            srcstr
         );
 
-        free(src);
+        free(srcstr);
         if (!outByteLen || !outBytes) {
             printf("Couldn't compile source %s\n", matte_string_get_c_str(infile));
             exit(1);
         }
         
-
-        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(heap, matte_vm_get_new_file_id(vm, infile), outBytes, outByteLen);
+        uint32_t fileid = matte_vm_get_new_file_id(vm, infile);
+        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(store, fileid, outBytes, outByteLen);
         matte_vm_add_stubs(vm, arr);
         matte_array_destroy(arr);
-        free(outBytes);
+        matte_deallocate(outBytes);
 
-        matteValue_t v = matte_vm_run_fileid(vm, i+1, matte_heap_new_value(matte_vm_get_heap(vm)), NULL);
+        matteValue_t v = matte_vm_run_fileid(vm, fileid, matte_store_new_value(matte_vm_get_store(vm)));
 
         char * outstr = dump_string(matte_string_get_c_str(outfile));
         if (!outstr) {
@@ -282,9 +345,9 @@ int main() {
         matteString_t * outputText = matte_string_create();
         matte_string_concat_printf(outputText, outstr);
 
-        const matteString_t * resultText = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, v));
+        const matteString_t * resultText = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, v));
         if (!matte_string_test_eq(outputText, resultText)) {
-            const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, v));
+            const matteString_t * str = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, v));
             printf("Test failed!!\nExpected output   : %s\nReal output       : %s\n", outstr, matte_string_get_c_str(str));
             exit(1);
         }
@@ -295,7 +358,6 @@ int main() {
         free(outstr);
         TESTID++;
         matte_string_destroy(outputText);
-        matte_heap_recycle(heap, v);
         matte_destroy(m);
         printf("Done.\n");
         fflush(stdout);
@@ -305,5 +367,11 @@ int main() {
     matte_string_destroy(infile);
     matte_string_destroy(outfile);
     printf("Tests pass.\n");
+    
+    printf("Memory report:\n");
+    printf("Peak usage   : %.2f KB\n", ((double)PEAK_USAGE) / 1024);
+    printf("Bytes leaked : %.2f KB\n", ((double)BYTES_USED) / 1024);
+    
+    
     return 0;
 }

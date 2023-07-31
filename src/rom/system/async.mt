@@ -1,3 +1,32 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 // Workers are a generalization of asynchronous behavior
 //
 // Workers can be implemented with threads, interprocess communication (IPC), or 
@@ -48,15 +77,15 @@
 
 
 @workers = ::<={
-    @:o = {};
+    @:o = {}
     @:push = ::(value) {
         o[o.length] = value;
-    };
-    Object.setAttributes(of:o,
+    }
+    o->setAttributes(
         attributes : {
             '.' : {
                 get ::(key) {
-                    when(key == 'length') Object.keycount(of:o);
+                    when(key == 'length') o->keycount;
                     when(key == 'push') push;
                     error(detail:'this is an array.. what u doing?? (internal async error)');
                 }
@@ -64,7 +93,7 @@
         }   
     );
     return o;
-};
+}
 return class(
     name : 'Matte.System.Async',
     inherits:[EventSystem],
@@ -72,40 +101,40 @@ return class(
 
         this.events = {
             onNewParentMessage::{}
-        };
+        }
 
         @idToWorker::(id) {
-            return [::]{
-                [0, workers.length]->for(do:::(i){
+            return {:::} {
+                for(0, workers.length)::(i){
                     if (workers[i].id == id) send(message:workers[i]);
-                });
+                }
 
                 // is parent
-            };
-        };
+            }
+        }
 
         // message checking
         @checkMessages::{
-            [::]{
-                forever(do:::{
+            {:::}{
+                forever ::{
                     @nextm = _workernextmessage();
                     when(nextm != empty) ::<={
                         idToWorker(id:nextm[0]).emit(
                             event:'onNewMessage',
                             detail:  nextm[1]                        
                         );
-                    };
+                    }
                     send();
-                });
-            };
-        };
+                }
+            }
+        }
         
         // state checking 
         @checkStates::{
-            workers->foreach(do:::(k, v) {
+            foreach(workers)::(k, v) {
                 v.updateState();
-            });
-        };
+            }
+        }
 
         @asinstance = this;
         @Worker = class(
@@ -129,7 +158,7 @@ return class(
                     // If the state is Finished, result will return
                     // the result of the worker if present.
                     onStateChange::(detail){}
-                };
+                }
                 
                 this.constructor = ::(module, input) {
                     id = _workerstart(a:String(from:module), b:String(from:input));
@@ -138,11 +167,11 @@ return class(
                     queryState();
 
                     return this;
-                };
+                }
 
                 @queryState ::() => Number {
                     return _workerstate(a:id);
-                };
+                }
 
                 this.interface = {
                     wait ::{
@@ -151,16 +180,16 @@ return class(
                             @:state = detail;
                             if (state == State.Finished || state == State.Failed) ::<={
                                 waiting = false;
-                            };
+                            }
                         });
                         
-                        [::]{
-                            forever(do:::{
+                        {:::}{
+                            forever ::{
                                 Time.sleep(milliseconds:50);
                                 asinstance.update();
                                 when(!waiting) send();
-                            });
-                        };
+                            }
+                        }
                         asinstance.update();
                     },
 
@@ -186,7 +215,7 @@ return class(
                         if (newState != curstate) ::<= {       
                             this.emit(event:'onStateChange', detail:newState);
                             curstate = newState;
-                        };
+                        }
                     },
                     
                     'error': {
@@ -194,7 +223,7 @@ return class(
                             return _workererror(a:id);
                         }
                     }
-                };
+                }
 
             }
         );
@@ -206,7 +235,7 @@ return class(
             },
 
             Worker : {get::{return Worker;}}
-        };
+        }
     }
 
 ).new();

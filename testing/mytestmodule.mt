@@ -1,1 +1,1 @@
-return {mydata:42};
+return {mydata:42}

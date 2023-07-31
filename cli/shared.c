@@ -1,13 +1,47 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 #include "shared.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-void * dump_bytes(const char * filename, uint32_t * len) {
+void * dump_bytes(const char * filename, uint32_t * len, int terminateOnFail) {
     FILE * f = fopen(filename, "rb");
     if (!f) {
-        printf("Could not open input file %s\n", filename);
-        exit(1);    
+        if (terminateOnFail) {
+            printf("Could not open input file %s\n", filename);
+            exit(1);    
+        } else {
+            *len = 0;
+            return NULL;
+        }
     }
     char chunk[2048];
     int chunkSize;
@@ -16,7 +50,7 @@ void * dump_bytes(const char * filename, uint32_t * len) {
     fseek(f, 0, SEEK_SET);
 
 
-    void * out = malloc(*len);
+    void * out = matte_allocate(*len);
     uint32_t iter = 0;
     while(chunkSize = (fread(chunk, 1, 2048, f))) {
         memcpy(out+iter, chunk, chunkSize);
@@ -65,9 +99,10 @@ matteValue_t parse_parameter_line(matteVM_t * vm, const char * line) {
 }
 
 matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    matteValue_t v = matte_heap_new_value(heap);
-    matte_value_into_new_object_ref(heap, &v);
+    matteStore_t * store = matte_vm_get_store(vm);
+    matteValue_t v = matte_store_new_value(store);
+    if (count == 0) return v;
+    matte_value_into_new_object_ref(store, &v);
 
     uint32_t i = 0;
     uint32_t n = 0;
@@ -97,13 +132,13 @@ matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
         }
 
         if (isName == 0) {
-            matteValue_t heapKey = matte_heap_new_value(heap);
-            matteValue_t heapVal = matte_heap_new_value(heap);
+            matteValue_t storeKey = matte_store_new_value(store);
+            matteValue_t storeVal = matte_store_new_value(store);
 
-            matte_value_into_string(heap, &heapKey, key);
-            matte_value_into_string(heap, &heapVal, iter);
+            matte_value_into_string(store, &storeKey, key);
+            matte_value_into_string(store, &storeVal, iter);
 
-            matte_value_object_set(heap, v, heapKey, heapVal, 1);
+            matte_value_object_set(store, v, storeKey, storeVal, 1);
             matte_string_destroy(key);
             matte_string_clear(iter);
             key = NULL;

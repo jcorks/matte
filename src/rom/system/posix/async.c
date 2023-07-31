@@ -1,4 +1,32 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
 
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 
 
 typedef struct {
@@ -73,7 +101,7 @@ typedef struct {
     matteVM_t * fromVM;
 
     // import path to the source. New thread frees
-    char * from;
+    matteString_t * from;
     
     // input string from parent
     matteString_t * input;
@@ -127,15 +155,15 @@ static void matte_thread_error(
     matteValue_t val,
     void * d
 ) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
     MatteAsyncStartData * startData = d;
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
-        matteValue_t s = matte_value_object_access_string(heap, val, MATTE_VM_STR_CAST(vm, "summary"));
+        matteValue_t s = matte_value_object_access_string(store, val, MATTE_VM_STR_CAST(vm, "summary"));
         if (s.binID) {
             MatteAsyncStartData * startData = d;
             *startData->errorStringRef = matte_string_create_from_c_str(
                 "Unhandled error: \n%s\n", 
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(heap, s)), 
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, s)), 
                 matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), 
                 lineNumber
             );
@@ -160,19 +188,19 @@ static void on_async_print(matteVM_t * vm, const matteString_t * str, void * ud)
 MATTE_EXT_FN(matte_asyncworker__send_message) {
     MatteAsyncStartData * startData = userData;
     if (!*startData->messageFromChildToParentRef)
-         *startData->messageFromChildToParentRef = matte_string_clone(matte_value_string_get_string_unsafe(matte_vm_get_heap(vm), args[0]));    
+         *startData->messageFromChildToParentRef = matte_string_clone(matte_value_string_get_string_unsafe(matte_vm_get_store(vm), args[0]));    
 
-    return matte_heap_new_value(matte_vm_get_heap(vm));
+    return matte_store_new_value(matte_vm_get_store(vm));
 }
 
 MATTE_EXT_FN(matte_asyncworker__check_message) {
     MatteAsyncStartData * startData = userData;
-    matteValue_t out = matte_heap_new_value(matte_vm_get_heap(vm));
+    matteValue_t out = matte_store_new_value(matte_vm_get_store(vm));
 
     if (*startData->messageFromParentToChildRef) {
         matteString_t * str = *startData->messageFromParentToChildRef;
         *startData->messageFromParentToChildRef = NULL;
-        matte_value_into_string(matte_vm_get_heap(vm), &out, str);
+        matte_value_into_string(matte_vm_get_store(vm), &out, str);
         matte_string_destroy(str);
     }
     return out;
@@ -183,33 +211,34 @@ static void * matte_thread(void * userData) {
     MatteAsyncStartData * startData = userData;
     uint32_t lenBytes;
     *startData->stateRef = MWAS_UNKNOWN;
-    uint8_t * src = dump_bytes(startData->from, &lenBytes);
-    matteString_t * fromPath = matte_string_create_from_c_str("%s", startData->from);
+    uint8_t * src = dump_bytes(matte_string_get_c_str(startData->from), &lenBytes);
+    matteString_t * fromPath = matte_string_create_from_c_str("%s", matte_string_get_c_str(startData->from));
     if (!src || !lenBytes) {
         matteString_t * str = matte_string_create();
-        matte_string_concat_printf(str, "Could not read from file %s", startData->from);        
+        matte_string_concat_printf(str, "Could not read from file %s", matte_string_get_c_str(startData->from));        
         *startData->errorStringRef = str;
         *startData->stateRef = MWAS_FAILED;
         
-        free(startData);  
+        matte_deallocate(startData);  
         matte_string_destroy(fromPath);
         return NULL;
     }
 
+    matte_t * m = matte_create();
     uint32_t outByteLen;
     uint8_t * outBytes = matte_compiler_run(
+        matte_get_syntax_graph(m),
         src,
         lenBytes,
         &outByteLen,
         matte_thread_compiler_error,
         startData
     );
-    free(src);
+    matte_deallocate(src);
     
     if (!outByteLen || !outBytes) {
         *startData->stateRef = MWAS_FAILED;
-        free(src);
-        free(startData);          
+        matte_deallocate(startData);          
         matte_string_destroy(fromPath);
         return NULL;
     }
@@ -217,17 +246,16 @@ static void * matte_thread(void * userData) {
 
 
     
-    matte_t * m = matte_create();
     matteVM_t * vm = matte_get_vm(m);
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
 
     // first compile all and add them 
-    int FILEIDS = matte_vm_get_new_file_id(vm, MATTE_VM_STR_CAST(vm, startData->from));
+    int FILEIDS = matte_vm_get_new_file_id(vm, startData->from);
 
     
 
-    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(heap, FILEIDS, outBytes, outByteLen);
-    free(outBytes);
+    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(store, FILEIDS, outBytes, outByteLen);
+    matte_deallocate(outBytes);
     matte_vm_add_stubs(vm, arr);
     matte_array_destroy(arr);
 
@@ -242,27 +270,27 @@ static void * matte_thread(void * userData) {
 
     *startData->stateRef = MWAS_RUNNING;
 
-    matteValue_t params = matte_heap_new_value(heap);
-    matte_value_into_new_object_ref(heap, &params);
-    matteValue_t key = matte_heap_new_value(heap);
-    matte_value_into_string(heap, &key, MATTE_VM_STR_CAST(vm, "input"));
-    matteValue_t value = matte_heap_new_value(matte_vm_get_heap(vm));
-    matte_value_into_string(heap, &value, startData->input);
-    matte_value_object_set(matte_vm_get_heap(vm), params, key, value, 0);
+    matteValue_t params = matte_store_new_value(store);
+    matte_value_into_new_object_ref(store, &params);
+    matteValue_t key = matte_store_new_value(store);
+    matte_value_into_string(store, &key, MATTE_VM_STR_CAST(vm, "input"));
+    matteValue_t value = matte_store_new_value(matte_vm_get_store(vm));
+    matte_value_into_string(store, &value, startData->input);
+    matte_value_object_set(matte_vm_get_store(vm), params, key, value, 0);
 
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::asyncworker_send_message"),   1, matte_asyncworker__send_message, startData);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::asyncworker_check_message"),   0, matte_asyncworker__check_message, startData);
 
-    matteValue_t v = matte_vm_run_fileid(vm, FILEIDS, params, fromPath);
+    matteValue_t v = matte_vm_run_fileid(vm, FILEIDS, params);
     matte_string_destroy(fromPath);
 
     
 
-    matteValue_t vStr = matte_value_as_string(heap, v);
+    matteValue_t vStr = matte_value_as_string(store, v);
 
     if (v.binID == MATTE_VALUE_TYPE_STRING) {
-        *startData->resultRef = matte_string_clone(matte_value_string_get_string_unsafe(heap, v));
-        matte_heap_recycle(heap, v);        
+        *startData->resultRef = matte_string_clone(matte_value_string_get_string_unsafe(store, v));
+        matte_store_recycle(store, v);        
     } else {
         if (*startData->stateRef != MWAS_FAILED) {
             *startData->stateRef = MWAS_FAILED;        
@@ -275,7 +303,7 @@ static void * matte_thread(void * userData) {
     matte_destroy(m);
     if (!*startData->errorStringRef)
         *startData->stateRef = MWAS_FINISHED;  
-    free(startData);  
+    matte_deallocate(startData);  
     return NULL;
 }
 
@@ -296,20 +324,18 @@ static int matte_async_next_id() {
 
 
 MATTE_EXT_FN(matte_async__start) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
     // source ensures strings
     matteValue_t path  = args[0];
     matteValue_t input = args[1];
 
-    MatteWorkerChildInfo * ch = calloc(1, sizeof(MatteWorkerChildInfo));
-    MatteAsyncStartData * init = calloc(1, sizeof(MatteAsyncStartData));
+    MatteWorkerChildInfo * ch = matte_allocate(sizeof(MatteWorkerChildInfo));
+    MatteAsyncStartData * init = matte_allocate(sizeof(MatteAsyncStartData));
     init->errorStringRef = &ch->errorString;
     init->messageFromChildToParentRef = &ch->messageFromChildToParent;
     init->messageFromParentToChildRef = &ch->messageFromParentToChild;
-    matteString_t * expanded = matte_vm_import_expand_path(vm, matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, path)));
-    init->from = strdup(matte_string_get_c_str(expanded));
-    matte_string_destroy(expanded);
-    init->input = matte_string_clone(matte_value_string_get_string_unsafe(heap, input));
+    init->from = matte_string_clone(matte_value_string_get_string_unsafe(store, path));
+    init->input = matte_string_clone(matte_value_string_get_string_unsafe(store, input));
     init->stateRef = &(ch->state);
     init->fromVM = vm;
     init->resultRef = &(ch->result);
@@ -318,62 +344,62 @@ MATTE_EXT_FN(matte_async__start) {
     matte_array_push(asyncSelf.children, ch);
     pthread_create(&(ch->pthreadID), NULL, matte_thread, init);
     
-    matteValue_t id = matte_heap_new_value(heap);
-    matte_value_into_number(heap, &id, ch->workerid);
+    matteValue_t id = matte_store_new_value(store);
+    matte_value_into_number(store, &id, ch->workerid);
     return id;
 }
 
 
 MATTE_EXT_FN(matte_async__state) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    int id = matte_value_as_number(heap, args[0]);
+    matteStore_t * store = matte_vm_get_store(vm);
+    int id = matte_value_as_number(store, args[0]);
     MatteWorkerChildInfo * ch = find_child(id);
     if (!ch) {
         matte_vm_raise_error_cstring(vm, "No such async primitive ID.");
-        return matte_heap_new_value(heap);
+        return matte_store_new_value(store);
     }
     
-    matteValue_t result = matte_heap_new_value(heap);
-    matte_value_into_number(heap, &result, ch->state);
+    matteValue_t result = matte_store_new_value(store);
+    matte_value_into_number(store, &result, ch->state);
     return result;   
 }
 
 
 
 MATTE_EXT_FN(matte_async__result) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    int id = matte_value_as_number(heap, args[0]);
+    matteStore_t * store = matte_vm_get_store(vm);
+    int id = matte_value_as_number(store, args[0]);
     MatteWorkerChildInfo * ch = find_child(id);
     if (!ch) {
         matte_vm_raise_error_cstring(vm, "No such async primitive ID.");
-        return matte_heap_new_value(heap);
+        return matte_store_new_value(store);
     }
 
     if (ch->result) {
-        matteValue_t v = matte_heap_new_value(heap);
-        matte_value_into_string(heap, &v, ch->result);
+        matteValue_t v = matte_store_new_value(store);
+        matte_value_into_string(store, &v, ch->result);
         return v;
     } else {
-        return matte_heap_new_value(heap);
+        return matte_store_new_value(store);
     }
 }
 
 
 MATTE_EXT_FN(matte_async__error) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
-    int id = matte_value_as_number(heap, args[0]);
+    matteStore_t * store = matte_vm_get_store(vm);
+    int id = matte_value_as_number(store, args[0]);
     MatteWorkerChildInfo * ch = find_child(id);
     if (!ch) {
         matte_vm_raise_error_cstring(vm, "No such async primitive ID.");
-        return matte_heap_new_value(heap);
+        return matte_store_new_value(store);
     }
 
     if (ch->errorString) {
-        matteValue_t v = matte_heap_new_value(heap);
-        matte_value_into_string(heap, &v, ch->errorString);
+        matteValue_t v = matte_store_new_value(store);
+        matte_value_into_string(store, &v, ch->errorString);
         return v;
     } else {
-        return matte_heap_new_value(heap);
+        return matte_store_new_value(store);
     }
 }
 
@@ -401,19 +427,19 @@ static void push_messages() {
 }
 
 MATTE_EXT_FN(matte_async__sendmessage) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
     MatteWorkerPendingMessage pending;
 
-    pending.id = matte_value_as_number(heap, args[0]);
-    pending.message = matte_string_clone(matte_value_string_get_string_unsafe(heap, args[1]));
+    pending.id = matte_value_as_number(store, args[0]);
+    pending.message = matte_string_clone(matte_value_string_get_string_unsafe(store, args[1]));
     matte_array_push(asyncSelf.messagesPending, pending);
     
     push_messages();
-    return matte_heap_new_value(heap);    
+    return matte_store_new_value(store);    
 }
 
 MATTE_EXT_FN(matte_async__nextmessage) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
     push_messages();
     // first update children
     uint32_t i;
@@ -431,20 +457,20 @@ MATTE_EXT_FN(matte_async__nextmessage) {
         }
     }
 
-    matteValue_t v = matte_heap_new_value(heap);
+    matteValue_t v = matte_store_new_value(store);
     uint32_t pendingCount = matte_array_get_size(asyncSelf.messagesReceived);
     if (pendingCount) {
         MatteWorkerPendingMessage pending = matte_array_at(asyncSelf.messagesReceived, MatteWorkerPendingMessage, pendingCount-1);
         matte_array_set_size(asyncSelf.messagesReceived, pendingCount-1);
 
-        matteValue_t id = matte_heap_new_value(heap);
-        matte_value_into_number(heap, &id, pending.id); 
-        matteValue_t message = matte_heap_new_value(heap);
-        matte_value_into_string(heap, &message, pending.message); 
+        matteValue_t id = matte_store_new_value(store);
+        matte_value_into_number(store, &id, pending.id); 
+        matteValue_t message = matte_store_new_value(store);
+        matte_value_into_string(store, &message, pending.message); 
         matteValue_t arrSrc[] = {id, message};
         matteArray_t arr = MATTE_ARRAY_CAST(arrSrc, matteValue_t, 2);
 
-        matte_value_into_new_object_array_ref(heap, &v, &arr);
+        matte_value_into_new_object_array_ref(store, &v, &arr);
     }
     return v;    
 }

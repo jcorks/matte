@@ -1,8 +1,36 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
 
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 
 static matteValue_t vm_ext_call__number__pi(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, M_PI);    
+    matteValue_t out = matte_store_new_value(vm->store);    
+    matte_value_into_number(vm->store, &out, M_PI);    
     return out;
 }
 
@@ -11,8 +39,8 @@ static matteValue_t vm_ext_call__number__pi(matteVM_t * vm, matteValue_t fn, con
 static matteValue_t vm_ext_call__number__atan2(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];
     matteValue_t b = args[1];
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, atan2(matte_value_as_number(vm->heap, a), matte_value_as_number(vm->heap, b)));    
+    matteValue_t out = matte_store_new_value(vm->store);    
+    matte_value_into_number(vm->store, &out, atan2(matte_value_as_number(vm->store, a), matte_value_as_number(vm->store, b)));    
     return out;
 }
 
@@ -20,24 +48,24 @@ static matteValue_t vm_ext_call__number__atan2(matteVM_t * vm, matteValue_t fn, 
 static matteValue_t vm_ext_call__number__parse(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t a = args[0];;
 
-    matteValue_t out = matte_heap_new_value(vm->heap);
-    matteValue_t aconv = matte_value_as_string(vm->heap, a);
+    matteValue_t out = matte_store_new_value(vm->store);
+    matteValue_t aconv = matte_value_as_string(vm->store, a);
 
-    const matteString_t * m = matte_value_string_get_string_unsafe(vm->heap, aconv);
+    const matteString_t * m = matte_value_string_get_string_unsafe(vm->store, aconv);
     double fout;
     if (sscanf(matte_string_get_c_str(m), "%lf", &fout) == 1) {
-        matte_value_into_number(vm->heap, &out, fout);
+        matte_value_into_number(vm->store, &out, fout);
     } else {
         matte_vm_raise_error_cstring(vm, "Could not interpret String as a Number.");                
-        matte_heap_recycle(vm->heap, aconv);    
+        matte_store_recycle(vm->store, aconv);    
     }
 
     return out;
 }
 
 static matteValue_t vm_ext_call__number__random(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t out = matte_heap_new_value(vm->heap);    
-    matte_value_into_number(vm->heap, &out, rand() / (double)(RAND_MAX));    
+    matteValue_t out = matte_store_new_value(vm->store);    
+    matte_value_into_number(vm->store, &out, rand() / (double)(RAND_MAX));    
     return out;
 }
 

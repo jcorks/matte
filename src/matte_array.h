@@ -98,9 +98,10 @@ matteArray_t * matte_array_clone(
 ///     int i = 42;
 ///     matteArray_t * arr = matte_array_create(sizeof(int));
 ///     matte_array_push(arr, i);
-///     printf("%d", matte_array_at(arr, 0));
+///     printf("%d", matte_array_at(arr, int, 0));
 ///
 /// The above example would print 42.
+///
 #define matte_array_at(__A__,__T__,__I__) (((__T__*)matte_array_get_data(__A__))[__I__])
 
 /// Adds a contiguous set of elements to the array 
@@ -238,6 +239,7 @@ struct matteArray_t {
 ///
 #define matte_array_get_data(__A__) ((void*)(__A__)->data)
 
+#define matte_array_shrink_by_one(__A__) ((__A__)->size ? (__A__)->size-- : 0)
 
 /// Creates a temporary array whos data is managed for you.
 /// Temporary arrays are "read only" and should to be modified.
@@ -256,6 +258,7 @@ matteArray_t matte_array_temporary_from_static_array(
 /// The first argument is the array pointer
 /// The second argument is the type of each member within the array 
 /// The third argument is the number of members in the array
+///
 #define MATTE_ARRAY_CAST(__D__,__T__,__L__) (matte_array_temporary_from_static_array(__D__, sizeof(__T__), __L__))
 
 

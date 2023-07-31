@@ -34,13 +34,13 @@ DEALINGS IN THE SOFTWARE.
 typedef struct matteArray_t matteArray_t;
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 typedef struct matteVMStackFrame_t matteVMStackFrame_t;
-#include "matte_heap.h"
+#include "matte_store.h"
 #include "matte_opcode.h"
 
 
 
 typedef struct matteVM_t matteVM_t;
-
+typedef struct matte_t matte_t;
 
 
 typedef enum {
@@ -59,11 +59,19 @@ typedef enum {
 } matteVMDebugEvent_t;
 
 
-typedef  uint8_t * (*matteImportFunction_t)(
+// The import handler function
+//
+// The import function returns the fileID 
+// represented by this name.
+// The most common use of this is to load in the corresponding 
+// import bytecode stubs at the same time.
+//
+typedef uint32_t (*matteImportFunction_t)(
+    // The VM instance
     matteVM_t *,
-    const matteString_t * importPath,
-    uint32_t * preexistingFileID,
-    uint32_t * dataLength,
+    // The name of the module being requested
+    const matteString_t * name,
+    
     void * usrdata
 );
 
@@ -71,15 +79,15 @@ typedef  uint8_t * (*matteImportFunction_t)(
 
 
 
-matteVM_t * matte_vm_create();
+matteVM_t * matte_vm_create(matte_t *);
 
 void matte_vm_destroy(matteVM_t*);
 
-// Returns the heap owned by the VM.
-matteHeap_t * matte_vm_get_heap(matteVM_t *);
+// Returns the store owned by the VM.
+matteStore_t * matte_vm_get_store(matteVM_t *);
 
 // Adds an array of matteBytecodeStub_t * to the vm.
-// Ownership of the stubs is transferred.
+// Ownership of the stubs is transferred (but not the array)
 void matte_vm_add_stubs(matteVM_t *, const matteArray_t *);
 
 // Sets the implementation for the import function.
@@ -90,30 +98,14 @@ void matte_vm_set_import(
 );
 
 
-// Returns the default call for import. This is useful when 
-// setting an user import that has behavior happen when importing 
-// but doesnt necessarily deviate from standard behavior.
-matteImportFunction_t matte_vm_get_default_import();
 
-
-// Expands a given filename as if it were from an import 
-// call. This does not impact the import path chain.
-// The returned path is a fully-qualified path.
-// The result should be cleaned up by the caller.
-matteString_t * matte_vm_import_expand_path(
-    matteVM_t * vm, 
-    const matteString_t * module
-);
-
-// Gets the current import path.
-const matteString_t * matte_vm_get_import_path(matteVM_t * vm);
-
-// Performs an import, which evaluates the source at the given path 
+// Performs an import, which evaluates the source of the given name 
 // and returns its value, as if calling import() within 
-// source.
+// source. If an import was already performed on that name,
+// the pre-computed value of the previous import is returned.
 matteValue_t matte_vm_import(
     matteVM_t *, 
-    const matteString_t * path, 
+    const matteString_t * name, 
     matteValue_t parameters
 );
 
@@ -125,17 +117,23 @@ matteValue_t matte_vm_import(
 // A function object is created as the toplevel for the 
 // root stub functional; the function is then run.
 //
+//
+//
 // This is equivalent to pushing the args onto the stack and 
 // inserting a CAL instruction.
+// The value is owned and reserved by the VM,
+// so it shoud not be recycled.
 matteValue_t matte_vm_run_fileid(
     matteVM_t *, 
     uint32_t fileid, 
-    matteValue_t parameters,
-    const matteString_t * importPath
+    matteValue_t parameters
 );
 
 
-// Calls a function and evaluates its result immediately.
+
+/// Functions are called immediately and only return once computation is finished.
+/// This includes any sub-calls to matte_call / matte_vm_call. The return value 
+/// of the function is returned. 
 matteValue_t matte_vm_call(
     matteVM_t *,
     matteValue_t function,
@@ -212,12 +210,13 @@ struct matteVMStackFrame_t {
     matteString_t * prettyName;
 
 
-    // array object that holds argumentsw and locals.
-    // Retrieving a referrable safely incolves copying a 
-    // reference to this. This guarantees access of the value past 
-    // the lifetime of this function call when applicable
-    matteValue_t referrable;
-    uint32_t referrableSize;
+    // copy of the referrable list owned by the context function 
+    // Is available for quick access, but is owned by the context function
+    // NOTE: these values are ONLY representative of the context referrables 
+    // at the ACTIVATION of the stack frame. Due to the nature of closures 
+    // they will almost always mutate. The only metric that is guaranteed is 
+    // the size of the referrable list, which is static.
+    matteArray_t *  referrables;
 
 
     
@@ -305,7 +304,7 @@ matteValue_t matte_vm_get_external_function_as_value(
     const matteString_t * identifier
 );
 
-// Functions for a built-in references. These are locked into the heap 
+// Functions for a built-in references. These are locked into the store 
 matteValue_t * matte_vm_get_external_builtin_function_as_value(
     matteVM_t * vm,
     matteExtCall_t ext

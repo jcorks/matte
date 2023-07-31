@@ -8,19 +8,19 @@
         this.constructor = ::(theString) {
             str = theString;  
             return this;          
-        };
+        }
 
         this.attributes = {
             (String) :: {
                 return str;
             }
-        };
+        }
 
         this.interface = {
             mutate :: {
                 str = str + 'OHWOW';
             }
-        };
+        }
         
     }
 );

@@ -1,3 +1,32 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 #ifndef H_MATTE__OPCODE__INCLUDED
 #define H_MATTE__OPCODE__INCLUDED
 
@@ -113,7 +142,19 @@ typedef enum {
     // Allows for many assignments at once to an object using the 
     // dot operator. The syntax is operand.{static object};
     // The first operand is pushed to the top of the stack.
-    MATTE_OPCODE_OAS
+    MATTE_OPCODE_OAS,
+    
+    // performs a loop, taking the top 3 variables on the stack to define a 
+    // loop: from value[top-3] to value[top-2], run function value[top-1]
+    MATTE_OPCODE_LOP,
+
+    // performs an infinite loop, calling the value[top-1] function indefinitely.
+    MATTE_OPCODE_FVR,
+
+    // performs a foreach loop on an object (value[top-1])
+    MATTE_OPCODE_FCH,
+    
+    MATTE_OPCODE_ERROR = -1
 
 } matteOpcode_t;
 
@@ -165,13 +206,16 @@ typedef enum {
     
     // special operator state flag for OSN instructions.
     // TODO: better method maybe? 
-    MATTE_OPERATOR_STATE_BRACKET = 2048,
+    MATTE_OPERATOR_STATE_BRACKET = 200,
+
+
+    MATTE_OPERATOR_ERROR = -1,
+    
 } matteOperator_t;
 
 
 typedef enum {
     MATTE_EXT_CALL_NOOP,
-    MATTE_EXT_CALL_FOREVER,
     MATTE_EXT_CALL_IMPORT,
     MATTE_EXT_CALL_PRINT,
     MATTE_EXT_CALL_SEND,
@@ -190,7 +234,9 @@ typedef enum {
 
     MATTE_EXT_CALL__OBJECT__NEWTYPE,
     MATTE_EXT_CALL__OBJECT__INSTANTIATE,
-
+    MATTE_EXT_CALL__OBJECT__FREEZEGC,
+    MATTE_EXT_CALL__OBJECT__THAWGC,
+    MATTE_EXT_CALL__OBJECT__GARBAGECOLLECT,
 
 
     MATTE_EXT_CALL__QUERY__ATAN2,
@@ -208,7 +254,6 @@ typedef enum {
     MATTE_EXT_CALL__QUERY__REDUCE,
     MATTE_EXT_CALL__QUERY__ANY,
     MATTE_EXT_CALL__QUERY__ALL,
-    MATTE_EXT_CALL__QUERY__FOR,
     MATTE_EXT_CALL__QUERY__FOREACH,
 
 
@@ -219,6 +264,7 @@ typedef enum {
     MATTE_EXT_CALL__QUERY__SETCHARCODEAT,
     MATTE_EXT_CALL__QUERY__SCAN,
     MATTE_EXT_CALL__QUERY__SEARCH,
+    MATTE_EXT_CALL__QUERY__SEARCH_ALL,
     MATTE_EXT_CALL__QUERY__SPLIT,
     MATTE_EXT_CALL__QUERY__SUBSTR,
     MATTE_EXT_CALL__QUERY__CONTAINS,
@@ -260,6 +306,7 @@ typedef enum {
     MATTE_QUERY__SCAN,
     MATTE_QUERY__LENGTH,
     MATTE_QUERY__SEARCH,
+    MATTE_QUERY__SEARCH_ALL,
     MATTE_QUERY__CONTAINS,
     MATTE_QUERY__REPLACE,
     MATTE_QUERY__COUNT,
@@ -286,7 +333,6 @@ typedef enum {
     MATTE_QUERY__REDUCE,
     MATTE_QUERY__ANY,
     MATTE_QUERY__ALL,
-    MATTE_QUERY__FOR,
     MATTE_QUERY__FOREACH
 } matteQuery_t;
 

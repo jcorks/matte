@@ -9,13 +9,13 @@
         this.constructor = ::(myArg) {
             args = myArg;
             return this;
-        };
+        }
 
         this.attributes = {
             (String) :: {
                 return args;
             }
-        };
+        }
     }
 );
 

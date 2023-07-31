@@ -4,19 +4,19 @@ return 0;
 
 @makeThing ::(index) {
     print(message:'' + index + '@ ' + (getExternalFunction(name:"system_getticks")() - from));
-};
+}
 
-[::]{
-    forever(do:::{
+{:::}{
+    forever ::{
         @b = a/100;
         a+=1;
         if (a%10 == 0) ::<={
             when(a%100 == 0) ::<={
                 makeThing(index:a);
                 send();
-            };
-        };
+            }
+        }
         
         return true;
-    });
-};
+    }
+}

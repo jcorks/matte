@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 #define H_MATTE__BYTECODE_STUB__INCLUDED
 
 #include <stdint.h>
-#include "matte_heap.h"
+#include "matte_store.h"
 
 typedef struct matteArray_t matteArray_t;
 typedef struct matteString_t matteString_t;
@@ -49,7 +49,7 @@ typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 //
 // Incomplete stubs are supported. If given, remaining attributes are 0.
 matteArray_t * matte_bytecode_stubs_from_bytecode(
-    matteHeap_t *,
+    matteStore_t *,
     uint32_t fileID,
     const uint8_t * bytecodeRaw, 
     uint32_t len
@@ -112,8 +112,9 @@ typedef struct {
     // Line number for the parsed instruction
     int32_t lineNumber;
     // The opcode of the 
-    int32_t  opcode;
-    uint8_t  data[8];
+    uint8_t  opcode;
+    double   data;
+    int32_t  nfnFileID;
 } matteBytecodeStubInstruction_t;
 
 // Gets all instructions held by the stub.

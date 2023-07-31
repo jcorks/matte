@@ -4,5 +4,5 @@
 @y = 100;
 @f = ::{
     return y + 20;
-};
+}
 return f();

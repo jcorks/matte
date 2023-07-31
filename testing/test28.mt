@@ -7,6 +7,6 @@
         hb : ::{
             return local;
         }
-    };
-};
+    }
+}
 return g().hb();

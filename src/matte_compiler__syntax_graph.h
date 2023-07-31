@@ -1,3 +1,32 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 #ifndef H_MATTE__COMPILER__SYNTAX_GRAPH__INCLUDED
 #define H_MATTE__COMPILER__SYNTAX_GRAPH__INCLUDED
 
@@ -29,7 +58,6 @@ typedef enum {
 
     MATTE_TOKEN_EXTERNAL_NOOP,
     MATTE_TOKEN_EXTERNAL_GATE,
-    MATTE_TOKEN_EXTERNAL_FOREVER,
     MATTE_TOKEN_EXTERNAL_MATCH,
     MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
     MATTE_TOKEN_EXTERNAL_IMPORT,
@@ -97,6 +125,12 @@ typedef enum {
 
 
     MATTE_TOKEN_WHEN,
+    MATTE_TOKEN_FOR,
+    MATTE_TOKEN_FOREVER,
+    MATTE_TOKEN_FOREACH,
+    MATTE_TOKEN_LOOP_IMPLICATOR,
+
+    MATTE_TOKEN_FOR_SEPARATOR,
     MATTE_TOKEN_GATE_RETURN,
     MATTE_TOKEN_IMPLICATION_START, //(
     MATTE_TOKEN_IMPLICATION_END, //)
@@ -177,7 +211,7 @@ typedef struct matteSyntaxGraphRoot_t {
     matteString_t * name;
     // array of matteSyntaxGraphNode_t *
     matteArray_t * paths;
-    // array of matteSyntaxGraphNode_t *
+    // array of matteString_t *
     matteArray_t * pathNames;
 } matteSyntaxGraphRoot_t;
 
@@ -192,4 +226,6 @@ matteSyntaxGraphRoot_t * matte_syntax_graph_get_root(
     uint32_t id
 );
 int matte_syntax_graph_is_construct(matteSyntaxGraph_t * g, int id);
+
+void matte_syntax_graph_destroy(matteSyntaxGraph_t *);
 #endif

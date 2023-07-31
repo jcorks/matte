@@ -1,6 +1,35 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 @class = import(module:'Matte.Core.Class');
 @EventSystem = import(module:'Matte.Core.EventSystem');
-@MemoryBuffer = import(module:'Matte.System.MemoryBuffer');
+@MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
 @Socket = {
     Server : ::<={
         // Creates a new socket bound to an address and port.
@@ -141,7 +170,7 @@
             inherits:[EventSystem],
             define:::(this) {
                 @id_number;
-                @pendingMessages = {};
+                @pendingMessages = {}
                 @socket;
                 @info;
                 @address;
@@ -155,13 +184,13 @@
                     info = _socket_server_client_infostring(a:socket, b:id_number);
                     address = _socket_server_client_address(a:socket, b:id_number);
                     return this;
-                };
+                }
 
                 this.events = {
                     onNewMessage ::(detail){},
                     onIncomingData ::(detail){},
                     onDisconnect ::(detail){}
-                };
+                }
 
                 // change update based on if a message type client or data
                 @update;
@@ -171,17 +200,17 @@
                 if (messageIn == true) ::<={
                     update = ::{
                         _socket_server_client_update(a:socket, b:id_number);
-                        [0, _socket_server_client_get_pending_message_count(a:socket, b:id_number)]->for(do:::(i){
+                        for(0, _socket_server_client_get_pending_message_count(a:socket, b:id_number))::(i){
                             this.emit(
                                 event:'onNewMessage',
                                 detail:_socket_server_client_get_next_message(a:socket, b:id_number)
                             );
-                        });
-                    };
+                        }
+                    }
 
                     sendData = ::(m => String) {
                         _socket_server_client_send_message(a:socket, b:id_number, c:m);
-                    };
+                    }
 
                 } else ::<={
                     update = ::{
@@ -195,14 +224,14 @@
                                 detail:bytes
                             );             
                             bytes.release();
-                        };
-                    };
+                        }
+                    }
 
 
                     sendData = ::(bytes => MemoryBuffer.type) {
                         _socket_server_client_write_bytes(a:socket, b:id_number, c:bytes.handle);
-                    };
-                };
+                    }
+                }
 
 
 
@@ -232,7 +261,7 @@
                     disconnect :: {
                         _socket_server_client_terminate(a:socket, b:id_number);
                     }
-                };
+                }
 
             }
         );
@@ -264,7 +293,7 @@
                         messageMode:Boolean(from:messageMode)
                     );
                     return this;
-                };
+                }
 
                 
                 @:clients = [];
@@ -274,36 +303,40 @@
                                 
                 this.events = {
                     onNewClient ::(detail){}
-                };
+                }
             
             
                 this.interface = {
+                    'Client' : {
+                        get ::<- Client
+                    },
+                
                     update ::{
                         _socket_server_update(a:socket);  
                         
                         // current client list against prev list.
                         @:newlen = _socket_server_get_client_count(a:socket);
-                        @: found = {};
-                        [0, newlen]->for(do:::(i){
+                        @: found = {}
+                        for(0, newlen)::(i){
                             @id = String(from:_socket_server_client_index_to_id(a:socket, b:i));
                             found[id] = true;
 
                             // new client
                             if (clientIndex[id] == empty) ::<={
                                 @client = Client.new(id:id, handle:socket);
-                                Object.push(object:clients, value:client);
+                                clients->push(value:client);
                                 clientIndex[id] = true;
                                 found[id] = true;
 
                                 this.emit(event:'onNewClient', detail:client);
-                            };
-                        }); 
+                            }
+                        } 
 
                         // emit update disconnects or update.
                         @i = 0;
-                        [::] {
-                            forever(do:::{
-                                when(i == Object.length(of:clients)) send();
+                        {:::} {
+                            forever ::{
+                                when(i == clients->keycount) send();
                                 
                                 @idKey = String(from:clients[i].id);
                                 if (found[idKey]) ::<= {
@@ -311,17 +344,16 @@
                                     i+=1;
                                 } else ::<={
                                     clients[i].emit(event:'onDisconnect', detail:clients[i]);
-                                    Object.removeKey(from:clients, key:i);
-                                    Object.removeKey(from:clientIndex, key:idKey);                                
-                                };
-                            });
-                        };                  
+                                    clients->remove(key:i);
+                                    clientIndex->remove(key:idKey);                                
+                                }
+                            }
+                        }                  
                     }
-                };
+                }
             }
         );
         
-        Server.Client = Client;
         return Server;
     },
     
@@ -389,7 +421,7 @@
                     
                     'onIncomingData': ::(detail){},
                     'onNewMessage': ::(detail){}
-                };
+                }
                 @state = 0;                
                 @update; 
                 @sendData;
@@ -399,14 +431,14 @@
                         when(socket == empty) empty;
                         // raw mode
                         @err;
-                        [::]{
+                        {:::}{
                             _socket_client_update(a:socket);
                         } : { 
                             onError:::(message) {
                                 @:er = message.detail;
                                 err = er;
                             }
-                        };
+                        }
 
                         @oldstate = state;
                         @newstate = _socket_client_get_state(a:socket);
@@ -420,7 +452,7 @@
                                 socket = empty;
                             },
                             (oldstate != 2 && newstate == 2): this.emit(event:'onConnectSuccess')
-                        };
+                        }
                         
                         when(state != 2) empty;
                         
@@ -433,17 +465,17 @@
                                 detail:bytes
                             );             
                             bytes.release();
-                        };
-                    };
+                        }
+                    }
 
                     sendData = ::(bytes => MemoryBuffer.type) {
                         when(socket == empty) empty;
                         _socket_client_write_bytes(a:socket, b:bytes.handle);
-                    };
+                    }
 
                 } else ::<={
                     error(message:'TODO');                
-                };
+                }
                 
                 
                 
@@ -453,15 +485,15 @@
                         when (socket != empty) error(message:'Socket is already connected.');
                         if (mode == empty) ::<={
                             mode = 0;
-                        };
+                        }
                         
-                        [::] {
+                        {:::} {
                             socket = _socket_client_create(a:address, b:port, c:0, d:mode, e:tls);
                         } : {
                             onError:::(message){
                                 this.emit(event:'onConnectFail', detail:message.detail);
                             }
-                        };
+                        }
                     },
                     
                     disconnect::{
@@ -479,12 +511,12 @@
                             return _socket_client_get_host_info(a:socket);
                         }
                     }              
-                };
+                }
             }        
         );            
     
     }
-};
+}
 
 
 return Socket;

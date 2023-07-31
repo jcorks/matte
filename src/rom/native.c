@@ -1,6 +1,35 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 #include "../matte_string.h"
 #include "../matte_vm.h"
-#include "../matte_heap.h"
+#include "../matte_store.h"
 #include "../matte.h"
 #include "../matte_compiler.h"
 #include "../matte_bytecode_stub.h"
@@ -8,6 +37,7 @@
 
 
 #include "./core/json.c"
+#include "./core/memorybuffer.c"
 #ifdef MATTE_USE_SYSTEM_EXTENSIONS
 
 #ifdef __WIN32__
@@ -27,7 +57,6 @@
 
 ////////////
 #include "./system/winapi/shared.c"
-#include "./system/winapi/memorybuffer.c"
 #include "./system/winapi/consoleio.c"
 #include "./system/winapi/filesystem.c"
 #include "./system/winapi/socketio.c"
@@ -70,7 +99,6 @@
 
 ////////////
 #include "./system/posix/shared.c"
-#include "./system/posix/memorybuffer.c"
 #include "./system/posix/consoleio.c"
 #include "./system/posix/filesystem.c"
 #include "./system/posix/socketio.c"
@@ -87,10 +115,10 @@
 
 void matte_bind_native_functions(matteVM_t * vm) {
     matte_system__json(vm);
+    matte_system__memorybuffer(vm);
 
     matte_system__consoleio(vm);
     matte_system__filesystem(vm);
-    matte_system__memorybuffer(vm);
     matte_system__socketio(vm);
     matte_system__time(vm);
     matte_system__utility(vm);
@@ -104,7 +132,7 @@ void matte_bind_native_functions(matteVM_t * vm) {
 #else 
 void matte_bind_native_functions(matteVM_t * vm) {
     matte_system__json(vm);
-
+    matte_system__memorybuffer(vm);
 
 }
 #endif

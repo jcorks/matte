@@ -1,0 +1,496 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
+
+
+
+/*
+    Garbage collector, "The Busy 'Possum" (thanks, Faus!)
+    tricolor invariant with time-based garbage frequency checking
+*/
+
+
+
+
+// PARAMETERS:
+
+// Max number of milliseconds to dedicate to 
+// garbage collection before resuming 
+// normal execution.
+#define BUSY_POSSUM__AWAKE_TIME_MS  3.5
+
+// Minimum number of milliseconds of normal 
+// execution before garbage collection can run once more.
+#define BUSY_POSSUM__SLEEPY_TIME_MS  7.5
+
+
+// Number of tricolor march visits in a single cycle
+// Too big of a number could unexpectedly result 
+// in inaccurate active GC time, but too little 
+// will cause extra overhead.
+#define BUSY_POSSUM__MARCH_SIZE 400
+
+// Number of root visits in a single cycle.
+// Too big of a number could unexpectedly result 
+// in inaccurate active GC time, but too little 
+// will cause extra overhead.
+#define BUSY_POSSUM__ROOT_CHUNK 1000
+
+// Number of object disposals to perform in a single
+// cycle
+// Too big of a number could unexpectedly result 
+// in inaccurate active GC time, but too little 
+// will cause extra overhead.
+#define BUSY_POSSUM__CLEANUP_CHUNK 100
+
+
+
+// External functions:
+
+
+
+
+
+// Performs garbage collection.
+// Should be called frequently to regularly
+// cleanup unused objects and data.
+void matte_store_garbage_collect(matteStore_t * h);
+
+
+
+// Adds an object to a tricolor group
+static void matte_store_garbage_collect__add_to_color(matteStore_t * h, matteObject_t * m) {
+    matteObject_t * b = h->tricolor[m->color];
+    h->tricolor[m->color] = m;
+    if (b) {
+        b->prevColor = m;
+    }
+    m->nextColor = b;
+    m->prevColor = NULL;
+}
+
+// removes an object from its tricolor group.
+static void matte_store_garbage_collect__rem_from_color(matteStore_t * h, matteObject_t * m) {
+    if (m == h->tricolor[m->color]) {
+        h->tricolor[m->color] = m->nextColor;
+    }
+    matteObject_t * prev = m->prevColor;
+    if (m->prevColor) {
+        m->prevColor->nextColor = m->nextColor;
+        m->prevColor = NULL;
+    }
+
+    if (m->nextColor) {
+        m->nextColor->prevColor = prev;
+        m->nextColor = NULL;
+    }
+    
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////
+//// Implementation
+
+
+
+
+
+#ifdef MATTE_DEBUG__STORE
+#define BUSY_POSSUM__SLEEPY_TIME_MS 0
+#endif
+
+
+static uint32_t busy_possum_mark_grey(matteStore_t * h, matteObject_t * o) {
+    uint32_t n;
+    uint32_t count = 0;
+    
+    if (o->color != OBJECT_TRICOLOR__BLACK) return 0;
+
+    //matteArray_t * kv = h->mgIter;
+    //kv->size = 0;
+    
+    //matte_table_get_all_keys(o->children, kv);
+
+    //uint32_t len = kv->size;
+    //void ** iter = matte_array_get_data(kv);
+    matteObjectChildNode_t * ch;
+    for(ch = o->children; ch != NULL; ch = ch->next) {
+        matteObject_t * c = ch->data;
+        if (c->color != OBJECT_TRICOLOR__WHITE) continue;
+        matte_store_garbage_collect__rem_from_color(h, c);
+        c->color = OBJECT_TRICOLOR__GREY;
+        matte_store_garbage_collect__add_to_color(h, c); 
+        count ++;   
+    }
+    return count;
+}
+
+
+
+
+static void busy_possum_object_cleanup(matteStore_t * h) {
+    if (!matte_array_get_size(h->toRemove)) return;
+    matteTableIter_t * iter = matte_table_iter_create();
+
+
+    matteArray_t * toRemove = h->toRemove;
+    // preserve current size. Real size may increase midway through 
+    // but only object_cleanup will reduce the size (end of function);
+    int cleanedUP = 0;
+    uint32_t len = matte_array_get_size(h->toRemove);
+        
+    
+    uint32_t i;
+    for(i = 0; h->toRemove->size && i < BUSY_POSSUM__CLEANUP_CHUNK; ++i) {        
+        matteObject_t * m = matte_array_at(toRemove, matteObject_t *, toRemove->size-1);
+        matte_array_shrink_by_one(toRemove);
+            
+        if (m->rootState) continue;
+        if (QUERY_STATE(m, OBJECT_STATE__RECYCLED)) continue;
+        
+        cleanedUP++;
+        #ifdef MATTE_DEBUG__STORE
+            printf("--RECYCLING OBJECT %d\n", m->storeID);
+            assert(m->color == OBJECT_TRICOLOR__WHITE);
+            {
+                matteValue_t vl;
+                vl.binID = MATTE_VALUE_TYPE_OBJECT;
+                vl.value.id = m->storeID;
+                matte_store_track_done(h, vl);
+            }
+        #endif
+
+        ENABLE_STATE(m, OBJECT_STATE__RECYCLED);
+
+
+
+
+        if (IS_FUNCTION_OBJECT(m)) {
+            m->function.stub = NULL;
+            uint32_t n;
+            uint32_t subl = matte_array_get_size(m->function.captures);
+            // should be unlinked already because of above
+            for(n = 0; n < subl; ++n) {
+                object_unlink_parent(h, m, matte_array_at(m->function.captures, CapturedReferrable_t, n).functionSrc);
+            }
+            matte_array_set_size(m->function.captures, 0);
+            object_unlink_parent(h, m, m->function.origin);
+            m->function.origin = NULL;
+
+            subl = matte_array_get_size(m->function.referrables);
+            for(n = 0; n < subl; ++n) {
+                matteValue_t child = matte_array_at(m->function.referrables, matteValue_t, n);
+                if (child.binID == MATTE_VALUE_TYPE_OBJECT) {
+                    object_unlink_parent_value(h, m, &child);
+                }
+                matte_store_recycle(h, child);
+            }
+            m->function.referrables->size = 0;
+
+
+
+            if (m->function.types) {
+                matte_array_destroy(m->function.types);
+            }
+            m->function.types = NULL;
+            matte_store_bin_recycle(h->bin, m->storeID);
+        
+        } else {
+
+            if (m->table.attribSet) {
+                if (m->table.attribSet->binID) {
+                    //matte_store_recycle(h, m->table.attribSet);
+                    object_unlink_parent_value(h, m, m->table.attribSet);
+                }
+                matte_deallocate(m->table.attribSet);
+                m->table.attribSet = NULL;
+            }
+
+            if (m->table.keyvalue_true) {
+                if (m->table.keyvalue_true->binID) {
+                    //matte_store_recycle(h, m->table.keyvalue_true);
+                    object_unlink_parent_value(h, m, m->table.keyvalue_true);
+                }
+                matte_deallocate(m->table.keyvalue_true);
+                m->table.keyvalue_true = NULL;
+            }
+            if (m->table.keyvalue_false) {
+                if (m->table.keyvalue_false->binID) {
+                    //matte_store_recycle(h, m->table.keyvalue_false);
+                    object_unlink_parent_value(h, m, m->table.keyvalue_false);
+                }
+                matte_deallocate(m->table.keyvalue_false);
+                m->table.keyvalue_false = NULL;
+            }
+            if (m->table.keyvalues_number && matte_array_get_size(m->table.keyvalues_number)) {
+                uint32_t n;
+                uint32_t subl = matte_array_get_size(m->table.keyvalues_number);
+                for(n = 0; n < subl; ++n) {
+                    object_unlink_parent_value(h, m, &matte_array_at(m->table.keyvalues_number, matteValue_t, n));                
+                }
+                matte_array_set_size(m->table.keyvalues_number, 0);
+                matte_pool_recycle(h->keyvalues_numberPool, m->table.keyvalues_number);
+                m->table.keyvalues_number = NULL;
+            }
+
+            if (m->table.keyvalues_string && !matte_table_is_empty(m->table.keyvalues_string)) {
+                for(matte_table_iter_start(iter, m->table.keyvalues_string);
+                    matte_table_iter_is_end(iter) == 0;
+                    matte_table_iter_proceed(iter)
+                ) {
+                    void * id = matte_table_iter_get_value(iter);
+                    matte_string_store_unref(h->stringStore, (uint32_t)(uintptr_t)matte_table_iter_get_key(iter));
+                    matteValue_t * v = store_value_pointer_get_by_pointer(h, id);
+                    //matte_store_recycle(h, *v);
+                    object_unlink_parent_value(h, m, v);                
+
+                    store_recycle_value_pointer(h, (uint32_t)(uintptr_t)id);
+
+                }
+                matte_table_destroy(m->table.keyvalues_string);
+                m->table.keyvalues_string = NULL;
+            }
+            
+            if (m->table.keyvalues_types && !matte_table_is_empty(m->table.keyvalues_types)) {
+
+                for(matte_table_iter_start(iter, m->table.keyvalues_types);
+                    matte_table_iter_is_end(iter) == 0;
+                    matte_table_iter_proceed(iter)
+                ) {
+                    void * id = matte_table_iter_get_value(iter);
+                    matteValue_t * v = store_value_pointer_get_by_pointer(h, id);
+                    //matte_store_recycle(h, *v);
+                    object_unlink_parent_value(h, m, v);                      
+                    store_recycle_value_pointer(h, (uint32_t)(uintptr_t)id);
+                }
+                matte_table_destroy(m->table.keyvalues_types);
+                m->table.keyvalues_types = NULL;
+            }
+            if (m->table.keyvalues_object && !matte_table_is_empty(m->table.keyvalues_object)) {
+                for(matte_table_iter_start(iter, m->table.keyvalues_object);
+                    matte_table_iter_is_end(iter) == 0;
+                    matte_table_iter_proceed(iter)
+                ) {
+                    void * id = matte_table_iter_get_value(iter);
+                    matteValue_t * v = store_value_pointer_get_by_pointer(h, id);
+                    //matte_store_recycle(h, *v);
+                    object_unlink_parent_value(h, m, v);  
+                    store_recycle_value_pointer(h, (uint32_t)(uintptr_t)id);
+                }
+                matte_table_destroy(m->table.keyvalues_object);
+                m->table.keyvalues_object = NULL;
+            }
+            matte_store_bin_recycle(h->bin, m->storeID);
+
+        }
+        
+        if (m->ext) {
+            if (m->ext->nativeFinalizer) {
+                m->ext->nativeFinalizer(m->ext->userdata, m->ext->nativeFinalizerData);
+            }
+            matte_deallocate(m->ext);
+            m->ext = NULL;
+        }
+        // clean up object;
+        matteObjectChildNode_t * ch = m->children;
+        while(ch) {
+            matteObjectChildNode_t * next = ch->next;
+            matte_deallocate(ch);
+            ch = next;
+        }
+        m->children = NULL;
+        m->rootState = 0;
+        m->prevRoot = NULL;
+        m->nextRoot = NULL;
+        
+    }
+    #ifdef MATTE_DEBUG__STORE
+        printf("cleaned Up: %d\n", cleanedUP);
+    #endif
+    matte_table_iter_destroy(iter);
+    /*
+    uint32_t newlen = matte_array_get_size(h->toRemove);
+    if (newlen != len) {
+        memmove(
+            matte_array_get_data(h->toRemove),
+            &matte_array_at(h->toRemove, matteObject_t *, len),
+            (newlen - len)*sizeof(matteObject_t*)
+        );
+        matte_array_set_size(h->toRemove, newlen - len);
+    } else {
+        matte_array_set_size(h->toRemove, 0);    
+    }  
+    */
+}
+
+
+
+static void busy_possum_process_roots(matteStore_t * h) {
+    matteObject_t * t;
+    uint32_t count = 0;
+    while(h->pendingRoots->size && count < BUSY_POSSUM__ROOT_CHUNK) {
+        matteObject_t * root = ((matteObject_t**)h->pendingRoots->data)[h->pendingRoots->size-1];
+        count++;
+        matte_array_shrink_by_one(h->pendingRoots);
+        if (!root->rootState) continue;
+        count += busy_possum_mark_grey(h, root);
+    }
+
+}
+
+
+
+static void busy_possum_tricolor_march(matteStore_t * h) {
+    uint32_t count = 0;
+    while(count < BUSY_POSSUM__MARCH_SIZE && h->tricolor[OBJECT_TRICOLOR__GREY]) {        
+        matteObject_t * obj = h->tricolor[OBJECT_TRICOLOR__GREY];
+        matte_store_garbage_collect__rem_from_color(h, obj);
+
+        if (obj->color != OBJECT_TRICOLOR__GREY) continue; // was updated since
+        obj->color = OBJECT_TRICOLOR__BLACK;
+        count += busy_possum_mark_grey(h, obj);        
+        
+        if (!obj->rootState)
+            matte_store_garbage_collect__add_to_color(h, obj);            
+        count += 1;
+    }
+}
+
+
+
+static void busy_possum_restart_cycle(matteStore_t * h) {
+    // move all white set to destroy list
+    matteArray_t * kv = h->toRemove;
+    matteObject_t * whiteIter = h->tricolor[OBJECT_TRICOLOR__WHITE];
+    while(whiteIter) {
+        matte_array_push(h->toRemove, whiteIter);
+        matteObject_t * old = whiteIter;
+        whiteIter = whiteIter->nextColor;
+        old->nextColor = NULL;
+        old->prevColor = NULL;
+    }
+    h->tricolor[OBJECT_TRICOLOR__WHITE] = NULL;
+    
+    
+    
+    // all black become white
+
+    
+    matteObject_t * blackIter = h->tricolor[OBJECT_TRICOLOR__BLACK];
+    while(blackIter) {
+        blackIter->color = OBJECT_TRICOLOR__WHITE;  
+        blackIter = blackIter->nextColor;
+    }
+    
+    matteObject_t * temp = h->tricolor[OBJECT_TRICOLOR__WHITE];
+    h->tricolor[OBJECT_TRICOLOR__WHITE] = h->tricolor[OBJECT_TRICOLOR__BLACK];
+    h->tricolor[OBJECT_TRICOLOR__BLACK] = temp;
+
+    #ifdef MATTE_DEBUG__STORE
+        assert(h->tricolor[OBJECT_TRICOLOR__BLACK] == NULL);
+    #endif
+    // mark all that touch roots as grey
+    matteObject_t * root = h->roots;
+    while(root) {
+        matte_array_push(h->pendingRoots, root);
+        root = root->nextRoot;
+    }
+}
+
+
+
+void matte_store_garbage_collect(matteStore_t * h) {
+    if (h->gcLocked) return;
+    
+
+
+
+    double ticks = matte_os_get_ticks();
+    if (!h->shutdown && (ticks - h->ticksGC < BUSY_POSSUM__SLEEPY_TIME_MS)) return;
+    h->gcLocked = 1;
+    h->ticksGC = ticks;
+  L_BUSY_POSSUM_CYCLE:
+    
+    if (h->pendingRoots->size) {
+        // once a cycle is complete, the roots a searched and their children marked grey
+        busy_possum_process_roots(h);
+    } else {
+        h->gcRequestStrength = 0;
+
+        // converts grey into black through children to mark grey
+        busy_possum_tricolor_march(h);
+
+        if (h->tricolor[OBJECT_TRICOLOR__GREY] == NULL) {
+            // white objects are transfered to the cleanup list and the lists are 
+            // reset.
+            busy_possum_restart_cycle(h);
+        }
+    }
+    
+    // recycles pending objects
+    busy_possum_object_cleanup(h);    
+    
+    if (h->shutdown) {
+        if (h->tricolor[OBJECT_TRICOLOR__BLACK] ||
+            h->tricolor[OBJECT_TRICOLOR__WHITE] ||
+            h->tricolor[OBJECT_TRICOLOR__GREY] ||
+            h->toRemove->size ||
+            h->pendingRoots->size) {
+            goto L_BUSY_POSSUM_CYCLE;
+        } else {
+            // drop out
+        }
+    } else {
+        ticks = matte_os_get_ticks();
+        if (ticks - h->ticksGC < BUSY_POSSUM__AWAKE_TIME_MS)
+            goto L_BUSY_POSSUM_CYCLE;
+    }
+
+
+    h->gcOldCycle++;
+    h->gcLocked = 0;
+    //h->cooldown++;
+}
+
+
+

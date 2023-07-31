@@ -4,4 +4,4 @@
 return match(1 > 3) {
     (true)  : 'abc',
     (false) : "def"
-};
+}

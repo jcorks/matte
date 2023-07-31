@@ -16,14 +16,14 @@ return 0;
                 revivalCount+=1;
             }
             
-        };
+        }
         
         
         this.operator = {
             (String) :: {
                 return 'IAM' + accum;
             }        
-        };
+        }
     }
 });
 
@@ -40,10 +40,10 @@ return 0;
             b.use();
             d.use();
         
-    };
-};
-::<={};
-::<={};
+    }
+}
+::<={}
+::<={}
 
 ::<= {
     @a = Expensive.new();
@@ -53,12 +53,12 @@ return 0;
 
 
     a.use();
-    [0, 10]->for(do:::{
+    for(0, 10)::{
         b.use();
         d.use();
-    });
+    }
     
-};
+}
 
 
 

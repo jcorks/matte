@@ -1,7 +1,7 @@
 //// Test 34
 //
 // empty object
-@r = {};
+@r = {}
 r->setAttributes( 
     attributes:{
         (String) ::{

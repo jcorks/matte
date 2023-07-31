@@ -35,20 +35,20 @@ DEALINGS IN THE SOFTWARE.
 #ifdef MATTE_DEBUG
     #include <assert.h>
 #endif
+#include "matte.h"
 
 
-
-#define array_resize_amt 1.4
-#define array_presize_amt 16
+#define array_resize_amt 1.3
+#define array_presize_amt 1
 
 
 
 matteArray_t * matte_array_create(uint32_t typesize) {
-    matteArray_t * a = malloc(sizeof(matteArray_t));
+    matteArray_t * a = (matteArray_t*)matte_allocate(sizeof(matteArray_t));
     a->sizeofType = typesize;
     a->size = 0;
     a->allocSize = array_presize_amt;
-    a->data = malloc(typesize*array_presize_amt);
+    a->data = (uint8_t*)matte_allocate(typesize*array_presize_amt);
     return a;
 }
 
@@ -56,8 +56,8 @@ void matte_array_destroy(matteArray_t * t) {
     #ifdef MATTE_DEBUG
         assert(t && "matteArray_t pointer cannot be NULL.");
     #endif
-    free(t->data);
-    free(t);
+    matte_deallocate(t->data);
+    matte_deallocate(t);
 }
 
 const matteArray_t * matte_array_empty() {
@@ -74,7 +74,7 @@ matteArray_t matte_array_temporary_from_static_array(void * data, uint32_t sizeo
     arr.sizeofType = sizeofType;
     arr.size = len;
     arr.allocSize = len;
-    arr.data = data;
+    arr.data = (uint8_t*)data;
     return arr;
 }
 
@@ -83,13 +83,13 @@ matteArray_t * matte_array_clone(const matteArray_t * src) {
     #ifdef MATTE_DEBUG
         assert(src && "matteArray_t pointer cannot be NULL.");
     #endif
-    matteArray_t * a = malloc(sizeof(matteArray_t));
+    matteArray_t * a = (matteArray_t*)matte_allocate(sizeof(matteArray_t));
 
     // do not clone pre-alloc size
     a->allocSize = src->size;
     a->size = src->size;
     a->sizeofType = src->sizeofType;
-    a->data = malloc(src->size*a->sizeofType);
+    a->data = (uint8_t*)matte_allocate(src->size*a->sizeofType);
     memcpy(a->data, src->data, src->size*a->sizeofType);
     return a;
 }
@@ -126,8 +126,12 @@ void matte_array_push_n(matteArray_t * t, const void * elements, uint32_t count)
         assert(t && "matteArray_t pointer cannot be NULL.");
     #endif
     while(t->size + count > t->allocSize) {
+        uint32_t oldSize = t->allocSize*t->sizeofType;
         t->allocSize += t->allocSize*array_resize_amt+1;
-        t->data = realloc(t->data, t->allocSize*t->sizeofType);
+        uint8_t * newData = (uint8_t*)matte_allocate(t->allocSize*t->sizeofType);
+        memcpy(newData, t->data, oldSize);
+        matte_deallocate(t->data);
+        t->data = newData;
     }
     memcpy(
         (t->data)+(t->size*t->sizeofType), 
@@ -179,8 +183,12 @@ void matte_array_set_size(matteArray_t * t, uint32_t size) {
         assert(t && "matteArray_t pointer cannot be NULL.");
     #endif
     while(size >= t->allocSize) {
+        uint32_t oldSize = t->allocSize*t->sizeofType;
         t->allocSize += t->allocSize*array_resize_amt;
-        t->data = realloc(t->data, t->allocSize*t->sizeofType);
+        uint8_t * newData = (uint8_t*)matte_allocate(t->allocSize*t->sizeofType);
+        memcpy(newData, t->data, oldSize);
+        matte_deallocate(t->data);
+        t->data = newData;
     }
     t->size = size;
 }

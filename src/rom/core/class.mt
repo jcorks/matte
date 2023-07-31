@@ -1,12 +1,45 @@
+/*
+Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
+All rights reserved.
+
+This file is part of the Matte project (https://github.com/jcorks/matte)
+matte was released under the MIT License, as detailed below.
+
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy 
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is furnished 
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+DEALINGS IN THE SOFTWARE.
+
+
+*/
 @class ::(define, name, inherits, statics) {
 
-    @staticNames = {};
-    if (statics != empty)
-        statics->foreach(do:::(key, value) {
+    @staticNames = {}
+    if (statics != empty) ::<= {
+        foreach(statics)::(key, value) {
             staticNames[key] = true;
-        });
-    @staticData = {...statics};
-    @classinst = {define : define};
+        }
+    } else 
+        statics = {}
+    
+    
+    @staticData = {...statics}
+    @classinst = {define : define}
     when(classinst.define->type != Function) error(detail:'class must include a "define" function within its "info" specification');
     @classInherits = inherits;
     @pool = [];
@@ -14,14 +47,14 @@
     @selftype = if (classInherits != empty) ::<={
         @inheritset = [];
         @inheritCount = 0;
-        classInherits->foreach(do:::(k, v) {
+        foreach(classInherits)::(k, v) {
             inheritset[inheritCount] = v.type;
             inheritCount+=1;
-        });
+        }
         return Object.newType(name : name, inherits : inheritset);
     } else ::<= {
         return Object.newType(name : name);
-    };
+    }
 
 
     // all recycled members currently waiting
@@ -46,18 +79,18 @@
                 bases : [],
                 constructors : {}, // keyed with object type
                 onRecycles : {}
-            };
+            }
             
             newinst = instSet.newinst;
             interface = instSet.interface;
             
-            @attribs = {};
+            @attribs = {}
             
             attribs['.'] = {
                 get:: (key) {
                     @result = interface[key];
                     when(result == empty) 
-                        error(detail:'' +key+ " does not exist within " + selftype);
+                        error(detail:'' +key+ " does not exist within (get)" + selftype);
                                                     
                     when(result.isFunction) result.fn;
                     @get = result.get;
@@ -68,37 +101,37 @@
 
                 set:: (key, value) {
                     @result = interface[key];
-                    when(result == empty) 
-                        error(detail:'' +key+ " does not exist within " + selftype);
-                    
+                    when(result == empty) ::<= {
+                        error(detail:'' +key+ " does not exist within (set) " + selftype);
+                    }                    
                     when(result.isFunction) error(detail:'Interface functions cannot be overwritten.');
                     @set = result.set;
                     when(set == empty) error(detail:'The attribute ' + key + ' is not writable within' + selftype);
                     return set(value:value);
                 }
-            };
+            }
                
 
             
             interface.interface = {
                 isFunction : false,
                 set ::(value) {
-                    value->foreach(do:::(k => String, v) {
+                    foreach(value)::(k => String, v) {
                         if (v->type == Function) ::<= {
                             interface[k] = {
                                 isFunction : true,
                                 fn : v
-                            };
+                            }
                         } else ::<={
                             interface[k] = {
                                 isFunction : false,
                                 get : v.get,
                                 set : v.set
-                            };                                    
-                        };
-                    });
+                            }                                    
+                        }
+                    }
                 }
-            };
+            }
 
             newinst->setAttributes(attributes:attribs);
             // default / building interface
@@ -145,29 +178,29 @@
                 
                 attributes : {
                     set ::(value) {
-                        value->foreach(do:::(k, v) {
+                        foreach(value) ::(k, v) {
                             when(k->type == String && k == '.') empty; // skip 
                             attribs[k] = v;
-                        }); 
+                        } 
                         newinst->setAttributes(attributes:attribs);
                     }  
                 }
                 
-            };
+            }
 
         } else ::<= {
             instSet = instSetIn;
             newinst = instSetIn.newinst;
             interface = instSetIn.interface;
             instSetIn.bases->push(value:instSet);            
-        };
+        }
         
-        @runSelf = context;
+        @runSelf = makeInstance;
         if (inherited != empty) ::<={
-            inherited->foreach(do:::(k, v) {
+            foreach(inherited) ::(k, v) {
                 runSelf(instSetIn:instSet, classObj:v);            
-            });
-        };
+            }
+        }
 
         instSet.recycle = false;
         classObj['define'](this:newinst);
@@ -181,7 +214,7 @@
 
         
         return instSet;
-    };
+    }
     
     staticNames.new = true;
     
@@ -203,8 +236,8 @@
                             
                             @constructor = out.constructor;
                             when(constructor != empty) constructor;
-                            return ::{return newinst;};
-                        };
+                            return ::{return newinst;}
+                        }
                     
 
                         
@@ -219,7 +252,7 @@
                             get ::{
                                 return classinst;
                             }
-                        };
+                        }
 
 
 
@@ -234,15 +267,15 @@
                                     if (instSet.onRecycle != empty) instSet.onRecycle();
                                     pool[poolCount] = instSet;
                                 }
-                            };
-                        };
+                            }
+                        }
 
                         newinst->remove(keys:['constructor', 'onRecycle', 'interface']);
 
 
                         when(constructor != empty) constructor;
-                        return ::{return newinst;};
-                    };
+                        return ::{return newinst;}
+                    }
 
                     when(staticNames[key] != empty) staticData[key];
                     error(detail:'No such member of the class ' + selftype);
@@ -264,5 +297,5 @@
     );
 
     return classinst;
-};
+}
 return class;

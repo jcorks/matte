@@ -5,5 +5,5 @@
     g : {
         'member' : 123
     }
-};
+}
 return f.g.member;
