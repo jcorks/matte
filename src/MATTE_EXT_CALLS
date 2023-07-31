@@ -36,17 +36,6 @@ static int vm_ext_call__forever_restart_condition(
 ) {
     return 1;
 }
-static matteValue_t vm_ext_call__forever(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t a = args[0];
-    if (!matte_value_is_callable(vm->store, a)) {
-        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'forever' requires only argument to be a function."));
-        return matte_store_new_value(vm->store);
-    }
-
-    vm->pendingRestartCondition = vm_ext_call__forever_restart_condition;
-    matte_store_recycle(vm->store, matte_vm_call(vm, a, matte_array_empty(),matte_array_empty(), MATTE_VM_STR_CAST(vm, "forever")));
-    return matte_store_new_value(vm->store);
-}
 
 
 typedef struct {

@@ -1029,7 +1029,37 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             break;
           }
+
+          case MATTE_OPCODE_FVR: {
+            matteValue_t a    = STACK_PEEK(0);
+            if (!matte_value_is_callable(vm->store, a)) {
+                matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'forever' requires only argument to be a function."));
+                STACK_POP_NORET();          
+                return matte_store_new_value(vm->store);
+            }
+
+            vm->pendingRestartCondition = vm_ext_call__forever_restart_condition;
+            matte_store_recycle(vm->store, matte_vm_call(vm, a, matte_array_empty(),matte_array_empty(), NULL));
+            STACK_POP_NORET();          
+            break;
+          }    
           
+          case MATTE_OPCODE_FCH: {
+            matteValue_t b = STACK_PEEK(0);
+            matteValue_t a = STACK_PEEK(1);
+            
+            if (!matte_value_is_callable(vm->store, b)) {
+                matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'foreach' requires the first argument to be a function."));
+                STACK_POP_NORET();          
+                STACK_POP_NORET();                    
+                return matte_store_new_value(vm->store);
+            }
+            matte_value_object_foreach(vm->store, a, b);
+            STACK_POP_NORET();                    
+            STACK_POP_NORET();                    
+            break;
+          }
+                
           case MATTE_OPCODE_LOP: {
             matteValue_t from = STACK_PEEK(2);
             matteValue_t to   = STACK_PEEK(1);
@@ -1086,7 +1116,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t result = matte_vm_call(vm, v, &arr, &arrNames, NULL);
             STACK_POP_NORET();          
             STACK_POP_NORET();          
-            STACK_POP_NORET();          
+            STACK_POP_NORET(); 
+            break;         
           }
           
           case MATTE_OPCODE_OAS: {
@@ -1490,7 +1521,6 @@ matteVM_t * matte_vm_create(matte_t * m) {
     matteArray_t temp;
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,  matte_array_empty(), vm_ext_call__noop);
     vm_add_built_in(vm, MATTE_EXT_CALL_BREAKPOINT,  matte_array_empty(), vm_ext_call__breakpoint);
-    temp = MATTE_ARRAY_CAST(&forever_name, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_FOREVER,   &temp, vm_ext_call__forever);
     temp = MATTE_ARRAY_CAST(&import_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  &temp, vm_ext_call__import);
 
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      &temp, vm_ext_call__print);

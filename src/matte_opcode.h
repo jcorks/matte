@@ -147,6 +147,12 @@ typedef enum {
     // performs a loop, taking the top 3 variables on the stack to define a 
     // loop: from value[top-3] to value[top-2], run function value[top-1]
     MATTE_OPCODE_LOP,
+
+    // performs an infinite loop, calling the value[top-1] function indefinitely.
+    MATTE_OPCODE_FVR,
+
+    // performs a foreach loop on an object (value[top-1])
+    MATTE_OPCODE_FCH,
     
     MATTE_OPCODE_ERROR = -1
 
@@ -210,7 +216,6 @@ typedef enum {
 
 typedef enum {
     MATTE_EXT_CALL_NOOP,
-    MATTE_EXT_CALL_FOREVER,
     MATTE_EXT_CALL_IMPORT,
     MATTE_EXT_CALL_PRINT,
     MATTE_EXT_CALL_SEND,
@@ -328,7 +333,6 @@ typedef enum {
     MATTE_QUERY__REDUCE,
     MATTE_QUERY__ANY,
     MATTE_QUERY__ALL,
-    MATTE_QUERY__FOR,
     MATTE_QUERY__FOREACH
 } matteQuery_t;
 

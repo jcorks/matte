@@ -947,10 +947,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "if");
         break;
       }
-      case MATTE_TOKEN_EXTERNAL_FOREVER: {
-        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "forever");
-        break;
-      }
       case MATTE_TOKEN_EXTERNAL_MATCH: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "match");
         break;
@@ -1402,7 +1398,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       }
 
       case MATTE_TOKEN_FUNCTION_LISTEN: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "[::]");
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "{:::}");
         break;
       }
       
@@ -1488,6 +1484,14 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       }
       case MATTE_TOKEN_FOR: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "for");
+        break;            
+      }
+      case MATTE_TOKEN_FOREVER: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "forever");
+        break;            
+      }
+      case MATTE_TOKEN_FOREACH: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "foreach");
         break;            
       }
       case MATTE_TOKEN_FOR_SEPARATOR: {
@@ -2755,11 +2759,6 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
-      case MATTE_TOKEN_EXTERNAL_FOREVER: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_FOREVER);
-        *src = iter->next;
-        return inst;
-      }
       case MATTE_TOKEN_EXTERNAL_IMPORT: {
         write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_IMPORT);
         *src = iter->next;
@@ -3066,7 +3065,6 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "reduce")) return MATTE_QUERY__REDUCE;
     if (!strcmp(st, "any")) return MATTE_QUERY__ANY;
     if (!strcmp(st, "all")) return MATTE_QUERY__ALL;
-    if (!strcmp(st, "for")) return MATTE_QUERY__FOR;
     if (!strcmp(st, "foreach")) return MATTE_QUERY__FOREACH;
     if (!strcmp(st, "type")) return MATTE_QUERY__TYPE;
     return -1;
@@ -4127,18 +4125,18 @@ static int compile_statement(
       }
       case MATTE_TOKEN_FOR: {
         uint32_t oln = iter->line;
-        iter = iter->next; // skip for 
-        iter = iter->next; // skip [
+        iter = iter->next; // skip for
+        iter = iter->next; // skip (
         matteArray_t * from = compile_expression(g, block, functions, &iter);
         if (!from) {
             return -1;
         }
-        iter = iter->next; // skip ..
+        iter = iter->next; // skip ,
         matteArray_t * to = compile_expression(g, block, functions, &iter);
         if (!to) {
             return -1;
         }
-        iter = iter->next; // skip ]
+        iter = iter->next; // skip )
         matteArray_t * func = compile_expression(g, block, functions, &iter);
         if (!func) {
             return -1;
@@ -4153,7 +4151,49 @@ static int compile_statement(
 
         iter = iter->next; // skip ;
         break;
-      }      
+      }   
+
+
+      case MATTE_TOKEN_FOREVER: {
+        uint32_t oln = iter->line;
+        iter = iter->next; // skip forever 
+        matteArray_t * func = compile_expression(g, block, functions, &iter);
+        if (!func) {
+            return -1;
+        }
+
+        merge_instructions(block->instructions, func);
+        write_instruction__fvr(block->instructions, oln);
+
+        iter = iter->next; // skip ;
+        break;
+      }
+
+      case MATTE_TOKEN_FOREACH: {
+        uint32_t oln = iter->line;
+        iter = iter->next; // skip foreach
+        iter = iter->next; // skip (
+        matteArray_t * from = compile_expression(g, block, functions, &iter);
+        if (!from) {
+            return -1;
+        }
+        iter = iter->next; // skip )
+        matteArray_t * func = compile_expression(g, block, functions, &iter);
+        if (!func) {
+            return -1;
+        }
+
+
+        
+        merge_instructions(block->instructions, from);
+        merge_instructions(block->instructions, func);
+        write_instruction__fch(block->instructions, oln);
+
+        iter = iter->next; // skip ;
+        break;
+      }  
+
+
       
       case MATTE_TOKEN_DECLARE_CONST:
         varConst = 1;
