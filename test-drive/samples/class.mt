@@ -39,7 +39,7 @@
 			print(message:'Class constructed!');
 			privateValue = initialValue;
 			return this;
-		};
+		}
 	
 	
 		// The interface property defines the public 
@@ -71,9 +71,9 @@
 				print(message: "'c' was called with argument: " + argument);
 				return this.b;
 			}
-		};
+		}
 	}
-);
+)
 
 // Once the class is created, instances may 
 // be created by using new()

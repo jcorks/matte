@@ -15,7 +15,7 @@ Prism.languages.matte = {
 		pattern: /(["'])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,
 		greedy: true
 	},
-	'keyword': /\b(?:if|else|import|return|match|default|when|send|error|parameters)\b/,
+	'keyword': /\b(?:if|else|import|return|match|default|when|for|foreach|forever|send|error|parameters)\b/,
 	'boolean': /\b(?:false|true|empty|Number|Type|Object|String|Function)\b/,
 	'function': /\b\w+(?=\()/,
 	'number': /\b0x[\da-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:e[+-]?\d+)?/i,

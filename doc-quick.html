@@ -21,7 +21,7 @@ Throughout the guide, code samples will be provided. If using a javascript-enabl
 <pre id="doc-source">
     @:myFunction = ::{
         print(message:"Hello, world!");
-    };
+    }
     myFunction();
 </pre>
 
@@ -37,8 +37,8 @@ For example, C-like single and multiline comments are readily available:
 </pre>
 
 
-As such, every line that isnt a comment is part of a statement. Statements may span multiple lines, but <b>statements must always end in a semicolon ";"</b>
-This will generate a compilation error if missing.
+As such, every line that isnt a comment is part of a statement. Statements may span multiple lines, but <b>statements may optionally end in a ";"</b>
+If missing, the compiler will attempt to determine the proper ending of the statement through newline detection.
 <br>
 <br>
 Remember that <b>every statement is part of some function's scope. There is only one kind of scope: function scope. This is the core of Matte as a language: everything is part of a statement within a function.</b> This includes statements written "nakedly" outside a user-defined function: even here statements are part of a special function. This is referred to as the toplevel or script function.  
@@ -60,21 +60,21 @@ In Matte, all variables MUST be declared before use. Spontaneous use of variable
 Variables are declared with the @ symbol:
 <pre id="doc-source">
     // Normal variable.
-    @myVariable;
+    @myVariable
 
     // Adding a colon ':' between the @ and the variable name 
     // will make the variable immutable.
     // Immutable values that are modified will fail to compile.
-    @:immutableVariable = 42;    
+    @:immutableVariable = 42
 
 </pre>
 
 You can add an inline assignment with the declaration as well:
 <pre id="doc-source">
-    @myOtherVariable = 3;
+    @myOtherVariable = 3
 
     // Okay to use myOtherVariable since it was declared.
-    @another = 4 + myOtherVariable;
+    @another = 4 + myOtherVariable
 
     // Displays 7
     print(message:another);
@@ -91,13 +91,13 @@ There are only a handful of basic types within Matte:
     <li><b>Empty:</b> represents a value without value. </li>
     <pre id="doc-source">
         // empty is a special value. 
-        @e = empty;
+        @e = empty
 
         // Values that are declared but NOT set are 
         // given the empty value. This includes 
         // function parameters that were not bound 
         // by callers.
-        @f;
+        @f
     </pre>
     <li><b>Number:</b> A simple number value. Follows the semantics of double-precision IEEE 754 floating point numbers. In the standard implementation, this is accomplished with C "double" types.</li> 
     <pre id="doc-source">
@@ -147,7 +147,7 @@ There are only a handful of basic types within Matte:
             @a = 2;
             @b = 3;
             return a + b;
-        };
+        }
 
         // functions can also capture values that persist beyond 
         // the lifetime of its original function
@@ -156,8 +156,8 @@ There are only a handful of basic types within Matte:
             return ::{
                 value += 1;
                 return value;
-            };
-        };
+            }
+        }
         
         // returns 1.. then 2... then 3
         counter();
@@ -169,7 +169,7 @@ There are only a handful of basic types within Matte:
     <pre id="doc-source">
         // Types can be gleaned by calling the type query. 
         // Introspective queries are covered later.
-        @f = 40->type;
+        @f = 40->type
 
         // will print "true"
         print(message:f == Number);
@@ -195,7 +195,7 @@ When called, functions that have arguments have values bound by name to argument
     // that can be referred to by "myString"
     @:myFunction = ::(myString) {
         print(message:myString);
-    };
+    }
 
     // run the function with one argument.
     // Should print Hello, world!
@@ -211,7 +211,7 @@ When called, functions that have arguments have values bound by name to argument
     // omit the '='
     @:myOtherFunction :: {
         return '123';
-    };
+    }
 
     // Should print 123
     print(message:myOtherFunction());
@@ -221,7 +221,7 @@ When called, functions that have arguments have values bound by name to argument
     // inline function syntax can be used to make it more readable and 
     // concise:
     
-    @:sqrt ::(value) <- value**0.5;
+    @:sqrt ::(value) <- value**0.5
     
     // should print 4
     print(message:sqrt(value:16));
@@ -242,13 +242,13 @@ These "anonymous function" expressions are useful for more complex behaviors and
     // () like you would on a function reference.
     ::{
         print(message:"I ran immediately.");
-    }();
+    }()
 
     // The () behaves the same as if it 
     // were a typical variable.
     ::(argument) {
         print(message:'Hello, ' + argument);
-    }(argument:'World!!');
+    }(argument:'World!!')
 
     
     // Most commonly, it is convenient to 
@@ -259,7 +259,7 @@ These "anonymous function" expressions are useful for more complex behaviors and
     // "dash function syntax" to accomplish the same behavior:
     ::<={
         print(message:"I ran immediately, too!");
-    };
+    }
 
 
 
@@ -279,8 +279,8 @@ These "anonymous function" expressions are useful for more complex behaviors and
             sum   += next;
             count += 1;
             print(message:total / count);
-        };
-    };
+        }
+    }
 
 
 
@@ -306,7 +306,7 @@ will attempt to be converted.
     // of type Number.
     @:myAdder::(a => Number, b => Number) {
         return a + b;
-    };
+    }
 
     // Ok!
     myAdder(a:10, b:4);
@@ -336,20 +336,20 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
         when(n <  1) 0;
         when(n <= 2) 1;
         return fib(n:n-1) + fib(n:n-2);
-    };
+    }
 
     print(message:fib(n:5));
 
 
     // When assigning a function, the '=' can be ommitted optionally
     @:hi_low_mid ::(a, b) {
-        when(a < b) "lo";
-        when(a > b) "hi";
+        when(a < b) "lo"
+        when(a > b) "hi"
     
         // if no conditionals are true, when 
         // continues on.    
         return "mid";
-    };
+    }
 
     // should print lo
     print(message:hi_low_mid(a:10, b:40));
@@ -366,22 +366,22 @@ When writing more algorithm-focused code, it is a common pattern in C-like langu
 Given an expression and a series of possibilities, <i>match</i> will compute and return a new expression, called a conclusion, for the choice that matches a possibility.
 
 <pre id="doc-source">
-    @statement = 1;
+    @expression = 1;
 
 
     // The following would print "It's one"
 
-    match(statement) {
+    match(expression) {
         // The syntax is (possibility) : conclusion.
         (0) : print(message:"It's zero"),
         (1) : print(message:"It's one")
-    };
+    }
     
     
     
     // match returns an expression, so it can be used like so.
     // note that ONLY the conslusion
-    print(message:match(statement){
+    print(message:match(expression){
         (0)       : '0',
         (1)       : '1',
         // if multiple possibilities lead to the same conclusion, 
@@ -408,8 +408,8 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
             default: ::<={
                 print(message:'exactly 20');
             }
-        };
-    };
+        }
+    }
     
     // should print 'greater than 20'
     judgeValue(i:50);
@@ -420,8 +420,8 @@ Given an expression and a series of possibilities, <i>match</i> will compute and
 </br>
 <h3> 5.3 for</h3>
 
-In Matte, <i>for</i> is a special query operation (see the Introspection section for more info about the query operator). 
-It accepts 1 argument, and works off an an existing array of numbers. The base array denotes the start value, end value, and optional iteration value. The argument ('do') is a function to be called for each iteration. The function receives one value, which is the value of the for loop's iterator as a Number. <b>The argument for the 'do' parameter function can be any name of your choosing.</b>
+In Matte, <i>for</i> is a statement.
+It accepts 2 argument expressions denoting the start and end of the loop, then is followed by an function to run in the loop for each iteration. The function receives one value, which is the value of the for loop's iterator as a Number. <b>The argument for the function can be any name of your choosing.</b>
 
 <pre id="doc-source">
     // Basic for loop, iterates 10 times in a C-style manner using 0-based indices.
@@ -433,29 +433,27 @@ It accepts 1 argument, and works off an an existing array of numbers. The base a
     // 2
     // 3
     //
-    [0, 4]->for(do:::(i){
+    for(0, 4) ::(i){
         print(message:i);
-    });
+    }
 
-    // The 3rd number in the list is the increment for the iterator.
-    // If ommitted, the default is 1.
-    //
+    // If the first value is larger than the second, then
+    // it will loop backwards by 1.
     // Should print 
     //
-    // 0
-    // 2
     // 4
-    // 6
-    // 8
-    [0, 10, 2]->for(do:::(i){
+    // 3
+    // 2
+    // 1
+    for(4, 0) ::(i){
         print(message:i);
-    });
+    }
 </pre>
 
 </br>
 <h3> 5.4 foreach</h3>
 
-Similar to <i>for</i>, <i>foreach</i> is a special query function that allows for iteration. <i>foreach</i> iterates over an Object's keys and values. <b>The key and value arguments for the 'do' parameter function can be any names of your choosing. The first is always the key, and the second is always the value.</b>
+Similar to <i>for</i>, <i>foreach</i> is a statement that iterates over an Object's keys and values. <b>The key and value arguments for the function can be any names of your choosing. The first is always the key, and the second is always the value corresponding to that key.</b>
 
 <pre id="doc-source">
     @object = ['a', 'b', 'c'];
@@ -466,11 +464,26 @@ Similar to <i>for</i>, <i>foreach</i> is a special query function that allows fo
     // 1 -> b 
     // 2 -> c
     //
+    foreach(object) ::(key, value){
+        print(message:'' + key + '->' + value);
+    }
+</pre>
+ 
+Additionally <i>foreach</i> is a special query function that allows for iteration. 
+
+<pre id="doc-source">
+
+    // Should also print 
+    //
+    // 0 -> a 
+    // 1 -> b 
+    // 2 -> c
+    //
     object->foreach(do:::(key, value){
         print(message:'' + key + '->' + value);
     });
 </pre>
- 
+
 
 
 <h3> 5.5 if</h3>
@@ -500,7 +513,7 @@ The if expression in Matte can be used to control or avoid computation of anothe
     if (myVal == false) ::<={
         @val = 4 * 8 + 10;
         print(message:val);
-    };
+    }
 
     print(message:'myVal is ' + (if (myVal) 'true' else 'false'));
 
@@ -638,7 +651,7 @@ make sense in Matte.
 <br>
 <br>
 Instead, however, we have messaging. Messaging allows you to abandon a calling context to an 
-earlier context level. This is accomplished using <i>Listen Functions (`[::]`)</i> and <i>send()</i>
+earlier context level. This is accomplished using <i>Listen Functions (`{:::}`)</i> and <i>send()</i>
 <br>
 <br>
 <i>Listen Functions</i> are similar to dash functions in that all inner statements are run immediately. However, it returns either the function's result OR the result of 
@@ -652,20 +665,20 @@ a <i>send()</i> call. The Listen Function acts as a barrier for messages, much l
 
     
     // The Listen Function syntax runs all statements immediately.
-    @result = [::] {
-        [0, 100]->for(do:::(y) {
-            [0, 100]->for(do:::(x) {
+    @result = {:::} {
+        for(0, 100)::(y) {
+            for(0, 100)::(x) {
                 // If a true cell is found, all functions are stopped 
                 // up until the nearest listen function, carrying the expression 
                 // 'Found!' with it.
                 when(my2DArray[x][y] == true) send(message:'Found!');
-            });    
-        });
+            }
+        }
         
         // If send was not called, the listen function just returns the result 
         // if its function.
         return 'Not found...';
-    };
+    }
 
 </pre>
 <br>
@@ -681,15 +694,15 @@ function overall, so the handler effectively supervises the entire listen functi
 
 <br>
 <pre id="doc-source">
-    [::]{
-        [0, 100]->for(do:::(y) {
-            [0, 100]->for(do:::(x) {
+    {:::}{
+        for(0, 100)::(y) {
+            for(0, 100)::(x) {
                 // If a true cell is found, all functions are stopped 
                 // up until the nearest listen function, carrying the expression 
                 // 'Found!' with it.
                 when(my2DArray[x][y] == true) send(message:'Found!');
-            });    
-        });
+            }
+        }
     } : {
         onSend:::(message) {
             print(message:'A message was received: ' + message);
@@ -701,7 +714,7 @@ function overall, so the handler effectively supervises the entire listen functi
 <br>
 <h3> 7.1 forever</h3>
 In contexts where a process or algorithm loops until some end condition is reached,
-a message-based pattern can be employed with the <i>forever</i> function.
+a message-based pattern can be employed with the <i>forever</i> statement.
 This acts as a conceptual analog to the C-like "while", but instead, 
 a function is run forever. Using message passing via <i>send</i>, the 
 loop can safely be broken:
@@ -709,19 +722,19 @@ loop can safely be broken:
 
 <pre id="doc-source">
     @counter = 0;
-    [::] {
-        forever(do:::{
+    {:::} {
+        forever ::{
             // when send is called, forever() is escaped.
             if(counter == 10) send();
 
             counter += 1;
             return true;
-        });
-    };
+        }
+    }
 </pre>
 <br>
 <br>
-Messages should be used in controlled instances, as any uncaught message is a fatal error.
+Messages should be used in controlled instances, as <b>any uncaught message is a fatal error</b>.
 
 
 
@@ -749,7 +762,7 @@ Error catching is similar to catching regular messages with <i>send</i>:
 
 <pre id="doc-source">
     @errorExample :: {
-        [::] {
+        {:::} {
             print(message:"1");
             print(message:"2");
             error(detail:'Uh oh!');
@@ -759,8 +772,8 @@ Error catching is similar to catching regular messages with <i>send</i>:
             onError:::(message) {        
                 print(message:"The following error was caught: " + message.data);
             }
-        };
-    };
+        }
+    }
     
     // should print:
     //
@@ -789,10 +802,10 @@ Error catching is similar to catching regular messages with <i>send</i>:
         error(detail:'Uh oh again!');
         print(message:'c');
         print(message:'d');
-    };
+    }
     
     @mySafeFunction ::{
-        [::] {    
+        {:::} {    
             print(message:1);
             dangerousFunction();
             print(message:2);
@@ -800,8 +813,8 @@ Error catching is similar to catching regular messages with <i>send</i>:
             onError::(message){        
                 print(message:'Caught external error');
             }
-        };
-    };
+        }
+    }
 
     
     // Should, in total, print:
@@ -839,7 +852,7 @@ In a file called module.mt:
         getData ::{
             return privateData;
         }
-    };
+    }
 
 
     return myModule;
@@ -887,7 +900,7 @@ specified.
 <pre id="doc-source">
     @special = {
         data : ''
-    };
+    }
 
     // throws an error
     special << 'a';
@@ -960,18 +973,13 @@ Along with typical operator overloading, there exist a few special features that
     <li><b>Dot Access Operator</b> ('.')</li>
     Behaves identically to the Bracket Access Operator overloading, except responds to when the object is accessed using the dot operator.
     <br>
-    <li><b>Preservation Operator</b> ('preserver')</li>
-    In Matte, Objects that are no longer used are automatically removed by the VM. If that object has a preservation operator, a function is called right when the object would be normally removed.
-    The logic of this function can then "preserve" this object by interacting with it.
-    <b> After the preserver operator is called, the preserver operator is removed from the operator object. It can be re-added, but must be done so manually.</b>
-    <br>
 </ul>
 
 <pre id="doc-source">
     @secret = {
         internalData : 'dontTouch',
         internalData2 : 100
-    };
+    }
 
     secret->setAttributes(
         attributes: {
@@ -999,10 +1007,10 @@ Along with typical operator overloading, there exist a few special features that
                 return {
                     'a' : 100,
                     'b' : 1000
-                };
+                }
             }
         }
-    );
+    )
 
     
     // will print 'Bracket access with: test'
@@ -1020,9 +1028,9 @@ Along with typical operator overloading, there exist a few special features that
     // will print:
     // a -> 100 
     // b -> 1000
-    secret->foreach(do:::(key, value) {
+    foreach(secret)::(key, value) {
         print(message:'' + key +' -> ' + value);
-    });
+    }
 </pre>
 
 <br>
@@ -1036,7 +1044,7 @@ it is not defined how objects can be converted to other types by default.
     @cool = {
         asNumber : 42,
         asString : 'Forty-two'
-    };
+    }
 
     cool->setAttributes(
         attributes: {
@@ -1048,7 +1056,7 @@ it is not defined how objects can be converted to other types by default.
                 return cool.asNumber;
             }
         }
-    );
+    )
 
 
     // prints 52
@@ -1259,9 +1267,9 @@ provided contextually in code comments.
                         return selfHeight;
                     }
                 }
-            };
+            }
         }
-    );
+    )
 
     // once the class is created. instances can be made.
     // This is done by taking the class and calling the 
@@ -1330,9 +1338,9 @@ provided contextually in code comments.
                 bite ::(other => Creature.type) {
                     print(message:this.name + ' has bitten ' + other.name + '. Ouch!!');                    
                 }
-            };
+            }
         }
-    );
+    )
 
     @george = Biter.new(
         name : 'George',

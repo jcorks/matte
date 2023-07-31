@@ -24,9 +24,7 @@
 	"Kristin"
 ];
 
-allNames->foreach(
-	do:::(index, name) <- print(message:name)
-);
+foreach(allNames) ::(index, name) <- print(message:name)
 
 // Using the spread operator is also a convenient way to make
 // a shallow copy of a set for other operations, like ->map.
