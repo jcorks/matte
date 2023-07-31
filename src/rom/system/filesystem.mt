@@ -16,6 +16,7 @@
 @_writeBytes = getExternalFunction(name:"__matte_::filesystem_writebytes");
 @_remove = getExternalFunction(name:"__matte_::filesystem_remove");
 @_getFullPath = getExternalFunction(name:"__matte_::filesystem_getfullpath");
+@_exists = getExternalFunction(name:"__matte_::filesystem_exists");
 
 return class(
     name : 'Matte.System.Filesystem',
@@ -100,6 +101,11 @@ return class(
             // Attempts to remove the file at the given path.
             remove ::(path) {
                 _remove(a:path);
+            },
+            
+            // returns a boolean on whether the given path exists.
+            exists ::(path) {
+                return _exists(a:path);
             }
         
         };

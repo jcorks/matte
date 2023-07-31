@@ -259,6 +259,18 @@ MATTE_EXT_FN(matte_filesystem__remove) {
     return matte_heap_new_value(heap);
 }
 
+MATTE_EXT_FN(matte_filesystem__exists) {
+    matteHeap_t * heap = matte_vm_get_heap(vm);
+
+    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, args[0]));
+    matteValue_t out = matte_heap_new_value(heap);
+
+    struct stat buffer;   
+    matte_value_into_boolean(heap, &out, stat(matte_string_get_c_str(str), &buffer) == 0);
+    return out;
+}
+
+
 
 MATTE_EXT_FN(matte_filesystem__getfullpath) {
     matteHeap_t * heap = matte_vm_get_heap(vm);
@@ -381,6 +393,8 @@ static void matte_system__filesystem(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writebytes"), 2, matte_filesystem__writebytes, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_remove"), 1, matte_filesystem__remove, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_getfullpath"), 1, matte_filesystem__getfullpath, NULL);
+
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_exists"), 1, matte_filesystem__exists, NULL);
     
     matte_vm_add_shutdown_callback(vm, matte_system__filesystem_cleanup, dirfiles);
 }
