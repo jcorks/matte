@@ -2,7 +2,7 @@
 //
 // removeKey.
 
-@keyobj = {};
+@keyobj = {}
 @testObj = {
     'hello': 100,
     'hello1' : 101,
@@ -10,16 +10,16 @@
     (String) : 1000,
     (keyobj) : 4000,
     keyobj : 6000
-};
+}
 
 
 @out = '';
 
-[::]{
+{:::}{
     100->remove();
 }: {onError:::(message){
     out = out + 'noobj';
-}};
+}}
 
 
 testObj->remove(key:'hello');

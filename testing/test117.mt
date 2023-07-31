@@ -20,13 +20,13 @@ out = out + list->findIndex(query::(value) <- value.id > 20);
 out = out + list->findIndex(query::(value) <- false);
 
 
-[::] {
+{:::} {
     list->findIndex(value:21);
 } : {
     onError::(message) {
         out = out + 'error';
     }
-};
+}
 
 
 

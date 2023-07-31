@@ -3,5 +3,5 @@
 // object test: literal
 @f = {
     member : 101
-};
+}
 return f.member;

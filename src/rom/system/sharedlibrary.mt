@@ -55,11 +55,11 @@ DEALINGS IN THE SOFTWARE.
     }
     define:::(this) {
         @handle;
-        @:callables = {};
+        @:callables = {}
         this.constructor = ::(path) {
             handle = _sharedlibrary_open(a:path);
             return handle;
-        };
+        }
         
         this.interface = {
             bind ::(
@@ -73,7 +73,7 @@ DEALINGS IN THE SOFTWARE.
                     symbol : symbol,
                     args : argTypes,
                     returnType : returnType
-                };
+                }
             },
             
             
@@ -82,7 +82,7 @@ DEALINGS IN THE SOFTWARE.
             ) {
                 
             }
-        };
+        }
     }
 });
 

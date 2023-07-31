@@ -41,15 +41,15 @@ DEALINGS IN THE SOFTWARE.
                     when (events->keycount != 0) error(detail:'Interface is already defined.');
                     
                     // filter to ensure types of key/val pairs
-                    value->foreach(do:::(key => String, val => Function) {
+                    foreach(value)::(key => String, val => Function) {
                         events[key] = {
                             mainHandler : val,
                             handlers : [],
                             hooks : [],
                             handlerCount : 0,
                             hookCount : 0
-                        };
-                    });                
+                        }
+                    }                
                 }            
             },
         
@@ -58,23 +58,23 @@ DEALINGS IN THE SOFTWARE.
                 @: ev = events[event];
                 when(ev == empty) error(detail:"Cannot emit event for non-existent event "+ev);
                 
-                @continue = [::] {
+                @continue = {:::} {
                     when(ev.handlerCount == 0) true;
-                    for(ev.handlerCount-1 : 0)::(i) {
+                    for(ev.handlerCount-1, 0)::(i) {
                         // when handlers return false, we no longer propogate.           
                         when(!((ev.handlers[i])(detail:detail))) send(message:false);
-                    };
+                    }
                     
                     return true;
-                };
+                }
                 
                 // cancelled event. Don't call main handler or hooks.
                 when(continue == false) false;
                 
                 return (if (ev.mainHandler(detail:detail) != false) ::<= {
-                    for(0 : ev.hookCount)::(i) {
+                    for(0, ev.hookCount)::(i) {
                         (ev.hooks[i])(detail:detail);
-                    };
+                    }
                     return true;
                 } else ::<= {                
                     return false;
@@ -107,17 +107,17 @@ DEALINGS IN THE SOFTWARE.
             },
 
             installHooks ::(events => Object) {
-                events->foreach(do:::(event, hook) {
+                foreach(events)::(event, hook) {
                     this.installHook(event:event, hook:hook);
-                });
+                }
             },
 
             
             getKnownEvents ::{
                 @arr = [];
-                events->foreach(do:::(k, v) {
+                foreach(events) ::(k, v) {
                     arr->push(value:k);
-                });
+                }
                 return arr;                
             },
             
@@ -125,34 +125,34 @@ DEALINGS IN THE SOFTWARE.
             uninstallHook::(event => String, hook) {
                 @: ev = events[event];
                 when(ev == empty) error(detail:"Cannot uninstall hook for non-existent event "+ev);
-                [::] {
-                    for(0 : ev.hookCount)::(i) {
+                {:::} {
+                    for(0, ev.hookCount)::(i) {
                         if (ev.hooks[i] == hook) ::<= { 
                             ev.hooks->remove(key:i);
                             ev.hookCount-=1;
                             send();
-                        };
-                    };
-                };
+                        }
+                    }
+                }
             },
             
             uninstallHandler::(event => String, handler) {
                 @: ev = events[event];
                 when(ev == empty) error(detail:"Cannot uninstall handler for non-existent event "+ev);
-                [::]{
-                    for(0 : ev.handlerCount)::(i) {
+                {:::} {
+                    for(0, ev.handlerCount)::(i) {
                         if (ev.handlers[i] == handler) ::<= { 
                             ev.handlers->remove(key:i);
                             ev.handlerCount-=1;
                             send();
-                        };
-                    };
-                };
+                        }
+                    }
+                }
             }
             
             
             
-        };
+        }
     }
 );
 
@@ -169,14 +169,14 @@ return EventSystem;
             when (data.x < 0 || data.y < 0) ::<= {    
                 print('ignored request to move to ' + data.x + ',' + data.y);                    
                 return false;
-            };
+            }
             print('moved from '+ x + ',' + y + ' to '+data.x + ',' + data.y);
             x = data.x;
             y = data.y;          
             // allows hooks to go  
             return true;
         }
-    };
+    }
 
     return {
         events : es,
@@ -184,12 +184,12 @@ return EventSystem;
         move ::(newx, newy) {
             es.emitEvent('onMove', {x:newx, y:newy});
         }    
-    };
-};
+    }
+}
 
 @hook = ::{
     print('hi!');
-};
+}
 pointer.events.installHook('onMove', hook);
 pointer.move(2, 5);
 pointer.move(5, 1);
@@ -214,14 +214,14 @@ pointer.move(1, 4);
                 when (data.x < 0 || data.y < 0) ::<= {    
                     print('ignored request to move to ' + data.x + ',' + data.y);                    
                     return false;
-                };
+                }
                 x = data.x;
                 y = data.y;          
                 print('moved from '+ x + ',' + y + ' to '+data.x + ',' + data.y);
                 // allows hooks to go  
                 return true;
             }
-        };
+        }
         
         this.interface({
             x : {

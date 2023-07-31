@@ -77,10 +77,10 @@ DEALINGS IN THE SOFTWARE.
 
 
 @workers = ::<={
-    @:o = {};
+    @:o = {}
     @:push = ::(value) {
         o[o.length] = value;
-    };
+    }
     o->setAttributes(
         attributes : {
             '.' : {
@@ -93,7 +93,7 @@ DEALINGS IN THE SOFTWARE.
         }   
     );
     return o;
-};
+}
 return class(
     name : 'Matte.System.Async',
     inherits:[EventSystem],
@@ -101,40 +101,40 @@ return class(
 
         this.events = {
             onNewParentMessage::{}
-        };
+        }
 
         @idToWorker::(id) {
-            return [::]{
-                for(0 : workers.length)::(i){
+            return {:::} {
+                for(0, workers.length)::(i){
                     if (workers[i].id == id) send(message:workers[i]);
-                };
+                }
 
                 // is parent
-            };
-        };
+            }
+        }
 
         // message checking
         @checkMessages::{
-            [::]{
-                forever(do:::{
+            {:::}{
+                forever ::{
                     @nextm = _workernextmessage();
                     when(nextm != empty) ::<={
                         idToWorker(id:nextm[0]).emit(
                             event:'onNewMessage',
                             detail:  nextm[1]                        
                         );
-                    };
+                    }
                     send();
-                });
-            };
-        };
+                }
+            }
+        }
         
         // state checking 
         @checkStates::{
-            workers->foreach(do:::(k, v) {
+            foreach(workers)::(k, v) {
                 v.updateState();
-            });
-        };
+            }
+        }
 
         @asinstance = this;
         @Worker = class(
@@ -158,7 +158,7 @@ return class(
                     // If the state is Finished, result will return
                     // the result of the worker if present.
                     onStateChange::(detail){}
-                };
+                }
                 
                 this.constructor = ::(module, input) {
                     id = _workerstart(a:String(from:module), b:String(from:input));
@@ -167,11 +167,11 @@ return class(
                     queryState();
 
                     return this;
-                };
+                }
 
                 @queryState ::() => Number {
                     return _workerstate(a:id);
-                };
+                }
 
                 this.interface = {
                     wait ::{
@@ -180,16 +180,16 @@ return class(
                             @:state = detail;
                             if (state == State.Finished || state == State.Failed) ::<={
                                 waiting = false;
-                            };
+                            }
                         });
                         
-                        [::]{
-                            forever(do:::{
+                        {:::}{
+                            forever ::{
                                 Time.sleep(milliseconds:50);
                                 asinstance.update();
                                 when(!waiting) send();
-                            });
-                        };
+                            }
+                        }
                         asinstance.update();
                     },
 
@@ -215,7 +215,7 @@ return class(
                         if (newState != curstate) ::<= {       
                             this.emit(event:'onStateChange', detail:newState);
                             curstate = newState;
-                        };
+                        }
                     },
                     
                     'error': {
@@ -223,7 +223,7 @@ return class(
                             return _workererror(a:id);
                         }
                     }
-                };
+                }
 
             }
         );
@@ -235,7 +235,7 @@ return class(
             },
 
             Worker : {get::{return Worker;}}
-        };
+        }
     }
 
 ).new();

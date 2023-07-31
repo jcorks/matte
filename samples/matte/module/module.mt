@@ -65,6 +65,6 @@ return class(
             add :: {
                 return value0 + value1 + constant + offset;
             }
-        };
+        }
     }
 );

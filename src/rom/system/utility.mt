@@ -53,6 +53,6 @@ return class(
             run ::(command) {
                 return _run(a:command);
             }
-        };
+        }
     }
 ).new();

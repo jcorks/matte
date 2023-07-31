@@ -10,5 +10,5 @@ return ::<= {
     @:otherValue = 3;
     
     return MyFunc(value, otherValue);
-};
+}
 

@@ -45,7 +45,7 @@ DEALINGS IN THE SOFTWARE.
     return Number(from:b0)  + 
            Number(from:b1)*2 + 
            Number(from:b2)*4;
-};
+}
 
 // Populate the next state
 @getNextState::(state => Object, index => Number) {
@@ -61,8 +61,8 @@ DEALINGS IN THE SOFTWARE.
     )) {
         (0, 4, 7): false,
         default:      true
-    };
-};
+    }
+}
 
 // print the state using 
 // different characters per generation
@@ -80,21 +80,21 @@ DEALINGS IN THE SOFTWARE.
     ) {
         str = '';
         @generationStr = gentable[generation%16];
-        [0, SWCA_WIDTH]->for(do:::(i){
+        for(0, SWCA_WIDTH) ::(i){
             str = str + (if(arr[i]) generationStr else ' ');
-        });    
+        }
         return str;
-    };
-};
+    }
+}
 
 @state     = [];
 @stateNext = [];
 
 
 // initialize state
-[0, SWCA_WIDTH]->for(do:::(i) {
+for(0, SWCA_WIDTH) ::(i) {
     state[i] = false;
-});
+}
 
 
 state[SWCA_WIDTH/2] = true;
@@ -105,13 +105,13 @@ state[SWCA_WIDTH/2] = true;
  
 
 
-forever(do:::{
+forever ::{
     // get the full state every line.
     if (progress == SWCA_WIDTH)::<={
-        [0, SWCA_WIDTH]->for(do:::(i) {
+        for(0, SWCA_WIDTH) ::(i) {
             @next = getNextState(state:state, index:i);
             stateNext[i] = next;
-        }); 
+        }
         str = printState(arr:state, generation:generation);
         generation += 1;
         
@@ -121,13 +121,13 @@ forever(do:::{
 
         progress = 0;
         Console.printf(format:'\n');
-    };
+    }
     @nextChar = str->charAt(index:progress);
     @wait = (if (nextChar == ' ') SWCA_SPEED/7 else SWCA_SPEED);
     Time.sleep(milliseconds:Number.random()*wait);
     Console.printf(format:nextChar);
     progress += 1;
-});
+}
 
 
 

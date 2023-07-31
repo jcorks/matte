@@ -18,6 +18,7 @@
             req.responseType = "arraybuffer";
 
             req.onload = (event) => {
+                console.log('read binary ' + name);
                 const arrayBuffer = req.response; // Note: not req.responseText
                 if (arrayBuffer) {
                     onLoad(arrayBuffer);
@@ -33,6 +34,7 @@
             req.responseType = "text";
 
             req.onload = (event) => {
+                console.log('read text ' + name);
                 onLoad(req.responseText);
             }
             req.send(null);

@@ -12,19 +12,19 @@
 
 
 @findPos =::(grid, len) {
-    return [::]{
-        [0, len]->for(do:::(y){
-            [0, len]->for(do:::(x) {
+    return {:::}{
+        for(0, len) ::(y){
+            for(0, len) ::(x) {
                 if (grid[y][x] == 1) ::<={
                     send(message:{
                         x : x,
                         y : y
                     });     
-                };
-            });
-        });
-    };
-};    
+                }
+            }
+        }
+    }
+}
 
 @res = findPos(grid:a, len:5);
 return ''+res.x+','+res.y;

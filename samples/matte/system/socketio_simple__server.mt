@@ -42,13 +42,13 @@ DEALINGS IN THE SOFTWARE.
     @m = MemoryBuffer.new();
     @:len = str->length; 
     m.size = len;
-    for(in:[0, len], do:::(i){
+    for(0, len)::(i){
         m[i] = str->charCodeAt(index:i);
-    });
+    }
     
     client.send(bytes:m);
     m.release();
-};
+}
 
 
 
@@ -101,10 +101,10 @@ server.installHook(event:'onNewClient', hook:::(detail){
             // Lets assume the data is string data and print it.
             @:data = detail;
             @str = '';
-            for(in:[0, data.size], do:::(i) {
+            for(0, data.size)::(i) {
                 str = str + ' ';
                 str = str->setCharCodeAt(index:i, value:data[i]);
-            });
+            }
 
             print(message:'Server: ' + client.address + ' has sent ' + data.size + 'bytes :' + str);        
 
@@ -118,8 +118,8 @@ server.installHook(event:'onNewClient', hook:::(detail){
 // simple loop for the server. The update() function 
 // will listen for the server events and fire them as 
 // needed.
-loop(func:::{
+forever ::{
     server.update();
     Time.sleep(milliseconds:20);
     return true;
-});
+}

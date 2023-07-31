@@ -102,11 +102,10 @@ print(message:combineAsOneExpression(items:['See ', 'what ', 'you ', 'can ', 'ma
     // Since we have the first value, take a subset of the 
     // list, skipping the first value. Then, 
     // iterate over the list.
-    strings->subset(
+    foreach(strings->subset(
         from:1, 
         to:strings->keycount-1
-    )->foreach(
-        do::(index, string) {
+    )) ::(index, string) {
             output = output + string;
         }
     )

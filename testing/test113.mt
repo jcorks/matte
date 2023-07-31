@@ -11,20 +11,20 @@ return ::<= {
         ) {
             @:type = Object.newType(name);
             @:itemNames = items->keys;
-            @:itemTypes = {...items};
+            @:itemTypes = {...items}
 
             return class(
                 name: 'Testing.Struct',
                 define:::(this){
                     this.interface = {
                         new ::(state => Object) {
-                            @:initialized = {};
-                            itemNames->foreach(do:::(index, value) {
+                            @:initialized = {}
+                            foreach(itemNames) ::(index, value) {
                                 initialized[value] = false;
-                            });
+                            }
                             
-                            @:data = {};
-                            state->foreach(do:::(name, value) {
+                            @:data = {}
+                            foreach(state)::(name, value) {
                                 when (initialized[name] == empty)
                                     error(detail:'"' + name + '" is not a member of the structure ' + String(from:type));
 
@@ -37,7 +37,7 @@ return ::<= {
                                     );
                                 data[name] = value;
                                 initialized[name] = true;
-                            });
+                            }
                                
                             /*
                             foreach(in:initialized, do:::(name, initialized) {
@@ -67,7 +67,7 @@ return ::<= {
                                             
                                                 data[key] = value;
                                             }
-                            };
+                            }
                             
                             out->setAttributes(
                                 attributes : {
@@ -82,13 +82,13 @@ return ::<= {
                             
                             return out;
                         }
-                    };
+                    }
                 }
             ).new();
             
 
-        };
-    };
+        }
+    }
 
     @:CANVAS_WIDTH  = 80;
     @:CANVAS_HEIGHT = 22;
@@ -104,29 +104,29 @@ return ::<= {
         PROMPT: 7,
         NEWLINE: 8,    
         CLEAR: 9
-    };
+    }
 
 
 
     // converts a string into an array of characters.
     @:splay ::(string => String) {
         @:out = [];
-        [0, string->length]->for(
-            do:::(i) <- out->push(
+        for(0, string->length) 
+            ::(i) <- out->push(
                 value:string->charAt(
                     index:i
                 )
             )
-        );
+        
         
         return out;
-    };
+    }
 
 
     @:min ::(a => Number, b => Number) {
         when(a < b) a;
         return b;
-    };
+    }
 
     @:TextIter = struct(
         name: 'Test.TextIter',
@@ -141,6 +141,6 @@ return ::<= {
         color : 30
     });
     return inst.text + inst.color;
-};
+}
 
 return '';

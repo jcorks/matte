@@ -54,14 +54,14 @@ w.installHooks(events:{
         // When successful, the state will change to 'Finished'.
         when(detail == Async.Worker.State.Finished) ::<= {
             print(message:'Done. Computed result: ' + w.result);    
-        };
+        }
         
         // When an error occurs in the worker, the state will change to 'Failed'.
         when(detail == Async.Worker.State.Failed) ::<= {
             print(message:'Failed');    
             print(message:'From worker:');
             print(message:w.error);
-        };
+        }
     },
 
     // Communication can occur between the parent and the workers

@@ -14,11 +14,11 @@
         cents    : (100*(from - from->floor))->round,
         dollars  : from->floor,
         isDebt   : isNeg
-    };
+    }
     
     @:toValue::(USD) {
         return (USD.dollars + USD.cents/100) * (if (USD.isDebt) -1 else 1);
-    };
+    }
     
     
     ref->setAttributes( 
@@ -41,7 +41,7 @@
     });
     
     return ref;
-};
+}
 
 
 

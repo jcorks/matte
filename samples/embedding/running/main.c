@@ -51,10 +51,10 @@ int main() {
     // source. The IO output function is used if an 
     // issue is encountered.
     matteValue_t result = matte_run_source(m, 
-        "@:add ::(a, b) {"
-        "  return a + b;"
-        "};"
-        ""
+        "@:add ::(a, b) {\n"
+        "  return a + b;\n"
+        "}\n"
+        "\n"
         "return add(a:5, b:6);"
     );
     

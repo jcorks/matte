@@ -47,9 +47,9 @@ print(message: 'Currently working within: '+Filesystem.cwd);
 // the contents of the cwd. Each element has a name, 
 // whether its a file, and its fully qualified path.
 print(message: 'Current working contents:');
-Filesystem.directoryContents->foreach(do:::(index, file) {
+foreach(Filesystem.directoryContents) ::(index, file) {
     print(message: 'name: ' + file.name + ', isFile? ' + file.isFile);
-});
+}
 
 
 
@@ -76,9 +76,9 @@ Filesystem.writeString(
 // Alternatively, can work with bytes as memory buffers
 @:writeBuffer = MBuffer.new();
 writeBuffer.size = 10;
-[0, 10]->for(do:::(i) {
+for(0, 10) ::(i) {
     writeBuffer[i] = i;
-});
+}
 
 // The byte analogs of writing and reading
 // work similarly, except work with MemoryBuffers instead 
@@ -95,8 +95,8 @@ Filesystem.writeBytes(
 
 
 print(message: 'Read byte buffer from test.bin: ' + readBuffer.size + ' bytes');
-[0, readBuffer.size]->for(do:::(i) {
+for(0, readBuffer.size) ::(i) {
     print(message: 'Byte ' + i + ' = ' + readBuffer[i]);
-});
+}
 
 

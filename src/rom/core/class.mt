@@ -29,17 +29,17 @@ DEALINGS IN THE SOFTWARE.
 */
 @class ::(define, name, inherits, statics) {
 
-    @staticNames = {};
-    if (statics != empty)
-        statics->foreach(do:::(key, value) {
+    @staticNames = {}
+    if (statics != empty) ::<= {
+        foreach(statics)::(key, value) {
             staticNames[key] = true;
-        })
-    else 
+        }
+    } else 
         statics = {}
-    ;
     
-    @staticData = {...statics};
-    @classinst = {define : define};
+    
+    @staticData = {...statics}
+    @classinst = {define : define}
     when(classinst.define->type != Function) error(detail:'class must include a "define" function within its "info" specification');
     @classInherits = inherits;
     @pool = [];
@@ -47,14 +47,14 @@ DEALINGS IN THE SOFTWARE.
     @selftype = if (classInherits != empty) ::<={
         @inheritset = [];
         @inheritCount = 0;
-        classInherits->foreach(do:::(k, v) {
+        foreach(classInherits)::(k, v) {
             inheritset[inheritCount] = v.type;
             inheritCount+=1;
-        });
+        }
         return Object.newType(name : name, inherits : inheritset);
     } else ::<= {
         return Object.newType(name : name);
-    };
+    }
 
 
     // all recycled members currently waiting
@@ -79,12 +79,12 @@ DEALINGS IN THE SOFTWARE.
                 bases : [],
                 constructors : {}, // keyed with object type
                 onRecycles : {}
-            };
+            }
             
             newinst = instSet.newinst;
             interface = instSet.interface;
             
-            @attribs = {};
+            @attribs = {}
             
             attribs['.'] = {
                 get:: (key) {
@@ -102,40 +102,36 @@ DEALINGS IN THE SOFTWARE.
                 set:: (key, value) {
                     @result = interface[key];
                     when(result == empty) ::<= {
-                        @out = '' + result + 'HUH->';
-                        interface->foreach(do:::(key, val) {
-                            out = out + '|'+key+'->'+val->type;
-                        });
-                        error(detail:'' +key+ " does not exist within (set)" + selftype + ': ' + out);
-                    };                    
+                        error(detail:'' +key+ " does not exist within (set) " + selftype);
+                    }                    
                     when(result.isFunction) error(detail:'Interface functions cannot be overwritten.');
                     @set = result.set;
                     when(set == empty) error(detail:'The attribute ' + key + ' is not writable within' + selftype);
                     return set(value:value);
                 }
-            };
+            }
                
 
             
             interface.interface = {
                 isFunction : false,
                 set ::(value) {
-                    value->foreach(do:::(k => String, v) {
+                    foreach(value)::(k => String, v) {
                         if (v->type == Function) ::<= {
                             interface[k] = {
                                 isFunction : true,
                                 fn : v
-                            };
+                            }
                         } else ::<={
                             interface[k] = {
                                 isFunction : false,
                                 get : v.get,
                                 set : v.set
-                            };                                    
-                        };
-                    });
+                            }                                    
+                        }
+                    }
                 }
-            };
+            }
 
             newinst->setAttributes(attributes:attribs);
             // default / building interface
@@ -182,29 +178,29 @@ DEALINGS IN THE SOFTWARE.
                 
                 attributes : {
                     set ::(value) {
-                        value->foreach(do:::(k, v) {
+                        foreach(value) ::(k, v) {
                             when(k->type == String && k == '.') empty; // skip 
                             attribs[k] = v;
-                        }); 
+                        } 
                         newinst->setAttributes(attributes:attribs);
                     }  
                 }
                 
-            };
+            }
 
         } else ::<= {
             instSet = instSetIn;
             newinst = instSetIn.newinst;
             interface = instSetIn.interface;
             instSetIn.bases->push(value:instSet);            
-        };
+        }
         
         @runSelf = makeInstance;
         if (inherited != empty) ::<={
-            inherited->foreach(do:::(k, v) {
+            foreach(inherited) ::(k, v) {
                 runSelf(instSetIn:instSet, classObj:v);            
-            });
-        };
+            }
+        }
 
         instSet.recycle = false;
         classObj['define'](this:newinst);
@@ -218,7 +214,7 @@ DEALINGS IN THE SOFTWARE.
 
         
         return instSet;
-    };
+    }
     
     staticNames.new = true;
     
@@ -240,8 +236,8 @@ DEALINGS IN THE SOFTWARE.
                             
                             @constructor = out.constructor;
                             when(constructor != empty) constructor;
-                            return ::{return newinst;};
-                        };
+                            return ::{return newinst;}
+                        }
                     
 
                         
@@ -256,7 +252,7 @@ DEALINGS IN THE SOFTWARE.
                             get ::{
                                 return classinst;
                             }
-                        };
+                        }
 
 
 
@@ -271,15 +267,15 @@ DEALINGS IN THE SOFTWARE.
                                     if (instSet.onRecycle != empty) instSet.onRecycle();
                                     pool[poolCount] = instSet;
                                 }
-                            };
-                        };
+                            }
+                        }
 
                         newinst->remove(keys:['constructor', 'onRecycle', 'interface']);
 
 
                         when(constructor != empty) constructor;
-                        return ::{return newinst;};
-                    };
+                        return ::{return newinst;}
+                    }
 
                     when(staticNames[key] != empty) staticData[key];
                     error(detail:'No such member of the class ' + selftype);
@@ -301,5 +297,5 @@ DEALINGS IN THE SOFTWARE.
     );
 
     return classinst;
-};
+}
 return class;

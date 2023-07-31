@@ -37,7 +37,7 @@ when(parameters == empty || parameters.file == empty) ::<={
     print(message:'');
     print(message:'matte DumpHex.mt file:[filename]');
 
-};
+}
 
 
 // config
@@ -62,13 +62,13 @@ when(parameters == empty || parameters.file == empty) ::<={
     13: 'd',
     14: 'e',
     15: 'f'
-};
+}
 
 // assumes 0-255
 @: numberToHex::(n => Number) {
     return {first :hextable[n / 16], // number lookups are always floored.
-     second:hextable[n % 16]};
-};
+     second:hextable[n % 16]}
+}
 
 @asciitable = {
     33: '!',
@@ -165,7 +165,7 @@ when(parameters == empty || parameters.file == empty) ::<={
     124: '|',
     125: '}',
     126: '~'
-};
+}
 
 
 
@@ -180,12 +180,12 @@ when(parameters == empty || parameters.file == empty) ::<={
     when(res == empty) {
         first: '_',
         second: '_'
-    };
+    }
     return {
         first: res,
         second: ' '
-    };
-};
+    }
+}
 
 @line;
 @lineAsText = '';
@@ -195,13 +195,13 @@ when(parameters == empty || parameters.file == empty) ::<={
 
 @: dumphex ::(data => MemoryBuffer.type, onPageFinish => Function){
     line = '';
-    [0, BYTES_PER_LINE*2+BYTES_PER_LINE]->for(do:::(i) {
+    for(0, BYTES_PER_LINE*2+BYTES_PER_LINE)::(i) {
         line = line + ' ';
-    });    
+    }
     lineAsText = '';
-    [0, BYTES_PER_LINE*2]->for(do:::(i) {
+    for(0, BYTES_PER_LINE*2)::(i) {
         lineAsText = lineAsText + ' ';
-    });    
+    }
 
 
 
@@ -210,10 +210,10 @@ when(parameters == empty || parameters.file == empty) ::<={
     @:endPoint :: {
         when(iterBytes+BYTES_PER_PAGE >= data.size) data.size;
         return iterBytes+BYTES_PER_PAGE;
-    };
+    }
 
-    [::] {
-        forever(do:::{
+    {:::} {
+        forever ::{
             @iter = 0;
             @lineIter = 0;
             @lineAsTextIter = 0;
@@ -221,13 +221,13 @@ when(parameters == empty || parameters.file == empty) ::<={
             @lines = [];
 
         
-            [iterBytes, endPoint()]->for(do:::(i) {
+            for(iterBytes, endPoint()) ::(i) {
                 if (i%BYTES_PER_LINE == 0) ::<={
                     lines->push(value: '' + line + "      " + lineAsText + '\n');
                     iter = 0;
                     line = '';
                     lineAsText = '';
-                };
+                }
 
                 @n = numberToHex(n:data[i]);
                 line = String.combine(strings:[line, n.first, n.second, ' ']);
@@ -236,20 +236,20 @@ when(parameters == empty || parameters.file == empty) ::<={
                 lineAsText = String.combine(strings:[lineAsText, n.first, n.second]);  
 
                 iter += 1;
-            });
+            }
             
             if (iter%BYTES_PER_LINE) ::<= {
-                [iter, BYTES_PER_LINE]->for(do:::(i){
+                for(iter, BYTES_PER_LINE) ::(i){
                     @n = numberToHex(n:data[i]);
                     line = String.combine(strings:[line, '   ']);
 
                     n = numberToAscii(n:data[i]);
                     lineAsText = String.combine(strings:[lineAsText, '   ']);  
-                });
+                }
                 lines->push(value: line + "      " + lineAsText + '\n');
                 line = '';
                 lineAsText = '';
-            };
+            }
 
 
 
@@ -258,10 +258,10 @@ when(parameters == empty || parameters.file == empty) ::<={
             onPageFinish(page:String(from:out));
             
             when(iterBytes >= data.size) send();
-        });
-    };
+        }
+    }
 
-};
+}
 
 
 @:DumpHex = class(
@@ -277,7 +277,7 @@ when(parameters == empty || parameters.file == empty) ::<={
                 dumphex(data:buffer, onPageFinish:onPageFinish); 
             }
             
-        };    
+        }    
     }
 ).new();
 

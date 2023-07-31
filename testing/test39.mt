@@ -9,6 +9,6 @@
         (5, 6)        : 'some',
         (7, 8, 9, 10) : 'lots',
         default       : 'toomany'
-    };
-};
+    }
+}
 return m(value:8)+m(value:0)+m(value:2)+m(value:399);

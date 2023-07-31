@@ -4,7 +4,7 @@
 @str =  (::(){return 'ef';})();
 
 
-@a = {e: 0, f: 1, g: 3};
-a. = {f : str, e : 'g'}; 
+@a = {e: 0, f: 1, g: 3}
+a. = {f : str, e : 'g'} 
 
 return a.f + a.e;

@@ -1049,12 +1049,25 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t a = STACK_PEEK(1);
             
             if (!matte_value_is_callable(vm->store, b)) {
-                matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'foreach' requires the first argument to be a function."));
+                matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'foreach' requires the expression after it to reduce to a function."));
                 STACK_POP_NORET();          
                 STACK_POP_NORET();                    
                 return matte_store_new_value(vm->store);
             }
+
+            if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
+                matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'foreach' requires an object."));
+                STACK_POP_NORET();          
+                STACK_POP_NORET();                    
+                return matte_store_new_value(vm->store);
+            }
+
+
+            matte_value_object_push_lock(vm->store, a);
+            matte_value_object_push_lock(vm->store, b);
             matte_value_object_foreach(vm->store, a, b);
+            matte_value_object_pop_lock(vm->store, a);
+            matte_value_object_pop_lock(vm->store, b);
             STACK_POP_NORET();                    
             STACK_POP_NORET();                    
             break;
@@ -1068,7 +1081,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           
             
             if (!matte_value_is_function(v)) {
-                matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'for' requires the second argument to be a function."));    
+                matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'for' requires trailing expression to reduce to a function"));    
                 STACK_POP_NORET();          
                 STACK_POP_NORET();          
                 STACK_POP_NORET();          
@@ -1081,6 +1094,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 1,
                 matte_bytecode_stub_arg_count(matte_value_get_bytecode_stub(vm->store, v)) != 0
             };
+            if (d.i == d.end) {
+                STACK_POP_NORET();          
+                STACK_POP_NORET();          
+                STACK_POP_NORET(); 
+                break;                     
+            }
+            
 
             if (d.i >= d.end) {
                 vm->pendingRestartCondition = vm_ext_call__for_restart_condition__down;

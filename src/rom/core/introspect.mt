@@ -28,14 +28,14 @@ DEALINGS IN THE SOFTWARE.
 
 */
 return ::(value) {
-    @already = {};
+    @already = {}
     @pspace ::(level) {
         @str = '';
-        for(0:level)::{
+        for(0,level)::{
             str = str + '  ';
-        };
+        }
         return str;
-    };
+    }
     @helper ::(obj, level) {
         @poself = helper;
 
@@ -51,20 +51,20 @@ return ::(value) {
                 @output = '(type => Object): {';
 
                 @multi = false;
-                obj->foreach(do:::(key, val) {                        
+                foreach(obj)::(key, val) {                        
                     output = output + (if (multi) ',\n' else '\n'); 
                     output = output + pspace(level:level+1)+(String(from:key))+' : '+poself(obj:val, level:level+1);
                     multi = true;
-                });
+                }
                 output = output + pspace(level:level) + (if (multi) '\n' + pspace(level:level)+'}' else '}');
                 return output;                
             }(),
             (Type): '(type => Type): ' + obj,
             default: '(type => ' + (obj->type) + '): {...}'
 
-        };
-    };
+        }
+    }
     return pspace(level:1) + helper(obj:value, level:1);
-};
+}
 
 

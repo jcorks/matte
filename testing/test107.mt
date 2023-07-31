@@ -10,17 +10,17 @@
 	...B, 
 	'test' : '|', 
 	...::<={
-	    @:test = {};
+	    @:test = {}
 	    test['AA'] = 'A';
 	    test['BB'] = 'B';
 	    test['CC'] = 'C';
         return test;
 	}
-};
+}
 @:D = {
     ...C,
     ...A
-};
+}
 
 @out = '';
 B->foreach(do:::(key, v) {

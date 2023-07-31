@@ -9,7 +9,7 @@
         this.constructor = ::(input) {
             data = input;
             return this;
-        };
+        }
 
 
         this.interface = {
@@ -22,7 +22,7 @@
                     data = 1000 + value;
                 }
             }
-        };
+        }
     }
 );
 

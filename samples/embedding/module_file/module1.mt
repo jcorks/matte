@@ -5,7 +5,7 @@
     myFunction ::{
         return output.value;
     }
-};
+}
 
 
 return output;

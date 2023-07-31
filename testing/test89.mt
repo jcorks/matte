@@ -9,7 +9,7 @@
             area :: {
                 return 0;
             }
-        };
+        }
     }
 );
 
@@ -24,14 +24,14 @@
         this.constructor = ::(length) {
             l = length;
             return this;
-        };
+        }
 
 
         this.interface = {
             area ::{
                 return l**2;
             }
-        };
+        }
     }
 );
 
@@ -48,13 +48,13 @@
             b = base;
             h = height;
             return this;
-        };
+        }
 
         this.interface = {
             area ::{
                 return b*h*0.5;
             }
-        };
+        }
     }
 );
 
@@ -71,14 +71,14 @@
         a.area() + 
         b.area()
     ; 
-};
+}
 
 
 combinedArea(a:tri0, b:sq0);
-[::]{
+{:::}{
     @:combinedAreaRestricted ::(a => Shape.type, b => Square.type) {
         out = out + a.area() + b.area(); 
-    };
+    }
 
     combinedAreaRestricted(a:sq1, b:sq0);
     // will throw type error
@@ -86,6 +86,6 @@ combinedArea(a:tri0, b:sq0);
     combinedAreaRestricted(a:sq1, b:sq0);
 } : {
     onError:::(message){}
-};
+}
 
 return out;

@@ -65,14 +65,14 @@ DEALINGS IN THE SOFTWARE.
                 }
             );
             return this;
-        };
+        }
             
         
         
         
         @: checkReleased::(t){
             when(t.handle == empty) error(message:"Buffer was released. This buffer should not be used any more.");
-        };
+        }
         
         this.interface = {
             // appends a different byte buffer to this one
@@ -310,7 +310,7 @@ DEALINGS IN THE SOFTWARE.
             
             
             
-        };
+        }
         
         this.attributes = {
             '[]' : {
@@ -324,7 +324,7 @@ DEALINGS IN THE SOFTWARE.
                     _mbuffer_set_index(a:buffer, b:key, c:value);                                    
                 }
             }
-        };
+        }
     }
 );
 

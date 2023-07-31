@@ -9,7 +9,7 @@
         this.constructor = ::(stringInput) {
             str = stringInput;
             return this;
-        };
+        }
 
 
         this.interface = {
@@ -22,7 +22,7 @@
                     return str;
                 }
             }
-        };
+        }
     }
 );
 

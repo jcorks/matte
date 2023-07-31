@@ -5,7 +5,7 @@
 @f = ::{
     @g ::{
         return 10+70;
-    };
+    }
     return g;
-};
+}
 return f()()+10;

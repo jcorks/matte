@@ -48,7 +48,7 @@ Console.println(message:"Hi. What's your favorite color?");
     
     // most systems will incude the newline. Filter it out.
     return raw->replace(key:'\n', with:'');
-};
+}
 
 // Printf takes a series of tokens and replaces them.
 // This option can be more readable that pre-formatting a string.

@@ -3,7 +3,7 @@
 return ::<= {
     @hints = {
         NEUTRAL: 10
-    };
+    }
     @CANVAS_HEIGHT = 40;
     @CANVAS_WIDTH = 40;
     @canvas = [];
@@ -17,18 +17,18 @@ return ::<= {
     @savestates = [];
     
    
-    [0, CANVAS_HEIGHT]->for(do:::(index) {
+    for(0, CANVAS_HEIGHT) ::(index) {
         @:line = [];
         @:lineColor = [];
         
-        [0, CANVAS_WIDTH]->for(do:::(ch) {
+        for(0, CANVAS_WIDTH) ::(ch) {
             line->push(value:' ');
             lineColor->push(value:hints.NEUTRAL);
-        });
+        }
         
         canvas->push(value:line);
         canvasColors->push(value:lineColor);
-    });
+    }
     return canvasColors[10][20];
-};
+}
 

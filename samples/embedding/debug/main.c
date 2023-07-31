@@ -62,7 +62,7 @@ int main() {
         "@:add ::(a, b) {\n"
         "  breakpoint();\n"
         "  return a + b;\n"
-        "};\n"
+        "}\n"
         "\n"
         "return add(a:5, b:6);\n"
     );

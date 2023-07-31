@@ -2,13 +2,13 @@
 //
 // Core: String (5)
 @:containsAny::(in, keys) {
-    return [::]{
+    return {:::}{
         keys->foreach(do:::(k, v) {
             when(in->contains(key:v)) send(message:true);
         });
         return false;        
-    };
-};
+    }
+}
 
 @str = "testinBdwatest";
 return ''+containsAny(in:str, keys:['z', 'x', 'y'])+

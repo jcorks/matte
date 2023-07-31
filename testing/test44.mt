@@ -5,6 +5,6 @@
 @returny = 10;
 @Number0 = ::{
     return '' + returny + "when";
-};
+}
 @introspection = 'return';
 return introspection+Number0();

@@ -21,58 +21,56 @@ const Matte = {
             // matte_opcode.h: matteExtCall_t
             EXT_CALL : {
                 NOOP : 0,
-                FOREVER : 1,
-                IMPORT : 2,
-                PRINT : 3,
-                SEND : 4,
-                ERROR : 5,
-                BREAKPOINT : 6,
+                IMPORT : 1,
+                PRINT : 2,
+                SEND : 3,
+                ERROR : 4,
+                BREAKPOINT : 5,
                 
-                NUMBER_PI : 7,
-                NUMBER_PARSE : 8,
-                NUMBER_RANDOM : 9,
+                NUMBER_PI : 6,
+                NUMBER_PARSE : 7,
+                NUMBER_RANDOM : 8,
                 
-                STRING_COMBINE : 10,
+                STRING_COMBINE : 9,
                 
-                OBJECT_NEWTYPE : 11,
-                OBJECT_INSTANTIATE : 12,
-                OBJECT_FREEZEGC : 13,
-                OBJECT_THAWGC : 14,
-                OBJECT_GARBAGECOLLECT : 15,
+                OBJECT_NEWTYPE : 10,
+                OBJECT_INSTANTIATE : 11,
+                OBJECT_FREEZEGC : 12,
+                OBJECT_THAWGC : 13,
+                OBJECT_GARBAGECOLLECT : 14,
                 
-                QUERY_ATAN2 : 16,
+                QUERY_ATAN2 : 15,
                 
-                QUERY_PUSH : 17,
-                QUERY_INSERT: 18,
-                QUERY_REMOVE : 19,
-                QUERY_SETATTRIBUTES : 20,
-                QUERY_SORT : 21,
-                QUERY_SUBSET : 22,
-                QUERY_FILTER : 23,
-                QUERY_FINDINDEX : 24,
-                QUERY_ISA : 25,
-                QUERY_MAP : 26,
-                QUERY_REDUCE : 27,
-                QUERY_ANY : 28,
-                QUERY_ALL : 29,
-                QUERY_FOR : 30,
-                QUERY_FOREACH : 31,
+                QUERY_PUSH : 16,
+                QUERY_INSERT: 17,
+                QUERY_REMOVE : 18,
+                QUERY_SETATTRIBUTES : 19,
+                QUERY_SORT : 20,
+                QUERY_SUBSET : 21,
+                QUERY_FILTER : 22,
+                QUERY_FINDINDEX : 23,
+                QUERY_ISA : 24,
+                QUERY_MAP : 25,
+                QUERY_REDUCE : 26,
+                QUERY_ANY : 27,
+                QUERY_ALL : 28,
+                QUERY_FOREACH : 29,
                 
-                QUERY_CHARAT : 32,
-                QUERY_CHARCODEAT : 33,
-                QUERY_SETCHARAT : 34,
-                QUERY_SETCHARCODEAT : 35,
-                QUERY_SCAN : 36,
-                QUERY_SEARCH : 37,
-                QUERY_SEARCH_ALL : 38,
-                QUERY_SPLIT : 39,
-                QUERY_SUBSTR : 40,
-                QUERY_CONTAINS : 41,
-                QUERY_COUNT : 42,
-                QUERY_REPLACE : 43,
-                QUERY_REMOVECHAR : 44,
+                QUERY_CHARAT : 30,
+                QUERY_CHARCODEAT : 31,
+                QUERY_SETCHARAT : 32,
+                QUERY_SETCHARCODEAT : 33,
+                QUERY_SCAN : 34,
+                QUERY_SEARCH : 35,
+                QUERY_SEARCH_ALL : 36,
+                QUERY_SPLIT : 37,
+                QUERY_SUBSTR : 38,
+                QUERY_CONTAINS : 39,
+                QUERY_COUNT : 40,
+                QUERY_REPLACE : 41,
+                QUERY_REMOVECHAR : 42,
                 
-                GETEXTERNALFUNCTION : 45
+                GETEXTERNALFUNCTION : 43
                 
             },
             
@@ -188,7 +186,18 @@ const Matte = {
                 // Allows for many assignments at once to an object using the 
                 // dot operator. The syntax is operand.{static object};
                 // The first operand is pushed to the top of the stack.
-                MATTE_OPCODE_OAS  : 30           
+                MATTE_OPCODE_OAS  : 30,
+                
+                // performs a loop, taking the top 3 variables on the stack to define a 
+                // loop: from value[top-3] to value[top-2], run function value[top-1]
+                MATTE_OPCODE_LOP : 31,
+
+                // performs an infinite loop, calling the value[top-1] function indefinitely.
+                MATTE_OPCODE_FVR : 32,
+
+                // performs a foreach loop on an object (value[top-1])
+                MATTE_OPCODE_FCH : 33
+                         
             
             }              
         };
@@ -418,8 +427,7 @@ const Matte = {
                 REDUCE : 45,
                 ANY : 46,
                 ALL : 47,
-                FOR : 48,
-                FOREACH : 49
+                FOREACH : 48
             };
             
             var typecode_id_pool = 10;
@@ -1886,13 +1894,6 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_ANY);
             };
 
-            store_queryTable[QUERY.FOR] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
-                    vm.raiseErrorString("for requires base value to be an object.");
-                    return createValue();
-                }
-                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FOR);
-            };
 
             store_queryTable[QUERY.FOREACH] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
@@ -3773,6 +3774,96 @@ const Matte = {
                 
                 frame.valueStack.pop();
             };
+            vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_FVR] = function(frame, inst) {
+                const a = frame.valueStack[frame.valueStack.length-1];
+                if (!(a.binID == store.TYPE_OBJECT && a.data.function_stub)) {
+                    vm.raiseErrorString("'forever' requires the trailing expression to be a function.");
+                    frame.valueStack.pop();
+                    return;                    
+                }
+                
+                vm_pendingRestartCondition = vm_extCall_foreverRestartCondition;
+                vm.callFunction(a, [], []);                
+                frame.valueStack.pop();
+            }            
+            
+            vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_FCH] = function(frame, inst) {
+                const a = frame.valueStack[frame.valueStack.length-2];
+                const b = frame.valueStack[frame.valueStack.length-1];
+
+                if (!(b.binID == store.TYPE_OBJECT && b.data.function_stub)) {
+                    frame.valueStack.pop();
+                    frame.valueStack.pop();
+                    vm.raiseErrorString("'foreach' requires the trailing expression to be a function.");
+                    return;        
+                }
+                if (!(b.binID == store.TYPE_OBJECT)) {
+                    frame.valueStack.pop();
+                    frame.valueStack.pop();
+                    vm.raiseErrorString("'for' requires an object.");
+                    return;        
+                }
+
+                store.valueObjectForeach(a, b);
+                frame.valueStack.pop();
+                frame.valueStack.pop();                
+            };
+
+            vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_LOP] = function(frame, inst) {
+                const from = frame.valueStack[frame.valueStack.length-3];
+                const to   = frame.valueStack[frame.valueStack.length-2];
+                const v    = frame.valueStack[frame.valueStack.length-1];
+
+                if (!(v.binID == store.TYPE_OBJECT && v.data.function_stub)) {
+                    vm.raiseErrorString("'for' requires the trailing expression to be a function.");
+                    frame.valueStack.pop();
+                    frame.valueStack.pop();
+                    frame.valueStack.pop();
+                    return;
+                }
+
+
+
+                const d = {
+                    i:   store.valueAsNumber(from),
+                    end: store.valueAsNumber(to), 
+                    usesi : store.valueGetBytecodeStub(v).argCount != 0
+                };
+                
+                if (d.i == d.end) {
+                    frame.valueStack.pop();
+                    frame.valueStack.pop();
+                    frame.valueStack.pop();
+                    return;
+                }
+                
+                if (d.i >= d.end) {
+                    d.offset = -1;
+                    vm_pendingRestartCondition = vm_extCall_forRestartCondition_down
+                } else {
+                    d.offset = 1;
+                    vm_pendingRestartCondition = vm_extCall_forRestartCondition_up
+                }
+
+                vm_pendingRestartConditionData = d;
+                const iter = store.createNumber(d.i);
+                
+                
+                const stub = store.valueGetBytecodeStub(v);
+                var arr = [];
+                var names = [];
+                if (stub.argCount) {
+                    arr.push(iter);
+                    names.push(store.createString(stub.argNames[0]));
+                }
+                
+                vm.callFunction(v, arr, names);
+                frame.valueStack.pop();
+                frame.valueStack.pop();
+                frame.valueStack.pop();
+            };
+
+
             
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_ASP] = function(frame, inst) {
                 const count = inst.data;
@@ -3856,15 +3947,6 @@ const Matte = {
             const vm_extCall_foreverRestartCondition = function(frame, result) {
                 return 1;
             };
-            vm_addBuiltIn(vm.EXT_CALL.FOREVER, ['do'], function(fn, args) {
-                if (!store.valueIsCallable(args[0])) {
-                    vm.raiseErrorString("'forever' requires only argument to be a function.");
-                    return store.createEmpty();
-                }
-                vm_pendingRestartCondition = vm_extCall_foreverRestartCondition;
-                vm.callFunction(args[0], [], []);
-                return store.createEmpty();
-            });
             
             
             vm_addBuiltIn(vm.EXT_CALL.IMPORT, ['module', 'parameters'], function(fn, args) {
@@ -4226,66 +4308,6 @@ const Matte = {
             };
 
 
-            vm_addBuiltIn(vm.EXT_CALL.QUERY_FOR, ['base', 'do'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
-                
-                const v = args[1];
-                const params = args[0];
-                
-                if (!(v.binID == store.TYPE_OBJECT && v.data.function_stub)) {
-                    vm.raiseErrorString("'for' requires the second argument to be a function.");
-                    return store.createEmpty();
-                }
-                
-                const a = store.valueObjectAccessIndex(params, 0);
-                const b = store.valueObjectAccessIndex(params, 1);
-                const c = store.valueObjectAccessIndex(params, 2);
-
-                const d = {
-                    i:   store.valueAsNumber(a),
-                    end: store.valueAsNumber(b), 
-                    offset : 1,
-                    usesi : store.valueGetBytecodeStub(v).argCount != 0
-                };
-                
-                if (c.binID == 0) {
-                    if (d.i >= d.end) {
-                        return store.createEmpty();
-                    }
-                    vm_pendingRestartCondition = vm_extCall_forRestartCondition_up
-                } else {
-                    const incr = store.valueAsNumber(c);
-                    d.offset = incr;
-                    
-                    if (incr < 0) {
-                        if (d.i <= d.end) {
-                            return store.createEmpty();
-                        }
-                        vm_pendingRestartCondition = vm_extCall_forRestartCondition_down;
-                    } else {
-                        if (d.i >= d.end) {
-                            return store.createEmpty();
-                        }
-                        vm_pendingRestartCondition = vm_extCall_forRestartCondition_up;
-                    }
-                }
-                
-                vm_pendingRestartConditionData = d;
-                const iter = store.createNumber(d.i);
-                
-                
-                const stub = store.valueGetBytecodeStub(v);
-                var arr = [];
-                var names = [];
-                if (stub.argCount) {
-                    arr.push(iter);
-                    names.push(store.createString(stub.argNames[0]));
-                }
-                
-                vm.callFunction(v, arr, names);
-                return params;
-                
-            });
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FOREACH, ['base', 'do'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
                 if (!store.valueIsCallable(args[1])) {

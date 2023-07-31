@@ -41,7 +41,7 @@ DEALINGS IN THE SOFTWARE.
     decode ::(string => String) {
         return json_decode(a:string);
     }
-};
+}
 
 
 

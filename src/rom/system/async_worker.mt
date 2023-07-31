@@ -30,7 +30,7 @@ DEALINGS IN THE SOFTWARE.
 @:class = import(module:'Matte.Core.Class');
 @:EventSystem = import(module:'Matte.Core.EventSystem');
 
-return [::] {
+return {:::} {
     // Sends a message to the parent async manager
     // arg0: (string) message to send to parent
     @:_workersendmessage = getExternalFunction(name:"__matte_::asyncworker_send_message");
@@ -46,7 +46,7 @@ return [::] {
         define:::(this) {
             this.events = {
                 onNewMessage::(detail){}
-            };        
+            }        
             
             this.interface = {
                 sendToParent::(message => String) {
@@ -54,21 +54,21 @@ return [::] {
                 },
                 
                 update :: {
-                    [::]{
-                        forever(do:::{
+                    {:::}{
+                        forever ::{
                             @:msg = _workercheckmessage();        
                             when(msg == empty) send();
                             this.emit(event:'onNewMessage', detail:msg);
-                        });
-                    };
+                        }
+                    }
                 }
                 
-            };
+            }
         }
     ).new();
 } : {
     onError:::(message) {
         error(detail:'Only workers are allowed to import the AsyncWorker module.');
     }
-};
+}
 

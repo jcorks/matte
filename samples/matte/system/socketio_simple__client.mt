@@ -41,12 +41,12 @@ DEALINGS IN THE SOFTWARE.
     @m = MemoryBuffer.new();
     @:len = str->length; 
     m.size = len;
-    for(in:[0, len], do:::(i){
+    for(0, len)::(i){
         m[i] = str->charCodeAt(index:i);
-    });
+    }
     
     client.send(bytes:m);
-};
+}
 
 
 
@@ -86,10 +86,10 @@ client.installHooks(events:{
         // Lets assume that the data incoming is plain text and print it
         @:data = detail;
         @str = '';
-        for(in:[0, data.size], do:::(i) {
+        for(0, data.size)::(i) {
             str = str + ' ';
             str = str->setCharCodeAt(index:i, value:data[i]);
-        });
+        }
         ConsoleIO.println(message:'Message from server: ' + str);
     }
 });
@@ -103,8 +103,8 @@ client.connect(address:'127.0.0.1', port:8080);
 // To make sure we get those events, client.update() must 
 // be called periodically. Since we're not doing anything 
 // else in this program, we can update and sleep.
-loop(func:::{    
+forever ::{    
     client.update();
     Time.sleep(milliseconds:20);
     return true;
-});
+}

@@ -5,61 +5,53 @@
 
 @out = '';
 
-[::]{
-    [0, 1]->for(do:1);
+{:::}{
+    for(0, 1)1;
 }: { onError:::(message){
     out = out + 'nofn';
-}};
+}}
 
 
-[::]{
-    [10, 4, 1]->for(do:::{
+{:::}{
+    for(10, 4)::{
         out = out + 'a';
-    });
+    }
 }: { onError:::(message){
     out = out + 'norun';
-}};
+}}
 
 
-[::]{
-    2->for(a:0);
+{:::}{
+    for(2, 0)0;
 }: { onError:::(message){
     out = out + 'nofn';
-}};
+}}
 
 
 
-[::]{
-    [5, 0, -1]->for(do:::{
+{:::}{
+    for(5, 0)::{
         out = out + 'b';
-    });
+    }
 }: { onError:::(message){
     out = out + 'norun';
-}};
-
-[::]{
-    0->for(do:::{
-    
-    });
-}: { onError:::(message){
-    out = out + 'noind';
-}};
+}}
 
 
 
-[::]{
-    [0, 10]->for(do:::(i){
+{:::}{
+    for(0, 10) ::(i){
         out = out + 'c';        
         when (i == 4) 10; 
-    });
+    }
 }: { onError:::(message){
     out = out + 'norun';
-}};
+}}
 
 
-[0, 3, 1]->for(do:::(i){
+for(0, 3)::(i){
     out = out + 'd';        
-});
+}
 
 
 return out;

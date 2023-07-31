@@ -34,7 +34,7 @@ DEALINGS IN THE SOFTWARE.
 
 // A generator for optional types.
 @:Option = ::<= {
-    @out = {};
+    @out = {}
     @type = Object.newType();
     
     return {
@@ -55,7 +55,7 @@ DEALINGS IN THE SOFTWARE.
                     
                 when(value == empty) none();
                 return some(value:value);
-            };
+            }
 
 
 
@@ -84,8 +84,8 @@ DEALINGS IN THE SOFTWARE.
             );
             return opt;        
         }
-    };
-};
+    }
+}
 
 
 

@@ -72,13 +72,13 @@ return class(
                     _directoryEnumerate();
                     @:ct = _directoryObjectCount();
                     @:files = [];
-                    for(0 : ct)::(i){
+                    for(0, ct)::(i){
                         files[i] = {
                             name : _directoryObjectName(a:i),
                             path : _directoryObjectPath(a:i), // full path
                             isFile : _directoryObjectIsFile(a:i)
-                        };
-                    };
+                        }
+                    }
                     return files;
                 }
             },
@@ -123,7 +123,7 @@ return class(
                 _remove(a:path);
             }
         
-        };
+        }
         
     }
 

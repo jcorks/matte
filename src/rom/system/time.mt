@@ -62,6 +62,6 @@ return class(
             date :{
                 get::<-_date()
             }
-        };
+        }
     }
 ).new();

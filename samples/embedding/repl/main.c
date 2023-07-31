@@ -42,7 +42,7 @@ DEALINGS IN THE SOFTWARE.
     This example will only allow running of expressions, which 
     means new variable creation is impossible. 
     
-    Instead, there will be a _ object that can be modified.
+    Instead, there will be a store object that can be modified.
 
 */
 

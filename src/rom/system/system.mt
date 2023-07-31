@@ -38,6 +38,6 @@ return class(
             Time         : import(module:'Matte.System.Time'),
             Utility      : import(module:'Matte.System.Utility')    ,
             Async        : import(module:'Matte.System.Async')
-        };
+        }
     }
 ).new();

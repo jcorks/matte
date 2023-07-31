@@ -49,14 +49,14 @@ return class(
             printf ::(format => String, args) {
                 when (args->type != Object)::<={
                     _print(a:''+format);
-                };
+                }
 
 
                 @o = format;
-                args->foreach(do:::(k, v){
+                foreach(args) ::(k, v){
                     @:key = '$('+k+')';
                     o = o->replace(key:key, with:''+v);
-                });
+                }
                 _print(a:o);
             },
             
@@ -68,6 +68,6 @@ return class(
             getln : getExternalFunction(name:"__matte_::consoleio_getline"),
 
             clear : getExternalFunction(name:"__matte_::consoleio_clear")
-        };
+        }
     }
 ).new();

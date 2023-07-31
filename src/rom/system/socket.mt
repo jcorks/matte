@@ -170,7 +170,7 @@ DEALINGS IN THE SOFTWARE.
             inherits:[EventSystem],
             define:::(this) {
                 @id_number;
-                @pendingMessages = {};
+                @pendingMessages = {}
                 @socket;
                 @info;
                 @address;
@@ -184,13 +184,13 @@ DEALINGS IN THE SOFTWARE.
                     info = _socket_server_client_infostring(a:socket, b:id_number);
                     address = _socket_server_client_address(a:socket, b:id_number);
                     return this;
-                };
+                }
 
                 this.events = {
                     onNewMessage ::(detail){},
                     onIncomingData ::(detail){},
                     onDisconnect ::(detail){}
-                };
+                }
 
                 // change update based on if a message type client or data
                 @update;
@@ -200,17 +200,17 @@ DEALINGS IN THE SOFTWARE.
                 if (messageIn == true) ::<={
                     update = ::{
                         _socket_server_client_update(a:socket, b:id_number);
-                        for(0 : _socket_server_client_get_pending_message_count(a:socket, b:id_number))::(i){
+                        for(0, _socket_server_client_get_pending_message_count(a:socket, b:id_number))::(i){
                             this.emit(
                                 event:'onNewMessage',
                                 detail:_socket_server_client_get_next_message(a:socket, b:id_number)
                             );
-                        };
-                    };
+                        }
+                    }
 
                     sendData = ::(m => String) {
                         _socket_server_client_send_message(a:socket, b:id_number, c:m);
-                    };
+                    }
 
                 } else ::<={
                     update = ::{
@@ -224,14 +224,14 @@ DEALINGS IN THE SOFTWARE.
                                 detail:bytes
                             );             
                             bytes.release();
-                        };
-                    };
+                        }
+                    }
 
 
                     sendData = ::(bytes => MemoryBuffer.type) {
                         _socket_server_client_write_bytes(a:socket, b:id_number, c:bytes.handle);
-                    };
-                };
+                    }
+                }
 
 
 
@@ -261,7 +261,7 @@ DEALINGS IN THE SOFTWARE.
                     disconnect :: {
                         _socket_server_client_terminate(a:socket, b:id_number);
                     }
-                };
+                }
 
             }
         );
@@ -293,7 +293,7 @@ DEALINGS IN THE SOFTWARE.
                         messageMode:Boolean(from:messageMode)
                     );
                     return this;
-                };
+                }
 
                 
                 @:clients = [];
@@ -303,7 +303,7 @@ DEALINGS IN THE SOFTWARE.
                                 
                 this.events = {
                     onNewClient ::(detail){}
-                };
+                }
             
             
                 this.interface = {
@@ -316,8 +316,8 @@ DEALINGS IN THE SOFTWARE.
                         
                         // current client list against prev list.
                         @:newlen = _socket_server_get_client_count(a:socket);
-                        @: found = {};
-                        for(0 : newlen)::(i){
+                        @: found = {}
+                        for(0, newlen)::(i){
                             @id = String(from:_socket_server_client_index_to_id(a:socket, b:i));
                             found[id] = true;
 
@@ -329,13 +329,13 @@ DEALINGS IN THE SOFTWARE.
                                 found[id] = true;
 
                                 this.emit(event:'onNewClient', detail:client);
-                            };
-                        }; 
+                            }
+                        } 
 
                         // emit update disconnects or update.
                         @i = 0;
-                        [::] {
-                            forever(do:::{
+                        {:::} {
+                            forever ::{
                                 when(i == clients->keycount) send();
                                 
                                 @idKey = String(from:clients[i].id);
@@ -346,11 +346,11 @@ DEALINGS IN THE SOFTWARE.
                                     clients[i].emit(event:'onDisconnect', detail:clients[i]);
                                     clients->remove(key:i);
                                     clientIndex->remove(key:idKey);                                
-                                };
-                            });
-                        };                  
+                                }
+                            }
+                        }                  
                     }
-                };
+                }
             }
         );
         
@@ -421,7 +421,7 @@ DEALINGS IN THE SOFTWARE.
                     
                     'onIncomingData': ::(detail){},
                     'onNewMessage': ::(detail){}
-                };
+                }
                 @state = 0;                
                 @update; 
                 @sendData;
@@ -431,14 +431,14 @@ DEALINGS IN THE SOFTWARE.
                         when(socket == empty) empty;
                         // raw mode
                         @err;
-                        [::]{
+                        {:::}{
                             _socket_client_update(a:socket);
                         } : { 
                             onError:::(message) {
                                 @:er = message.detail;
                                 err = er;
                             }
-                        };
+                        }
 
                         @oldstate = state;
                         @newstate = _socket_client_get_state(a:socket);
@@ -452,7 +452,7 @@ DEALINGS IN THE SOFTWARE.
                                 socket = empty;
                             },
                             (oldstate != 2 && newstate == 2): this.emit(event:'onConnectSuccess')
-                        };
+                        }
                         
                         when(state != 2) empty;
                         
@@ -465,17 +465,17 @@ DEALINGS IN THE SOFTWARE.
                                 detail:bytes
                             );             
                             bytes.release();
-                        };
-                    };
+                        }
+                    }
 
                     sendData = ::(bytes => MemoryBuffer.type) {
                         when(socket == empty) empty;
                         _socket_client_write_bytes(a:socket, b:bytes.handle);
-                    };
+                    }
 
                 } else ::<={
                     error(message:'TODO');                
-                };
+                }
                 
                 
                 
@@ -485,15 +485,15 @@ DEALINGS IN THE SOFTWARE.
                         when (socket != empty) error(message:'Socket is already connected.');
                         if (mode == empty) ::<={
                             mode = 0;
-                        };
+                        }
                         
-                        [::] {
+                        {:::} {
                             socket = _socket_client_create(a:address, b:port, c:0, d:mode, e:tls);
                         } : {
                             onError:::(message){
                                 this.emit(event:'onConnectFail', detail:message.detail);
                             }
-                        };
+                        }
                     },
                     
                     disconnect::{
@@ -511,12 +511,12 @@ DEALINGS IN THE SOFTWARE.
                             return _socket_client_get_host_info(a:socket);
                         }
                     }              
-                };
+                }
             }        
         );            
     
     }
-};
+}
 
 
 return Socket;

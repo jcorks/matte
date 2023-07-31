@@ -54,10 +54,10 @@ int main() {
     uint32_t bytecodeSize;
     uint8_t * bytecode = matte_compile_source(m, 
         &bytecodeSize,
-        "@:add ::(a, b) {"
-        "  return a + b;"
-        "};"
-        ""
+        "@:add ::(a, b) {\n"
+        "  return a + b;\n"
+        "}\n"
+        "\n"
         "return add(a:'My favorite number is ', b:256);"
     );
     

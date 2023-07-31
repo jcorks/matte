@@ -6,9 +6,9 @@
 
 
 @strout = '';
-[0, a->length]->for(do:::(i){
+for(0, a->length) ::(i){
     strout = strout + a->charCodeAt(index:i);
-});
+}
 
 
 
