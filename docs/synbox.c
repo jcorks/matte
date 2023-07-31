@@ -78,7 +78,8 @@ const char * matte_js_run(const char * source) {
 
     int err = 0;
     matteString_t * src = matte_string_create_from_c_str(
-        "return import(module:'Matte.Core.Introspect')(value:(::<={%s}));",
+        "@val__ = ::<={%s\n};"
+        "return import(module:'Matte.Core.Introspect')(value:val__);",
         source
     );
     matteValue_t v = matte_run_source(m, matte_string_get_c_str(src));

@@ -1107,6 +1107,7 @@ matteValue_t matte_load_package(
 
         
     }
+    matteStore_t * store = matte_vm_get_store(m->vm);
     return matte_store_new_value(store);
     
 }
