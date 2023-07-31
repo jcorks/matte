@@ -22,8 +22,8 @@
             }
         });
         return out;
-    };
-};
+    }
+}
 
 
 @a = ApproximateNumber(0.044);
