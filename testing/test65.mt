@@ -7,14 +7,16 @@
         @str;
         this.constructor = ::(theString) {
             str = theString;  
-            return this;          
+            this.instance->setAttributes(
+                attributes : {
+                    (String) :: {
+                        return str;
+                    }
+                }
+            );
+            return this.instance;          
         }
 
-        this.attributes = {
-            (String) :: {
-                return str;
-            }
-        }
 
         this.interface = {
             mutate :: {

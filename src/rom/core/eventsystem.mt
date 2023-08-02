@@ -32,7 +32,6 @@ DEALINGS IN THE SOFTWARE.
     name : 'Matte.Core.EventSystem',
     define:::(this) {
         @: events = [];
-               
         
         
         this.interface = {
@@ -108,7 +107,7 @@ DEALINGS IN THE SOFTWARE.
 
             installHooks ::(events => Object) {
                 foreach(events)::(event, hook) {
-                    this.installHook(event:event, hook:hook);
+                    this.instance.installHook(event:event, hook:hook);
                 }
             },
 

@@ -23,7 +23,7 @@
 
         this.constructor = ::(length) {
             l = length;
-            return this;
+            return this.instance;
         }
 
 
@@ -47,7 +47,7 @@
         this.constructor = ::(base => Number, height => Number) {
             b = base;
             h = height;
-            return this;
+            return this.instance;
         }
 
         this.interface = {

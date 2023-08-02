@@ -36,7 +36,7 @@ void matte_value_into_number_(matteStore_t *, matteValue_t *, double);
 void matte_value_into_boolean_(matteStore_t *, matteValue_t *, int);
 void matte_value_into_string_(matteStore_t *, matteValue_t *, const matteString_t *);
 void matte_value_into_new_object_ref_(matteStore_t *, matteValue_t *);
-void matte_value_into_new_object_ref_typed_(matteStore_t *, matteValue_t *, matteValue_t type);
+void matte_value_into_new_object_ref_typed_(matteStore_t *, matteValue_t *, matteValue_t type, matteValue_t interface);
 void matte_value_into_new_type_(matteStore_t *, matteValue_t *, matteValue_t name, matteValue_t inherits);
 void matte_value_into_new_object_literal_ref_(matteStore_t *, matteValue_t *, const matteArray_t *);
 void matte_value_into_new_object_array_ref_(matteStore_t *, matteValue_t * v, const matteArray_t *);
@@ -72,7 +72,7 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val);
 #define matte_value_into_boolean(__STORE__, __VAL__, __MBOOL__) matte_value_into_boolean_(__STORE__, __VAL__, __MBOOL__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_string(__STORE__, __VAL__, __MSTRING__) matte_value_into_string_(__STORE__, __VAL__, __MSTRING__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_object_ref(__STORE__, __VAL__) matte_value_into_new_object_ref_(__STORE__, __VAL__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
-#define matte_value_into_new_object_ref_typed(__STORE__, __VAL__, __MTYPE__) matte_value_into_new_object_ref_typed_(__STORE__, __VAL__, __MTYPE__); matte_store_track_in(__STORE__,  *(__VAL__), __FILE__, __LINE__);
+#define matte_value_into_new_object_ref_typed(__STORE__, __VAL__, __MTYPE__, __MINT__) matte_value_into_new_object_ref_typed_(__STORE__, __VAL__, __MTYPE__, __MINT__); matte_store_track_in(__STORE__,  *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_type(__STORE__, __VAL__, __MOPTS__, __MOPTS2__)  matte_value_into_new_type_(__STORE__, __VAL__, __MOPTS__, __MOPTS2__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_object_literal_ref(__STORE__, __VAL__, __MARR__) matte_value_into_new_object_literal_ref_(__STORE__, __VAL__, __MARR__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_new_object_array_ref(__STORE__, __VAL__, __MARR__) matte_value_into_new_object_array_ref_(__STORE__, __VAL__, __MARR__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
@@ -93,7 +93,7 @@ void matte_store_recycle_(matteStore_t *, matteValue_t);
 #define matte_value_into_boolean(__STORE__, __VAL__, __MBOOL__) matte_value_into_boolean_(__STORE__, __VAL__, __MBOOL__)
 #define matte_value_into_string(__STORE__, __VAL__, __MSTRING__) matte_value_into_string_(__STORE__, __VAL__, __MSTRING__)
 #define matte_value_into_new_object_ref(__STORE__, __VAL__) matte_value_into_new_object_ref_(__STORE__, __VAL__)
-#define matte_value_into_new_object_ref_typed(__STORE__, __VAL__, __MTYPE__) matte_value_into_new_object_ref_typed_(__STORE__, __VAL__, __MTYPE__)
+#define matte_value_into_new_object_ref_typed(__STORE__, __VAL__, __MTYPE__, __MINT__) matte_value_into_new_object_ref_typed_(__STORE__, __VAL__, __MTYPE__, __MINT__)
 #define matte_value_into_new_type(__STORE__, __VAL__, __MOPTS__, __MOPTS2__) matte_value_into_new_type_(__STORE__, __VAL__, __MOPTS__, __MOPTS2__)
 #define matte_value_into_new_object_literal_ref(__STORE__, __VAL__, __MARR__) matte_value_into_new_object_literal_ref_(__STORE__, __VAL__, __MARR__)
 #define matte_value_into_new_object_array_ref(__STORE__, __VAL__, __MARR__) matte_value_into_new_object_array_ref_(__STORE__, __VAL__, __MARR__)

@@ -8,14 +8,16 @@
 
         this.constructor = ::(myArg) {
             args = myArg;
-            return this;
+            this.instance->setAttributes(
+                attributes : {
+                    (String) :: {
+                        return args;
+                    }
+                }
+            );
+            return this.instance;
         }
 
-        this.attributes = {
-            (String) :: {
-                return args;
-            }
-        }
     }
 );
 

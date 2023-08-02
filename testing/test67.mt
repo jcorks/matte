@@ -8,7 +8,7 @@
 
         this.constructor = ::(input) {
             data = input;
-            return this;
+            return this.instance;
         }
 
 

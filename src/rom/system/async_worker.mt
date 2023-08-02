@@ -44,9 +44,12 @@ return {:::} {
         name: 'Matte.System.AsyncWorker',
         inherits: [EventSystem],
         define:::(this) {
-            this.events = {
-                onNewMessage::(detail){}
-            }        
+            this.constructor = ::{
+                this.instance.events = {
+                    onNewMessage::(detail){}
+                }        
+                return this.instance;
+            };
             
             this.interface = {
                 sendToParent::(message => String) {
@@ -58,7 +61,7 @@ return {:::} {
                         forever ::{
                             @:msg = _workercheckmessage();        
                             when(msg == empty) send();
-                            this.emit(event:'onNewMessage', detail:msg);
+                            this.instance.emit(event:'onNewMessage', detail:msg);
                         }
                     }
                 }

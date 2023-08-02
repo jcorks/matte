@@ -1482,6 +1482,12 @@ matteVM_t * matte_vm_create(matte_t * m) {
         MATTE_VM_STR_CAST(vm, "condition"),
     };
 
+
+    const matteString_t * instantiate_names[] = {
+        type,
+        MATTE_VM_STR_CAST(vm, "interface"),
+    };
+
     
     const matteString_t * findIndex_names[] = {
         query_name,        
@@ -1564,7 +1570,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
 
     // OBJECTS
     temp = MATTE_ARRAY_CAST(type_names, matteString_t *, 2);  vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__NEWTYPE,     &temp, vm_ext_call__object__newtype);    
-    temp = MATTE_ARRAY_CAST(&type, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__INSTANTIATE,     &temp, vm_ext_call__object__instantiate);    
+    temp = MATTE_ARRAY_CAST(instantiate_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__INSTANTIATE,     &temp, vm_ext_call__object__instantiate);    
     temp = *emptyArr;                                   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__FREEZEGC,    &temp, vm_ext_call__object__freeze_gc);    
     temp = *emptyArr;                                   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__THAWGC,    &temp, vm_ext_call__object__thaw_gc);    
     temp = *emptyArr;                                   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__GARBAGECOLLECT,    &temp, vm_ext_call__object__garbage_collect);    

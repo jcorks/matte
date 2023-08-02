@@ -30,62 +30,39 @@ DEALINGS IN THE SOFTWARE.
 //// Implementation of Options
 //// 
 
+@:class = import(module:'Matte.Core.Class');
 
 
 // A generator for optional types.
-@:Option = ::<= {
-    @out = {}
-    @type = Object.newType();
-    
-    return {
-        // Returns the type shared by options
-        type : type,
-        
+@:Option = class(
+    name : 'Option',
+    statics : {
         // Convenience function for returning an empty option.
         none :: <- Option.some(),
         
         // The usual method of creating an option with a value.
-        some ::(value) {
-            @opt = Object.instantiate(type);
+        some ::(value) <- Option.new(value) 
+    },
+    
+    define::(this) {
+        @value_;
+        
+        this.constructor = ::(value) {
+            value_ = value;
+            return this.instance;
+        };
 
-            // handler for the "map"
-            @map = ::(some, none) {
-                when(some == empty || none == empty) 
-                    error(detail:'Both "some" and "none" should be handled for this option.');
-                    
-                when(value == empty) none();
-                return some(value:value);
-            }
-
-
-
-            // make the object "locked" to only accept the map member.
-            opt->setAttributes(
-                attributes : {
-                    '[]' : {
-                        set ::(key, value) {                        
-                            error(detail:'Option is not writable.');
-                        },
-                        get ::(key) {
-                            error(detail:'Option is only readable with ".".');
-                        }
-                    
-                    },
-                    '.' : {
-                        set ::(key, value) {                        
-                            error(detail:'Option is not writable.');
-                        },
-                        get ::(key) {
-                            when(key == 'map') map;
-                            error(detail:'The only member of an Option is "map"');
-                        }
-                    }
-                }
-            );
-            return opt;        
-        }
+        this.interface = {
+            map ::(
+                some => Function, 
+                none => Function
+            ) {                    
+                when(value_ == empty) none();
+                return some(value:value_);
+            }        
+        };
     }
-}
+)
 
 
 

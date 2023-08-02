@@ -245,7 +245,8 @@ enum {
     // object is waiting in a bin for reuse.
     OBJECT_STATE__RECYCLED = 1,
     
-
+    // whether the object has an interface.
+    OBJECT_STATE__HAS_INTERFACE = 2
 };
 
 #define ENABLE_STATE(__o__, __s__) ((__o__)->state |= (__s__))
@@ -1687,7 +1688,7 @@ void matte_value_into_new_object_ref_(matteStore_t * store, matteValue_t * v) {
 }
 
 
-void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t * v, matteValue_t typeobj) {
+void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t * v, matteValue_t typeobj, matteValue_t interface) {
     matte_store_recycle(store, *v);
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
@@ -1706,6 +1707,55 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
         d->typecode = typeobj.value.id;
     }
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
+
+
+    if (interface.binID) {
+        if (interface.binID != MATTE_VALUE_TYPE_OBJECT) {
+            matteString_t * str = matte_string_create_from_c_str("When instantiating with an interface, the interface must be an Object. (given value is of type %s)", matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, interface))));
+            matte_vm_raise_error_string(store->vm, str);
+            matte_string_destroy(str);
+            return;        
+        }
+    
+        ENABLE_STATE(d, OBJECT_STATE__HAS_INTERFACE);    
+        matteObject_t * interfaceObj = matte_store_bin_fetch_table(store->bin, interface.value.id);
+
+        if (!interfaceObj->table.keyvalues_string)
+            return;
+
+
+        matteTableIter_t * iter = matte_table_iter_create();
+        
+        d->table.keyvalues_string = matte_table_create_hash_pointer();
+
+        for(matte_table_iter_start(iter, interfaceObj->table.keyvalues_string);
+            !matte_table_iter_is_end(iter);
+            matte_table_iter_proceed(iter)) {
+        
+            matteValue_t * value = store_value_pointer_get_by_pointer(store, matte_table_iter_get_value(iter));
+            uint32_t key = (uint32_t)(uintptr_t)matte_table_iter_get_key(iter);
+
+            if (value->binID != MATTE_VALUE_TYPE_OBJECT) {
+                matteString_t * str = matte_string_create_from_c_str("When instantiating with an interface, the interface can only contain Objects and Functions.");
+                matte_vm_raise_error_string(store->vm, str);
+                matte_string_destroy(str);
+                matte_table_iter_destroy(iter);
+                return;        
+            }
+
+            object_link_parent_value(store, d, value);
+            uint32_t id = store_new_value_pointer(store);
+            // for safety
+            value = store_value_pointer_get_by_pointer(store, matte_table_iter_get_value(iter));
+            matteValue_t * ref = store_value_pointer_get_by_pointer(store, (void*)(uintptr_t)id);
+            *ref = *value;
+            matte_string_store_ref_id(store->stringStore, key);
+            matte_table_insert_by_uint(d->table.keyvalues_string, key, (void*)(uintptr_t)id);
+        }        
+        matte_table_iter_destroy(iter);
+
+    }
+
 }
 
 
@@ -2596,7 +2646,59 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
             return matte_store_new_value(store);        
         }
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-        matteValue_t accessor = object_get_access_operator(store, m, isBracketAccess, 1);
+        
+        matteValue_t accessor = {};
+        
+        int hasInterface = QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE);
+        
+        if (hasInterface == 0 || (hasInterface && isBracketAccess))
+            accessor = object_get_access_operator(store, m, isBracketAccess, 1);
+        
+                
+        if (hasInterface && accessor.binID == 0) {
+            if (key.binID != MATTE_VALUE_TYPE_STRING) {
+                matte_vm_raise_error_cstring(store->vm, "Objects with interfaces only have string-keyed members.");
+                return matte_store_new_value(store);          
+            }
+            
+            void * id = matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
+            if (id == NULL) {
+                matteString_t * err = matte_string_create_from_c_str(
+                    "Object's interface has no member \"%s\".",
+                    matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
+                );
+                matte_vm_raise_error_string(store->vm, err);
+                matte_string_destroy(err);
+                return matte_store_new_value(store);               
+            }
+            matteValue_t * value = store_value_pointer_get_by_pointer(store, id);
+            
+            if (IS_FUNCTION_ID(value->value.id)) {
+                matteValue_t vv = matte_store_new_value(store);
+                matte_value_into_copy(store, &vv, *value);
+                return vv;
+            }
+            
+            matteObject_t * setget = matte_store_bin_fetch_table(store->bin, value->value.id);
+            if (setget->table.keyvalues_string == NULL) {
+                return matte_store_new_value(store);               
+            }
+            id = matte_table_find_by_uint(setget->table.keyvalues_string, store->specialString_get.value.id);
+            if (id == NULL) {
+                matteString_t * err = matte_string_create_from_c_str(
+                    "Object's interface disallows reading of the member \"%s\".",
+                    matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
+                );
+                matte_vm_raise_error_string(store->vm, err);
+                matte_string_destroy(err);
+                return matte_store_new_value(store);               
+            }
+
+            matteValue_t * getter = store_value_pointer_get_by_pointer(store, id);
+            return matte_vm_call(store->vm, *getter, matte_array_empty(), matte_array_empty(), NULL);
+        }        
+        
+        
         
         
         if (accessor.binID) {
@@ -2694,7 +2796,10 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
             matte_vm_raise_error_string(store->vm, err);
             return NULL; //matte_store_new_value(store);        
         }
+
+        
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
+        if (QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE)) return NULL;
         matteValue_t accessor = object_get_access_operator(store, m, isBracketAccess, 1);
         if (accessor.binID) {
             return NULL;
@@ -2928,6 +3033,45 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
     // then string
     if (m->table.keyvalues_string) {
         matte_table_get_all_values(m->table.keyvalues_string, keyed);
+        if (keyed->size) {
+            uint32_t len = matte_array_get_size(keyed);
+            uint32_t i;
+            void ** iter = matte_array_get_data(keyed);
+
+            if (QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE)) {
+                for(i = 0; i < len; ++i, iter++) {
+                    matteValue_t * val = store_value_pointer_get_by_pointer(store, *iter);
+
+                    if (IS_FUNCTION_ID(val->value.id)) {
+                        matteValue_t vv = matte_store_new_value(store);
+                        matte_value_into_copy(store, &vv, *val);                    
+                        matte_array_push(vals, vv);
+                        continue;                
+                    }
+                    matteObject_t * setget = matte_store_bin_fetch_table(store->bin, val->value.id);
+
+                    if (setget->table.keyvalues_string == NULL) {
+                        continue;
+                    }
+                    void * id = matte_table_find_by_uint(setget->table.keyvalues_string, store->specialString_get.value.id);
+                    if (id == NULL) {
+                        continue;
+                    }
+
+                    matteValue_t * getter = store_value_pointer_get_by_pointer(store, id);
+                    matteValue_t vv = matte_vm_call(store->vm, *getter, matte_array_empty(), matte_array_empty(), NULL);
+                    matte_array_push(vals, vv);                
+                }    
+            } else {
+                for(i = 0; i < len; ++i, iter++) {
+                    val = matte_store_new_value(store);
+                    matte_value_into_copy(store, &val, *store_value_pointer_get_by_pointer(store, *iter));
+                    matte_array_push(vals, val);                
+                }    
+            
+            }
+            keyed->size = 0;
+        }        
     }
     // object 
     if (m->table.keyvalues_object) {
@@ -3109,6 +3253,12 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
 }
 
 void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue_t func) {
+    if (IS_FUNCTION_ID(v.value.id)) {
+        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "'foreach' requires an object."));
+        return;
+    }
+
+
     // 
     matteObject_t * m = (matteObject_t*)matte_store_bin_fetch_table(store->bin, v.value.id);
 
@@ -3127,6 +3277,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
         }
     }
     matte_value_object_push_lock(store, v);
+
 
     matteValue_t args[] = {
         matte_store_new_value(store),
@@ -3172,13 +3323,40 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
         matte_value_into_string(store, &args[0], e);
         matte_string_destroy(e);
         matte_table_iter_start(iter, m->table.keyvalues_string);
-        for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
-            args[1] = *store_value_pointer_get_by_pointer(store, matte_table_iter_get_value(iter));
-            args[0].value.id = matte_table_iter_get_key_uint(iter);
-            matte_value_object_push_lock(store, args[1]);
-            matte_array_push(keys, args[0]);
-            matte_array_push(values, args[1]);
 
+        if (QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE)) {
+            for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+                args[1] = *store_value_pointer_get_by_pointer(store, matte_table_iter_get_value(iter));
+                args[0].value.id = matte_table_iter_get_key_uint(iter);
+                
+                if (!IS_FUNCTION_ID(args[1].value.id)) {
+                
+                    matteObject_t * setget = matte_store_bin_fetch_table(store->bin, args[1].value.id);
+                    if (setget->table.keyvalues_string == NULL) {
+                        continue;
+                    }
+                    void * id = matte_table_find_by_uint(setget->table.keyvalues_string, store->specialString_get.value.id);
+                    if (id == NULL) {
+                        continue;
+                    }
+
+                    matteValue_t * getter = store_value_pointer_get_by_pointer(store, id);
+                    args[1] = matte_vm_call(store->vm, *getter, matte_array_empty(), matte_array_empty(), NULL);
+                }
+                
+                matte_value_object_push_lock(store, args[1]);
+                matte_array_push(keys, args[0]);
+                matte_array_push(values, args[1]);
+            }
+        
+        } else {
+            for(; !matte_table_iter_is_end(iter); matte_table_iter_proceed(iter)) {
+                args[1] = *store_value_pointer_get_by_pointer(store, matte_table_iter_get_value(iter));
+                args[0].value.id = matte_table_iter_get_key_uint(iter);
+                matte_value_object_push_lock(store, args[1]);
+                matte_array_push(keys, args[0]);
+                matte_array_push(values, args[1]);
+            }
         }
     }
 
@@ -3485,7 +3663,71 @@ const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v
         return NULL;
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-    matteValue_t assigner = object_get_access_operator(store, m, isBracket, 0);
+
+    int hasInterface = QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE);
+    
+    matteValue_t assigner = {};
+    if (hasInterface == 0 || (hasInterface && isBracket))
+        assigner = object_get_access_operator(store, m, isBracket, 0);
+    
+    if (hasInterface && assigner.binID == 0) {
+        matteValue_t val = value;
+
+        if (key.binID != MATTE_VALUE_TYPE_STRING) {
+            matte_vm_raise_error_cstring(store->vm, "Objects with interfaces only have string-keyed members.");
+            return NULL;        
+        }
+        void * id = matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
+        if (id == NULL) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Object's interface has no member \"%s\".",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
+            );
+            matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
+            return NULL;                
+        }
+        matteValue_t * value = store_value_pointer_get_by_pointer(store, id);
+        
+        if (IS_FUNCTION_ID(value->value.id)) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Object's \"%s\" is a member function and is read-only. Writing to this member is not allowed.",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
+            );
+            matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
+            return NULL;                
+        }
+        
+        matteObject_t * setget = matte_store_bin_fetch_table(store->bin, value->value.id);
+        if (setget->table.keyvalues_string == NULL) {
+            return NULL;
+        }
+        id = matte_table_find_by_uint(setget->table.keyvalues_string, store->specialString_set.value.id);
+        if (!id) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Object's interface disallows writing of member \"%s\".",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
+            );
+            matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
+            return NULL;                        
+        }
+        matteValue_t * setter = store_value_pointer_get_by_pointer(store, id);
+
+        matteValue_t args[] = {
+            val
+        };
+        matteValue_t argNames[] = {
+            store->specialString_value,
+        };
+        matteArray_t argNames_array = MATTE_ARRAY_CAST(argNames, matteValue_t, 1);
+
+        matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 1);
+        matte_vm_call(store->vm, *setter, &arr, &argNames_array, NULL);
+        return NULL;
+    }
+
     if (assigner.binID) {
         matteValue_t args[2] = {
             key, value
