@@ -647,13 +647,36 @@ const Matte = {
                     return createObject();
                 },
                 
-                createObjectTyped : function(type) {
+                createObjectTyped : function(type, interface_) {
                     const out = createObject();
                     if (type.binID != TYPE_TYPE) {
                         vm.raiseErrorString("Cannot instantiate object without a Type. (given value is of type " + store.valueTypeName(store.valueGetType(type)) + ')');
                         return out;
                     }
                     out.data.typecode = type.data.id;
+                    
+                    if (interface_.binID) {
+                        if (interface_.binID != TYPE_OBJECT || interface_.data.function_stub) {
+                            vm.raiseErrorString("When instantiating with an interface, the interface must be an Object. (given value is of type " + store.valueTypeName(store.valueGetType(interface_)) + ')');
+                            return out;
+                        }
+                        
+                        out.data.hasInterface = true;
+                        if (!interface_.data.kv_string)
+                            return out;
+                        
+                        out.data.kv_string = [];
+                        const keys = Object.keys(interface_.data.kv_string);
+                        for(var i = 0; i < keys.length; ++i) {
+                            const val = interface_.data.kv_string[keys[i]];
+                            if (val.binID != TYPE_OBJECT) {
+                                vm.raiseErrorString("When instantiating with an interface, the interface can only contain Objects and Functions.");
+                                return out;
+                            }
+                            out.data.kv_string[keys[i]] = val;
+                        }
+                        
+                    }
                     return out;
                 },
                 
@@ -1033,6 +1056,35 @@ const Matte = {
                         if (value.data.table_attribSet != undefined)
                             accessor = objectGetAccessOperator(value, isBracket, 1);
                         
+                        if (value.data.hasInterface != undefined && (!(isBracket && accessor && accessor.binID))) {
+                            if (key.binID != TYPE_STRING) {
+                                vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
+                                return createValue();
+                            }
+                            
+                            const v = value.data.kv_string[key.data];
+                            if (!v) {
+                                vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
+                                return createValue();
+                            }
+                            
+                            // direct function, return
+                            if (v.data.function_stub) {
+                                return v;
+                            }
+                            
+                            const setget = v;
+                            const getter = setget.data.kv_string[store_specialString_get.data];
+                            if (!getter || !getter.binID) {
+                                vm.raiseErrorString("Object's interface disallows reading of the member \"" + key.data +"\".");
+                                return createValue();
+                            }
+                            return vm.callFunction(getter, [], []);
+                            
+                        }
+                        
+                        
+                        
                         if (accessor && accessor.binID) {
                             return vm.callFunction(accessor, [key], [store_specialString_key]);
                         } else {
@@ -1084,6 +1136,7 @@ const Matte = {
                             vm.raiseErrorString("Cannot access member of type Function (Functions do not have members).");
                             return undefined;
                         }
+                        if (value.data.hasInterface) return undefined;
                         
                         const accessor = objectGetAccessOperator(value, isBracket, 1);
                         if (accessor.binID) {
@@ -1192,8 +1245,25 @@ const Matte = {
                     if (value.data.kv_string) {
                         const values = Object.values(value.data.kv_string);
                         const len = values.length;
-                        for(var i = 0; i < len; ++i) {
-                            out.push(values[i]);
+                        
+                        if (value.data.hasInterface) {
+                            for(var i = 0; i < len; ++i) {
+                                const v = values[i];
+                                if (v.data.function_stub) {
+                                    out.push(v);
+                                } else {
+                                    const setget = v;
+                                    const getter = setget.data.kv_string[store_specialString_get.data];
+                                    if (!getter || !getter.binID) {
+                                        continue;
+                                    }
+                                    out.push(vm.callFunction(getter, [], []));                                    
+                                }
+                            }                        
+                        } else {                        
+                            for(var i = 0; i < len; ++i) {
+                                out.push(values[i]);
+                            }
                         }
                     }
 
@@ -1339,6 +1409,39 @@ const Matte = {
                     }
                     
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
+                    
+                    if (value.data.hasInterface != undefined && (!(isBracket && assigner && assigner.binID))) {
+                        if (key.binID != TYPE_STRING) {
+                            vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
+                            return createValue();
+                        }
+                        
+                        const vv = value.data.kv_string[key.data];
+                        if (!vv) {
+                            vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
+                            return createValue();
+                        }
+                        
+                        // direct function, return
+                        if (vv.data.function_stub) {
+                            vm.raiseErrorString("Object's \""+key.data+"\" is a member function and is read-only. Writing to this member is not allowed.");
+                            return createValue();
+                        }
+                        
+                        const setget = vv;
+                        const setter = setget.data.kv_string[store_specialString_set.data];
+                        if (!setter || !setter.binID) {
+                            vm.raiseErrorString("Object's interface disallows writing of the member \"" + key.data +"\".");
+                            return createValue();
+                        }
+                        vm.callFunction(setter, [v], [store_specialString_value]);
+                        return createValue();
+                        
+                    }
+
+
+
+
                     if (assigner.binID) {
                         const r = vm.callFunction(assigner, [key, v], [store_specialString_key, store_specialString_value]);
                         if (r.binID == TYPE_BOOLEAN && !r.data) {
@@ -4034,8 +4137,8 @@ const Matte = {
                 return store.createType(args[0], args[1]);
             });
             
-            vm_addBuiltIn(vm.EXT_CALL.OBJECT_INSTANTIATE, ["type"], function(fn, args) {
-                return store.createObjectTyped(args[0]);
+            vm_addBuiltIn(vm.EXT_CALL.OBJECT_INSTANTIATE, ["type", "interface"], function(fn, args) {
+                return store.createObjectTyped(args[0], args[1]);
             });
             
 

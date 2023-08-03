@@ -120,5 +120,7 @@ all:
 	cd ../../cli && ./matte compile ../testing/test116.mt ../js/browser_test/test116.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test117.mt ../js/browser_test/test117.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test118.mt ../js/browser_test/test118.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test119.mt ../js/browser_test/test119.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test120.mt ../js/browser_test/test120.mt.bytes
 	cd ../../cli && ./matte compile ../testing/mytestmodule.mt ../js/mytestmodule.mt
 

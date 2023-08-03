@@ -1710,7 +1710,7 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
 
 
     if (interface.binID) {
-        if (interface.binID != MATTE_VALUE_TYPE_OBJECT) {
+        if (interface.binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(interface.value.id)) {
             matteString_t * str = matte_string_create_from_c_str("When instantiating with an interface, the interface must be an Object. (given value is of type %s)", matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, interface))));
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
