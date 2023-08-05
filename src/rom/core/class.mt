@@ -106,21 +106,35 @@ DEALINGS IN THE SOFTWARE.
                 }
             );
             classInstance.construct(constructors:thisBaseConstructors, this);
-            thisInstance = Object.instantiate(
-                type,
-                interface : thisInterface
-            );
+            thisInstance = {:::} {
+                return Object.instantiate(
+                    type,
+                    interface : thisInterface
+                );
+            } : {
+                onError::(message) {
+                    error(detail:'Failed to instantiate instance of type ' + classType->type + '. Make sure all your interface members are either Functions or Objects (setter/getters).\nInterface: \n' + (import(module:'Matte.Core.Introspect')(value:thisInterface)));                
+                }
+            }
+            
+            
+            
             if (thisConstructor == empty)
                 thisConstructor = ::{return this.instance;}
             return thisConstructor;
         }
     };
    
-    
-    @classInstance = Object.instantiate(
-        type: classType,
-        interface : classInterface
-    );
+    @classInstance = {:::} {
+        return Object.instantiate(
+            type: classType,
+            interface : classInterface
+        );
+    } : {
+        onError ::(message) {
+            error(detail:'Failed to initialize the class ' + classType->type + ' itself. If you are defining statics, make sure all your static members are either Functions or Objects (setter/getters).\nStatics passed in are: \n' + (import(module:'Matte.Core.Introspect')(value:classInterface)));
+        }
+    }
     
     return classInstance;
 }
