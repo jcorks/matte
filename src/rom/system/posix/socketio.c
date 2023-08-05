@@ -290,7 +290,7 @@ MATTE_EXT_FN(matte_socket__server_create) {
     } 
     
     
-    MatteSocketServer * s = matte_allocate(sizeof(MatteSocketServer));
+    MatteSocketServer * s = (MatteSocketServer*)matte_allocate(sizeof(MatteSocketServer));
     *s = listens;
     s->poolid = 1003;
     s->integID = INTEGRITY_ID_SOCKET_OBJECT;
@@ -307,7 +307,7 @@ MATTE_EXT_FN(matte_socket__server_create) {
 MATTE_EXT_FN(matte_socket__server_update) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t v = args[0];
-    MatteSocketServer * s = matte_value_object_get_userdata(store, v);
+    MatteSocketServer * s = (MatteSocketServer*) matte_value_object_get_userdata(store, v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
         return matte_store_new_value(store);
@@ -334,9 +334,9 @@ MATTE_EXT_FN(matte_socket__server_update) {
     int newfd;
     struct sockaddr_in inaddr = {};
     socklen_t slen = sizeof(struct sockaddr_in);
-    if ((newfd = accept(s->fd, &inaddr, &slen)) != -1) {
+    if ((newfd = accept(s->fd, (sockaddr*)&inaddr, &slen)) != -1) {
         char addrString[15];
-        MatteSocketServer_Client * client = matte_allocate(sizeof(MatteSocketServer_Client));
+        MatteSocketServer_Client * client = (MatteSocketServer_Client*)matte_allocate(sizeof(MatteSocketServer_Client));
         if (slen >= sizeof(struct sockaddr_in)) {
             const char * t =  inet_ntoa(inaddr.sin_addr);
             if (t) {
@@ -428,7 +428,7 @@ MATTE_EXT_FN(matte_socket__server_update) {
 MATTE_EXT_FN(matte_socket__server_client_index_to_id) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t v = args[0];
-    MatteSocketServer * s = matte_value_object_get_userdata(store, v);
+    MatteSocketServer * s = (MatteSocketServer*) matte_value_object_get_userdata(store, v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
         return matte_store_new_value(store);
@@ -451,7 +451,7 @@ MATTE_EXT_FN(matte_socket__server_client_index_to_id) {
 MATTE_EXT_FN(matte_socket__server_get_client_count) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t v = args[0];
-    MatteSocketServer * s = matte_value_object_get_userdata(store, v);
+    MatteSocketServer * s = (MatteSocketServer*) matte_value_object_get_userdata(store, v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
         return matte_store_new_value(store);
@@ -466,7 +466,7 @@ MatteSocketServer_Client * id_to_client(matteVM_t * vm, const matteValue_t * arg
     matteStore_t * store = matte_vm_get_store(vm);
     *sout = NULL;
     matteValue_t v = args[0];
-    MatteSocketServer * s = matte_value_object_get_userdata(store, v);
+    MatteSocketServer * s = (MatteSocketServer*) matte_value_object_get_userdata(store, v);
     if (!s || s->integID != INTEGRITY_ID_SOCKET_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Not a socket server object."));
         return NULL;
@@ -695,8 +695,8 @@ MATTE_EXT_FN(matte_socket__server_client_read_bytes) {
     }
     matteValue_t m = matte_system_shared__create_memory_buffer_from_raw(
         vm,
-        matte_array_get_data(client->indata),
-        matte_array_get_size(client->indata)
+        (uint8_t*)matte_array_get_data(client->indata),
+                  matte_array_get_size(client->indata)
     );
     matte_array_set_size(client->indata, 0);
     return m; 
@@ -723,7 +723,7 @@ MATTE_EXT_FN(matte_socket__server_client_write_bytes) {
     
     uint32_t oldsize = matte_array_get_size(client->outdata);
     matte_array_set_size(client->outdata, oldsize+bufsize);
-    memcpy(matte_array_get_data(client->outdata)+oldsize, buf, bufsize);
+    memcpy(((uint8_t*)matte_array_get_data(client->outdata))+oldsize, buf, bufsize);
     return matte_store_new_value(store);        
 }
 
@@ -1022,7 +1022,7 @@ MATTE_EXT_FN(matte_socket__client_create) {
         } 
     }    
 
-    MatteSocketClient * cl = matte_allocate(sizeof(MatteSocketClient));
+    MatteSocketClient * cl = (MatteSocketClient*)matte_allocate(sizeof(MatteSocketClient));
     cl->socketfd = socketfd;
     
     if (tls) {
@@ -1054,7 +1054,7 @@ MATTE_EXT_FN(matte_socket__client_create) {
 
 MATTE_EXT_FN(matte_socket__client_delete) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(store, args[0]);
+    MatteSocketClient * cl = (MatteSocketClient*) matte_value_object_get_userdata(store, args[0]);
     
     if (cl->tls) SSL_free(cl->ssl);
     if (cl->socketfd) close(cl->socketfd);
@@ -1255,7 +1255,7 @@ static ssize_t matte_client_read(MatteSocketClient * cl, matteString_t ** err, i
 
 MATTE_EXT_FN(matte_socket__client_update) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(store, args[0]);
+    MatteSocketClient * cl = (MatteSocketClient*) matte_value_object_get_userdata(store, args[0]);
     
 
     // pending connection... check its status! note: it could fail.
@@ -1263,7 +1263,7 @@ MATTE_EXT_FN(matte_socket__client_update) {
     // to cleanup 
     if (cl->state == 1) {
         int status = -1;
-        int statusSize = sizeof(int);
+        socklen_t statusSize = sizeof(int);
         getsockopt(cl->socketfd, SOL_SOCKET, SO_ERROR, &status, &statusSize);
         
         if (status == 0) {
@@ -1395,7 +1395,7 @@ MATTE_EXT_FN(matte_socket__client_update) {
 
 MATTE_EXT_FN(matte_socket__client_get_state) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(store, args[0]);
+    MatteSocketClient * cl = (MatteSocketClient*) matte_value_object_get_userdata(store, args[0]);
 
 
 
@@ -1406,7 +1406,7 @@ MATTE_EXT_FN(matte_socket__client_get_state) {
 
 MATTE_EXT_FN(matte_socket__client_get_host_info) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(store, args[0]);
+    MatteSocketClient * cl = (MatteSocketClient*) matte_value_object_get_userdata(store, args[0]);
 
     matteValue_t v = matte_store_new_value(store);    
     matte_value_into_string(store, &v, MATTE_VM_STR_CAST(vm, ""));
@@ -1416,7 +1416,7 @@ MATTE_EXT_FN(matte_socket__client_get_host_info) {
 
 MATTE_EXT_FN(matte_socket__client_get_pending_byte_count) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(store, args[0]);
+    MatteSocketClient * cl = (MatteSocketClient*) matte_value_object_get_userdata(store, args[0]);
 
     matteValue_t v = matte_store_new_value(store);    
     matte_value_into_number(store, &v, matte_array_get_size(cl->indata));
@@ -1425,12 +1425,12 @@ MATTE_EXT_FN(matte_socket__client_get_pending_byte_count) {
 
 MATTE_EXT_FN(matte_socket__client_read_bytes) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(store, args[0]);
+    MatteSocketClient * cl = (MatteSocketClient*) matte_value_object_get_userdata(store, args[0]);
 
     matteValue_t m = matte_system_shared__create_memory_buffer_from_raw(
         vm,
-        matte_array_get_data(cl->indata),
-        matte_array_get_size(cl->indata)
+        (uint8_t*)matte_array_get_data(cl->indata),
+                  matte_array_get_size(cl->indata)
     );
     matte_array_set_size(cl->indata, 0);
     return m; 
@@ -1439,7 +1439,7 @@ MATTE_EXT_FN(matte_socket__client_read_bytes) {
 
 MATTE_EXT_FN(matte_socket__client_write_bytes) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteSocketClient * cl = matte_value_object_get_userdata(store, args[0]);
+    MatteSocketClient * cl = (MatteSocketClient*) matte_value_object_get_userdata(store, args[0]);
 
     uint32_t bufsize;
     const uint8_t * buf = matte_system_shared__get_raw_from_memory_buffer(
@@ -1453,7 +1453,7 @@ MATTE_EXT_FN(matte_socket__client_write_bytes) {
     
     uint32_t oldsize = matte_array_get_size(cl->outdata);
     matte_array_set_size(cl->outdata, oldsize+bufsize);
-    memcpy(matte_array_get_data(cl->outdata)+oldsize, buf, bufsize);
+    memcpy(((uint8_t*)matte_array_get_data(cl->outdata))+oldsize, buf, bufsize);
     return matte_store_new_value(store);        
 }
 

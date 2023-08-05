@@ -46,7 +46,7 @@ matteSettings_t * matte_settings_load(matte_t * m) {
         return NULL;
     }
 
-    char * dataString = matte_allocate(dataLen+1);
+    char * dataString = (char*)matte_allocate(dataLen+1);
     memcpy(dataString, data, dataLen);
     matte_deallocate(data);
     matteString_t * json = matte_string_create_from_c_str("%s", dataString);
@@ -71,12 +71,12 @@ matteSettings_t * matte_settings_load(matte_t * m) {
 
     matte_value_object_push_lock(store, jsonObject); // keep
     
-    matteSettings_t * settings = matte_allocate(sizeof(matteSettings_t));
+    matteSettings_t * settings = (matteSettings_t*)matte_allocate(sizeof(matteSettings_t));
     matteValue_t prop = matte_value_object_access_string(store, jsonObject, MATTE_VM_STR_CAST(vm, "packagePath"));
     if (matte_value_type(prop) == MATTE_VALUE_TYPE_STRING) {
         const matteString_t * str = matte_value_string_get_string_unsafe(store, prop);
         const char * strch = matte_string_get_c_str(str);
-        settings->packagePath = matte_allocate(strlen(strch)+1);
+        settings->packagePath = (char*)matte_allocate(strlen(strch)+1);
         memcpy(settings->packagePath, strch, strlen(strch));
     } else {
         matte_deallocate(settings);

@@ -529,7 +529,7 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
         ch = ch->next;
     }
     if (!added) {
-        matteObjectChildNode_t * newC = matte_allocate(sizeof(matteObjectChildNode_t));
+        matteObjectChildNode_t * newC = (matteObjectChildNode_t*)matte_allocate(sizeof(matteObjectChildNode_t));
         newC->data = child;
         newC->next = parent->children;
         newC->count++;
@@ -710,7 +710,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
 
                 matte_store_recycle(store, *m->table.keyvalue_true);
             } else {
-                m->table.keyvalue_true = matte_allocate(sizeof(matteValue_t));
+                m->table.keyvalue_true = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
             }
             *m->table.keyvalue_true = out;            
             return m->table.keyvalue_true;
@@ -722,7 +722,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
 
                 matte_store_recycle(store, *m->table.keyvalue_false);
             } else {
-                m->table.keyvalue_false = matte_allocate(sizeof(matteValue_t));
+                m->table.keyvalue_false = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
             }
             *m->table.keyvalue_false = out;            
             return m->table.keyvalue_false;
@@ -2343,7 +2343,7 @@ void matte_value_object_set_native_finalizer(matteStore_t * store, matteValue_t 
         return;
     }
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
-    if (!m->ext) m->ext = matte_allocate(sizeof(matteObjectExternalData_t));
+    if (!m->ext) m->ext = (matteObjectExternalData_t*)matte_allocate(sizeof(matteObjectExternalData_t));
     m->ext->nativeFinalizer = fb;
     m->ext->nativeFinalizerData = functionUserdata;        
 }
@@ -2352,7 +2352,7 @@ void matte_value_object_set_native_finalizer(matteStore_t * store, matteValue_t 
 void matte_value_object_set_userdata(matteStore_t * store, matteValue_t v, void * userData) {
     if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
-        if (!m->ext) m->ext = matte_allocate(sizeof(matteObjectExternalData_t));
+        if (!m->ext) m->ext = (matteObjectExternalData_t*)matte_allocate(sizeof(matteObjectExternalData_t));
         m->ext->userdata = userData;
     }
 }
@@ -2920,7 +2920,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
         matte_table_get_all_keys(m->table.keyvalues_string, keyed);
         uint32_t len = matte_array_get_size(keyed);
         uint32_t i;
-        void ** iter = matte_array_get_data(keyed);
+        void ** iter = (void**)matte_array_get_data(keyed);
         for(i = 0; i < len; ++i, iter++) {
             matteValue_t key = matte_store_new_value(store);
             key.binID = MATTE_VALUE_TYPE_STRING;
@@ -2937,7 +2937,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
         matte_table_get_all_keys(m->table.keyvalues_object, keyed);
         uint32_t len = matte_array_get_size(keyed);
         uint32_t i;
-        void ** iter = matte_array_get_data(keyed);
+        void ** iter = (void**)matte_array_get_data(keyed);
         for(i = 0; i < len; ++i, iter++) {
             matteValue_t key;
             matteObject_t * current = matte_store_bin_fetch_table(store->bin, (uint32_t)(uintptr_t)(*iter));
@@ -2955,7 +2955,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
         matte_table_get_all_keys(m->table.keyvalues_types, keyed);
         uint32_t len = matte_array_get_size(keyed);
         uint32_t i;
-        void ** iter = matte_array_get_data(keyed);
+        void ** iter = (void**)matte_array_get_data(keyed);
         for(i = 0; i < len; ++i, iter++) {
             matteValue_t key;
             store = store;
@@ -3036,7 +3036,7 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
         if (keyed->size) {
             uint32_t len = matte_array_get_size(keyed);
             uint32_t i;
-            void ** iter = matte_array_get_data(keyed);
+            void ** iter = (void**)matte_array_get_data(keyed);
 
             if (QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE)) {
                 for(i = 0; i < len; ++i, iter++) {
@@ -3085,7 +3085,7 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
     if (keyed->size) {
         uint32_t len = matte_array_get_size(keyed);
         uint32_t i;
-        void ** iter = matte_array_get_data(keyed);
+        void ** iter = (void**)matte_array_get_data(keyed);
         for(i = 0; i < len; ++i, iter++) {
             val = matte_store_new_value(store);
             matte_value_into_copy(store, &val, *store_value_pointer_get_by_pointer(store, *iter));
@@ -3498,7 +3498,7 @@ void matte_value_object_set_attributes(matteStore_t * store, matteValue_t v, mat
         matte_store_recycle(store, *m->table.attribSet);
     }
     if (!m->table.attribSet)
-        m->table.attribSet = matte_allocate(sizeof(matteValue_t));
+        m->table.attribSet = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
     
     matte_value_into_copy(store, m->table.attribSet, opObject);
     object_link_parent_value(store, m, m->table.attribSet);

@@ -39,7 +39,7 @@ typedef struct {
 
 static void auto_cleanup_buffer(void * ud, void * fd) {
     if (ud) {
-        MatteMemoryBuffer * b = ud;
+        MatteMemoryBuffer * b = (MatteMemoryBuffer*)ud;
         matte_deallocate(b->buffer);
         matte_deallocate(b);
     }
@@ -52,13 +52,13 @@ static matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_new_object_ref(store, &out);
     matte_value_object_set_native_finalizer(store, out, auto_cleanup_buffer, NULL);    
-    MatteMemoryBuffer * m = matte_allocate(sizeof(MatteMemoryBuffer));
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_allocate(sizeof(MatteMemoryBuffer));
     m->idval = MEMORYBUFFER_ID_TAG;
     matte_value_object_set_userdata(store, out, m);    
 
     
     if (data && size) {    
-        m->buffer = matte_allocate(size);
+        m->buffer = (uint8_t*)matte_allocate(size);
         memcpy(m->buffer, data, size);
         m->alloc = size;
         m->size = size;
@@ -69,7 +69,7 @@ static matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t
 
 const uint8_t * matte_system_shared__get_raw_from_memory_buffer(matteVM_t * vm, matteValue_t b, uint32_t * size) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteMemoryBuffer * mB = matte_value_object_get_userdata(store, b);
+    MatteMemoryBuffer * mB = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, b);
     if (!(mB && mB->idval == MEMORYBUFFER_ID_TAG)) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Invalid memory buffer instance."));
         *size = 0;
@@ -90,7 +90,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__create) {
 MATTE_EXT_FN(matte_ext__memory_buffer__release) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
     m->idval = 0;
     matte_deallocate(m->buffer);
     matte_deallocate(m);
@@ -101,7 +101,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__release) {
 MATTE_EXT_FN(matte_ext__memory_buffer__set_size) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
     uint64_t length = matte_value_as_number(store, args[1]);
     if (m->alloc < length) {
@@ -121,9 +121,9 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_size) {
 MATTE_EXT_FN(matte_ext__memory_buffer__copy) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * mA = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * mA = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
     matteValue_t b = args[2];
-    MatteMemoryBuffer * mB = matte_value_object_get_userdata(store, b);
+    MatteMemoryBuffer * mB = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, b);
 
     uint64_t offsetA = matte_value_as_number(store, args[1]);
     uint64_t offsetB = matte_value_as_number(store, args[3]);
@@ -147,7 +147,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__copy) {
 MATTE_EXT_FN(matte_ext__memory_buffer__set) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * mA = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * mA = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
     uint64_t offsetA = matte_value_as_number(store, args[1]);
     uint8_t  val     = matte_value_as_number(store, args[2]);
@@ -171,7 +171,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set) {
 MATTE_EXT_FN(matte_ext__memory_buffer__subset) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
     uint64_t from = matte_value_as_number(store, args[1]);
     uint64_t to   = matte_value_as_number(store, args[2]);
@@ -193,7 +193,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__subset) {
 MATTE_EXT_FN(matte_ext__memory_buffer__append_byte) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
     uint8_t val   = matte_value_as_number(store, args[1]);
 
@@ -214,7 +214,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append_byte) {
 MATTE_EXT_FN(matte_ext__memory_buffer__append_utf8) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
     const matteString_t * val   = matte_value_string_get_string_unsafe(store, args[1]);
     uint32_t length = matte_string_get_utf8_length(val);
@@ -236,9 +236,9 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append_utf8) {
 MATTE_EXT_FN(matte_ext__memory_buffer__append) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * mA = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * mA = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
     matteValue_t b = args[1];
-    MatteMemoryBuffer * mB = matte_value_object_get_userdata(store, b);
+    MatteMemoryBuffer * mB = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, b);
 
 
 
@@ -246,7 +246,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append) {
     if (mA->alloc < mA->size + mB->size) {
         uint64_t oldAlloc = mA->alloc;
         mA->alloc = mA->size + mB->size;
-        uint8_t * newBuffer = matte_allocate(mA->alloc);
+        uint8_t * newBuffer = (uint8_t*)matte_allocate(mA->alloc);
         memcpy(newBuffer, mA->buffer, oldAlloc);
         matte_deallocate(mA->buffer);
         mA->buffer = newBuffer;
@@ -261,7 +261,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append) {
 MATTE_EXT_FN(matte_ext__memory_buffer__remove) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
     uint64_t from = matte_value_as_number(store, args[1]);
     uint64_t to   = matte_value_as_number(store, args[2]);
@@ -281,7 +281,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__remove) {
 MATTE_EXT_FN(matte_ext__memory_buffer__get_size) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_number(store, &out, m->size);
@@ -291,7 +291,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__get_size) {
 MATTE_EXT_FN(matte_ext__memory_buffer__get_index) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
     uint64_t from = matte_value_as_number(store, args[1]);
     if (from >= m->size) {
@@ -308,9 +308,9 @@ MATTE_EXT_FN(matte_ext__memory_buffer__get_index) {
 MATTE_EXT_FN(matte_ext__memory_buffer__as_utf8) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
-    char * buf = matte_allocate(m->size+1);
+    char * buf = (char*)matte_allocate(m->size+1);
     buf[m->size] = 0;
     memcpy(buf, m->buffer, m->size);
     
@@ -326,7 +326,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__as_utf8) {
 MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
 
     uint64_t from = matte_value_as_number(store, args[1]);
     uint8_t  val  = matte_value_as_number(store, args[2]);
@@ -344,7 +344,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__set_index) {
 MATTE_EXT_FN(matte_ext__memory_buffer__read_primitive) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
     uint64_t offset = matte_value_as_number(store, args[1]);
 
 
@@ -402,7 +402,7 @@ MATTE_EXT_FN(matte_ext__memory_buffer__read_primitive) {
 MATTE_EXT_FN(matte_ext__memory_buffer__write_primitive) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t a = args[0];
-    MatteMemoryBuffer * m = matte_value_object_get_userdata(store, a);
+    MatteMemoryBuffer * m = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, a);
     uint64_t offset = matte_value_as_number(store, args[1]);
     
 

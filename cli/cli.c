@@ -109,7 +109,7 @@ static uint32_t cli_importer(
     // first check if this name aliases something within 
     // the package path.
     if (!settings) {
-        settings = (void*)0x1;
+        settings = (matteSettings_t*)(void*)0x1;
         settings = matte_settings_load(m);
     }
     if (settings && settings != (void*)0x1) {
@@ -164,7 +164,7 @@ static uint32_t cli_importer(
         }        
     // raw source
     } else {
-        char * source = matte_allocate(byteLen+1);
+        char * source = (char*)matte_allocate(byteLen+1);
         memcpy(source, bytes, byteLen);
         uint32_t bytecodeLen;
         uint8_t * bytecode = matte_compile_source(
@@ -311,12 +311,12 @@ matteValue_t packager_compile(
     
     
     uint32_t srcLen = 0;
-    uint8_t * source = dump_bytes(matte_string_get_c_str(input), &srcLen, 0);
+    uint8_t * source = (uint8_t*)dump_bytes(matte_string_get_c_str(input), &srcLen, 0);
     if (srcLen == 0 || !source) {
         printf("Could not open source %s for compilation.\n", matte_string_get_c_str(input));    
         exit(1);
     }
-    char * srcStr = matte_allocate(srcLen+1);
+    char * srcStr = (char*)matte_allocate(srcLen+1);
     memcpy(srcStr, source, srcLen);
     
     
@@ -361,6 +361,7 @@ matteValue_t packager_set_import(matteVM_t * vm, matteValue_t fn, const matteVal
         "%s.",
         matte_string_get_c_str(matte_value_string_get_string_unsafe(store, args[0]))
     );
+    return matte_store_new_value(store);
 }
 matteValue_t packager_get_system_path(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matte_t * m = (matte_t*)userData;
@@ -439,7 +440,7 @@ int main(int argc, char ** args) {
         uint32_t len = argc-2;
         for(i = 0; i < len; ++i) {
             uint32_t fsize;
-            uint8_t * dump = dump_bytes(args[2+i], &fsize, 1);
+            uint8_t * dump = (uint8_t*)dump_bytes(args[2+i], &fsize, 1);
             if (!dump) {
                 printf("Could not open input file %s\n", args[2+i]);
                 exit(1);
@@ -464,13 +465,13 @@ int main(int argc, char ** args) {
             exit(1);
         }
         uint32_t sourceLen;
-        uint8_t * source = dump_bytes(args[2], &sourceLen, 1);
+        uint8_t * source = (uint8_t*)dump_bytes(args[2], &sourceLen, 1);
         if (!source) {
             printf("Couldn't open input file %s\n", args[2]);
             exit(1);
         }
 
-        char * str = malloc(sourceLen+1);
+        char * str = (char*)matte_allocate(sourceLen+1);
         memcpy(str, source, sourceLen);
         str[sourceLen] = 0;
 
