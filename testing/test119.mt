@@ -10,38 +10,44 @@
         @y_ = 0;
         @iter_ = 2;
         @setOnly_ = 10;
-        return Object.instantiate(
-            type,
-            interface : {
-                move ::(x, y) {
-                    x_ = x;
-                    y_ = y;
-                },
-                
-                x : {
-                    get ::<- x_
-                },
+        @obj = Object.instantiate(type);
+        
+        @interface = {
+            move ::(x, y) {
+                x_ = x;
+                y_ = y;
+            },
+            
+            x : {
+                get ::<- x_
+            },
 
-                y : {
-                    get ::<- y_
-                },
-                
-                setOnly : {
-                    set ::(value) {
-                        setOnly_ = value;
-                    }
-                },
-                
-                iter : {
-                    set ::(value) <- iter_ = value,
-                    get ::<- iter_
-                },
-                
-                'print' ::{
-                    out = out + setOnly_ + '' + x_ + ',' + y_; 
+            y : {
+                get ::<- y_
+            },
+            
+            setOnly : {
+                set ::(value) {
+                    setOnly_ = value;
                 }
+            },
+            
+            iter : {
+                set ::(value) <- iter_ = value,
+                get ::<- iter_
+            },
+            
+            'print' ::{
+                out = out + setOnly_ + '' + x_ + ',' + y_; 
             }
-        );
+        }
+        
+        foreach(interface)::(k, v) {
+            obj[k] = v;
+        }
+        
+        obj->setIsInterface(enabled:true);
+        return obj;
     }
 }
 

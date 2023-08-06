@@ -8,12 +8,12 @@
     define ::(this) {
         @size_ = 0;
         
-        this.constructor = ::(size) {
-            size_ = size;
-            return this.instance;
-        }
-        
         this.interface = {
+            init ::(size) {
+                size_ = size;
+                return this;
+            },
+
             size : {
                 get ::<- size_
             }
@@ -39,17 +39,18 @@
     define ::(this) {
         @x_ = 1;
         @y_ = 1;
-        
-        this.constructor = ::(x, y) {
-            x_ = x;
-            y_ = y;
-            this.baseConstructor[Shape](size:10)
-            Point.all->push(value:this.instance);
-            return this.instance;
-        }
 
+        this.init(size:10);
         
         this.interface = {
+            init ::(x, y) {
+                x_ = x;
+                y_ = y;
+                Point.all->push(value:this);
+                return this;
+            },
+
+
             x : {
                 get ::<- x_
             },
@@ -66,7 +67,7 @@
 );
 
 
-@:p1 = Point.new(x: 10, y:20);
+@:p1 = Point.new().init(x: 10, y:20);
 Point.a = 'aaaa';
 return '' + p1.compose() + Point.a + Point.all->keycount + p1.size;
 

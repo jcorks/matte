@@ -28,114 +28,79 @@ DEALINGS IN THE SOFTWARE.
 
 */
 @classType = Object.newType(name:'Matte.Class');
-@constructType = Object.newType(name:'Matte.Class.Construct');
 
 
 @:class ::(define => Function, name, inherits, statics) {
-
+    @classInstance = Object.instantiate(
+        type: classType
+    );
     @type = if (inherits == empty) 
         Object.newType(name)
     else 
         Object.newType(name, inherits: [...inherits]->map(to:::(value) <- value.type));
     
-    @classInterface = {};
     // merge statics into class instance
     if (statics != empty) ::<= {
         foreach(statics) ::(key, val) {
-            classInterface[key] = val;
+            classInstance[key] = val;
         }
     }
-    classInterface.name = {get::<- name};
-    classInterface.define = define;
-    classInterface.inherits = {get::<- inherits};
-    classInterface.type = {get::<- type};
-    classInterface.construct = ::(constructors, this) {
+    classInstance.name = {get::<- name};
+    classInstance.define = define;
+    classInstance.inherits = {get::<- inherits};
+    classInstance.type = {get::<- type};
+    classInstance.construct = ::(this) {
         if (inherits != empty) ::<= {
             foreach(inherits) ::(key, inherit) {
-                inherit.construct(constructors, this);
+                inherit.construct(this);
             };
         }
-        this.constructor = empty;
+        @constructInterface;
+        @constructInit;
+        this.interface = {
+            set ::(value) {
+                constructInterface = value;
+            }
+        };
+
+        this.constructor = {
+            set ::(value) {
+                constructInit = value;
+            }
+        };
+
+        this->setIsInterface(enabled:true);
         define(this);        
-        constructors[classInstance] = this.constructor;
+        this->setIsInterface(enabled:false);
+
+        if (constructInterface) ::<= {
+            foreach(constructInterface)::(k, v) {
+                when(k->type != String) 
+                    error(detail: 'Class interfaces can only have String-keyed members.');
+                this[k] = v;
+            }
+        }
+        if (constructInit)          
+            constructInit();
+        this->remove(key:'constructor');
+        this->remove(key:'interface');
     };
-    classInterface.new = {
+    classInstance.new = {
         get::{
-        
             @thisInterface;
             @thisInstance;
-            @thisBaseConstructors = [];
             @thisConstructor;
-            @this = Object.instantiate(
-                type: constructType,
-                interface : {
-                    interface : {
-                        set ::(value) {
-                            if (thisInterface == empty) 
-                                thisInterface = value
-                            else ::<= {
-                                foreach(value) ::(k, v) {
-                                    thisInterface[k] = v;
-                                }
-                            }
-                        }
-                    },
-                    
-                    constructor : {
-                        set ::(value) {
-                            thisConstructor = value;
-                        },
-                        
-                        get :: {
-                            return thisConstructor;
-                        }
-                    },
-                    
-                    
-                    instance : {
-                        get :: {
-                            return thisInstance;
-                        }             
-                    },
-                    
-                    baseConstructor : {
-                        get :: {
-                            return thisBaseConstructors;
-                        }
-                    }
-                }
-            );
-            classInstance.construct(constructors:thisBaseConstructors, this);
-            thisInstance = {:::} {
-                return Object.instantiate(
-                    type,
-                    interface : thisInterface
-                );
-            } : {
-                onError::(message) {
-                    error(detail:'Failed to instantiate instance of type ' + classType->type + '. Make sure all your interface members are either Functions or Objects (setter/getters).\nInterface: \n' + (import(module:'Matte.Core.Introspect')(value:thisInterface)));                
-                }
-            }
-            
-            
-            
-            if (thisConstructor == empty)
-                thisConstructor = ::{return this.instance;}
-            return thisConstructor;
+            @this = Object.instantiate(type);
+            classInstance.construct(this);
+            this->setIsInterface(enabled:true);
+            return ::<- this;
         }
     };
    
-    @classInstance = {:::} {
-        return Object.instantiate(
-            type: classType,
-            interface : classInterface
-        );
-    } : {
-        onError ::(message) {
-            error(detail:'Failed to initialize the class ' + classType->type + ' itself. If you are defining statics, make sure all your static members are either Functions or Objects (setter/getters).\nStatics passed in are: \n' + (import(module:'Matte.Core.Introspect')(value:classInterface)));
-        }
-    }
+
+
     
+    classInstance->setIsInterface(enabled:true);
     return classInstance;
 }
 return class;
