@@ -70,7 +70,9 @@ const Matte = {
                 QUERY_REPLACE : 41,
                 QUERY_REMOVECHAR : 42,
                 
-                GETEXTERNALFUNCTION : 43
+                QUERY_SETISINTERFACE : 43,
+                
+                GETEXTERNALFUNCTION : 44
                 
             },
             
@@ -427,7 +429,8 @@ const Matte = {
                 REDUCE : 45,
                 ANY : 46,
                 ALL : 47,
-                FOREACH : 48
+                FOREACH : 48,
+                SETISINTERFACE : 49
             };
             
             var typecode_id_pool = 10;
@@ -647,37 +650,24 @@ const Matte = {
                     return createObject();
                 },
                 
-                createObjectTyped : function(type, interface_) {
+                createObjectTyped : function(type) {
                     const out = createObject();
                     if (type.binID != TYPE_TYPE) {
                         vm.raiseErrorString("Cannot instantiate object without a Type. (given value is of type " + store.valueTypeName(store.valueGetType(type)) + ')');
                         return out;
                     }
                     out.data.typecode = type.data.id;
-                    
-                    if (interface_.binID) {
-                        if (interface_.binID != TYPE_OBJECT || interface_.data.function_stub) {
-                            vm.raiseErrorString("When instantiating with an interface, the interface must be an Object. (given value is of type " + store.valueTypeName(store.valueGetType(interface_)) + ')');
-                            return out;
-                        }
-                        
-                        out.data.hasInterface = true;
-                        if (!interface_.data.kv_string)
-                            return out;
-                        
-                        out.data.kv_string = [];
-                        const keys = Object.keys(interface_.data.kv_string);
-                        for(var i = 0; i < keys.length; ++i) {
-                            const val = interface_.data.kv_string[keys[i]];
-                            if (val.binID != TYPE_OBJECT) {
-                                vm.raiseErrorString("When instantiating with an interface, the interface can only contain Objects and Functions.");
-                                return out;
-                            }
-                            out.data.kv_string[keys[i]] = val;
-                        }
-                        
-                    }
+
                     return out;
+                },
+                
+                valueObjectSetIsInterface : function(value, enabled) {
+                    if (value.binID != TYPE_OBJECT) {
+                        vm.raiseErrorString('setIsInterface query requires an Object.');
+                        return;
+                    }
+                    value.data.hasInterface = enabled;
+                
                 },
                 
                 createType : function(name, inherits) {
@@ -1056,15 +1046,26 @@ const Matte = {
                         if (value.data.table_attribSet != undefined)
                             accessor = objectGetAccessOperator(value, isBracket, 1);
                         
-                        if (value.data.hasInterface != undefined && (!(isBracket && accessor && accessor.binID))) {
+                        if (value.data.hasInterface == true && (!(isBracket && accessor && accessor.binID))) {
                             if (key.binID != TYPE_STRING) {
                                 vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
                                 return createValue();
                             }
                             
+                            if (value.data.kv_string == undefined) {
+                                vm.raiseErrorString("Object's interface was empty.");
+                                return createValue();                        
+                            }
+                            
+                            
                             const v = value.data.kv_string[key.data];
                             if (!v) {
                                 vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
+                                return createValue();
+                            }
+                            
+                            if (v.binID != TYPE_OBJECT) {
+                                vm.raiseErrorString("Object's interface member \"" + key.data + "\" is neither a Function nor an Object. Interface is malformed.");
                                 return createValue();
                             }
                             
@@ -1235,12 +1236,7 @@ const Matte = {
                             return store.valueObjectValues(vm.callFunction(set, [], []));
                     }
                     const out = [];
-                    if (value.data.kv_number) {
-                        const len = value.data.kv_number.length;
-                        for(var i = 0; i < len; ++i) {
-                            out.push(value.data.kv_number[i]);
-                        }
-                    }
+
                                     
                     if (value.data.kv_string) {
                         const values = Object.values(value.data.kv_string);
@@ -1266,23 +1262,30 @@ const Matte = {
                             }
                         }
                     }
+                    
+                    if (!value.data.hasInterface) {
+                        if (value.data.kv_number) {
+                            const len = value.data.kv_number.length;
+                            for(var i = 0; i < len; ++i) {
+                                out.push(value.data.kv_number[i]);
+                            }
+                        }
+                        if (value.data.kv_object_values) {
+                            const values = Object.values(value.data.kv_object_values);
+                            const len = values.length;
+                            for(var i = 0; i < len; ++i) {
+                                out.push(values[i]); // OK, object 
+                            }
+                        }
+                        
+                        if (value.data.kv_true) {
+                            out.push(store.createBoolean(value.data.kv_true));
+                        }
 
-                    if (value.data.kv_object_values) {
-                        const values = Object.values(value.data.kv_object_values);
-                        const len = values.length;
-                        for(var i = 0; i < len; ++i) {
-                            out.push(values[i]); // OK, object 
+                        if (value.data.kv_false) {
+                            out.push(store.createBoolean(value.data.kv_false));
                         }
                     }
-                    
-                    if (value.data.kv_true) {
-                        out.push(store.createBoolean(value.data.kv_true));
-                    }
-
-                    if (value.data.kv_false) {
-                        out.push(store.createBoolean(value.data.kv_false));
-                    }
-
 
                     if (value.data.kv_types_values) {
                         const values = Object.values(value.data.kv_types_values);
@@ -1410,15 +1413,25 @@ const Matte = {
                     
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
                     
-                    if (value.data.hasInterface != undefined && (!(isBracket && assigner && assigner.binID))) {
+                    if (value.data.hasInterface == true && (!(isBracket && assigner && assigner.binID))) {
                         if (key.binID != TYPE_STRING) {
                             vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
                             return createValue();
                         }
                         
+                        if (value.data.kv_string == undefined) {
+                            vm.raiseErrorString("Object's interface was empty.");
+                            return createValue();                        
+                        }
+                        
                         const vv = value.data.kv_string[key.data];
                         if (!vv) {
                             vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
+                            return createValue();
+                        }
+
+                        if (vv.binID != TYPE_OBJECT) {
+                            vm.raiseErrorString("Object's interface member \"" + key.data + "\" is neither a Function nor an Object. Interface is malformed.");
                             return createValue();
                         }
                         
@@ -2005,6 +2018,14 @@ const Matte = {
                 }
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FOREACH);
             };
+            
+            store_queryTable[QUERY.SETISINTERFACE] = function(value) {
+                if (value.binID != TYPE_OBJECT) {
+                    vm.raiseErrorString("setIsInterface requires base value to be an object.");
+                    return createValue();
+                }
+                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETISINTERFACE);
+            };            
 
             store_queryTable[QUERY.ALL] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
@@ -2479,7 +2500,7 @@ const Matte = {
                 // tucked with RELOOP
                 while(true) {
                     while(frame.pc < frame.stub.instructionCount) {
-                        inst = stub.instructions[frame.pc++];
+                        inst = stub.instructions[frame.pc++];                        
                         vm_opcodeSwitch[inst.opcode](frame, inst);
                         if (vm_pendingCatchable)
                             break;
@@ -4044,7 +4065,9 @@ const Matte = {
             
             ////////////////////////////////////// add builtin ext calls           
             vm_addBuiltIn(vm.EXT_CALL.NOOP, [], function(fn, args){return store.createEmpty();});
-            vm_addBuiltIn(vm.EXT_CALL.BREAKPOINT, [], function(fn, args){return store.createEmpty();});
+            vm_addBuiltIn(vm.EXT_CALL.BREAKPOINT, [], function(fn, args){
+                return store.createEmpty();
+            });
             
             
             const vm_extCall_foreverRestartCondition = function(frame, result) {
@@ -4137,8 +4160,8 @@ const Matte = {
                 return store.createType(args[0], args[1]);
             });
             
-            vm_addBuiltIn(vm.EXT_CALL.OBJECT_INSTANTIATE, ["type", "interface"], function(fn, args) {
-                return store.createObjectTyped(args[0], args[1]);
+            vm_addBuiltIn(vm.EXT_CALL.OBJECT_INSTANTIATE, ["type"], function(fn, args) {
+                return store.createObjectTyped(args[0]);
             });
             
 
@@ -4422,7 +4445,12 @@ const Matte = {
             });            
             
             
-            
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_SETISINTERFACE, ['base', 'enabled'], function(fn, args) {
+                const which = store.valueAsBoolean(args[1]);
+                if (vm_pendingCatchable) return store.createEmpty();
+                store.valueObjectSetIsInterface(args[0], which);
+                return store.createEmpty();
+            });                        
             
             
 
