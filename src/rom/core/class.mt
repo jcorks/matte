@@ -60,7 +60,9 @@ DEALINGS IN THE SOFTWARE.
         this.interface = {
             set ::(value) {
                 constructInterface = value;
-            }
+            },
+            
+            get ::<- constructInterface
         };
 
         this.constructor = {
