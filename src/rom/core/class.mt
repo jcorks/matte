@@ -30,7 +30,7 @@ DEALINGS IN THE SOFTWARE.
 @classType = Object.newType(name:'Matte.Class');
 
 
-@:class ::(define => Function, name, inherits, statics) {
+@:class ::(define => Function, new, name, inherits, statics) {
     @classInstance = Object.instantiate(
         type: classType
     );
@@ -82,22 +82,22 @@ DEALINGS IN THE SOFTWARE.
                 this[k] = v;
             }
         }
-        if (constructInit)          
-            constructInit();
         this->remove(key:'constructor');
         this->remove(key:'interface');
-    };
-    classInstance.new = {
-        get::{
-            @thisInterface;
-            @thisInstance;
-            @thisConstructor;
-            @this = Object.instantiate(type);
-            classInstance.construct(this);
+        if (constructInit) ::<= {        
             this->setIsInterface(enabled:true);
-            return ::<- this;
+            constructInit();
+            this->setIsInterface(enabled:false);
         }
     };
+    classInstance.defaultNew = :: {
+        @this = Object.instantiate(type);
+        classInstance.construct(this);
+        this->setIsInterface(enabled:true);
+        return this;
+    };
+    
+    classInstance.new = if (new) new else classInstance.defaultNew;
    
 
 
