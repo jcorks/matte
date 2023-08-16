@@ -55,15 +55,22 @@ DEALINGS IN THE SOFTWARE.
     statics : {
         TYPES : {get::<-TYPES}
     },
+    new ::(path) {
+        @:this = SharedLibrary.defaultNew();
+        this.initialize(path);
+        return this;
+    },
     define:::(this) {
         @handle;
         @:callables = {}
-        this.constructor = ::(path) {
-            handle = _sharedlibrary_open(a:path);
-            return this.instance;
-        }
         
         this.interface = {
+            initialize ::(path) {
+                when(handle) empty;
+                handle = _sharedlibrary_open(a:path);
+            },
+        
+        
             bind ::(
                 name => String, 
                 argTypes => Object, 

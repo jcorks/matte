@@ -107,7 +107,7 @@ DEALINGS IN THE SOFTWARE.
 
             installHooks ::(events => Object) {
                 foreach(events)::(event, hook) {
-                    this.instance.installHook(event:event, hook:hook);
+                    this.installHook(event:event, hook:hook);
                 }
             },
 

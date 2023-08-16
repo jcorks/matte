@@ -1977,7 +1977,6 @@ matteValue_t matte_vm_call(
             }       
             
             if (n == len) {
-                vm_pop_frame(vm);                
                 // couldnt find the requested name. Throw an error.
                 matteString_t * str;
                 if (len) 

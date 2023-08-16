@@ -45,11 +45,10 @@ return {:::} {
         inherits: [EventSystem],
         define:::(this) {
             this.constructor = ::{
-                this.instance.events = {
+                this.events = {
                     onNewMessage::(detail){}
                 }        
-                return this.instance;
-            };
+            }
             
             this.interface = {
                 sendToParent::(message => String) {
@@ -61,7 +60,7 @@ return {:::} {
                         forever ::{
                             @:msg = _workercheckmessage();        
                             when(msg == empty) send();
-                            this.instance.emit(event:'onNewMessage', detail:msg);
+                            this.emit(event:'onNewMessage', detail:msg);
                         }
                     }
                 }
