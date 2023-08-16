@@ -471,7 +471,16 @@ static const char * opcode_to_str(int oc) {
 #define STACK_PEEK(__n__) (matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1-(__n__)))
 #define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__);
 
+
+static int vm_execution_loop__stack_depth = 0;
+#define VM_EXECUTABLE_LOOP_STACK_DEPTH_LIMIT 1024
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
+    vm_execution_loop__stack_depth ++;
+    
+    if (vm_execution_loop__stack_depth > VM_EXECUTABLE_LOOP_STACK_DEPTH_LIMIT) {
+        matte_vm_raise_error_cstring(vm, "Stack call limit reached. (Likely infinite recursion)");
+        return matte_store_new_value(vm->store);
+    }
     matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
     #ifdef MATTE_DEBUG__VM
         const matteString_t * str = matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub));
@@ -1290,6 +1299,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             goto RELOOP;
         }
     }
+    vm_execution_loop__stack_depth--;
     return output;
 }
 
@@ -1482,6 +1492,11 @@ matteVM_t * matte_vm_create(matte_t * m) {
         MATTE_VM_STR_CAST(vm, "condition"),
     };
 
+
+    const matteString_t * interface_names[] = {
+        query_name,
+        MATTE_VM_STR_CAST(vm, "enabled")    
+    };
     
     const matteString_t * findIndex_names[] = {
         query_name,        
@@ -1593,6 +1608,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ANY,     &temp, vm_ext_call__object__any);    
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ALL,     &temp, vm_ext_call__object__all);    
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FOREACH, &temp, vm_ext_call__object__foreach);
+    temp = MATTE_ARRAY_CAST(interface_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SET_IS_INTERFACE,     &temp, vm_ext_call__object__set_is_interface);    
 
     
     

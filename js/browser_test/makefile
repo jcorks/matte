@@ -1,7 +1,7 @@
 all:
 	cd ../../cli && make -f ./makefile_unix
 	cp ../../testing/*.out ./
-	cd ../../cli && ./matte compile ../src/rom/core/class.mt ../js/Matte.Core.Class
+	cd ../../cli && ./matte compile ../src/rom/core/class.mt ../js/browser_test/Matte.Core.Class
 	cd ../../cli && ./matte compile ../testing/test1.mt ../js/browser_test/test1.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test2.mt ../js/browser_test/test2.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test3.mt ../js/browser_test/test3.mt.bytes
@@ -120,5 +120,7 @@ all:
 	cd ../../cli && ./matte compile ../testing/test116.mt ../js/browser_test/test116.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test117.mt ../js/browser_test/test117.mt.bytes
 	cd ../../cli && ./matte compile ../testing/test118.mt ../js/browser_test/test118.mt.bytes
-	cd ../../cli && ./matte compile ../testing/mytestmodule.mt ../js/mytestmodule.mt
+	cd ../../cli && ./matte compile ../testing/test119.mt ../js/browser_test/test119.mt.bytes
+	cd ../../cli && ./matte compile ../testing/test120.mt ../js/browser_test/test120.mt.bytes
+	cd ../../cli && ./matte compile ../testing/mytestmodule.mt ../js/browser_test/mytestmodule.mt
 

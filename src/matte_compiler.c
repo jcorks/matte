@@ -2094,7 +2094,7 @@ static void matte_token_print__helper(matteSyntaxGraphWalker_t * g, matteToken_t
         t->line,
         t->character,
         matte_string_get_c_str(matte_syntax_graph_get_token_name(g->graphsrc, t->ttype)),
-        matte_string_get_c_str((const matteString_t*)t->data)
+        (!strcmp(matte_string_get_c_str((const matteString_t*)t->data), "\n") ? "" : matte_string_get_c_str((const matteString_t*)t->data))
     );
 
 
@@ -3067,6 +3067,7 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "all")) return MATTE_QUERY__ALL;
     if (!strcmp(st, "foreach")) return MATTE_QUERY__FOREACH;
     if (!strcmp(st, "type")) return MATTE_QUERY__TYPE;
+    if (!strcmp(st, "setIsInterface")) return MATTE_QUERY__SET_IS_INTERFACE;
     return -1;
 }
 

@@ -33,32 +33,34 @@ DEALINGS IN THE SOFTWARE.
 @:_sharedlibrary_getCallable = getExternalFunction(name:"_sharedlibrary_getSymbol");
 @:_sharedlibrary_callCallable = getExternalFunction(name:"_sharedlibrary_getSymbol");
 
+
+@TYPES = {
+    VOID : 0
+    INT : 1,
+    DOUBLE : 2,
+    FLOAT : 3,
+    CHAR : 4,
+    CSTR : 5,
+    POINTER : 6,
+    UINT : 7,
+    INT8_T : 8,
+    INT16_T : 9
+    INT32_T : 10,
+    INT64_T : 11
+    
+}
+
 @SharedLibrary = class(
     name: 'Matte.System.MemoryBuffer',
     statics : {
-        TYPES : {
-            VOID : 0
-            INT : 1,
-            DOUBLE : 2,
-            FLOAT : 3,
-            CHAR : 4,
-            CSTR : 5,
-            POINTER : 6,
-            UINT : 7,
-            INT8_T : 8,
-            INT16_T : 9
-            INT32_T : 10,
-            INT64_T : 11
-            
-        }
-    
-    }
+        TYPES : {get::<-TYPES}
+    },
     define:::(this) {
         @handle;
         @:callables = {}
         this.constructor = ::(path) {
             handle = _sharedlibrary_open(a:path);
-            return handle;
+            return this.instance;
         }
         
         this.interface = {

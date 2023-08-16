@@ -98,10 +98,15 @@ return class(
     name : 'Matte.System.Async',
     inherits:[EventSystem],
     define:::(this) {
+        @asinstance;
 
-        this.events = {
-            onNewParentMessage::{}
-        }
+        this.constructor = ::{
+            asinstance = this.instance;
+            this.instance.events = {
+                onNewParentMessage::{}
+            }        
+            return this.instance;
+        };
 
         @idToWorker::(id) {
             return {:::} {
@@ -136,37 +141,39 @@ return class(
             }
         }
 
-        @asinstance = this;
+        @WORKER_STATE = {
+            Running  : 0,
+            Finished : 1,
+            Failed   : 2,
+            Unknown  : 3
+        };
         @Worker = class(
             name : 'Matte.System.Async.Worker',
             inherits : [EventSystem],
             statics : {
-                State : {
-                    Running  : 0,
-                    Finished : 1,
-                    Failed   : 2,
-                    Unknown  : 3
-                }    
+                State : {get::<- WORKER_STATE} 
             },
             define:::(this) {
-                @:State = this.class.State;
+                @:State = Worker.State;
                 @id;
                 @curstate = State.Unknown;
-                this.events = {
-                    onNewMessage::(detail){},
-                    // when the state is detected to have changed
-                    // If the state is Finished, result will return
-                    // the result of the worker if present.
-                    onStateChange::(detail){}
-                }
+
                 
                 this.constructor = ::(module, input) {
+                    this.instance.events = {
+                        onNewMessage::(detail){},
+                        // when the state is detected to have changed
+                        // If the state is Finished, result will return
+                        // the result of the worker if present.
+                        onStateChange::(detail){}
+                    }
+
                     id = _workerstart(a:String(from:module), b:String(from:input));
                     when(id == empty) error(detail:'The worker failed to start with the given args');
-                    workers.push(value:this);
+                    workers.push(value:this.instance);
                     queryState();
 
-                    return this;
+                    return this.instance;
                 }
 
                 @queryState ::() => Number {
@@ -176,7 +183,7 @@ return class(
                 this.interface = {
                     wait ::{
                         @waiting = true;
-                        this.installHook(event:'onStateChange', hook:::(detail){
+                        this.instance.installHook(event:'onStateChange', hook:::(detail){
                             @:state = detail;
                             if (state == State.Finished || state == State.Failed) ::<={
                                 waiting = false;
@@ -213,7 +220,7 @@ return class(
                     updateState:: {
                         @:newState = queryState();
                         if (newState != curstate) ::<= {       
-                            this.emit(event:'onStateChange', detail:newState);
+                            this.instance.emit(event:'onStateChange', detail:newState);
                             curstate = newState;
                         }
                     },

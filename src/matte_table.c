@@ -169,7 +169,7 @@ static int key_cmp_fn_matte_str(const void * a, const void * b, uint32_t len) {
 // pointer / value to a table directly
 static uint32_t hash_fn_value(const void * data, uint32_t nu) {
     uint32_t hash = 5381;
-    uint8_t * datab = &data;
+    uint8_t * datab = (uint8_t*)&data;
     uint32_t i;
     for(i = 0; i < sizeof(void*); ++i, ++datab) {
         hash = (hash<<5) + hash + *datab;

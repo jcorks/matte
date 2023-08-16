@@ -143,7 +143,7 @@ static MatteWorkerChildInfo * find_child(int id) {
 }
 
 static void matte_thread_compiler_error(const matteString_t * s, uint32_t line, uint32_t ch, void * d) {
-    MatteAsyncStartData * startData = d;
+    MatteAsyncStartData * startData = (MatteAsyncStartData*)d;
     *startData->errorStringRef = matte_string_create_from_c_str("%s (line %d:%d)\n", matte_string_get_c_str(s), line, ch);
     *startData->stateRef = MWAS_FAILED;
 }
@@ -156,11 +156,11 @@ static void matte_thread_error(
     void * d
 ) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteAsyncStartData * startData = d;
+    MatteAsyncStartData * startData = (MatteAsyncStartData*)d;
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
         matteValue_t s = matte_value_object_access_string(store, val, MATTE_VM_STR_CAST(vm, "summary"));
         if (s.binID) {
-            MatteAsyncStartData * startData = d;
+            MatteAsyncStartData * startData = (MatteAsyncStartData*)d;
             *startData->errorStringRef = matte_string_create_from_c_str(
                 "Unhandled error: \n%s\n", 
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, s)), 
@@ -186,7 +186,7 @@ static void on_async_print(matteVM_t * vm, const matteString_t * str, void * ud)
 
 
 MATTE_EXT_FN(matte_asyncworker__send_message) {
-    MatteAsyncStartData * startData = userData;
+    MatteAsyncStartData * startData = (MatteAsyncStartData*)userData;
     if (!*startData->messageFromChildToParentRef)
          *startData->messageFromChildToParentRef = matte_string_clone(matte_value_string_get_string_unsafe(matte_vm_get_store(vm), args[0]));    
 
@@ -194,7 +194,7 @@ MATTE_EXT_FN(matte_asyncworker__send_message) {
 }
 
 MATTE_EXT_FN(matte_asyncworker__check_message) {
-    MatteAsyncStartData * startData = userData;
+    MatteAsyncStartData * startData = (MatteAsyncStartData*)userData;
     matteValue_t out = matte_store_new_value(matte_vm_get_store(vm));
 
     if (*startData->messageFromParentToChildRef) {
@@ -208,10 +208,10 @@ MATTE_EXT_FN(matte_asyncworker__check_message) {
 
 static void * matte_thread(void * userData) {
     
-    MatteAsyncStartData * startData = userData;
+    MatteAsyncStartData * startData = (MatteAsyncStartData*)userData;
     uint32_t lenBytes;
     *startData->stateRef = MWAS_UNKNOWN;
-    uint8_t * src = dump_bytes(matte_string_get_c_str(startData->from), &lenBytes);
+    uint8_t * src = (uint8_t*)dump_bytes(matte_string_get_c_str(startData->from), &lenBytes);
     matteString_t * fromPath = matte_string_create_from_c_str("%s", matte_string_get_c_str(startData->from));
     if (!src || !lenBytes) {
         matteString_t * str = matte_string_create();
@@ -329,8 +329,8 @@ MATTE_EXT_FN(matte_async__start) {
     matteValue_t path  = args[0];
     matteValue_t input = args[1];
 
-    MatteWorkerChildInfo * ch = matte_allocate(sizeof(MatteWorkerChildInfo));
-    MatteAsyncStartData * init = matte_allocate(sizeof(MatteAsyncStartData));
+    MatteWorkerChildInfo * ch = (MatteWorkerChildInfo*)matte_allocate(sizeof(MatteWorkerChildInfo));
+    MatteAsyncStartData * init = (MatteAsyncStartData*)matte_allocate(sizeof(MatteAsyncStartData));
     init->errorStringRef = &ch->errorString;
     init->messageFromChildToParentRef = &ch->messageFromChildToParent;
     init->messageFromParentToChildRef = &ch->messageFromParentToChild;

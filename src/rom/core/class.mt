@@ -27,275 +27,82 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@class ::(define, name, inherits, statics) {
-
-    @staticNames = {}
-    if (statics != empty) ::<= {
-        foreach(statics)::(key, value) {
-            staticNames[key] = true;
-        }
-    } else 
-        statics = {}
-    
-    
-    @staticData = {...statics}
-    @classinst = {define : define}
-    when(classinst.define->type != Function) error(detail:'class must include a "define" function within its "info" specification');
-    @classInherits = inherits;
-    @pool = [];
-    @poolCount = 0;
-    @selftype = if (classInherits != empty) ::<={
-        @inheritset = [];
-        @inheritCount = 0;
-        foreach(classInherits)::(k, v) {
-            inheritset[inheritCount] = v.type;
-            inheritCount+=1;
-        }
-        return Object.newType(name : name, inherits : inheritset);
-    } else ::<= {
-        return Object.newType(name : name);
-    }
+@classType = Object.newType(name:'Matte.Class');
 
 
-    // all recycled members currently waiting
-    @test = 0;
-
-    
-    @makeInstance::(instSetIn, classObj) {
-        @newinst;
-        @interface;
-        @instSet;
-        @inherited = classObj.inherits;
-
-        
-        // only create a new object ONCE. This is called by 
-        // the "new" function access, and will ALWAYS be of 
-        // the child class type.
-        if (instSetIn == empty) ::<= {
-            instSet = {
-                pooled : false,
-                newinst : Object.instantiate(type:selftype),
-                interface : {},
-                bases : [],
-                constructors : {}, // keyed with object type
-                onRecycles : {}
-            }
-            
-            newinst = instSet.newinst;
-            interface = instSet.interface;
-            
-            @attribs = {}
-            
-            attribs['.'] = {
-                get:: (key) {
-                    @result = interface[key];
-                    when(result == empty) 
-                        error(detail:'' +key+ " does not exist within (get)" + selftype);
-                                                    
-                    when(result.isFunction) result.fn;
-                    @get = result.get;
-                    when(get == empty) error(detail:'The attribute ' + key + ' is not readable within '  + selftype);
-                    return get();
-                },
-
-
-                set:: (key, value) {
-                    @result = interface[key];
-                    when(result == empty) ::<= {
-                        error(detail:'' +key+ " does not exist within (set) " + selftype);
-                    }                    
-                    when(result.isFunction) error(detail:'Interface functions cannot be overwritten.');
-                    @set = result.set;
-                    when(set == empty) error(detail:'The attribute ' + key + ' is not writable within' + selftype);
-                    return set(value:value);
-                }
-            }
-               
-
-            
-            interface.interface = {
-                isFunction : false,
-                set ::(value) {
-                    foreach(value)::(k => String, v) {
-                        if (v->type == Function) ::<= {
-                            interface[k] = {
-                                isFunction : true,
-                                fn : v
-                            }
-                        } else ::<={
-                            interface[k] = {
-                                isFunction : false,
-                                get : v.get,
-                                set : v.set
-                            }                                    
-                        }
-                    }
-                }
-            }
-
-            newinst->setAttributes(attributes:attribs);
-            // default / building interface
-            newinst.interface = {
-                class : {
-                    get ::{
-                        return classinst;
-                    }
-                },
-                
-                'type' : {
-                    get ::{
-                        return selftype;
-                    }
-                },  
-                
-                constructor : {
-                    set ::(value) {
-                        instSet.constructor = value;
-                    },
-                    
-                    get ::{
-                        return instSet.constructors;                    
-                    }
-                },
-                
-                recyclable : {
-                    set ::(value => Boolean) {
-                        instSet.recycle = value;
-                    }
-                },
-
-                
-                onRecycle : {
-                    set ::(value) {
-                        instSet.onRecycle = value;
-                    },
-
-                    get ::{
-                        return instSet.onRecycles;
-                    }
-
-                },
-                
-                attributes : {
-                    set ::(value) {
-                        foreach(value) ::(k, v) {
-                            when(k->type == String && k == '.') empty; // skip 
-                            attribs[k] = v;
-                        } 
-                        newinst->setAttributes(attributes:attribs);
-                    }  
-                }
-                
-            }
-
-        } else ::<= {
-            instSet = instSetIn;
-            newinst = instSetIn.newinst;
-            interface = instSetIn.interface;
-            instSetIn.bases->push(value:instSet);            
-        }
-        
-        @runSelf = makeInstance;
-        if (inherited != empty) ::<={
-            foreach(inherited) ::(k, v) {
-                runSelf(instSetIn:instSet, classObj:v);            
-            }
-        }
-
-        instSet.recycle = false;
-        classObj['define'](this:newinst);
-        
-        // constructor is what is returned from the new() function the 
-        // user calls.
-        // This means that whatever it returns is what the user code works with 
-        // It /should/ be the 
-        instSet.constructors[classObj] = instSet.constructor;
-        instSet.onRecycles[classObj] = instSet.onRecycle;
-
-        
-        return instSet;
-    }
-    
-    staticNames.new = true;
-    
-    staticNames.type = true;
-    staticData.type = selftype;
-
-    staticNames.inherits = true;
-    staticData.inherits = classInherits;
-    
-    classinst->setAttributes(
-        attributes : {
-            '.' : {
-                get ::(key => String)  {
-                    when (key == 'new') ::<={
-                        when(poolCount > 0) ::<={
-                            @out = pool[poolCount-1];
-                            pool->remove(key:poolCount-1);
-                            poolCount -= 1;
-                            
-                            @constructor = out.constructor;
-                            when(constructor != empty) constructor;
-                            return ::{return newinst;}
-                        }
-                    
-
-                        
-                        // populates interfaces and such with inheritance considerations if needed.
-                        @instSet = makeInstance(classObj:classinst); 
-                        @newinst = instSet.newinst;
-                        @interface = instSet.interface;
-                        @recycle = instSet.recycle;
-                        
-                        interface.class = {
-                            isFunction : false,
-                            get ::{
-                                return classinst;
-                            }
-                        }
-
-
-
-
-                        @constructor = instSet.constructor;
-
-                        if (recycle == true) ::<= {
-                            newinst.interface = {
-                                recycle::{
-                                    if (instSet.pooled) error(detail:'Object double-recycled.');
-                                    instSet.pooled = true;
-                                    if (instSet.onRecycle != empty) instSet.onRecycle();
-                                    pool[poolCount] = instSet;
-                                }
-                            }
-                        }
-
-                        newinst->remove(keys:['constructor', 'onRecycle', 'interface']);
-
-
-                        when(constructor != empty) constructor;
-                        return ::{return newinst;}
-                    }
-
-                    when(staticNames[key] != empty) staticData[key];
-                    error(detail:'No such member of the class ' + selftype);
-                },
-                
-                set ::(key, value) {
-                    when(staticNames[key] != empty) staticData[key] = value;
-                    error(detail:'No such member of the class ' +  selftype);
-                }
-            },
-            '[]' : {
-            },
-            
-            
-            foreach ::<- staticData,
-            keys ::<-staticData->keys,
-            values ::<- staticData->values
-        }
+@:class ::(define => Function, new, name, inherits, statics) {
+    @classInstance = Object.instantiate(
+        type: classType
     );
+    @type = if (inherits == empty) 
+        Object.newType(name)
+    else 
+        Object.newType(name, inherits: [...inherits]->map(to:::(value) <- value.type));
+    
+    // merge statics into class instance
+    if (statics != empty) ::<= {
+        foreach(statics) ::(key, val) {
+            classInstance[key] = val;
+        }
+    }
+    classInstance.name = {get::<- name};
+    classInstance.define = define;
+    classInstance.inherits = {get::<- inherits};
+    classInstance.type = {get::<- type};
+    classInstance.construct = ::(this) {
+        if (inherits != empty) ::<= {
+            foreach(inherits) ::(key, inherit) {
+                inherit.construct(this);
+            };
+        }
+        @constructInterface;
+        @constructInit;
+        this.interface = {
+            set ::(value) {
+                constructInterface = value;
+            },
+            
+            get ::<- constructInterface
+        };
 
-    return classinst;
+        this.constructor = {
+            set ::(value) {
+                constructInit = value;
+            }
+        };
+
+        this->setIsInterface(enabled:true);
+        define(this);        
+        this->setIsInterface(enabled:false);
+
+        if (constructInterface) ::<= {
+            foreach(constructInterface)::(k, v) {
+                when(k->type != String) 
+                    error(detail: 'Class interfaces can only have String-keyed members.');
+                this[k] = v;
+            }
+        }
+        this->remove(key:'constructor');
+        this->remove(key:'interface');
+        if (constructInit) ::<= {        
+            this->setIsInterface(enabled:true);
+            constructInit();
+            this->setIsInterface(enabled:false);
+        }
+    };
+    classInstance.defaultNew = :: {
+        @this = Object.instantiate(type);
+        classInstance.construct(this);
+        this->setIsInterface(enabled:true);
+        return this;
+    };
+    
+    classInstance.new = if (new) new else classInstance.defaultNew;
+   
+
+
+    
+    classInstance->setIsInterface(enabled:true);
+    return classInstance;
 }
 return class;

@@ -177,20 +177,22 @@ DEALINGS IN THE SOFTWARE.
                 @messageIn;
 
                 this.constructor = ::(id, handle, message) {
+                
+                    this.instance.events = {
+                        onNewMessage ::(detail){},
+                        onIncomingData ::(detail){},
+                        onDisconnect ::(detail){}
+                    }                
                     id_number = Number.parse(string:id);
                     socket = handle;
                     messageIn = message;
                     
                     info = _socket_server_client_infostring(a:socket, b:id_number);
                     address = _socket_server_client_address(a:socket, b:id_number);
-                    return this;
+                    return this.instance;
                 }
 
-                this.events = {
-                    onNewMessage ::(detail){},
-                    onIncomingData ::(detail){},
-                    onDisconnect ::(detail){}
-                }
+
 
                 // change update based on if a message type client or data
                 @update;
@@ -201,7 +203,7 @@ DEALINGS IN THE SOFTWARE.
                     update = ::{
                         _socket_server_client_update(a:socket, b:id_number);
                         for(0, _socket_server_client_get_pending_message_count(a:socket, b:id_number))::(i){
-                            this.emit(
+                            this.instance.emit(
                                 event:'onNewMessage',
                                 detail:_socket_server_client_get_next_message(a:socket, b:id_number)
                             );
@@ -219,7 +221,7 @@ DEALINGS IN THE SOFTWARE.
 
                         if (count > 0) ::<={
                             @: bytes = MemoryBuffer.new(handle:_socket_server_client_read_bytes(a:socket, b:id_number));
-                            this.emit(
+                            this.instance.emit(
                                 event:'onIncomingData',
                                 detail:bytes
                             );             
@@ -275,6 +277,10 @@ DEALINGS IN THE SOFTWARE.
                 @socket;
                 
                 this.constructor = ::(restrictAddress, messageMode, port) {
+                    this.instance.events = {
+                        onNewClient ::(detail){}
+                    }
+
                     socket = ::(
                         address => String,
                         port => Number,
@@ -292,7 +298,7 @@ DEALINGS IN THE SOFTWARE.
                         timeout:100, // => timeout in seconds. not sure yet!
                         messageMode:Boolean(from:messageMode)
                     );
-                    return this;
+                    return this.instance;
                 }
 
                 
@@ -301,9 +307,6 @@ DEALINGS IN THE SOFTWARE.
                 // string id to 
                 @:clientIndex = [];
                                 
-                this.events = {
-                    onNewClient ::(detail){}
-                }
             
             
                 this.interface = {
@@ -328,7 +331,7 @@ DEALINGS IN THE SOFTWARE.
                                 clientIndex[id] = true;
                                 found[id] = true;
 
-                                this.emit(event:'onNewClient', detail:client);
+                                this.instance.emit(event:'onNewClient', detail:client);
                             }
                         } 
 
@@ -414,14 +417,7 @@ DEALINGS IN THE SOFTWARE.
             define:::(this) {
                 @socket;
                 
-                this.events = {
-                    'onConnectSuccess': ::(detail){},
-                    'onConnectFail': ::(detail){},
-                    'onDisconnect': ::(detail){},
-                    
-                    'onIncomingData': ::(detail){},
-                    'onNewMessage': ::(detail){}
-                }
+
                 @state = 0;                
                 @update; 
                 @sendData;
@@ -445,13 +441,13 @@ DEALINGS IN THE SOFTWARE.
                         state = newstate;
                         
                         match(true) {
-                            (oldstate == 2 && newstate == 0): this.emit(event:'onDisconnect'),
+                            (oldstate == 2 && newstate == 0): this.instance.emit(event:'onDisconnect'),
                             (oldstate == 1 && newstate == 0): ::<={
-                                this.emit(event:'onConnectFail', detail:err);
+                                this.instance.emit(event:'onConnectFail', detail:err);
                                 _socket_client_delete(a:socket);
                                 socket = empty;
                             },
-                            (oldstate != 2 && newstate == 2): this.emit(event:'onConnectSuccess')
+                            (oldstate != 2 && newstate == 2): this.instance.emit(event:'onConnectSuccess')
                         }
                         
                         when(state != 2) empty;
@@ -460,7 +456,7 @@ DEALINGS IN THE SOFTWARE.
                         @count = _socket_get_pending_byte_count(a:socket);                        
                         if (count > 0) ::<={
                             @: bytes = MemoryBuffer.new(handle:_socket_client_read_bytes(a:socket));
-                            this.emit(
+                            this.instance.emit(
                                 event:'onIncomingData',
                                 detail:bytes
                             );             
@@ -477,7 +473,17 @@ DEALINGS IN THE SOFTWARE.
                     error(message:'TODO');                
                 }
                 
-                
+                this.constructor = ::{
+                    this.instance.events = {
+                        'onConnectSuccess': ::(detail){},
+                        'onConnectFail': ::(detail){},
+                        'onDisconnect': ::(detail){},
+                        
+                        'onIncomingData': ::(detail){},
+                        'onNewMessage': ::(detail){}
+                    };
+                    return this.instance;                
+                };
                 
                 
                 this.interface = {
@@ -491,7 +497,7 @@ DEALINGS IN THE SOFTWARE.
                             socket = _socket_client_create(a:address, b:port, c:0, d:mode, e:tls);
                         } : {
                             onError:::(message){
-                                this.emit(event:'onConnectFail', detail:message.detail);
+                                this.instance.emit(event:'onConnectFail', detail:message.detail);
                             }
                         }
                     },

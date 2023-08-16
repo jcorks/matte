@@ -70,6 +70,12 @@ a.copy(
 );
 print(message: 'Some values within the a buffer after memcpy: ' + a[0] + a[1] + a[2]);
 
+@:d = MBuffer.new();
+d.appendByte(value:0);
+d.appendByte(value:1);
+d.appendByte(value:2);
+
+print(message: 'Appending bytes: ' + d[0] + d[1] + d[2]);
 
 
 

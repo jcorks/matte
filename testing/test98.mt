@@ -61,6 +61,14 @@
 }}
 
 
+{:::}{
+    foreach(::{})::{};
+}: { onError:::(message){
+    out = out + 'noobj2';
+}}
+
+
+
 
 
 {:::}{

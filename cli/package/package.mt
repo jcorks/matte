@@ -32,7 +32,7 @@
             pushString ::(value => String) {
                 @:mem = MemoryBuffer.new();
                 mem.appendUTF8(value);
-                this.pushU32(value:mem.size);
+                this.instance.pushU32(value:mem.size);
                 iter += mem.size;
                 buffer.append(other:mem);
                 mem.release();
@@ -47,7 +47,7 @@
             buffer : {
                 get ::<- buffer
             }
-        };
+        }
     }
 );
 
@@ -55,14 +55,15 @@
 // throws an error on a bad json file
 @:checkPackageJSON ::(object) {
     // error checking for json.
-    @:checkMissing = ::(base => Object, props => Object) <- 
-        props->foreach(do:::(i, prop) {
+    @:checkMissing = ::(base => Object, props => Object) { 
+        foreach(props)::(i, prop) {
             if (base[prop[0]] == empty)
                 error(detail:'package.json missing ' + prop[0] + ' property');
             if (base[prop[0]]->type != prop[1]) 
                 error(detail:'package.json property ' + prop[0] + ' must be of type ' + prop[1]);
             
-        });
+        }
+    }
 
     // check missing attributes
     checkMissing(base: object, props:[
@@ -90,7 +91,7 @@
         
       
         
-};
+}
 
 
 @:commands = {
@@ -138,7 +139,7 @@
 
         // Do the sources first and compile them.        
         output.pushU32(value:object.sources->keycount);
-        object.sources->foreach(do:::(i, source) {            
+        foreach(object.sources)::(i, source) {            
             compile(source:source => String, output:'.bytecode');
             
             @:bytes = filesystem.readBytes(path:'.bytes');
@@ -147,7 +148,7 @@
             output.pushU32(value:bytes.size);
             output.pushBytes(value:bytes);
             
-        });
+        }
 
         output.pushU8(value: 0); // whether more packages follow
                 
@@ -167,9 +168,9 @@
     
     }
 
-};
+}
 
 return ::(args) {
     filesystem.cwd = args[1];
     return commands[args[0]]();
-};
+}

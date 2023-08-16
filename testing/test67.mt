@@ -4,15 +4,15 @@
 @Class = import(module:'Matte.Core.Class');
 @TestClass = Class(
     define: ::(this) {
-        @data;
-
-        this.constructor = ::(input) {
-            data = input;
-            return this;
-        }
+        @data = '200';
 
 
         this.interface = {
+            init ::(input) {
+                data = input;
+                return this;
+            },
+        
             data : {
                 get :: {
                     return data - 400;
@@ -26,6 +26,6 @@
     }
 );
 
-@instance  = TestClass.new(input:1);
+@instance  = TestClass.new().init(input:1);
 instance.data = 3;
 return ''+instance.data;

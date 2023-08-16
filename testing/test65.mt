@@ -5,18 +5,20 @@
 @TestClass = Class(
     define:::(this) {
         @str;
-        this.constructor = ::(theString) {
-            str = theString;  
-            return this;          
-        }
 
-        this.attributes = {
-            (String) :: {
-                return str;
+        this->setAttributes(
+            attributes : {
+                (String) :: {
+                    return str;
+                }
             }
-        }
+        );
+
 
         this.interface = {
+            val : {
+                set::(value) <- str = value
+            },
             mutate :: {
                 str = str + 'OHWOW';
             }
@@ -25,7 +27,8 @@
     }
 );
 
-@instance  = TestClass.new(theString:'isitworking');
+@instance  = TestClass.new();
+instance.val = 'isitworking';
 instance.mutate();
 
 return ''+instance;

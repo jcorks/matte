@@ -200,7 +200,8 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
             }
         #endif
 
-        ENABLE_STATE(m, OBJECT_STATE__RECYCLED);
+        ENABLE_STATE (m, OBJECT_STATE__RECYCLED);
+        DISABLE_STATE(m, OBJECT_STATE__HAS_INTERFACE);    
 
 
 

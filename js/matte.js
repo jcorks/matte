@@ -70,7 +70,9 @@ const Matte = {
                 QUERY_REPLACE : 41,
                 QUERY_REMOVECHAR : 42,
                 
-                GETEXTERNALFUNCTION : 43
+                QUERY_SETISINTERFACE : 43,
+                
+                GETEXTERNALFUNCTION : 44
                 
             },
             
@@ -427,7 +429,8 @@ const Matte = {
                 REDUCE : 45,
                 ANY : 46,
                 ALL : 47,
-                FOREACH : 48
+                FOREACH : 48,
+                SETISINTERFACE : 49
             };
             
             var typecode_id_pool = 10;
@@ -654,7 +657,17 @@ const Matte = {
                         return out;
                     }
                     out.data.typecode = type.data.id;
+
                     return out;
+                },
+                
+                valueObjectSetIsInterface : function(value, enabled) {
+                    if (value.binID != TYPE_OBJECT) {
+                        vm.raiseErrorString('setIsInterface query requires an Object.');
+                        return;
+                    }
+                    value.data.hasInterface = enabled;
+                
                 },
                 
                 createType : function(name, inherits) {
@@ -1033,6 +1046,46 @@ const Matte = {
                         if (value.data.table_attribSet != undefined)
                             accessor = objectGetAccessOperator(value, isBracket, 1);
                         
+                        if (value.data.hasInterface == true && (!(isBracket && accessor && accessor.binID))) {
+                            if (key.binID != TYPE_STRING) {
+                                vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
+                                return createValue();
+                            }
+                            
+                            if (value.data.kv_string == undefined) {
+                                vm.raiseErrorString("Object's interface was empty.");
+                                return createValue();                        
+                            }
+                            
+                            
+                            const v = value.data.kv_string[key.data];
+                            if (!v) {
+                                vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
+                                return createValue();
+                            }
+                            
+                            if (v.binID != TYPE_OBJECT) {
+                                vm.raiseErrorString("Object's interface member \"" + key.data + "\" is neither a Function nor an Object. Interface is malformed.");
+                                return createValue();
+                            }
+                            
+                            // direct function, return
+                            if (v.data.function_stub) {
+                                return v;
+                            }
+                            
+                            const setget = v;
+                            const getter = setget.data.kv_string[store_specialString_get.data];
+                            if (!getter || !getter.binID) {
+                                vm.raiseErrorString("Object's interface disallows reading of the member \"" + key.data +"\".");
+                                return createValue();
+                            }
+                            return vm.callFunction(getter, [], []);
+                            
+                        }
+                        
+                        
+                        
                         if (accessor && accessor.binID) {
                             return vm.callFunction(accessor, [key], [store_specialString_key]);
                         } else {
@@ -1084,6 +1137,7 @@ const Matte = {
                             vm.raiseErrorString("Cannot access member of type Function (Functions do not have members).");
                             return undefined;
                         }
+                        if (value.data.hasInterface) return undefined;
                         
                         const accessor = objectGetAccessOperator(value, isBracket, 1);
                         if (accessor.binID) {
@@ -1182,37 +1236,56 @@ const Matte = {
                             return store.valueObjectValues(vm.callFunction(set, [], []));
                     }
                     const out = [];
-                    if (value.data.kv_number) {
-                        const len = value.data.kv_number.length;
-                        for(var i = 0; i < len; ++i) {
-                            out.push(value.data.kv_number[i]);
-                        }
-                    }
+
                                     
                     if (value.data.kv_string) {
                         const values = Object.values(value.data.kv_string);
                         const len = values.length;
-                        for(var i = 0; i < len; ++i) {
-                            out.push(values[i]);
-                        }
-                    }
-
-                    if (value.data.kv_object_values) {
-                        const values = Object.values(value.data.kv_object_values);
-                        const len = values.length;
-                        for(var i = 0; i < len; ++i) {
-                            out.push(values[i]); // OK, object 
+                        
+                        if (value.data.hasInterface) {
+                            for(var i = 0; i < len; ++i) {
+                                const v = values[i];
+                                if (v.data.function_stub) {
+                                    out.push(v);
+                                } else {
+                                    const setget = v;
+                                    const getter = setget.data.kv_string[store_specialString_get.data];
+                                    if (!getter || !getter.binID) {
+                                        continue;
+                                    }
+                                    out.push(vm.callFunction(getter, [], []));                                    
+                                }
+                            }                        
+                        } else {                        
+                            for(var i = 0; i < len; ++i) {
+                                out.push(values[i]);
+                            }
                         }
                     }
                     
-                    if (value.data.kv_true) {
-                        out.push(store.createBoolean(value.data.kv_true));
-                    }
+                    if (!value.data.hasInterface) {
+                        if (value.data.kv_number) {
+                            const len = value.data.kv_number.length;
+                            for(var i = 0; i < len; ++i) {
+                                out.push(value.data.kv_number[i]);
+                            }
+                        }
+                        if (value.data.kv_object_values) {
+                            const values = Object.values(value.data.kv_object_values);
+                            const len = values.length;
+                            for(var i = 0; i < len; ++i) {
+                                out.push(values[i]); // OK, object 
+                            }
+                        }
+                        
+                        if (value.data.kv_true) {
+                            out.push(store.createBoolean(value.data.kv_true));
+                        }
 
-                    if (value.data.kv_false) {
-                        out.push(store.createBoolean(value.data.kv_false));
+                        if (value.data.kv_false) {
+                            out.push(store.createBoolean(value.data.kv_false));
+                        }
                     }
-
 
                     if (value.data.kv_types_values) {
                         const values = Object.values(value.data.kv_types_values);
@@ -1339,6 +1412,49 @@ const Matte = {
                     }
                     
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
+                    
+                    if (value.data.hasInterface == true && (!(isBracket && assigner && assigner.binID))) {
+                        if (key.binID != TYPE_STRING) {
+                            vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
+                            return createValue();
+                        }
+                        
+                        if (value.data.kv_string == undefined) {
+                            vm.raiseErrorString("Object's interface was empty.");
+                            return createValue();                        
+                        }
+                        
+                        const vv = value.data.kv_string[key.data];
+                        if (!vv) {
+                            vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
+                            return createValue();
+                        }
+
+                        if (vv.binID != TYPE_OBJECT) {
+                            vm.raiseErrorString("Object's interface member \"" + key.data + "\" is neither a Function nor an Object. Interface is malformed.");
+                            return createValue();
+                        }
+                        
+                        // direct function, return
+                        if (vv.data.function_stub) {
+                            vm.raiseErrorString("Object's \""+key.data+"\" is a member function and is read-only. Writing to this member is not allowed.");
+                            return createValue();
+                        }
+                        
+                        const setget = vv;
+                        const setter = setget.data.kv_string[store_specialString_set.data];
+                        if (!setter || !setter.binID) {
+                            vm.raiseErrorString("Object's interface disallows writing of the member \"" + key.data +"\".");
+                            return createValue();
+                        }
+                        vm.callFunction(setter, [v], [store_specialString_value]);
+                        return createValue();
+                        
+                    }
+
+
+
+
                     if (assigner.binID) {
                         const r = vm.callFunction(assigner, [key, v], [store_specialString_key, store_specialString_value]);
                         if (r.binID == TYPE_BOOLEAN && !r.data) {
@@ -1902,6 +2018,14 @@ const Matte = {
                 }
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FOREACH);
             };
+            
+            store_queryTable[QUERY.SETISINTERFACE] = function(value) {
+                if (value.binID != TYPE_OBJECT) {
+                    vm.raiseErrorString("setIsInterface requires base value to be an object.");
+                    return createValue();
+                }
+                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETISINTERFACE);
+            };            
 
             store_queryTable[QUERY.ALL] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
@@ -2376,7 +2500,7 @@ const Matte = {
                 // tucked with RELOOP
                 while(true) {
                     while(frame.pc < frame.stub.instructionCount) {
-                        inst = stub.instructions[frame.pc++];
+                        inst = stub.instructions[frame.pc++];                        
                         vm_opcodeSwitch[inst.opcode](frame, inst);
                         if (vm_pendingCatchable)
                             break;
@@ -3941,7 +4065,9 @@ const Matte = {
             
             ////////////////////////////////////// add builtin ext calls           
             vm_addBuiltIn(vm.EXT_CALL.NOOP, [], function(fn, args){return store.createEmpty();});
-            vm_addBuiltIn(vm.EXT_CALL.BREAKPOINT, [], function(fn, args){return store.createEmpty();});
+            vm_addBuiltIn(vm.EXT_CALL.BREAKPOINT, [], function(fn, args){
+                return store.createEmpty();
+            });
             
             
             const vm_extCall_foreverRestartCondition = function(frame, result) {
@@ -4319,7 +4445,12 @@ const Matte = {
             });            
             
             
-            
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_SETISINTERFACE, ['base', 'enabled'], function(fn, args) {
+                const which = store.valueAsBoolean(args[1]);
+                if (vm_pendingCatchable) return store.createEmpty();
+                store.valueObjectSetIsInterface(args[0], which);
+                return store.createEmpty();
+            });                        
             
             
 

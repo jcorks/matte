@@ -45,7 +45,7 @@ MATTE_EXT_FN(matte_consoleio__clear) {
 MATTE_EXT_FN(matte_consoleio__getline) {
     matteStore_t * store = matte_vm_get_store(vm);
 
-    char * buffer = matte_allocate(GETLINE_SIZE+1);
+    char * buffer = (char*)matte_allocate(GETLINE_SIZE+1);
     buffer[0] = 0;
 
     fgets(buffer, GETLINE_SIZE, stdin);

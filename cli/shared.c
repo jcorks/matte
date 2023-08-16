@@ -53,7 +53,7 @@ void * dump_bytes(const char * filename, uint32_t * len, int terminateOnFail) {
     void * out = matte_allocate(*len);
     uint32_t iter = 0;
     while(chunkSize = (fread(chunk, 1, 2048, f))) {
-        memcpy(out+iter, chunk, chunkSize);
+        memcpy(((uint8_t*)out)+iter, chunk, chunkSize);
         iter += chunkSize;
     }
     fclose(f);
@@ -63,14 +63,14 @@ void * dump_bytes(const char * filename, uint32_t * len, int terminateOnFail) {
 
 matteValue_t parse_parameter_line(matteVM_t * vm, const char * line) {
     uint32_t maxlen = strlen(line)+1;
-    char ** args = malloc(maxlen * sizeof(char*));
+    char ** args = (char**)matte_allocate(maxlen * sizeof(char*));
     uint32_t ct = 0;
     const char * iter = line;
     const char * iterstart = line;
     while(*iter) {
         if (isspace(*iter)) {
             if (iter != iterstart) {
-                char * str = malloc(maxlen);
+                char * str = (char*)matte_allocate(maxlen);
                 memcpy(str, iterstart, iter - iterstart);
                 str[iter - iterstart] = 0;
                 args[ct++] = str;
@@ -82,7 +82,7 @@ matteValue_t parse_parameter_line(matteVM_t * vm, const char * line) {
         }
     }
     if (iter != iterstart) {
-        char * str = malloc(maxlen);
+        char * str = (char*)matte_allocate(maxlen);
         memcpy(str, iterstart, iter - iterstart);
         str[iter - iterstart] = 0;
         args[ct++] = str;

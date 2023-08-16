@@ -95,7 +95,7 @@ void matte_value_into_new_object_ref(matteStore_t *, matteValue_t *);
 
 // Sets the type to an object that points to a new, empty object 
 // with the given type.
-void matte_value_into_new_object_ref_typed(matteStore_t *, matteValue_t *, matteValue_t type);
+void matte_value_into_new_object_ref_typed(matteStore_t *, matteValue_t *);
 
 
 
@@ -168,6 +168,7 @@ void matte_value_object_function_set_closure_value(matteStore_t *, matteValue_t 
 matteValue_t * matte_value_object_function_get_closure_value(matteStore_t *, matteValue_t v, uint32_t);
 
 
+void matte_value_object_set_is_interface(matteStore_t *, matteValue_t v, int enabled);
 
 
 matteValue_t * matte_value_object_array_at_unsafe(matteStore_t *, matteValue_t v, uint32_t index);

@@ -29,7 +29,7 @@ int main(int argc, char ** argv) {
     
     
     FILE * output = fopen("package.mt.h", "wb");
-    fprintf(output, "static uint32_t PACKAGE_MT_SIZE = %d;\nstatic char PACKAGE_MT_BYTES[] = {\n", (int)bytecodeSize);
+    fprintf(output, "static uint32_t PACKAGE_MT_SIZE = %d;\nstatic uint8_t PACKAGE_MT_BYTES[] = {\n", (int)bytecodeSize);
     uint32_t i;
     for(i = 0; i < bytecodeSize; ++i) {
         fprintf(output, "%d,", bytecode[i]);

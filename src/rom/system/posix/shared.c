@@ -43,7 +43,7 @@ static void * dump_bytes(const char * filename, uint32_t * len) {
     void * out = matte_allocate(*len);
     uint32_t iter = 0;
     while(chunkSize = (fread(chunk, 1, 2048, f))) {
-        memcpy(out+iter, chunk, chunkSize);
+        memcpy(((uint8_t*)out)+iter, chunk, chunkSize);
         iter += chunkSize;
     }
     fclose(f);

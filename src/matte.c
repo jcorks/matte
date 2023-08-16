@@ -970,7 +970,7 @@ matteValue_t matte_load_package(
         // extract JSON
         uint8_t * utf8Buffer = NULL;
         uint8_t * dataBuffer = NULL;
-        utf8Buffer = matte_allocate(size+1);
+        utf8Buffer = (uint8_t*)matte_allocate(size+1);
         memcpy(utf8Buffer, iter, size); 
         bytesLeft -= size;
         iter += size;   
@@ -1001,7 +1001,7 @@ matteValue_t matte_load_package(
         
         
         
-        mattePackageInfo_t * package = matte_allocate(sizeof(mattePackageInfo_t));
+        mattePackageInfo_t * package = (mattePackageInfo_t*)matte_allocate(sizeof(mattePackageInfo_t));
         // extract name and version info from package 
         package->packageJson = jsonObject;
         
@@ -1057,18 +1057,18 @@ matteValue_t matte_load_package(
         for(i = 0; i < sourceCount; ++i) {
             uint32_t bufferLength;
             matte_load_package__read(sizeof(uint32_t), bufferLength);
-            utf8Buffer = matte_allocate(bufferLength+1);
+            utf8Buffer = (uint8_t*)matte_allocate(bufferLength+1);
             matte_load_package__read(bufferLength, utf8Buffer[0]);
 
             uint32_t dataLength;
             matte_load_package__read(sizeof(uint32_t), dataLength);
-            dataBuffer = matte_allocate(dataLength);
+            dataBuffer = (uint8_t*)matte_allocate(dataLength);
             matte_load_package__read(dataLength, dataBuffer[0]);
             
             
             matteString_t * str;
             
-            if (!strcmp(utf8Buffer, "main.mt")) {
+            if (!strcmp((char*)utf8Buffer, "main.mt")) {
                 str = matte_string_clone(package->name);
             } else {
                 str = matte_string_create_from_c_str(
