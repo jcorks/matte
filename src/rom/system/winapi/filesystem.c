@@ -351,11 +351,11 @@ MATTE_EXT_FN(matte_filesystem__remove) {
 }
 
 MATTE_EXT_FN(matte_filesystem__exists) {
-    matteHeap_t * heap = matte_vm_get_heap(vm);
+    matteStore_t * store = matte_vm_get_store(vm);
 
-    const matteString_t * str = matte_value_string_get_string_unsafe(heap, matte_value_as_string(heap, args[0]));
-    matteValue_t out = matte_heap_new_value(heap);
-    matte_value_into_boolean(heap, &out, INVALID_FILE_ATTRIBUTES != GetFileAttributes(matte_string_get_c_str(str)));
+    const matteString_t * str = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, args[0]));
+    matteValue_t out = matte_store_new_value(store);
+    matte_value_into_boolean(store, &out, INVALID_FILE_ATTRIBUTES != GetFileAttributes(matte_string_get_c_str(str)));
     return out;
 }
 

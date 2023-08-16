@@ -50,7 +50,7 @@ return class(
 
 
             /// Execute command in the environment shell
-            run ::(command) {
+            run ::(command => String) {
                 return _run(a:command);
             }
         }

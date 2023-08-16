@@ -1,4 +1,4 @@
 all:
 	gcc ./package/make_package.c ./shared.c ../src/*.c ../src/rom/native.c -o ./package/make_package -lm
 	cd ./package && ./make_package
-	gcc -g -DMATTE_USE_SYSTEM_EXTENSIONS -fmax-errors=5 ./*.c ../src/*.c ../src/rom/native.c -o ./matte -lm
+	gcc -DMATTE_USE_SYSTEM_EXTENSIONS -fmax-errors=5 ./*.c ../src/*.c ../src/rom/native.c -o ./matte -lm
