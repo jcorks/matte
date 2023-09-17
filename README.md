@@ -1,4 +1,4 @@
-# Matte: A simple language with minimal syntax
+# Matte: A Small, Embeddable Language
 
 ## Current status: PRE RELEASE
 
@@ -117,7 +117,7 @@ print(message:combineUsingAForloop(strings:['You ', 'never ', 'know ', 'what ', 
 
 Curious? Check out the quick guide to get a feel for the concepts.
 
-## Using this repository
+## Using this Repository
 
 The sources provided in this repository provide the base VM (virtual machine) and runtime 
 to embed a Matte interpreter into any project. Also included is a standalone interpreter 
@@ -131,7 +131,7 @@ construction is simple by design, and `make` is simply used as a batch program t
 Unix-like systems and on the [MSYS2](https://www.msys2.org/) system on Windows.
 
 
-### Preparing the VM (for standalone or embedded use)
+### Preparing the VM (for Standalone or Embedded Use)
 
 The Matte runtime implemented here uses a ROM file to embed its compiled 
 base modules, making the ROM required for any usage of Matte.
@@ -168,7 +168,7 @@ See samples/embedding/ for practical examples on how to embed Matte.
 
 
 
-### Building the standalone interpreter
+### Building the Standalone Interpreter
 
 The standalone tool is useful for prototyping Matte code, debugging Matte code, and having a simple REPL (author's note: I use it as a desktop calculator!)
 
@@ -177,12 +177,12 @@ To build it:
  - Go to cli/
  - Run `make` with the makefile relevant to your system to produce `matte`, the standalone interpreter. For example, on a Unix-like system, one can run `make -f makefile_unix` to produce the `matte` binary.
 
-### Using the Matte interpreter
+### Using the Matte Interpreter
 
 Once produced, the Matte interpreter can be used in a few different modes.
 
 
-#### REPL mode
+#### REPL Mode
 
 Running `matte` with no options runs the interpreter in a [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) mode. 
 Any Matte expression can be run and its output printed. This includes dash functions, so 
