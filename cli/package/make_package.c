@@ -5,14 +5,14 @@
 
 int main(int argc, char ** argv) {
     uint32_t byteLen;
-    uint8_t * bytes = dump_bytes("package.mt", &byteLen, 1);
+    uint8_t * bytes = (uint8_t*)dump_bytes("package.mt", &byteLen, 1);
     if (!byteLen || !bytes) {
         printf("Couldnt open package.mt\n");
         exit(1);
     }
     
 
-    char * str = malloc(byteLen+1);
+    char * str = (char*)malloc(byteLen+1);
     memcpy(str, bytes, byteLen);
     str[byteLen] = 0;
     

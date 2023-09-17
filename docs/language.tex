@@ -18,9 +18,9 @@
 {
   otherkeywords = {:,::<=,@,=>,;},
   keywords = [3]{::, ::<=, @, =>, ;},
-  keywords = [1]{listen, send, for, foreach, if, when, loop, import, error, return, empty, true, false},
-  keywords = [2]{introspect, removeKey, setAttributes, getAttributes, print, getExternalFunction, newtype, instantiate},
-  keywords = [4]{Number, String, Boolean, Empty, Object, Type},
+  keywords = [1]{listen, send, for, foreach, if, when, forever, import, error, return, empty, true, false, print},
+  keywords = [2]{introspect, removeKey, setAttributes, getExternalFunction, newType, instantiate},
+  keywords = [4]{Number, String, Boolean, Empty, Object, Type, Function, Any},
   sensitive = false,
   keywordstyle = [1]\color{keyword1},
   keywordstyle = [2]\color{keyword2},
@@ -74,7 +74,7 @@ With the proliferation of software and availability of hardware to run it, a
 plethora of tools have been continually made and refined to meet the 
 continual challenges of software development. 
 
-The popularity and widespread use of languages such as Javascript and 
+The popularity and widespread use of languages such as Javascript/ECMAScript and 
 Python suggest that every-day software challenges can be approached using 
 software solutions that need not be tied to lower-level hardware while 
 still providing the necessary performance to accomplish tasks.
@@ -85,7 +85,7 @@ independent sets of language features, often using features only known to a few.
 
 Rather than depending on a language to provide every tool for every situation,
 the language, Matte, was intended to have straightforward, regular, and 
-relatively simple operation, allowing for better colaboration, easier 
+relatively simple operation, allowing for better collaboration, easier 
 extension, and simple implementation and maintenance.
   
 \section{Intent}\label{Intent}
@@ -141,7 +141,7 @@ This document does not:
   Wirth Syntax Notation (WSN) will be used for simplicity.
 
   \item Each introduced language concept shall have included with it a small snippet of outline its usage. This 
-  may or may not include a \textit{print} evaluation.
+  may or may not include a \textit{print()} evaluation.
 
   \lstinputlisting[language=Matte,firstnumber=1]{conventions.mt}
 
@@ -164,8 +164,9 @@ This document does not:
 
 \item \textbf{Runtime}: The environment in which Matte is running. This may be a program in which Matte is running, a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to execute Matte source correctly and consistently.
 
-\item \textbf{Stackframe}: When a function is called, it is said to reside within a stackframe. A stackframe is said to "activate" when a function is called, and is said to "resolve" when a function call has completed. As a function runs, an additional stackframe may be activated, causing multiple functions to be active within the callstack. Due to the design of Matte reslying heavily on function calls, this will happen often.
+\item \textbf{Stackframe}: When a function is called, it is said to reside within a stackframe. A stackframe is said to "activate" when a function is called, and is said to "resolve" when a function call has completed. As a function runs, an additional stackframe may be activated, causing multiple functions to be active within the callstack. Due to the design of Matte relying heavily on function calls, this will happen often.
 
+\item \textbf{Literal}: a datum of a certain type as explicitly written in source code.
 
 \item \textbf{Variable}: Points to a value.
 
@@ -200,7 +201,7 @@ be much easier.
 
 \chapter{Variables}\label{Variables}
 
-Variables act as conceptual storage points for working data values. Variable must be declared before usage.
+Variables act as conceptual storage points for working data values. Variables must be declared before usage.
 A variable may live past its original scope lifetime (\autoref{Lexical Scoping}) by being used, captured (\autoref{Reference Capture}), and stored within Objects.
 
 A variable may either be mutable or immutable. Variable values have types of their own, but 
@@ -228,12 +229,12 @@ For the following types, immutables are constant values:
   \item Type
   \item Boolean
   \item Empty 
+  \item Function  
 \end{itemize}
 
 For the following types, immutable variables may compute to different values depending on the attributes of the values involved.
 \begin{itemize}
   \item Object 
-  \item Function  
 \end{itemize}
 
 
@@ -241,8 +242,8 @@ For the following types, immutable variables may compute to different values dep
 \noteline
 \textit{
 The reason that these types may compute to different values is due to the fact that operators may invoke user-made callbacks that 
-alter how the object may be casted as a different type. While the immutable variable will always point to 
-the same object, how this object is expressed may change depending on the context
+alter how the value may be casted as a different type. While the immutable variable will always point to 
+the same object, how this object is expressed may change depending on the context.
 }
 
 \lstinputlisting[language=Matte,firstnumber=1]{immutable.mt}
@@ -253,7 +254,7 @@ the same object, how this object is expressed may change depending on the contex
 \section{Empty}\label{Empty}
 
 Values of the \textit{Empty} type are always the same special value: \textit{empty};
-\textit{empty} is used to represent undefined situations. This includes:
+\textit{empty} is used to represent variables that have not been defined. This includes:
 
 \begin{itemize}
   \item Variables that have not yet been assigned a value.
@@ -283,12 +284,72 @@ as comparisons.
 
 
 
-Values
+Values of the \textit{Number} type represent all possible real number based representations within 
+Matte. This includes integers, fractions, etc. Matte allows, and expects, that \textit{Number}s will not 
+necessarily be accurate when non-whole numbers are used. 
+
+Numbers are given a variety of standard \autoref{Operators} and \autoref{Queries} to facilitate 
+essential arithmetic and other useful mathematic operations.
+
+The '.' character is always used to denote a decimal fractional component. Scientific notation
+is also accepted. 
+
+The format of interpreted compatible literals for \textit{Number} values can take a few forms. 
+
+First for standard decimal values, a series of decimal digits, optionally containing a decimal point, 
+optionally preceeded by a sign (+ or -) and optionally followed by the e or E character and a 
+decimal integer is accepted.
+
+Second, hexadecimal values can be accepted as well. Any number of hexadecimal digits (0-9, a-f, A-F), 
+optionally preceded by 0x or 0X, and all optionally preceded by a sign (+ or -) are accepted 
+as valid literals.
+
+In both cases, The literal is best-fit converted into the Matte implementation of Number. 
+There is no inherent guarantee to the accuracy of the conversion, as it depends 
+entirely on the implementation.
+
+
+\lstinputlisting[language=Matte,firstnumber=1]{number.mt}
+
+
+
 \section{String}\label{String}
+
+Values of the \textit{String} type are used to represent, hold, and manipulate text.
+Like \textit{Number}s, instances of a \textit{String} immutable, and operations 
+that act on \textit{String}s, instead, create new \textit{String}s. This is 
+important to note, as it differs from other languages where \textit{String}s 
+may be objects.
+
+Literal \textit{String} value are indicated with either single quotes (') or double quotes (")
+which are prepended and appended to the text desired to be a string. Each trailing /
+ending pair MUST be the same character. Strings wrapped in ' may use " freely within 
+the string, as the " will not be interpreted. This behavior is mirrored when wrapping with " and usage of '.
+
+When using these characters to represent a string literal, all characters in source code between these tokens 
+outside of escaped characters (shown below) are part of the \textit{String} literal, and subsequently, 
+its value.
+
+
+
+\textit{String}s in Matte are explicitly represented in UTF-8 format and expect such 
+when reading string tokens in source text.
+
+
+
+
+\textit{String}s also employ the use of escape characters by prepending the special 
+character with a backslash (\).
+
+
+
+
+
+
 \section{Object}\label{Object}
 \subsection{Keys and Values}\label{Keys and Values}
 
-All objects have the potential to be used as storage tables, where objects may associate 
+All \textit{Object}s have the potential to be used as storage tables, where objects may associate 
 value "keys" with other values. Depending on the type of key, objects may store these values 
 with slightly varied rules. 
 
@@ -342,7 +403,7 @@ conversion is successful, a new value of the expected type is returned.
 
 Implicit conversion happens within:
 \begin{itemize}
-  \item Expressions(\autoref{Expressions}). As expressions are computed from left to right, the required type comes from the value to the left of the expression. All values to the right are implicitly casted to this type.
+  \item Expressions(\autoref{Expressions}). As expressions are computed from left to right, the required type comes from the value to the left of the expression. All values to the right are implicitly converted to this type for computation.
   \item Type-Strict Functions(\autoref{Type-Strict Functions}). Type-strict functions will implicitly convert for arguments that have a type specifier and for the return value if a return type specifier is present.
 \end{itemize}
 
@@ -378,13 +439,14 @@ The following behavior is expected for implicit conversions:
 \section{send/listen}\label{send/listen}
 
 The "send and listen" paradigm can serve as an alternative way to exchange information within 
-a Matte program. \textit{throw()} is a built in function that, when called, signals to the runtime
-that a value is pending to be sent. Once the runtime is aware of the catchable value, all current 
-functions running on the callstack will terminate from top to bottom (a.k.a "unwind") until the nearest
-\textit{listen()} function is detected to have a been called.
+a Matte program. \textit{send()} is a built in function that, when called, signals to the runtime
+that a value is pending to be sent to another part of the program. Once the runtime is aware of 
+the sendable (also called "catchable") value, all current functions running on the callstack 
+will terminate from top to bottom (a.k.a "unwind") until the nearest listen point
+(denoted by \textit{\{:::\}} is detected to have a been called.
 
-When such an active \textit{listen()} call is found, a number of things can happen.
-If the \textit{listen()} call has only one argument, the \textit{listen()} call returns 
+When such an active listen point is found, a number of things can happen.
+If the point has no proceeding tokens, the \textit{listen()} call returns 
 the actual message sent by \textit{send()}. If the call has 2 arguments and the second 
 argument is callable, then, if a message was received, the second argument is called 
 with the message as its only argument. In this case, the return value of \textit{listen} 
@@ -404,7 +466,7 @@ The format of this object is not formalized by the Matte language, except for th
 \textit{.data} property, which will always be the contents of the first argument 
 of the \textit{error()} call. Runtime implementations are 
 
-\chapter{Introspection}\label{Introspection}
+\chapter{Queries}\label{Queries}
 \chapter{External Interaction}\label{External Interaction}
 \section{import}\label{import}
 \section{getExternalFunction}\label{getExternalFunction}

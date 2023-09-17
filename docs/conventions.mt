@@ -4,23 +4,25 @@
 
 @ApproximateNumber ::<={
     // bound with every call.
-    @:type    = newtype({name:'ApproximateNumber'});
+    @:type    = Object.newType(name:'ApproximateNumber');
     @:epsilon = 0.00001;
 
     // the internals of the function 
     // access the constants above.
     return ::(val => Number) {
-        @out = instantiate(type);
+        @out = Object.instantiate(type);
         out.data = val;
 
-        setAttributes(out, {
-            '==' ::(other => type) {
-                return (
-                    introspect.abs(other.data)-
-                    introspect.abs(val)
-                ) < epsilon;
+        out->setAttributes(
+            attributes{
+                '==' ::(other => type) {
+                    return (
+                        other.data->abs-
+                               val->abs
+                    ) < epsilon;
+                }
             }
-        });
+        );
         return out;
     }
 }

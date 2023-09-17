@@ -1,5 +1,5 @@
-// A usable variable
+// A usable variable.
 @a;
 
-// Initial assignment
+// Initial assignment is optional.
 @a = 10;
