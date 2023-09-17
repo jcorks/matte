@@ -27,7 +27,7 @@ with some other features added and removed, and required named function paramete
 ### Main Language Features:
 
  - Small and easily embeddable with no external dependencies required
- - Both C / C++ compatible code
+ - Both C / C++ compatible code (follows C99 standard)
  - Dynamic, garbage collected value system
  - Optional gradual typing
  - Closures with lexical scoping

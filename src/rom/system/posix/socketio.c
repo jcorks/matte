@@ -334,7 +334,7 @@ MATTE_EXT_FN(matte_socket__server_update) {
     int newfd;
     struct sockaddr_in inaddr = {};
     socklen_t slen = sizeof(struct sockaddr_in);
-    if ((newfd = accept(s->fd, (sockaddr*)&inaddr, &slen)) != -1) {
+    if ((newfd = accept(s->fd, (struct sockaddr*)&inaddr, &slen)) != -1) {
         char addrString[15];
         MatteSocketServer_Client * client = (MatteSocketServer_Client*)matte_allocate(sizeof(MatteSocketServer_Client));
         if (slen >= sizeof(struct sockaddr_in)) {

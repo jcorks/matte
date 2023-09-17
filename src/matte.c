@@ -131,6 +131,14 @@ struct matte_t {
 };
 
 
+// Implementation of strdup since it is not part of C99 standard
+static char * matte_strdup(const char * str) {
+    int len = strlen(str);
+    char * cpy = matte_allocate(len+1);
+    memcpy(cpy, str, len+1);
+    return cpy;   
+}
+
 // Convenience function for printf style print to 
 // output function for matte instance
 #define MATTE_PRINT_LIMIT 4096
@@ -224,14 +232,14 @@ static int exec_command(matte_t * m) {
     if (m->currentInput[0] == '\n' || m->currentInput[0] == 0) {
         // repeat last command;
         matte_deallocate(m->currentInput);        
-        m->currentInput = strdup(m->lastInput);
+        m->currentInput = matte_strdup(m->lastInput);
     } else {
         matte_deallocate(m->lastInput);
-        m->lastInput = strdup(m->currentInput);
+        m->lastInput = matte_strdup(m->currentInput);
     }
 
     // command is the first word
-    char * iter = strdup(m->currentInput);
+    char * iter = matte_strdup(m->currentInput);
     char * res = m->currentInput; // "res"t of command
     char * command = iter;
     while(*res && !isspace(*res)) {
@@ -866,7 +874,7 @@ void matte_debugging_enable(matte_t * m) {
         debug_on_event,
         m
     );
-    m->lastInput = strdup("");
+    m->lastInput = matte_strdup("");
 }
 
 

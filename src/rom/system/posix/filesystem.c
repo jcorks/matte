@@ -33,6 +33,14 @@ typedef struct {
     int isFile;
 } DirectoryInfo;
 
+// Implementation of strdup since it is not part of C99 standard
+static char * matte_strdup(const char * str) {
+    int len = strlen(str);
+    char * cpy = matte_allocate(len+1);
+    memcpy(cpy, str, len+1);
+    return cpy;   
+}
+
 MATTE_EXT_FN(matte_filesystem__directoryenumerate) {
     matteStore_t * store = matte_vm_get_store(vm);
 
@@ -64,11 +72,11 @@ MATTE_EXT_FN(matte_filesystem__directoryenumerate) {
             if (!strcmp(dent->d_name, ".") ||
                 !strcmp(dent->d_name, "..")) continue;
             DirectoryInfo info;
-            info.name = strdup(dent->d_name);
+            info.name = matte_strdup(dent->d_name);
             cwd[len] = 0;
             strcat(cwd, "/");
             strcat(cwd, info.name);
-            info.path = strdup(cwd);
+            info.path = matte_strdup(cwd);
             info.isFile = 0;
             if (!stat(info.path, &sinfo)) {
                 info.isFile = S_ISREG(sinfo.st_mode);

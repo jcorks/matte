@@ -70,7 +70,6 @@ DEALINGS IN THE SOFTWARE.
 
 #elif defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #define MATTE_IS_POSIX
-
 //////////// put the includes needed for all of them here.
 #include <stdio.h>
 #include <stdlib.h>

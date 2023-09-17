@@ -49,7 +49,7 @@ DEALINGS IN THE SOFTWARE.
 
 #define ROOT_AGE_LIMIT 2
 
-
+#define MATTE_PI 3.14159265358979323846
 
 
 // from OS features
@@ -1298,7 +1298,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
             matte_string_destroy(str);
             return out;
         }
-        matte_value_into_number(store, &out, matte_value_as_number(store, *v)* (M_PI / 180.0));
+        matte_value_into_number(store, &out, matte_value_as_number(store, *v)* (MATTE_PI / 180.0));
         return out;
 
       case MATTE_QUERY__DEGREES: 
@@ -1308,7 +1308,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
             matte_string_destroy(str);
             return out;
         }
-        matte_value_into_number(store, &out, matte_value_as_number(store, *v)* (180.0 / M_PI));
+        matte_value_into_number(store, &out, matte_value_as_number(store, *v)* (180.0 / MATTE_PI));
         return out;
 
 

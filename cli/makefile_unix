@@ -1,5 +1,5 @@
 all:
-	gcc -O2 ./package/make_package.c ./shared.c ../src/*.c ../src/rom/native.c -o ./package/make_package -lm
+	gcc -std=c99 -O2 ./package/make_package.c ./shared.c ../src/*.c ../src/rom/native.c -o ./package/make_package -lm
 	cd ./package && ./make_package
-	gcc -O2 -DMATTE_USE_SYSTEM_EXTENSIONS -fmax-errors=5 ./*.c ../src/*.c ../src/rom/native.c -o ./matte -lm -lpthread -lssl -lcrypto
+	gcc -std=c99 -O2 -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS -fmax-errors=5 ./*.c ../src/*.c ../src/rom/native.c -o ./matte -lm -lpthread -lssl -lcrypto
 	

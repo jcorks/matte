@@ -28,9 +28,12 @@ DEALINGS IN THE SOFTWARE.
 
 */
 
+#define MATTE_PI 3.14159265358979323846
+
+
 static matteValue_t vm_ext_call__number__pi(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t out = matte_store_new_value(vm->store);    
-    matte_value_into_number(vm->store, &out, M_PI);    
+    matte_value_into_number(vm->store, &out, MATTE_PI);    
     return out;
 }
 
