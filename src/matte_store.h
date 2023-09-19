@@ -309,6 +309,11 @@ void matte_value_object_foreach(matteStore_t *, matteValue_t object, matteValue_
 const matteValue_t * matte_value_object_set(matteStore_t *, matteValue_t, matteValue_t key, matteValue_t value, int isBracket);
 
 
+// Same as matte_value_object_set() but is handy for string insertion
+const matteValue_t * matte_value_object_set_key_string(matteStore_t *, matteValue_t, const matteString_t * key, matteValue_t value);
+
+
+
 // Performs a matte_value_object_set() with dot access for each 
 // key-value pair in srcTable. If srcTable is not a table, an error is raised.
 //

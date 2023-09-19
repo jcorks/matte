@@ -3680,6 +3680,17 @@ void matte_value_object_set_table(matteStore_t * store, matteValue_t v, matteVal
 }
 
 
+
+const matteValue_t * matte_value_object_set_key_string(matteStore_t * store, matteValue_t obj, const matteString_t * key, matteValue_t value) {
+    matteValue_t keyv = matte_store_new_value(store);
+    matte_value_into_string(store, &keyv, key);
+    const matteValue_t * out = matte_value_object_set(store, obj, keyv, value, 0);
+    matte_store_recycle(store, keyv);
+    return out;
+}
+
+
+
 const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v, matteValue_t key, matteValue_t value, int isBracket) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(store->vm, "Cannot set property on something that isnt an object.");
