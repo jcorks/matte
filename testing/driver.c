@@ -343,7 +343,7 @@ int main() {
             exit(1);
         }
         matteString_t * outputText = matte_string_create();
-        matte_string_concat_printf(outputText, outstr);
+        matte_string_concat_printf(outputText, "%s", outstr);
 
         const matteString_t * resultText = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, v));
         if (!matte_string_test_eq(outputText, resultText)) {

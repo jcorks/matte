@@ -38,7 +38,7 @@ testObj->remove(key:keyobj);
 testObj->remove(key:'keyobj');
 testObj->remove(key:String); // ok
 
-out = out + testObj->keycount;
+out = out + testObj->size;
 
 return out;
 

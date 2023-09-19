@@ -3042,12 +3042,14 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "searchAll")) return MATTE_QUERY__SEARCH_ALL;
     if (!strcmp(st, "contains")) return MATTE_QUERY__CONTAINS;
     if (!strcmp(st, "replace")) return MATTE_QUERY__REPLACE;
+    if (!strcmp(st, "format")) return MATTE_QUERY__FORMAT;
     if (!strcmp(st, "count")) return MATTE_QUERY__COUNT;
     if (!strcmp(st, "charCodeAt")) return MATTE_QUERY__CHARCODEAT;
     if (!strcmp(st, "charAt")) return MATTE_QUERY__CHARAT;
     if (!strcmp(st, "setCharCodeAt")) return MATTE_QUERY__SETCHARCODEAT;
     if (!strcmp(st, "setCharAt")) return MATTE_QUERY__SETCHARAT;
     if (!strcmp(st, "keycount")) return MATTE_QUERY__KEYCOUNT;
+    if (!strcmp(st, "size")) return MATTE_QUERY__SIZE;
     if (!strcmp(st, "keys")) return MATTE_QUERY__KEYS;
     if (!strcmp(st, "values")) return MATTE_QUERY__VALUES;
     if (!strcmp(st, "push")) return MATTE_QUERY__PUSH;

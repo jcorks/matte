@@ -144,6 +144,122 @@ static matteValue_t vm_ext_call__string__contains(matteVM_t * vm, matteValue_t f
     return out;    
 }
 
+
+static matteValue_t vm_ext_call__string__format(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_string(vm, args)) return matte_store_new_value(vm->store);
+
+    matteStore_t * store = matte_vm_get_store(vm);
+
+    if (args[1].binID != MATTE_VALUE_TYPE_OBJECT) {
+        matte_vm_raise_error_cstring(vm, "'items' array input must be an object.");
+        return matte_store_new_value(store);
+    }
+
+
+    // keys are always preferred
+    uint32_t len = matte_value_object_get_number_key_count(store, args[1]);
+    uint32_t i;
+    
+    if (len == 0) {
+        return matte_value_as_string(store, args[0]);
+    }
+    matteArray_t * vals   = matte_array_create(sizeof(matteValue_t));    
+
+    for(i = 0; i < len; ++i) {
+        matteValue_t str = matte_value_as_string(
+            store, 
+            matte_value_object_access_index(
+                store, 
+                args[1], 
+                i
+            )
+        );
+        if (str.binID != MATTE_VALUE_TYPE_STRING || vm->pendingCatchable) {
+            matte_array_destroy(vals);
+            return matte_store_new_value(store);
+        }
+        
+        matte_array_push(vals, str);
+    }
+    
+    
+    matteArray_t * keys   = matte_array_create(sizeof(matteString_t*));    
+    for(i = 0; i < len; ++i) {
+        matteString_t * str = matte_string_create_from_c_str("%%%d", i);
+        matte_array_push(keys, str);
+    }        
+    
+
+
+    
+    uint32_t n;
+    matteString_t * str = matte_string_clone(matte_value_string_get_string_unsafe(store, args[0]));
+    len = matte_string_get_length(str);
+
+
+
+    uint32_t nkeys = matte_array_get_size(keys);
+    uint32_t k;
+    for(k = 0; k < nkeys+1; ++k) {
+        const matteString_t * other;
+        const matteString_t * newst;
+        if (k == nkeys) {
+            other = MATTE_VM_STR_CAST(vm, "%%");
+            newst = MATTE_VM_STR_CAST(vm, "%");        
+        
+        } else {
+            other = matte_array_at(keys, matteString_t *, k);
+            newst = matte_value_string_get_string_unsafe(store, matte_array_at(vals, matteValue_t, k));        
+        }
+
+
+        uint32_t lenOther = matte_string_get_length(other);
+        if (len >= lenOther-1) {
+            for(i = 0; i < len - (lenOther-1); ++i) {
+                for(n = 0; n < lenOther && i+n < len; ++n) {
+                    if (matte_string_get_char(str, i+n) !=
+                        matte_string_get_char(other, n)) {
+                        break;
+                    }
+                }
+                
+                if (n == lenOther) { // found:
+                    matte_string_remove_n_chars(str, i, lenOther);
+                    uint32_t lenNew = matte_string_get_length(newst);
+                    if (i >= len - lenOther) {
+                        matte_string_concat(str, newst); 
+                    } else {
+                        uint32_t * buffer = malloc(matte_string_get_length(newst) * sizeof(uint32_t));
+                        for(n = 0; n < lenNew; ++n) {
+                            buffer[n] = matte_string_get_char(newst, n);                        
+                        }
+                        matte_string_insert_n_chars(
+                            str, 
+                            i, 
+                            buffer, 
+                            lenNew
+                        ); 
+                        free(buffer);
+                    }
+                    len = matte_string_get_length(str);
+                    i += lenNew-1;
+                }
+            }
+        }
+        if (k != nkeys) {
+            matte_string_destroy((matteString_t*)other);
+            matte_store_recycle(store, matte_array_at(vals, matteValue_t, k));
+        }
+    }
+    matte_array_destroy(keys);
+    matte_array_destroy(vals);
+    matteValue_t out = matte_store_new_value(store);    
+    matte_value_into_string(store, &out, str);
+    matte_string_destroy(str);
+    return out;  
+}
+
+
 static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_string(vm, args)) return matte_store_new_value(vm->store);
 
@@ -389,6 +505,9 @@ static matteValue_t vm_ext_call__string__combine(matteVM_t * vm, matteValue_t fn
     matte_string_destroy(str);
     return outstr;
 }
+
+
+
 
 static matteValue_t vm_ext_call__string__removechar(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_string(vm, args)) return matte_store_new_value(vm->store);

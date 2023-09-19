@@ -1526,6 +1526,8 @@ matteVM_t * matte_vm_create(matte_t * m) {
         MATTE_VM_STR_CAST(vm, "from"),
         MATTE_VM_STR_CAST(vm, "to")
     };
+
+
     
     const matteString_t * splitNames[] = {
         query_name,
@@ -1535,6 +1537,11 @@ matteVM_t * matte_vm_create(matte_t * m) {
     const matteString_t * scanNames[] = {
         query_name,
         MATTE_VM_STR_CAST(vm, "format")
+    };
+
+    const matteString_t * formatNames[] = {
+        query_name,
+        MATTE_VM_STR_CAST(vm, "items")
     };
     
     const matteString_t * atan2Names[] = {
@@ -1627,6 +1634,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
     temp = MATTE_ARRAY_CAST(substr_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SUBSTR,     &temp, vm_ext_call__string__substr);    
     temp = MATTE_ARRAY_CAST(splitNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SPLIT,     &temp, vm_ext_call__string__split);    
     temp = MATTE_ARRAY_CAST(scanNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SCAN,     &temp, vm_ext_call__string__scan);    
+    temp = MATTE_ARRAY_CAST(formatNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FORMAT,      &temp, vm_ext_call__string__format);    
 
     
     
