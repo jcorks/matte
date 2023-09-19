@@ -145,6 +145,11 @@ static matteValue_t vm_ext_call__string__contains(matteVM_t * vm, matteValue_t f
 }
 
 
+static int get_digits(double val) {
+    if (val <= 1) return 1;
+    return ((int)(log10(val))) + 1;
+}
+
 static matteValue_t vm_ext_call__string__format(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_string(vm, args)) return matte_store_new_value(vm->store);
 
@@ -182,76 +187,71 @@ static matteValue_t vm_ext_call__string__format(matteVM_t * vm, matteValue_t fn,
         matte_array_push(vals, str);
     }
     
-    
-    matteArray_t * keys   = matte_array_create(sizeof(matteString_t*));    
-    for(i = 0; i < len; ++i) {
-        matteString_t * str = matte_string_create_from_c_str("%%%d", i);
-        matte_array_push(keys, str);
-    }        
+    uint32_t keycount = len;    
     
 
 
     
     uint32_t n;
-    matteString_t * str = matte_string_clone(matte_value_string_get_string_unsafe(store, args[0]));
+    const matteString_t * src = matte_value_string_get_string_unsafe(store, args[0]);
+    matteString_t * str = matte_string_clone(src);
     len = matte_string_get_length(str);
 
 
 
-    uint32_t nkeys = matte_array_get_size(keys);
-    uint32_t k;
-    for(k = 0; k < nkeys+1; ++k) {
-        const matteString_t * other;
+    
+    uint32_t strIter = 0;
+    for(i = 0; i < len; ++i, ++strIter) {
+        if (matte_string_get_char(src, i) != '%') continue;
+        if (i == len-1) continue;
+    
+        uint32_t next = matte_string_get_char(src, i+1);
+    
+    
+        int otherLen;
         const matteString_t * newst;
-        if (k == nkeys) {
-            other = MATTE_VM_STR_CAST(vm, "%%");
+        int index = -1;
+        if (next == '%') {
+            otherLen = 2;
             newst = MATTE_VM_STR_CAST(vm, "%");        
         
+        } else if (sscanf(
+            matte_string_get_c_str(matte_string_get_substr(src, i+1, matte_string_get_length(src)-1)),
+            "%d",
+            &index
+        ) && index >= 0 && index < keycount) {
+            otherLen = 1 + get_digits(index);
+            newst = matte_value_string_get_string_unsafe(store, matte_array_at(vals, matteValue_t, index));        
+        } else { // invalid index
+            continue;
+        }
+
+
+        matte_string_remove_n_chars(str, strIter, otherLen);
+        uint32_t lenNew = matte_string_get_length(newst);
+        if (i >= len - otherLen) {
+            matte_string_concat(str, newst); 
         } else {
-            other = matte_array_at(keys, matteString_t *, k);
-            newst = matte_value_string_get_string_unsafe(store, matte_array_at(vals, matteValue_t, k));        
-        }
-
-
-        uint32_t lenOther = matte_string_get_length(other);
-        if (len >= lenOther-1) {
-            for(i = 0; i < len - (lenOther-1); ++i) {
-                for(n = 0; n < lenOther && i+n < len; ++n) {
-                    if (matte_string_get_char(str, i+n) !=
-                        matte_string_get_char(other, n)) {
-                        break;
-                    }
-                }
-                
-                if (n == lenOther) { // found:
-                    matte_string_remove_n_chars(str, i, lenOther);
-                    uint32_t lenNew = matte_string_get_length(newst);
-                    if (i >= len - lenOther) {
-                        matte_string_concat(str, newst); 
-                    } else {
-                        uint32_t * buffer = malloc(matte_string_get_length(newst) * sizeof(uint32_t));
-                        for(n = 0; n < lenNew; ++n) {
-                            buffer[n] = matte_string_get_char(newst, n);                        
-                        }
-                        matte_string_insert_n_chars(
-                            str, 
-                            i, 
-                            buffer, 
-                            lenNew
-                        ); 
-                        free(buffer);
-                    }
-                    len = matte_string_get_length(str);
-                    i += lenNew-1;
-                }
+            uint32_t * buffer = malloc(matte_string_get_length(newst) * sizeof(uint32_t));
+            for(n = 0; n < lenNew; ++n) {
+                buffer[n] = matte_string_get_char(newst, n);                        
             }
+            matte_string_insert_n_chars(
+                str, 
+                strIter, 
+                buffer, 
+                lenNew
+            ); 
+            free(buffer);
         }
-        if (k != nkeys) {
-            matte_string_destroy((matteString_t*)other);
-            matte_store_recycle(store, matte_array_at(vals, matteValue_t, k));
-        }
+        i += otherLen-1;
+        strIter += lenNew-1;
+
     }
-    matte_array_destroy(keys);
+    
+    for(i = 0; i < keycount; ++i) {
+        matte_store_recycle(store, matte_array_at(vals, matteValue_t, i));    
+    }
     matte_array_destroy(vals);
     matteValue_t out = matte_store_new_value(store);    
     matte_value_into_string(store, &out, str);

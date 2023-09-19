@@ -20,7 +20,7 @@ a = String.combine(strings:
     'Program'
 ])
 
-@c = "%2%2%3%%%%4%0"->format(items:[
+@c = "%2%2%3%%%%%4%0"->format(items:[
     13,
     24,
     57,
