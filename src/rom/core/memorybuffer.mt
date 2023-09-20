@@ -49,15 +49,10 @@ DEALINGS IN THE SOFTWARE.
 @:class = import(module:'Matte.Core.Class');
 @MemoryBuffer = class(
     name: 'Matte.Core.MemoryBuffer',
-    new ::(handle) {
-        @:this = MemoryBuffer.defaultNew();
-        this.bindNative(handle);
-        return this;
-    },
     define:::(this) {
         @:MBuffer = MemoryBuffer.type;
         @length = 0;
-        @buffer;
+        @buffer = _mbuffer_create();
         
         
         
@@ -67,10 +62,12 @@ DEALINGS IN THE SOFTWARE.
         
         this.interface = {
             bindNative::(handle) {
-                buffer = (
                     if (handle == empty) ::<={
                         return _mbuffer_create();
                     } else ::<={
+                        if (buffer) 
+                            _mbuffer_release(a:buffer);
+                            
                         length = _mbuffer_get_size(a:handle);
                         return handle;
                     }
@@ -138,9 +135,8 @@ DEALINGS IN THE SOFTWARE.
                 to   => Number
             ) => MBuffer {
                 checkReleased(t:this);
-                return MemoryBuffer.new(handle:
-                    _mbuffer_subset(a:buffer, b:from, c:to)
-                );
+                @h = MemoryBuffer.new();
+                h.bindNative(handle: _mbuffer_subset(a:buffer, b:from, c:to));
             },
             
             

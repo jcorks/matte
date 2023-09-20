@@ -261,6 +261,37 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID, matteValue_t v);
 
 
+
+// Creates a native handle to a Matte.Core.MemoryBuffer.
+// This is intended to make it easy and efficient for 
+// usercode to generate a MemoryBuffer instance from 
+// native data.
+// Note that what this returns is the native handle and NOT 
+// a MemoryBuffer instance. To get a normal MemoryBuffer instance,
+// - Import Matte.Core.MemoryBuffer
+// - Instantiate a new buffer
+// - Use the MemoryBuffer.bindNative() function and pass this result as its handle argument
+matteValue_t matte_vm_create_memory_buffer_handle_from_data(
+    matteVM_t * vm,
+    const uint8_t * data,
+    uint32_t size
+);
+
+
+// As the inverse of matte_vm_create_memory_buffer_handle_from_data(),
+// Retrieves a raw data buffer for a handle of a MemoryBuffer instance.
+//
+// This can be retrieved from a MemoryBuffer instance by accessing the 
+// .handle getter.
+// This function can throw a VM error if the buffer is inaccessible.
+const uint8_t * matte_vm_get_memory_buffer_handle_raw_data(
+    matteVM_t * vm,
+    matteValue_t handle,
+    uint32_t * size
+);
+
+
+
 // Adds an external function.
 // In the script context: calling getExternalFunction() with the string identifier 
 // given will return a function object that, when called, calls this C function.

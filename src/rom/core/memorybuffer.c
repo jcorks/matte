@@ -47,7 +47,7 @@ static void auto_cleanup_buffer(void * ud, void * fd) {
 
 // helper for other system implementations that 
 // deal with raw data: 
-static matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t * vm, const uint8_t * data, uint32_t size) {
+matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t * vm, const uint8_t * data, uint32_t size) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_new_object_ref(store, &out);
