@@ -62,6 +62,7 @@ DEALINGS IN THE SOFTWARE.
         
         this.interface = {
             bindNative::(handle) {
+                buffer = (
                     if (handle == empty) ::<={
                         return _mbuffer_create();
                     } else ::<={
