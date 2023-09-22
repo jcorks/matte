@@ -284,7 +284,7 @@ matteValue_t matte_vm_create_memory_buffer_handle_from_data(
 // This can be retrieved from a MemoryBuffer instance by accessing the 
 // .handle getter.
 // This function can throw a VM error if the buffer is inaccessible.
-const uint8_t * matte_vm_get_memory_buffer_handle_raw_data(
+uint8_t * matte_vm_get_memory_buffer_handle_raw_data(
     matteVM_t * vm,
     matteValue_t handle,
     uint32_t * size

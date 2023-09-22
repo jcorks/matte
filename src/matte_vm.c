@@ -2667,9 +2667,9 @@ matteValue_t matte_vm_create_memory_buffer_handle_from_data(
 }
 
 
-const uint8_t * matte_system_shared__get_raw_from_memory_buffer(matteVM_t * vm, matteValue_t b, uint32_t * size);
+uint8_t * matte_system_shared__get_raw_from_memory_buffer(matteVM_t * vm, matteValue_t b, uint32_t * size);
 
-const uint8_t * matte_vm_get_memory_buffer_handle_raw_data(
+uint8_t * matte_vm_get_memory_buffer_handle_raw_data(
     matteVM_t * vm,
     matteValue_t handle,
     uint32_t * size

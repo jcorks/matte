@@ -67,7 +67,7 @@ matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t * vm, 
     return out;
 }
 
-const uint8_t * matte_system_shared__get_raw_from_memory_buffer(matteVM_t * vm, matteValue_t b, uint32_t * size) {
+uint8_t * matte_system_shared__get_raw_from_memory_buffer(matteVM_t * vm, matteValue_t b, uint32_t * size) {
     matteStore_t * store = matte_vm_get_store(vm);
     MatteMemoryBuffer * mB = (MatteMemoryBuffer*)matte_value_object_get_userdata(store, b);
     if (!(mB && mB->idval == MEMORYBUFFER_ID_TAG)) {
