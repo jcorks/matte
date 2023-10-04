@@ -1957,6 +1957,14 @@ matteValue_t matte_vm_call(
         matte_store_recycle(vm->store, d);
         return result;
     }
+    matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, d);
+    uint32_t instCount;
+    matte_bytecode_stub_get_instructions(stub, &instCount); 
+
+    // Fast path -> empty function
+    if (instCount == 0) return matte_store_new_value(vm->store);
+    
+    
     matteVMStackFrame_t * prevFrame = vm->stacksize == 0 ? NULL :
         matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);                
     
@@ -1965,7 +1973,6 @@ matteValue_t matte_vm_call(
         // and preparing its referrables.
         matteArray_t * referrables = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize)->referrables;
         referrables->size = 0;
-        matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, d);
 
         // slot 0 is always the context
         uint32_t i, n;
