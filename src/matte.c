@@ -521,71 +521,15 @@ static uint32_t default_importer(
     }
     fclose(f);
 
-    
-    uint32_t fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));   
-    // determine if bytecode or raw source.
-    // handle bytecodecase
-    if (bytelen >= 6 &&
-        bytes[0] == 'M'  &&
-        bytes[1] == 'A'  &&
-        bytes[2] == 'T'  &&
-        bytes[3] == 0x01 &&
-        bytes[4] == 0x06 &&
-        bytes[5] == 'B') {
-        
-        
-        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-            matte_vm_get_store(m->vm),
-            fileid,
-            bytes,
-            bytelen
-        );
-        if (stubs) {
-            matte_vm_add_stubs(m->vm, stubs);
-        } else {
-            fileid = 0; // failed.
-            matte_print(m, "Failed to assemble bytecode %s.", name); 
-        }        
-    // raw source
-    } else {
-        uint32_t bytecodeLen;
-        uint8_t * bytecode = matte_compiler_run(
-            m->graph,
-            bytes,
-            bytelen,
-            &bytecodeLen,
-            default_compile_error,            
-            m
-        );
-        
-        if (!bytes || ! bytecodeLen) {
-            fileid = 0; // failed.
-            matteString_t * str = matte_string_create_from_c_str("Could not import '%s'.", name);
-            matte_vm_raise_error_string(m->vm, str);
-            matte_string_destroy(str);
-        } else {
-            if (m->isDebug)
-                debug_split_lines(m, fileid, bytes, bytelen);
-        
-        
-            matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-                matte_vm_get_store(m->vm),
-                fileid,
-                bytecode,
-                bytecodeLen
-            );
-            if (stubs) {
-            matte_vm_add_stubs(m->vm, stubs);
-            } else {
-                fileid = 0; // failed.
-                matte_print(m, "Failed to assemble bytecode %s.", name); 
-            }           
-        }
-        matte_deallocate(bytecode);
-    }
+    uint32_t fileID = matte_add_module(
+        m,
+        name,
+        bytes,
+        bytelen
+    );
 
     matte_deallocate(bytes);
-    return fileid;
+    return fileID;
 }
 
 
@@ -845,21 +789,78 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
 }
 
 
-void matte_add_module(
+uint32_t matte_add_module(
     matte_t * m, 
     const char * name, 
-    const uint8_t * bytecode, 
-    uint32_t bytecodeSize
+    const uint8_t * bytes, 
+    uint32_t bytelen
 ) {
-    uint32_t fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
-    matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-        matte_vm_get_store(m->vm),
-        fileid,
-        bytecode,
-        bytecodeSize
-    );
-    matte_vm_add_stubs(m->vm, stubs);
-    matte_array_destroy(stubs);
+    uint32_t fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));   
+    // determine if bytecode or raw source.
+    // handle bytecodecase
+    if (bytelen >= 6 &&
+        bytes[0] == 'M'  &&
+        bytes[1] == 'A'  &&
+        bytes[2] == 'T'  &&
+        bytes[3] == 0x01 &&
+        bytes[4] == 0x06 &&
+        bytes[5] == 'B') {
+        
+        
+        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+            matte_vm_get_store(m->vm),
+            fileid,
+            bytes,
+            bytelen
+        );
+        if (stubs) {
+            matte_vm_add_stubs(m->vm, stubs);
+        } else {
+            fileid = 0; // failed.
+            matteString_t * str = matte_string_create_from_c_str("Failed to assemble bytecode %s.", name);
+            matte_vm_raise_error_string(m->vm, str);
+            matte_string_destroy(str);
+        }        
+    // raw source
+    } else {
+        uint32_t bytecodeLen;
+        uint8_t * bytecode = matte_compiler_run(
+            m->graph,
+            bytes,
+            bytelen,
+            &bytecodeLen,
+            default_compile_error,            
+            m
+        );
+        
+        if (!bytes || ! bytecodeLen) {
+            fileid = 0; // failed.
+            matteString_t * str = matte_string_create_from_c_str("Could not import '%s'.", name);
+            matte_vm_raise_error_string(m->vm, str);
+            matte_string_destroy(str);
+        } else {
+            if (m->isDebug)
+                debug_split_lines(m, fileid, bytes, bytelen);
+        
+        
+            matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
+                matte_vm_get_store(m->vm),
+                fileid,
+                bytecode,
+                bytecodeLen
+            );
+            if (stubs) {
+            matte_vm_add_stubs(m->vm, stubs);
+            } else {
+                fileid = 0; // failed.
+                matteString_t * str = matte_string_create_from_c_str("Failed to assemble bytecode %s.", name);
+                matte_vm_raise_error_string(m->vm, str);
+                matte_string_destroy(str);
+            }           
+        }
+        matte_deallocate(bytecode);
+    }  
+    return fileid;  
 }
 
 

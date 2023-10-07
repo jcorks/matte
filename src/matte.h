@@ -250,10 +250,14 @@ uint8_t * matte_compile_source(
 
 
 /// Convenience function that registers a module by-name with 
-/// the given bytecode. The module is not run, but pre-loaded so that, 
-/// when imported, the bytecode is run at that time.
-/// 
-void matte_add_module(
+/// the given bytecode or source. The module is not run, but pre-loaded so that, 
+/// when imported, the bytecode or source is run at that time.
+/// This function is most commonly used to implement 
+/// custom importers, as this handles the registering of 
+/// the external data, even registring debugging source if needed.
+/// The new fileID for the data is returned. Upon error, 0 is returned
+///
+uint32_t matte_add_module(
     /// The instance to add the module to.
     matte_t *, 
     
@@ -261,11 +265,11 @@ void matte_add_module(
     /// name that will be used to import.
     const char * name, 
     
-    /// The bytecode to add as the module.
+    /// The bytecode or source to add as the module.
     const uint8_t * bytecode, 
     
     /// The length of the buffer containing 
-    /// the bytecode.
+    /// the bytecode or source.
     uint32_t bytecodeSize
 );
 
