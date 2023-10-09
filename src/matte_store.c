@@ -3249,7 +3249,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
             if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, value);                
             }
-            object_link_parent_value(store, m, &key);
+            object_unlink_parent_value(store, m, &key);
             matte_store_recycle(store, *value);
             matte_table_remove_by_uint(m->table.keyvalues_object, key.value.id);
             store_recycle_value_pointer(store, id);
@@ -3431,6 +3431,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
         matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
         matteValue_t r = matte_vm_call(store->vm, func, &arr, &argNames_array, NULL);
         matte_store_recycle(store, r);
+    
     
         matte_value_object_pop_lock(store, args[0]);
         matte_value_object_pop_lock(store, args[1]);
