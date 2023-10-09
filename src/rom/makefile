@@ -1,3 +1,6 @@
+# default is GCC. Override CC when invoking make for something else.
+CC:=gcc
+
 with-extensions:
 	$(CC) -std=c99 -g -DMATTE_USE_SYSTEM_EXTENSIONS makerom.c ../matte_string.c ../matte_array.c ../matte_table.c ../matte_compiler.c ../matte_compiler__syntax_graph.c -o makerom
 	
