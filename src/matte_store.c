@@ -3679,24 +3679,24 @@ void matte_value_object_set_table(matteStore_t * store, matteValue_t v, matteVal
 
 
 
-const matteValue_t * matte_value_object_set_key_string(matteStore_t * store, matteValue_t obj, const matteString_t * key, matteValue_t value) {
+matteValue_t matte_value_object_set_key_string(matteStore_t * store, matteValue_t obj, const matteString_t * key, matteValue_t value) {
     matteValue_t keyv = matte_store_new_value(store);
     matte_value_into_string(store, &keyv, key);
-    const matteValue_t * out = matte_value_object_set(store, obj, keyv, value, 0);
+    matteValue_t out = matte_value_object_set(store, obj, keyv, value, 0);
     matte_store_recycle(store, keyv);
     return out;
 }
 
 
 
-const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v, matteValue_t key, matteValue_t value, int isBracket) {
+matteValue_t matte_value_object_set(matteStore_t * store, matteValue_t v, matteValue_t key, matteValue_t value, int isBracket) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(store->vm, "Cannot set property on something that isnt an object.");
-        return NULL;
+        return matte_store_new_value(store);
     }
     if (key.binID == 0) {
         matte_vm_raise_error_cstring(store->vm, "Cannot set property with an empty key");
-        return NULL;
+        return matte_store_new_value(store);
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
 
@@ -3711,12 +3711,12 @@ const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v
 
         if (key.binID != MATTE_VALUE_TYPE_STRING) {
             matte_vm_raise_error_cstring(store->vm, "Objects with interfaces only have string-keyed members.");
-            return NULL;        
+            return matte_store_new_value(store);
         }
 
         if (!m->table.keyvalues_string) {
             matte_vm_raise_error_cstring(store->vm, "Object's interface was empty.");
-            return NULL;          
+            return matte_store_new_value(store);
         }        
         
         void * id = matte_table_find_by_uint(m->table.keyvalues_string, key.value.id);
@@ -3727,7 +3727,7 @@ const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v
             );
             matte_vm_raise_error_string(store->vm, err);
             matte_string_destroy(err);
-            return NULL;                
+            return matte_store_new_value(store);
         }
         matteValue_t * value = store_value_pointer_get_by_pointer(store, id);
         
@@ -3738,7 +3738,7 @@ const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v
             );
             matte_vm_raise_error_string(store->vm, err);
             matte_string_destroy(err);
-            return NULL;                
+            return matte_store_new_value(store);
         
         }
         
@@ -3749,12 +3749,12 @@ const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v
             );
             matte_vm_raise_error_string(store->vm, err);
             matte_string_destroy(err);
-            return NULL;                
+            return matte_store_new_value(store);
         }
         
         matteObject_t * setget = matte_store_bin_fetch_table(store->bin, value->value.id);
         if (setget->table.keyvalues_string == NULL) {
-            return NULL;
+            return matte_store_new_value(store);
         }
         id = matte_table_find_by_uint(setget->table.keyvalues_string, store->specialString_set.value.id);
         if (!id) {
@@ -3764,7 +3764,7 @@ const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v
             );
             matte_vm_raise_error_string(store->vm, err);
             matte_string_destroy(err);
-            return NULL;                        
+            return matte_store_new_value(store);
         }
         matteValue_t * setter = store_value_pointer_get_by_pointer(store, id);
 
@@ -3778,7 +3778,7 @@ const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v
 
         matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 1);
         matte_vm_call(store->vm, *setter, &arr, &argNames_array, NULL);
-        return NULL;
+        return matte_store_new_value(store);
     }
 
     if (assigner.binID) {
@@ -3794,15 +3794,11 @@ const matteValue_t * matte_value_object_set(matteStore_t * store, matteValue_t v
         matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
         matteValue_t r = matte_vm_call(store->vm, assigner, &arr, &argNames_array, NULL);
         matte_store_recycle(store, assigner);
-        if (r.binID == MATTE_VALUE_TYPE_BOOLEAN && !matte_value_as_boolean(store, r)) {
-            matte_store_recycle(store, r);
-            return NULL;
-        } else {
-            matte_store_recycle(store, r);
-            return object_put_prop(store, m, key, value); 
-        }
+        return r;
     } else {
-        return object_put_prop(store, m, key, value);
+        matteValue_t * v = object_put_prop(store, m, key, value);
+        if (!v) return matte_store_new_value(store);
+        return *v;
     }
 }
 

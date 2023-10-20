@@ -306,11 +306,11 @@ void matte_value_object_foreach(matteStore_t *, matteValue_t object, matteValue_
 
 // Attempts to set a key-value pair within the object.
 // invokes assigner if present
-const matteValue_t * matte_value_object_set(matteStore_t *, matteValue_t, matteValue_t key, matteValue_t value, int isBracket);
+matteValue_t matte_value_object_set(matteStore_t *, matteValue_t, matteValue_t key, matteValue_t value, int isBracket);
 
 
 // Same as matte_value_object_set() but is handy for string insertion
-const matteValue_t * matte_value_object_set_key_string(matteStore_t *, matteValue_t, const matteString_t * key, matteValue_t value);
+matteValue_t matte_value_object_set_key_string(matteStore_t *, matteValue_t, const matteString_t * key, matteValue_t value);
 
 
 

@@ -335,8 +335,7 @@ empty.
 \section{Boolean}\label{Boolean}
 
 \textbf{Grammar}: See token \textit{LITERAL\_BOOLEAN}
-
-
+\\\\
 Values of the \textit{Boolean} type can be either the special value \textit{true} or 
 the special value \textit{false}. Expressions may compute to Booleans, such 
 as comparisons.
@@ -367,8 +366,7 @@ as comparisons.
 \section{Number}\label{Number}
 
 \textbf{Grammar}: See token \textit{LITERAL\_NUMBER}
-
-
+\\\\
 Values of the \textit{Number} type represent all possible real number based representations within 
 Matte. This includes integers, decimals, etc. Matte allows, and expects, that \textit{Number}s will not 
 necessarily be accurate when non-whole numbers are used. It is also expected that there may 
@@ -421,8 +419,7 @@ entirely on the implementation.
 \section{String}\label{String}
 
 \textbf{Grammar}: See token \textit{LITERAL\_STRING}
-
-
+\\\\
 Values of the \textit{String} type are used to represent, hold, and manipulate text.
 Like \textit{Number}s, instances of \textit{String} are immutable, and operations 
 that act on \textit{String}s, instead, create new \textit{String}s. This is 
@@ -493,44 +490,6 @@ mixed and do not require all values to be of the same type.
  \hline
 \end{tabular}
 }
-\subsection{Literals}\label{Literals}
-
-\textbf{Grammar}: See \textit{new\_object}
-
-
-\textit{Object} literals are instantiated in 2 main ways.
-\\\\
-First, literals may take array literal syntax. In this method, an \textit{Object} is generated with 
-key-value pairs whose keys are sequential \textit{Number}s starting at value 0 and increasing by one.
-Each value of the \textit{Object}, which is interchangeable in this case with the word array,
-is laid out in a comma-separated list, which are computed and assigned to the new \textit{Object} sequentially.
-Optionally, the literal may contain no values listed. In which case the \textit{Object} created is empty.
-
-\lstinputlisting[language=Matte,firstnumber=1]{array_literal.mt}
-
-Second, literals may take the more verbose object literal syntax. In this method, both 
-keys and values are specified, computed, and assigned to the resulting new \textit{Object}.
-Keys are laid out as either identifiers, which are computed as \textit{String}s, or 
-as expressions. The grammars for this construct naturally lead to the preference of 
-expression keys to be in parentheses.
-Optionally, the literal may contain no values listed. In which case the \textit{Object} created is empty.
-
-\lstinputlisting[language=Matte,firstnumber=1]{object_literal.mt}
-
-
-\subsection{Spreading}\label{Spreading}
-
-Both literal syntax variants support spreading. Spreading allows the creation 
-of new \textit{Object}s by using existing one's keys and values. Spreading is 
-specified using the spread operator intermixed within the literal.
-
-When spreading, the \textit{Object} being spread (the \textit{Object} proceeding the operator)
-copies its keys and values into the resultant \textit{Object}.
-
-The semantics for array literals and \textit{Object} literals are different.
-When used 
-
-\lstinputlisting[language=Matte,firstnumber=1]{object_spreading.mt}
 
 
 \subsection{Keys and Values}\label{Keys and Values}
@@ -585,10 +544,101 @@ Each string key is specified as an identifier and implicitly converted into a st
 \\\\
 \lstinputlisting[language=Matte,firstnumber=1]{dot.mt}
 
+\subsection{Literals}\label{Literals}
+
+\textbf{Grammar}: See \textit{new\_object}
+\\\\
+\textit{Object} literals are instantiated in 2 main ways.
+\\\\
+First, literals may take array literal syntax. In this method, an \textit{Object} is generated with 
+key-value pairs whose keys are sequential \textit{Number}s starting at value 0 and increasing by one.
+Each value of the \textit{Object}, which is interchangeable in this case with the word array,
+is laid out in a comma-separated list, which are computed and assigned to the new \textit{Object} sequentially.
+Optionally, the literal may contain no values listed. In which case the \textit{Object} created is empty.
+
+\lstinputlisting[language=Matte,firstnumber=1]{array_literal.mt}
+
+Second, literals may take the more verbose object literal syntax. In this method, both 
+keys and values are specified, computed, and assigned to the resulting new \textit{Object}.
+Keys are laid out as either identifiers, which are computed as \textit{String}s, or 
+as expressions. The grammars for this construct naturally lead to the preference of 
+expression keys to be in parentheses.
+Optionally, the literal may contain no values listed. In which case the \textit{Object} created is empty.
+
+\lstinputlisting[language=Matte,firstnumber=1]{object_literal.mt}
+
+
+\subsection{Spreading}\label{Spreading}
+
+Both literal syntax variants support spreading. Spreading allows the creation 
+of new \textit{Object}s by using existing one's keys and values. Spreading is 
+specified using the spread operator intermixed within the literal.
+\\\\
+When spreading, the \textit{Object} being spread (the \textit{Object} proceeding the operator)
+copies its keys and values into the resultant \textit{Object}.
+\\\\
+The semantics for array literals and \textit{Object} literals are different.
+When used in arrays, the object being spread from donates its values in the order 
+that they are starting at the index that the spread appears. For example, 
+if the first value of an array literal is 'a' and the second is an \textit{Object} 
+being spread which contains 'b', 'c', 'd', the new \textit{Object} will contain 
+'a', 'b' ,'c' ,'d', as the spread appeared as the second item, or index 1.
+When accessing these values for applying the spread operation, the behavior is 
+equivalent to accessing each value via a bracket access. This will invoke 
+any attribute behavior regarding bracket access.
+\\\\
+The semantics for \textit{Object} literals are much simpler. Any spread operation 
+within the literal will copy its keys and values into the new \textit{Object}
+in order as if copying from the \textit{->keys} and \textit{->values} query arrays, invoking any relevant attributes.
+If multiple spread operations cover the same keys, the later spreads will take precedence.
+
+\lstinputlisting[language=Matte,firstnumber=1]{object_spreading.mt}
+
+
 
 \subsection{Attributes}\label{Attributes}
 
+Every object has the potential to have attributes. Attributes provide special, user-defined 
+behavior for objects in various situations, allowing the object to behave in a custom 
+way thats more appropriate for the problem domain, or encapsulates desired behavior.
+\\\\
+Attributes are set using the \textit{->setAttributes} query, which allows for defining 
+and \textit{Object} that serves as the attribute set. The attribute \textit{Object}
+will persist as the container of the attributes, and any modifications to the \textit{Object}
+will reflect in the attribute set.
+\\\\
+The attribute \textit{Object} is scanned for proper key-value pairs when a situation 
+arises that demands for it. Each key for an attribute \textit{Object} that are scanned 
+are string keys. If a string key exists, it must point to a value that 
+describes how the \textit{Object} ought to respond. If it does not point to the proper value type,
+an error is thrown at the time of access.
+\\\\
+The following attributes are known:
+\begin{itemize}
+  \item \textbf{"[]"}, the bracket access operator. This invokes a set of \textit{Functions} to be called when 
+  the \textit{Object} has a bracket access. The attribute must point to an \textit{Object} that 
+  describes how the source \textit{Object} responds to write and read accesses. The \textit{Object} pointed to 
+  by the "[]" (referred to as the access \textit{Object}) shall contain at least 2 key-value pairs.
+  "set", which describes how the value shall be written to the source \textit{Object}, and "get",
+  which describes how the value shall be read from the source object. Each value in this case 
+  must be a \textit{Function}: the "set" \textit{Function} shall take two parameters: "key" and "value", which 
+  is the incoming key and value requested to be written. The return value is what the assignment expression should return. 
+  The "get" \textit{Function} shall take one parameter: "key" and return what should be returned by the read access.
+  
+\lstinputlisting[language=Matte,firstnumber=1]{attributes_bracket.mt}
 
+  \item \textbf{"."}, the dot access operator. This invokes a set of \textit{Functions} to be called when 
+  the \textit{Object} has a dot access. The attribute must point to an \textit{Object} that 
+  describes how the source \textit{Object} responds to write and read accesses. The \textit{Object} pointed to 
+  by the "." (referred to as the access \textit{Object}) shall contain at least 2 key-value pairs.
+  "set", which describes how the value shall be written to the source \textit{Object}, and "get",
+  which describes how the value shall be read from the source object. Each value in this case 
+  must be a \textit{Function}: the "set" \textit{Function} shall take two parameters: "key" and "value", which 
+  is the incoming key and value requested to be written. The return value is what the assignment expression should return. 
+  The "get" \textit{Function} shall take one parameter: "key" and return what should be returned by the read access.
+
+\lstinputlisting[language=Matte,firstnumber=1]{attributes_dot.mt}
+\end{itemize}
 
 \subsubsection{Operator Overloading}\label{Operator Overloading}
 \subsubsection{Access Overloading}\label{Access Overloading}

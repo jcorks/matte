@@ -919,15 +919,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             if (opr == MATTE_OPERATOR_ASSIGNMENT_NONE) {
                 
-                const matteValue_t * lk = matte_value_object_set(vm->store, object, key, val, isBracket);
-                matteValue_t lknp = matte_store_new_value(vm->store);
-                if (lk) {
-                    matte_value_into_copy(vm->store, &lknp, *lk);
-                }
+                matteValue_t lk = matte_value_object_set(vm->store, object, key, val, isBracket);
                 STACK_POP_NORET();
                 STACK_POP_NORET();
                 STACK_POP_NORET();
-                STACK_PUSH(lknp);
+                STACK_PUSH(lk);
 
             
             } else {
