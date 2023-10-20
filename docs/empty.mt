@@ -7,5 +7,5 @@
 
 
 // both would print true.
-print(e == empty);
-print(f == e);
+print(message:e == empty);
+print(message:f == e);

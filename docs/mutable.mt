@@ -1,5 +1,8 @@
-// A usable variable.
+// A mutable variable.
 @a;
 
+// Its value can change at any time.
+a = 3;
+
 // Initial assignment is optional.
-@a = 10;
+@b = 10;

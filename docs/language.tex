@@ -30,13 +30,27 @@
   breaklines=false,
   comment=[l]{//},
   morecomment=[s]{/*}{*/},
-  commentstyle=\color{bgcol}\ttfamily\small,
-  stringstyle=\color{stringcol}\ttfamily\small,
-  basicstyle=\ttfamily\small,
+  commentstyle=\color{bgcol}\ttfamily\tiny,
+  stringstyle=\color{stringcol}\ttfamily\tiny,
+  basicstyle=\ttfamily\tiny,
   morestring=[b]',
   morestring=[b]"
 }
 
+\lstdefinelanguage{Yacc}
+{
+  keywords = [2]{\%\%, \%token},
+  keywords = [1]{:, |, ;},
+  sensitive = false,
+  keywordstyle = [1]\color{keyword1},
+  keywordstyle = [2]\color{keyword2},
+  showstringspaces=false,
+  breaklines=false,
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{bgcol}\ttfamily\tiny,
+  stringstyle=\color{stringcol}\ttfamily\tiny,
+  basicstyle=\ttfamily\tiny,
+}
 
 
 \hypersetup{
@@ -73,16 +87,16 @@
 With the proliferation of software and availability of hardware to run it, a
 plethora of tools have been continually made and refined to meet the 
 continual challenges of software development. 
-
+\\\\
 The popularity and widespread use of languages such as Javascript/ECMAScript and 
 Python suggest that every-day software challenges can be approached using 
 software solutions that need not be tied to lower-level hardware while 
 still providing the necessary performance to accomplish tasks.
-
+\\\\
 However, many of these languages attempt to be "jack-of-all-trades", often 
 inflating the languages to the point that every day use for users will involve
 independent sets of language features, often using features only known to a few.
-
+\\\\
 Rather than depending on a language to provide every tool for every situation,
 the language, Matte, was intended to have straightforward, regular, and 
 relatively simple operation, allowing for better collaboration, easier 
@@ -94,10 +108,6 @@ The development of Matte as a language has a number of priorities which are
 considered as the deveopment process of the language continues:
 
 \begin{itemize}
-\item Usefulness. The language prioritizes having as few features as possible 
-  while keeping it still useful. Features are added out of necessity for a reasonable, 
-  object-oriented environment rather than an over-prediction of need.
-
 \item Simplicity. Matte focuses on keeping vagueness and esotericism to a minimum. One 
   of the reasons that Matte was developed was out of frustration of other 
   languages having a glut of features rather than being a focused tool. The 
@@ -112,6 +122,12 @@ considered as the deveopment process of the language continues:
 
 \item Extensibility. The language itself is kept minimal to allow for extension of its 
   usefulness through new packages and code written in Matte and external code.
+
+\item Usefulness. The language prioritizes having as few features as possible 
+  while keeping it still useful. Features are added out of necessity for a reasonable, 
+  object-oriented environment rather than an over-prediction of need.
+
+
 \end{itemize}
 
 \section{Document Scope}\label{Document Scope}
@@ -137,10 +153,7 @@ This document does not:
   throughout the document. Keywords that follow function call syntax will include the parentheses with 
   no arguments.
   
-  \item Each syntactic concept shall have included with it its formal grammars. Within this specification 
-  Wirth Syntax Notation (WSN) will be used for simplicity.
-
-  \item Each introduced language concept shall have included with it a small snippet of outline its usage. This 
+  \item Each introduced language concept shall have included with it a small snippet that outlines its usage. This 
   may or may not include a \textit{print()} evaluation.
 
   \lstinputlisting[language=Matte,firstnumber=1]{conventions.mt}
@@ -151,6 +164,10 @@ This document does not:
   \noteline
   \textit{This is how notes will appear when used.}
 
+  \item When relevant, a section may have a formal context-free grammar associated with a concept.
+        This will always be labeled at the start of a section, referring to an item of the same name 
+        within \autoref{Grammar}.
+
 \end{itemize}
 \section{Terminology}\label{Terminology}
 
@@ -160,17 +177,20 @@ This document does not:
 
 \item \textbf{Compiler}: The environment in which Matte source is interpreted. This may be a program in which Matte is running, part of a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to interpret Matte source correctly and consistently.
 
-\item \textbf{Empty}: special value that represents no value. 
+\item \textbf{Empty}: A special value that represents no value. 
 
 \item \textbf{Runtime}: The environment in which Matte is running. This may be a program in which Matte is running, a virtual machine, etc. The runtime is the software and/or hardware that must conform to this document to execute Matte source correctly and consistently.
 
 \item \textbf{Stackframe}: When a function is called, it is said to reside within a stackframe. A stackframe is said to "activate" when a function is called, and is said to "resolve" when a function call has completed. As a function runs, an additional stackframe may be activated, causing multiple functions to be active within the callstack. Due to the design of Matte relying heavily on function calls, this will happen often.
 
-\item \textbf{Literal}: a datum of a certain type as explicitly written in source code.
+\item \textbf{Literal}: A datum of a certain type as explicitly written in source code.
 
 \item \textbf{Variable}: Points to a value.
 
-\item \textbf{Value}: a datum of a certain type.
+\item \textbf{Value}: A datum of a certain type.
+
+\item \textbf{Identifier}: A UTF8 sequence of codepoints where each codepoint value meets the condition ranges: (47, 58) or (64, 91) or (127, Inf) or the value is equal tot he ASCII value for an underscore. The identifier must also not begin with the digit ASCII characters zero through and including nine.   || // nums
+
 \end{itemize}
 
 \section{Concepts}\label{Concepts}
@@ -178,14 +198,15 @@ This document does not:
 In a broad sense, this document outlines how Matte source is processed and will be 
 executed by the runtime. The source is compiled and run by the runtime serially 
 in a well-defined manner as outlined in this document. 
-
-This document specifies behaviors that must be caught by the compiler of the 
+\\\\
+This document specifies behaviors that must be caught by the compiler or the 
 runtime. It is also the compiler's responsibility to deny source that does not 
-follow this document.
-
+follow this document, and the runtime's responsibility to throw errors when 
+a rule is violated.
+\\\\
 The initial source file may reference other source files (see \textit{import()}\autoref{import}) 
 and extend the program, but an initial source is always provided.
-
+\\\\
 In many other languages, the concept of a "global scope" exists. In Matte, 
 this concept does not exist. Every statement and expression within Matte 
 runs within a function, and as such has lexical scope (see \autoref{Lexical Scoping}).
@@ -201,14 +222,28 @@ be much easier.
 
 \chapter{Variables}\label{Variables}
 
-Variables act as conceptual storage points for working data values. Variables must be declared before usage.
-A variable may live past its original scope lifetime (\autoref{Lexical Scoping}) by being used, captured (\autoref{Reference Capture}), and stored within Objects.
-
+Variables act as conceptual storage points for working data values. Variables must be declared in a scope before usage.
+They are declared by using an identifier; this identifier will refer to this variable as a full token. 
+while in its lexical scope. A variable may live past its original scope lifetime (\autoref{Lexical Scoping}) by being used, captured (\autoref{Reference Capture}), and stored within Objects.
+\\\\
+A variable declaration may happen at any time within a scope, but assignments to that variable happen in order.
+\\\\
+A variable declaration is said to "shadow" another declaration if an embedded lexical scope declares a variable with
+the same name as a variable in an outer lexical scope. This is allowed, and the most embedded scope is used.
+\\\\
 A variable may either be mutable or immutable. Variable values have types of their own, but 
 types are determined by the values and expressions that produce them rather than by the 
 variable. When referred to, mutable variables are referred to as "mutables", and immutable variables as "immutables".
+\\\\
+While values have their own type while stored into variables, there will be situations where a different 
+type is expected. Matte will attempt to convert between types and throw an error when such a conversion (referred to as an implicit conversion) is not possible.
+Each type listed below will have an implicit conversion table, describing behavior of that type and an implicit conversion is requested.
+For the semantics of implict conversion, see (\autoref{Implicit Conversion}).
+
 
 \section{Mutables}\label{Mutables}
+
+\textbf{Grammar}: See \textit{mutable\_variable\_declaration}
 
 Within any function, mutables may be declared with a declaration statement.
 Mutables can point to different values over its lifetime by reassignment.
@@ -218,6 +253,10 @@ Mutables can point to different values over its lifetime by reassignment.
 
 
 \section{Immutables}\label{Immutables}
+
+\textbf{Grammar}: See \textit{immutable\_variable\_declaration}
+
+
 Within any function, immutables may be declared with a declaration statement.
 Immutables can only point to a single value throughout its lifetime. This does not, however,
 imply that immutables are constant in their values. 
@@ -238,6 +277,8 @@ For the following types, immutable variables may compute to different values dep
 \end{itemize}
 
 
+\lstinputlisting[language=Matte,firstnumber=1]{immutable.mt}
+
 
 \noteline
 \textit{
@@ -246,12 +287,14 @@ alter how the value may be casted as a different type. While the immutable varia
 the same object, how this object is expressed may change depending on the context.
 }
 
-\lstinputlisting[language=Matte,firstnumber=1]{immutable.mt}
 
 
 
 
 \section{Empty}\label{Empty}
+
+\textbf{Grammar}: See token \textit{LITERAL\_EMPTY}
+
 
 Values of the \textit{Empty} type are always the same special value: \textit{empty};
 \textit{empty} is used to represent variables that have not been defined. This includes:
@@ -266,15 +309,56 @@ are listed contextually throughout this document. Otherwise, some expressions wi
 \textit{empty} are allowed, such as direct comparison against it. Since any variable 
 has the potential to be \textit{empty}, comparison is the most common operation with 
 empty.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & --\\
+  Number  & Throws an error \\
+  String & Converts into the literal \textit{String} "empty"\\
+  Boolean & Converts into the literal \textit{Boolean} "false"\\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
 
 \lstinputlisting[language=Matte,firstnumber=1]{empty.mt}
 
 
 \section{Boolean}\label{Boolean}
 
+\textbf{Grammar}: See token \textit{LITERAL\_BOOLEAN}
+
+
 Values of the \textit{Boolean} type can be either the special value \textit{true} or 
 the special value \textit{false}. Expressions may compute to Booleans, such 
 as comparisons.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & \textit{Number} 0 for false, 1 for true \\
+  String & \textit{String} "true" for true, "false" for false\\
+  Boolean & -- \\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
 
 
 \lstinputlisting[language=Matte,firstnumber=1]{boolean.mt}
@@ -282,32 +366,53 @@ as comparisons.
 
 \section{Number}\label{Number}
 
+\textbf{Grammar}: See token \textit{LITERAL\_NUMBER}
 
 
 Values of the \textit{Number} type represent all possible real number based representations within 
-Matte. This includes integers, fractions, etc. Matte allows, and expects, that \textit{Number}s will not 
-necessarily be accurate when non-whole numbers are used. 
-
+Matte. This includes integers, decimals, etc. Matte allows, and expects, that \textit{Number}s will not 
+necessarily be accurate when non-whole numbers are used. It is also expected that there may 
+be an upper limit on the accuracy and containment of whole numbers as well. However, Matte is 
+specified to have at least the accuracy of an IEEE 754 double-precision floating-point number.
+\\\\
 Numbers are given a variety of standard \autoref{Operators} and \autoref{Queries} to facilitate 
 essential arithmetic and other useful mathematic operations.
-
+\\\\
 The '.' character is always used to denote a decimal fractional component. Scientific notation
 is also accepted. 
-
+\\\\
 The format of interpreted compatible literals for \textit{Number} values can take a few forms. 
-
-First for standard decimal values, a series of decimal digits, optionally containing a decimal point, 
-optionally preceeded by a sign (+ or -) and optionally followed by the e or E character and a 
+\\\\
+First, for standard decimal values, a series of decimal digits, optionally containing a decimal point, 
+optionally preceeded by a sign (-) and optionally followed by the e or E character and a 
 decimal integer is accepted.
-
+\\\\
 Second, hexadecimal values can be accepted as well. Any number of hexadecimal digits (0-9, a-f, A-F), 
-optionally preceded by 0x or 0X, and all optionally preceded by a sign (+ or -) are accepted 
+optionally preceded by 0x or 0X, and all optionally preceded by a sign (-) are accepted 
 as valid literals.
-
+\\\\
 In both cases, The literal is best-fit converted into the Matte implementation of Number. 
 There is no inherent guarantee to the accuracy of the conversion, as it depends 
-entirely on the implementation.
-
+entirely on the implementation. 
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & -- \\
+  String & Conversion to a \textit{String} of the implementation's choosing.\\
+  Boolean & true if non-zero, false if exactly equal to 0.\\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
 
 \lstinputlisting[language=Matte,firstnumber=1]{number.mt}
 
@@ -315,48 +420,129 @@ entirely on the implementation.
 
 \section{String}\label{String}
 
+\textbf{Grammar}: See token \textit{LITERAL\_STRING}
+
+
 Values of the \textit{String} type are used to represent, hold, and manipulate text.
-Like \textit{Number}s, instances of a \textit{String} immutable, and operations 
+Like \textit{Number}s, instances of \textit{String} are immutable, and operations 
 that act on \textit{String}s, instead, create new \textit{String}s. This is 
 important to note, as it differs from other languages where \textit{String}s 
 may be objects.
-
-Literal \textit{String} value are indicated with either single quotes (') or double quotes (")
+\\\\
+Literal \textit{String} values are indicated with either single quotes (') or double quotes (")
 which are prepended and appended to the text desired to be a string. Each trailing /
 ending pair MUST be the same character. Strings wrapped in ' may use " freely within 
 the string, as the " will not be interpreted. This behavior is mirrored when wrapping with " and usage of '.
-
+\\\\
 When using these characters to represent a string literal, all characters in source code between these tokens 
 outside of escaped characters (shown below) are part of the \textit{String} literal, and subsequently, 
 its value.
-
-
-
+\\\\
 \textit{String}s in Matte are explicitly represented in UTF-8 format and expect such 
 when reading string tokens in source text.
-
-
-
-
+\\\\
 \textit{String}s also employ the use of escape characters by prepending the special 
-character with a backslash (\).
-
+character with a backslash.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & Throws an error. \\
+  String & --\\
+  Boolean & Always true. \\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
 
 
 
 
 
 \section{Object}\label{Object}
+
+\textit{Object}s are the main type used for storage. They are able to hold all other types, including 
+other \textit{Object}s. They are similar to tables and arrays in other languages. However
+unlike other languages, arrays aren't a formal other construct. Arrays simply mean 
+\textit{Object}s that only have \textit{Number} keys. As such, Arrays in Matte are allowed to be 
+mixed and do not require all values to be of the same type.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List (for non-attribute Objects)} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & Throws an error \\
+  String & Throws an error\\
+  Boolean & Always returns true \\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & --\\
+ \hline
+\end{tabular}
+}
+\subsection{Literals}\label{Literals}
+
+\textbf{Grammar}: See \textit{new\_object}
+
+
+\textit{Object} literals are instantiated in 2 main ways.
+\\\\
+First, literals may take array literal syntax. In this method, an \textit{Object} is generated with 
+key-value pairs whose keys are sequential \textit{Number}s starting at value 0 and increasing by one.
+Each value of the \textit{Object}, which is interchangeable in this case with the word array,
+is laid out in a comma-separated list, which are computed and assigned to the new \textit{Object} sequentially.
+Optionally, the literal may contain no values listed. In which case the \textit{Object} created is empty.
+
+\lstinputlisting[language=Matte,firstnumber=1]{array_literal.mt}
+
+Second, literals may take the more verbose object literal syntax. In this method, both 
+keys and values are specified, computed, and assigned to the resulting new \textit{Object}.
+Keys are laid out as either identifiers, which are computed as \textit{String}s, or 
+as expressions. The grammars for this construct naturally lead to the preference of 
+expression keys to be in parentheses.
+Optionally, the literal may contain no values listed. In which case the \textit{Object} created is empty.
+
+\lstinputlisting[language=Matte,firstnumber=1]{object_literal.mt}
+
+
+\subsection{Spreading}\label{Spreading}
+
+Both literal syntax variants support spreading. Spreading allows the creation 
+of new \textit{Object}s by using existing one's keys and values. Spreading is 
+specified using the spread operator intermixed within the literal.
+
+When spreading, the \textit{Object} being spread (the \textit{Object} proceeding the operator)
+copies its keys and values into the resultant \textit{Object}.
+
+The semantics for array literals and \textit{Object} literals are different.
+When used 
+
+\lstinputlisting[language=Matte,firstnumber=1]{object_spreading.mt}
+
+
 \subsection{Keys and Values}\label{Keys and Values}
 
 All \textit{Object}s have the potential to be used as storage tables, where objects may associate 
 value "keys" with other values. Depending on the type of key, objects may store these values 
 with slightly varied rules. 
-
+\\\\
 It is safe to assume that keys of types not mentioned in this list work "losslessly". That is, 
 each key uniquely references a value that can be accessed consistently as long as the 
 key is equivalent to the first key.
-
+\\\\
 These key types have special behavior:
 
 
@@ -377,30 +563,84 @@ These key types have special behavior:
     \item Negative keys will throw an error.
     \item Keys with values greater than the highest-recorded key-value pair will cause the table to "grow". This means that the object in question will contain new key-value pairs for all valid number keys between the previously highest-recorded index and this new one, each with \textit{empty}.
   \end{itemize}
+
+  \item \textit{empty} can never be stored as a key. Writing to an object with an empty key will throw an error.
 \end{itemize}
 
+When writing to a key where an \textit{Object} already contains said key, it replaces the old value being pointed to, meaning the old value 
+is no longer accessible through this method.
 
 \subsection{Access Methods}\label{Access Methods}
-  
+
+Because \textit{Object}s store other values, there are multiple ways of accessing these stored values. These are referred to 
+as access methods. There are 2 main ways to access keys: bracket accessors and dot accessors.
+In this instance, "accessing" means both reading and writing values referred to by keys within an \textit{Object}.
+\\\\
+Bracket accessors are the most versatile accessors as any value type can be used as a key.
+\\\\
+\lstinputlisting[language=Matte,firstnumber=1]{bracket.mt}
+
+Dot accessors work as a subset of bracket accessors; they only work with string keys. 
+Each string key is specified as an identifier and implicitly converted into a string when computed.
+\\\\
+\lstinputlisting[language=Matte,firstnumber=1]{dot.mt}
+
+
 \subsection{Attributes}\label{Attributes}
+
+
+
 \subsubsection{Operator Overloading}\label{Operator Overloading}
 \subsubsection{Access Overloading}\label{Access Overloading}
 \subsubsection{Type Conversion}\label{Type Conversion}
 
 
 
+\section{Function}\label{Function}
+
+\textit{Function}s are values that represent encapsulations of callable instructions. Functions are
+explained in detail in \autoref{Functions}, as this section only covers \textit{Function} as 
+a value type.
+\\\\
+\textit{Function} values are largely not able to be used as other values in most situations, as 
+they are merely encapsulations of a logical construct and are not meant to be used outside often
+passing and calling. As such, they are still very flexible in these circumstances.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & Throws an error. \\
+  String & Throws an error\\
+  Boolean & Always true. \\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
 
 \section{Type}\label{Type}
+
+Similar to functions, \textit{Type}
+
+
+
 \subsection{Explicit Conversion}\label{Explicit Conversion}
 \subsection{Creating Types}\label{Creating Types}
 \subsection{Instantiation}\label{Instantiation}
 \section{Implicit Conversion}\label{Implicit Conversion}
 
-In expressions, implicit conversion of a variable may take place. Implicit conversion is when 
+In expressions, implicit conversion of a value may take place. Implicit conversion is when 
 a value of a certain type is put in a situation where a different type is expected, but the 
 given value can logically be allowed to be expressed as a different type. When implicit 
 conversion is successful, a new value of the expected type is returned.
-
+\\\\
 Implicit conversion happens within:
 \begin{itemize}
   \item Expressions(\autoref{Expressions}). As expressions are computed from left to right, the required type comes from the value to the left of the expression. All values to the right are implicitly converted to this type for computation.
@@ -444,7 +684,7 @@ that a value is pending to be sent to another part of the program. Once the runt
 the sendable (also called "catchable") value, all current functions running on the callstack 
 will terminate from top to bottom (a.k.a "unwind") until the nearest listen point
 (denoted by \textit{\{:::\}} is detected to have a been called.
-
+\\\\
 When such an active listen point is found, a number of things can happen.
 If the point has no proceeding tokens, the \textit{listen()} call returns 
 the actual message sent by \textit{send()}. If the call has 2 arguments and the second 
@@ -461,7 +701,7 @@ for the Matte language using message passing. The \textit{error()} function exis
 equivalently to \textit{send()}, except when the \textit{listen()} call is found, the first argument 
 to the \textit{listen()} callback is a runtime-specific object containing data about where the error 
 was first created. 
-
+\\\\
 The format of this object is not formalized by the Matte language, except for the 
 \textit{.data} property, which will always be the contents of the first argument 
 of the \textit{error()} call. Runtime implementations are 
@@ -481,6 +721,11 @@ of the \textit{error()} call. Runtime implementations are
 \section{String}\label{String}
 \section{Enum}\label{Enum}
 \section{JSON}\label{JSON}
+\chapter{Grammar}\label{Grammar}
+
+\lstinputlisting[language=Yacc,firstnumber=1]{matte.y}
+
+
 
 
 \end{document}

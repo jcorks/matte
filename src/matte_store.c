@@ -3873,6 +3873,9 @@ int matte_value_isa(matteStore_t * store, matteValue_t v, matteValue_t typeobj) 
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         return matte_value_get_type(store, v).value.id == typeobj.value.id;
     } else {
+        if (IS_FUNCTION_ID(v.value.id))
+            return store->type_function.value.id == typeobj.value.id;
+            
         if (typeobj.value.id == store->type_object.value.id) return 1;
         matteValue_t typep = matte_value_get_type(store, v);
         if (typep.value.id == typeobj.value.id) return 1;

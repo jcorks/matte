@@ -14,12 +14,12 @@
         out.data = val;
 
         out->setAttributes(
-            attributes{
-                '==' ::(other => type) {
+            attributes : {
+                '==' ::(value => type) {
                     return (
-                        other.data->abs-
-                               val->abs
-                    ) < epsilon;
+                        value.data-
+                               val
+                    )->abs < epsilon;
                 }
             }
         );
@@ -28,12 +28,12 @@
 }
 
 
-@a = ApproximateNumber(0.044);
-@b = ApproximateNumber(0.0440001);
-@c = ApproximateNumber(0.045);
+@a = ApproximateNumber(val:0.044);
+@b = ApproximateNumber(val:0.0440001);
+@c = ApproximateNumber(val:0.045);
 
 // should print true
-print(a == b);
+print(message:a == b);
 
 // should print false
-print(a == c);
+print(message:a == c);
