@@ -2868,9 +2868,6 @@ void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
         m->rootState--;
         if (m->rootState == 0) {
             remove_root_node(store, &store->roots, m); 
-            #ifdef MATTE_DEBUG__STORE
-                assert(m->color != OBJECT_TRICOLOR__WHITE);
-            #endif       
             if (m->color == OBJECT_TRICOLOR__BLACK) {
                 matte_store_garbage_collect__rem_from_color(store, m);
                 m->color = OBJECT_TRICOLOR__GREY;
