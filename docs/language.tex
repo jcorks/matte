@@ -220,7 +220,291 @@ be much easier.
 
 
 
+\chapter{Values}\label{Values}
+
+
+
+
+
+\section{Empty}\label{Empty}
+
+Values of the \textit{Empty} type are always the same special value: \textit{empty};
+\textit{empty} is used to represent variables that have not been defined. This includes:
+
+\begin{itemize}
+  \item Variables that have not yet been assigned a value.
+  \item Missing assignments, such access object access to non-existent key-value pairs.
+\end{itemize}
+
+Use of \textit{empty} in most situations will result in a runtime error. These situations 
+are listed contextually throughout this document. Otherwise, some expressions with 
+\textit{empty} are allowed, such as direct comparison against it. Since any variable 
+has the potential to be \textit{empty}, comparison is the most common operation with 
+empty.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & --\\
+  Number  & Throws an error \\
+  String & Converts into the literal \textit{String} "empty"\\
+  Boolean & Converts into the literal \textit{Boolean} "false"\\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
+
+
+
+\section{Boolean}\label{Boolean}
+
+Values of the \textit{Boolean} type can be either the special value \textit{true} or 
+the special value \textit{false}. Expressions may compute to Booleans, such 
+as comparisons.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & \textit{Number} 0 for false, 1 for true \\
+  String & \textit{String} "true" for true, "false" for false\\
+  Boolean & -- \\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
+
+
+
+
+\section{Number}\label{Number}
+
+Values of the \textit{Number} type represent all possible real number based representations within 
+Matte. This includes integers, decimals, etc. Matte allows, and expects, that \textit{Number}s will not 
+necessarily be accurate when non-whole numbers are used. It is also expected that there may 
+be an upper limit on the accuracy and containment of whole numbers as well. However, Matte is 
+specified to have at least the accuracy of an IEEE 754 double-precision floating-point number.
+\\\\
+Numbers are given a variety of standard operators (\autoref{Operators}) and queries (\autoref{Queries}) to facilitate 
+essential arithmetic and other useful mathematic operations.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & -- \\
+  String & Conversion to a \textit{String} of the implementation's choosing.\\
+  Boolean & true if non-zero, false if exactly equal to 0.\\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
+
+
+
+
+\section{String}\label{String}
+
+Values of the \textit{String} type are used to represent, hold, and manipulate text.
+Like \textit{Number}s, instances of \textit{String} are immutable, and operations 
+that act on \textit{String}s, instead, create new \textit{String}s. This is 
+important to note, as it differs from other languages where \textit{String}s 
+may be objects and may freely mutate.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & Throws an error. \\
+  String & --\\
+  Boolean & Always true. \\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
+
+
+
+
+
+\section{Object}\label{Object}
+
+\textit{Object}s are the main type used for storage. They are able to hold all other types, including 
+other \textit{Object}s. They are similar to tables and arrays in other languages. However
+unlike other languages, arrays aren't a formal other construct; arrays simply mean 
+\textit{Object}s that only have \textit{Number} keys. As such, arrays in Matte are allowed to be 
+mixed and do not require all values to be of the same type to be called an array.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List (for non-attribute Objects)} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & Throws an error \\
+  String & Throws an error\\
+  Boolean & Always returns true \\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & --\\
+ \hline
+\end{tabular}
+}
+
+
+\subsection{Keys and Values}\label{Keys and Values}
+
+All \textit{Object}s have the potential to be used as storage tables, where \textit{Object}s may associate 
+value "keys" with other values. Depending on the type of key, \textit{Object}s may store these values 
+with slightly varied rules. 
+\\\\
+It is safe to assume that keys of types not mentioned in this list work "losslessly". That is, 
+each key uniquely references a value that can be accessed consistently as long as the 
+key is equivalent to the first key.
+\\\\
+These key types have special behavior:
+
+
+\begin{itemize}
+  \item \textit{Number}s are stored as keys with a number of caveats. The following behavior occurs 
+  upon reading and writing values using \textit{Number}-typed keys:
+  
+  Reading:
+  \begin{itemize}
+    \item For every context with \textit{Number} keys, only the integer value of the key is used for the key. For example, reading with keys 5, 5.6, 5.999, and 5.1 will all point to the same value.    
+    \item Negative keys will always yield \textit{empty} and never throw an error.
+    \item Keys with values greater than the highest-recorded key-value pair for this object will always yield \textit{empty} and never throw an error.      
+  \end{itemize}
+
+  Writing:
+  \begin{itemize}
+    \item For every context with \textit{Number} keys, only the integer value of the key is used for the key. For example, reading with keys 5, 5.6, 5.999, and 5.1 will all point to the same value.    
+    \item Negative keys will throw an error.
+    \item Keys with values greater than the highest-recorded key-value pair will cause the table to "grow". This means that the object in question will contain new key-value pairs for all valid number keys between the previously highest-recorded index and this new one, each with \textit{empty}.
+  \end{itemize}
+
+  \item \textit{empty} can never be stored as a key. Writing to an object with an empty key will throw an error.
+\end{itemize}
+
+When writing to a key where an \textit{Object} already contains said key, it replaces the old value being pointed to, meaning the old value 
+is no longer accessible through this method.
+
+\subsection{Access Methods}\label{Access Methods}
+
+Because \textit{Object}s store other values, there are multiple ways of accessing these stored values. These are referred to 
+as access methods. There are 2 main ways to access keys: bracket accessors and dot accessors.
+In this instance, "accessing" means both reading and writing values referred to by keys within an \textit{Object}.
+\\\\
+Bracket accessors are the most versatile accessors as any value type can be used as a key.
+\\\\
+\lstinputlisting[language=Matte,firstnumber=1]{bracket.mt}
+
+Dot accessors work as a subset of bracket accessors; they only work with string keys. 
+Each string key is specified as an identifier and implicitly converted into a string when computed.
+\\\\
+\lstinputlisting[language=Matte,firstnumber=1]{dot.mt}
+
+
+
+
+
+  
+
+\subsubsection{Operator Overloading}\label{Operator Overloading}
+\subsubsection{Type Conversion}\label{Type Conversion}
+
+
+
+\section{Function}\label{Function}
+
+\textit{Function}s are values that represent encapsulations of callable instructions. Functions are
+explained in detail in \autoref{Functions}, as this section only covers \textit{Function} as 
+a value type.
+\\\\
+\textit{Function} values are largely not able to be used as other values in most situations, as 
+they are merely encapsulations of a logical construct and are not meant to be used outside often
+passing and calling. As such, they are still very flexible in these circumstances.
+\\\\
+{
+\centering
+\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
+  \hline
+  \multicolumn{2}{|c|}{Implicit Conversion List} \\
+  \hline
+  Type & Behavior\\
+  \hline
+  Empty & Nothing implicitly converts to empty.\\
+  Number  & Throws an error. \\
+  String & Throws an error\\
+  Boolean & Always true. \\
+  Type & Throws an error\\
+  Function & Throws an error\\
+  Object & Throws an error\\
+ \hline
+\end{tabular}
+}
+
+\section{Type}\label{Type}
+
+Similar to functions, \textit{Type}
+
+
+
+\subsection{Explicit Conversion}\label{Explicit Conversion}
+\subsection{Creating Types}\label{Creating Types}
+\subsection{Instantiation}\label{Instantiation}
+\section{Implicit Conversion}\label{Implicit Conversion}
+
+In expressions, implicit conversion of a value may take place. Implicit conversion is when 
+a value of a certain type is put in a situation where a different type is expected, but the 
+given value can logically be allowed to be expressed as a different type. When implicit 
+conversion is successful, a new value of the expected type is returned.
+\\\\
+Implicit conversion happens within:
+\begin{itemize}
+  \item Expressions(\autoref{Expressions}). As expressions are computed from left to right, the required type comes from the value to the left of the expression. All values to the right are implicitly converted to this type for computation.
+  \item Type-Strict Functions(\autoref{Type-Strict Functions}). Type-strict functions will implicitly convert for arguments that have a type specifier and for the return value if a return type specifier is present.
+\end{itemize}
+
+For situations when an implicit conversion is not possible, an error will be thrown.
+The following behavior is expected for implicit conversions:
+
+
+
+
 \chapter{Variables}\label{Variables}
+
 
 Variables act as conceptual storage points for working data values. Variables must be declared in a scope before usage.
 They are declared by using an identifier; this identifier will refer to this variable as a full token. 
@@ -289,101 +573,49 @@ the same object, how this object is expressed may change depending on the contex
 
 
 
+\chapter{Expressions}\label{Expressions}
+\section{Operators}\label{Operators}
+\subsection{Precedence}\label{Precedence}
 
 
-\section{Empty}\label{Empty}
+
+
+\section{Literals}\label{Literals}
+
+
+
+\subsection{Empty}\label{EmptyLiterals}
 
 \textbf{Grammar}: See token \textit{LITERAL\_EMPTY}
-
-
-Values of the \textit{Empty} type are always the same special value: \textit{empty};
-\textit{empty} is used to represent variables that have not been defined. This includes:
-
-\begin{itemize}
-  \item Variables that have not yet been assigned a value.
-  \item Missing assignments, such access object access to non-existent key-value pairs.
-\end{itemize}
-
-Use of \textit{empty} in most situations will result in a runtime error. These situations 
-are listed contextually throughout this document. Otherwise, some expressions with 
-\textit{empty} are allowed, such as direct comparison against it. Since any variable 
-has the potential to be \textit{empty}, comparison is the most common operation with 
-empty.
 \\\\
-{
-\centering
-\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
-  \hline
-  \multicolumn{2}{|c|}{Implicit Conversion List} \\
-  \hline
-  Type & Behavior\\
-  \hline
-  Empty & --\\
-  Number  & Throws an error \\
-  String & Converts into the literal \textit{String} "empty"\\
-  Boolean & Converts into the literal \textit{Boolean} "false"\\
-  Type & Throws an error\\
-  Function & Throws an error\\
-  Object & Throws an error\\
- \hline
-\end{tabular}
-}
+\textit{Empty} literals take one form: the \textit{empty} token.
+It is a series of exact ASCII characters.
 
 \lstinputlisting[language=Matte,firstnumber=1]{empty.mt}
 
 
-\section{Boolean}\label{Boolean}
+
+
+
+\subsection{Boolean}\label{BooleanLiterals}
 
 \textbf{Grammar}: See token \textit{LITERAL\_BOOLEAN}
 \\\\
-Values of the \textit{Boolean} type can be either the special value \textit{true} or 
-the special value \textit{false}. Expressions may compute to Booleans, such 
-as comparisons.
-\\\\
-{
-\centering
-\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
-  \hline
-  \multicolumn{2}{|c|}{Implicit Conversion List} \\
-  \hline
-  Type & Behavior\\
-  \hline
-  Empty & Nothing implicitly converts to empty.\\
-  Number  & \textit{Number} 0 for false, 1 for true \\
-  String & \textit{String} "true" for true, "false" for false\\
-  Boolean & -- \\
-  Type & Throws an error\\
-  Function & Throws an error\\
-  Object & Throws an error\\
- \hline
-\end{tabular}
-}
-
+\textit{Boolean} literals can be in 2 forms: \textit{true} or \textit{false}.
+Both are a series of exact ASCII characters.
 
 \lstinputlisting[language=Matte,firstnumber=1]{boolean.mt}
 
 
-\section{Number}\label{Number}
+\subsection{Number}\label{NumberLiterals}
 
 \textbf{Grammar}: See token \textit{LITERAL\_NUMBER}
 \\\\
-Values of the \textit{Number} type represent all possible real number based representations within 
-Matte. This includes integers, decimals, etc. Matte allows, and expects, that \textit{Number}s will not 
-necessarily be accurate when non-whole numbers are used. It is also expected that there may 
-be an upper limit on the accuracy and containment of whole numbers as well. However, Matte is 
-specified to have at least the accuracy of an IEEE 754 double-precision floating-point number.
-\\\\
-Numbers are given a variety of standard \autoref{Operators} and \autoref{Queries} to facilitate 
-essential arithmetic and other useful mathematic operations.
-\\\\
-The '.' character is always used to denote a decimal fractional component. Scientific notation
-is also accepted. 
-\\\\
-The format of interpreted compatible literals for \textit{Number} values can take a few forms. 
+\textit{Number} literals can take a few different forms.
 \\\\
 First, for standard decimal values, a series of decimal digits, optionally containing a decimal point, 
 optionally preceeded by a sign (-) and optionally followed by the e or E character and a 
-decimal integer is accepted.
+decimal integer is accepted. The '.' character is always used to denote a decimal fractional component.
 \\\\
 Second, hexadecimal values can be accepted as well. Any number of hexadecimal digits (0-9, a-f, A-F), 
 optionally preceded by 0x or 0X, and all optionally preceded by a sign (-) are accepted 
@@ -391,40 +623,12 @@ as valid literals.
 \\\\
 In both cases, The literal is best-fit converted into the Matte implementation of Number. 
 There is no inherent guarantee to the accuracy of the conversion, as it depends 
-entirely on the implementation. 
-\\\\
-{
-\centering
-\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
-  \hline
-  \multicolumn{2}{|c|}{Implicit Conversion List} \\
-  \hline
-  Type & Behavior\\
-  \hline
-  Empty & Nothing implicitly converts to empty.\\
-  Number  & -- \\
-  String & Conversion to a \textit{String} of the implementation's choosing.\\
-  Boolean & true if non-zero, false if exactly equal to 0.\\
-  Type & Throws an error\\
-  Function & Throws an error\\
-  Object & Throws an error\\
- \hline
-\end{tabular}
-}
-
-\lstinputlisting[language=Matte,firstnumber=1]{number.mt}
+entirely on the implementation of \textit{Number}.
 
 
-
-\section{String}\label{String}
+\subsection{String}\label{StringLiterals}
 
 \textbf{Grammar}: See token \textit{LITERAL\_STRING}
-\\\\
-Values of the \textit{String} type are used to represent, hold, and manipulate text.
-Like \textit{Number}s, instances of \textit{String} are immutable, and operations 
-that act on \textit{String}s, instead, create new \textit{String}s. This is 
-important to note, as it differs from other languages where \textit{String}s 
-may be objects.
 \\\\
 Literal \textit{String} values are indicated with either single quotes (') or double quotes (")
 which are prepended and appended to the text desired to be a string. Each trailing /
@@ -441,110 +645,12 @@ when reading string tokens in source text.
 \textit{String}s also employ the use of escape characters by prepending the special 
 character with a backslash.
 \\\\
-{
-\centering
-\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
-  \hline
-  \multicolumn{2}{|c|}{Implicit Conversion List} \\
-  \hline
-  Type & Behavior\\
-  \hline
-  Empty & Nothing implicitly converts to empty.\\
-  Number  & Throws an error. \\
-  String & --\\
-  Boolean & Always true. \\
-  Type & Throws an error\\
-  Function & Throws an error\\
-  Object & Throws an error\\
- \hline
-\end{tabular}
-}
+
+\lstinputlisting[language=Matte,firstnumber=1]{number.mt}
 
 
+\subsection{Object}\label{ObjectLiterals}
 
-
-
-\section{Object}\label{Object}
-
-\textit{Object}s are the main type used for storage. They are able to hold all other types, including 
-other \textit{Object}s. They are similar to tables and arrays in other languages. However
-unlike other languages, arrays aren't a formal other construct. Arrays simply mean 
-\textit{Object}s that only have \textit{Number} keys. As such, Arrays in Matte are allowed to be 
-mixed and do not require all values to be of the same type.
-\\\\
-{
-\centering
-\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
-  \hline
-  \multicolumn{2}{|c|}{Implicit Conversion List (for non-attribute Objects)} \\
-  \hline
-  Type & Behavior\\
-  \hline
-  Empty & Nothing implicitly converts to empty.\\
-  Number  & Throws an error \\
-  String & Throws an error\\
-  Boolean & Always returns true \\
-  Type & Throws an error\\
-  Function & Throws an error\\
-  Object & --\\
- \hline
-\end{tabular}
-}
-
-
-\subsection{Keys and Values}\label{Keys and Values}
-
-All \textit{Object}s have the potential to be used as storage tables, where objects may associate 
-value "keys" with other values. Depending on the type of key, objects may store these values 
-with slightly varied rules. 
-\\\\
-It is safe to assume that keys of types not mentioned in this list work "losslessly". That is, 
-each key uniquely references a value that can be accessed consistently as long as the 
-key is equivalent to the first key.
-\\\\
-These key types have special behavior:
-
-
-\begin{itemize}
-  \item Numbers are stored as keys with a number of caveats. The following behavior occurs 
-  upon reading and writing values using \textit{Number}-typed keys:
-  
-  Reading:
-  \begin{itemize}
-    \item For every context with \textit{Number} keys, only the integer value of the key is used for the key. For example, reading with keys 5, 5.6, 5.999, and 5.1 will all point to the same value.    
-    \item Negative keys will always yield \textit{empty} and never throw an error.
-    \item Keys with values greater than the highest-recorded key-value pair for this object will always yield \textit{empty} and never throw an error.      
-  \end{itemize}
-
-  Writing:
-  \begin{itemize}
-    \item For every context with \textit{Number} keys, only the integer value of the key is used for the key. For example, reading with keys 5, 5.6, 5.999, and 5.1 will all point to the same value.    
-    \item Negative keys will throw an error.
-    \item Keys with values greater than the highest-recorded key-value pair will cause the table to "grow". This means that the object in question will contain new key-value pairs for all valid number keys between the previously highest-recorded index and this new one, each with \textit{empty}.
-  \end{itemize}
-
-  \item \textit{empty} can never be stored as a key. Writing to an object with an empty key will throw an error.
-\end{itemize}
-
-When writing to a key where an \textit{Object} already contains said key, it replaces the old value being pointed to, meaning the old value 
-is no longer accessible through this method.
-
-\subsection{Access Methods}\label{Access Methods}
-
-Because \textit{Object}s store other values, there are multiple ways of accessing these stored values. These are referred to 
-as access methods. There are 2 main ways to access keys: bracket accessors and dot accessors.
-In this instance, "accessing" means both reading and writing values referred to by keys within an \textit{Object}.
-\\\\
-Bracket accessors are the most versatile accessors as any value type can be used as a key.
-\\\\
-\lstinputlisting[language=Matte,firstnumber=1]{bracket.mt}
-
-Dot accessors work as a subset of bracket accessors; they only work with string keys. 
-Each string key is specified as an identifier and implicitly converted into a string when computed.
-\\\\
-\lstinputlisting[language=Matte,firstnumber=1]{dot.mt}
-
-\subsection{Literals}\label{Literals}
 
 \textbf{Grammar}: See \textit{new\_object}
 \\\\
@@ -562,13 +668,13 @@ Second, literals may take the more verbose object literal syntax. In this method
 keys and values are specified, computed, and assigned to the resulting new \textit{Object}.
 Keys are laid out as either identifiers, which are computed as \textit{String}s, or 
 as expressions. The grammars for this construct naturally lead to the preference of 
-expression keys to be in parentheses.
+expression keys to be in parentheses. This avoids any vagueness.
 Optionally, the literal may contain no values listed. In which case the \textit{Object} created is empty.
 
 \lstinputlisting[language=Matte,firstnumber=1]{object_literal.mt}
 
 
-\subsection{Spreading}\label{Spreading}
+\subsubsection{Spreading}\label{Spreading}
 
 Both literal syntax variants support spreading. Spreading allows the creation 
 of new \textit{Object}s by using existing one's keys and values. Spreading is 
@@ -589,127 +695,12 @@ any attribute behavior regarding bracket access.
 \\\\
 The semantics for \textit{Object} literals are much simpler. Any spread operation 
 within the literal will copy its keys and values into the new \textit{Object}
-in order as if copying from the \textit{->keys} and \textit{->values} query arrays, invoking any relevant attributes.
+in order as if copying from the \textit{keys} and \textit{values} query arrays, invoking any relevant attributes.
 If multiple spread operations cover the same keys, the later spreads will take precedence.
 
 \lstinputlisting[language=Matte,firstnumber=1]{object_spreading.mt}
 
 
-
-\subsection{Attributes}\label{Attributes}
-
-Every object has the potential to have attributes. Attributes provide special, user-defined 
-behavior for objects in various situations, allowing the object to behave in a custom 
-way thats more appropriate for the problem domain, or encapsulates desired behavior.
-\\\\
-Attributes are set using the \textit{->setAttributes} query, which allows for defining 
-and \textit{Object} that serves as the attribute set. The attribute \textit{Object}
-will persist as the container of the attributes, and any modifications to the \textit{Object}
-will reflect in the attribute set.
-\\\\
-The attribute \textit{Object} is scanned for proper key-value pairs when a situation 
-arises that demands for it. Each key for an attribute \textit{Object} that are scanned 
-are string keys. If a string key exists, it must point to a value that 
-describes how the \textit{Object} ought to respond. If it does not point to the proper value type,
-an error is thrown at the time of access.
-\\\\
-The following attributes are known:
-\begin{itemize}
-  \item \textbf{"[]"}, the bracket access operator. This invokes a set of \textit{Functions} to be called when 
-  the \textit{Object} has a bracket access. The attribute must point to an \textit{Object} that 
-  describes how the source \textit{Object} responds to write and read accesses. The \textit{Object} pointed to 
-  by the "[]" (referred to as the access \textit{Object}) shall contain at least 2 key-value pairs.
-  "set", which describes how the value shall be written to the source \textit{Object}, and "get",
-  which describes how the value shall be read from the source object. Each value in this case 
-  must be a \textit{Function}: the "set" \textit{Function} shall take two parameters: "key" and "value", which 
-  is the incoming key and value requested to be written. The return value is what the assignment expression should return. 
-  The "get" \textit{Function} shall take one parameter: "key" and return what should be returned by the read access.
-  
-\lstinputlisting[language=Matte,firstnumber=1]{attributes_bracket.mt}
-
-  \item \textbf{"."}, the dot access operator. This invokes a set of \textit{Functions} to be called when 
-  the \textit{Object} has a dot access. The attribute must point to an \textit{Object} that 
-  describes how the source \textit{Object} responds to write and read accesses. The \textit{Object} pointed to 
-  by the "." (referred to as the access \textit{Object}) shall contain at least 2 key-value pairs.
-  "set", which describes how the value shall be written to the source \textit{Object}, and "get",
-  which describes how the value shall be read from the source object. Each value in this case 
-  must be a \textit{Function}: the "set" \textit{Function} shall take two parameters: "key" and "value", which 
-  is the incoming key and value requested to be written. The return value is what the assignment expression should return. 
-  The "get" \textit{Function} shall take one parameter: "key" and return what should be returned by the read access.
-
-\lstinputlisting[language=Matte,firstnumber=1]{attributes_dot.mt}
-\end{itemize}
-
-\subsubsection{Operator Overloading}\label{Operator Overloading}
-\subsubsection{Access Overloading}\label{Access Overloading}
-\subsubsection{Type Conversion}\label{Type Conversion}
-
-
-
-\section{Function}\label{Function}
-
-\textit{Function}s are values that represent encapsulations of callable instructions. Functions are
-explained in detail in \autoref{Functions}, as this section only covers \textit{Function} as 
-a value type.
-\\\\
-\textit{Function} values are largely not able to be used as other values in most situations, as 
-they are merely encapsulations of a logical construct and are not meant to be used outside often
-passing and calling. As such, they are still very flexible in these circumstances.
-\\\\
-{
-\centering
-\begin{tabular}{ |p{2.5cm}||p{10cm}|  }
-  \hline
-  \multicolumn{2}{|c|}{Implicit Conversion List} \\
-  \hline
-  Type & Behavior\\
-  \hline
-  Empty & Nothing implicitly converts to empty.\\
-  Number  & Throws an error. \\
-  String & Throws an error\\
-  Boolean & Always true. \\
-  Type & Throws an error\\
-  Function & Throws an error\\
-  Object & Throws an error\\
- \hline
-\end{tabular}
-}
-
-\section{Type}\label{Type}
-
-Similar to functions, \textit{Type}
-
-
-
-\subsection{Explicit Conversion}\label{Explicit Conversion}
-\subsection{Creating Types}\label{Creating Types}
-\subsection{Instantiation}\label{Instantiation}
-\section{Implicit Conversion}\label{Implicit Conversion}
-
-In expressions, implicit conversion of a value may take place. Implicit conversion is when 
-a value of a certain type is put in a situation where a different type is expected, but the 
-given value can logically be allowed to be expressed as a different type. When implicit 
-conversion is successful, a new value of the expected type is returned.
-\\\\
-Implicit conversion happens within:
-\begin{itemize}
-  \item Expressions(\autoref{Expressions}). As expressions are computed from left to right, the required type comes from the value to the left of the expression. All values to the right are implicitly converted to this type for computation.
-  \item Type-Strict Functions(\autoref{Type-Strict Functions}). Type-strict functions will implicitly convert for arguments that have a type specifier and for the return value if a return type specifier is present.
-\end{itemize}
-
-For situations when an implicit conversion is not possible, an error will be thrown.
-The following behavior is expected for implicit conversions:
-
-
-
-
-\chapter{Expressions}\label{Expressions}
-\section{Operators}\label{Operators}
-\subsection{Precedence}\label{Precedence}
-\section{Literals}\label{Literals}
-\subsection{Strings}\label{Strings}
-\subsection{Object}\label{Object}
-\subsection{List Objects}\label{List Objects}
 \chapter{Functions}\label{Functions}
 \section{Statements}\label{Statements}
 \section{Lexical Scoping}\label{Lexical Scoping}
@@ -757,18 +748,222 @@ The format of this object is not formalized by the Matte language, except for th
 of the \textit{error()} call. Runtime implementations are 
 
 \chapter{Queries}\label{Queries}
+
+
+\section{Object}\label{ObjectQueries}
+
+\begin{itemize}
+  \item \textbf{values}: returns an array of values within the \textit{Object}'s key-value pairs.
+  The order of the values of the output array is not guaranteed. This query can be overridden by \textit{Object} 
+  attributes.
+
+  \item \textbf{keys}: returns an array of keys within the \textit{Object}'s key-value pairs.
+  The order of the values of the output array is not guaranteed. This query can be overridden by \textit{Object} 
+  attributes.     
+   
+\end{itemize}
+
+The \textit{setAttributes} and \textit{setInterface} queries are of significant importance and have their own 
+subsection below.
+
+\subsection{setIsInterface()}\label{SetIsInterface}
+
+
+
+\subsection{setAttributes()}\label{Attributes}
+
+Every object has the potential to have attributes. Attributes provide special, user-defined 
+behavior for objects in various situations, allowing the object to behave in a custom 
+way thats more appropriate for the problem domain, or encapsulates desired behavior.
+\\\\
+Attributes are set using the \textit{setAttributes} query, which allows for defining 
+and \textit{Object} that serves as the attribute set. The attribute \textit{Object}
+will persist as the container of the attributes, and any modifications to the \textit{Object}
+will reflect in the attribute set.
+\\\\
+The attribute \textit{Object} is scanned for proper key-value pairs when a situation 
+arises that demands for it. Each key for an attribute \textit{Object} that are scanned 
+are string keys. If a string key exists, it must point to a value that 
+describes how the \textit{Object} ought to respond. If it does not point to the proper value type,
+an error is thrown at the time of access.
+\\\\
+The attributes are split up in this section by their function.
+\\\\
+
+\subsubsection{Access Overloading}\label{Access Overloading}
+
+Access overloading refers to changing how an object responds to reading and writing 
+its key-value pairs. As mentioned, the primary ways of doing so are through the 
+"[]" and "." accessors, but there also exists the \textit{keys} and \textit{values}
+queries, which return all keys / values as an array. Each of these methods of retrieving
+keys and values may be overloaded.
+
+\begin{itemize}
+  \item \textbf{"[]"}, the bracket access operator. This invokes a set of \textit{Functions} to be called when 
+  the \textit{Object} has a bracket access. The attribute must point to an \textit{Object} that 
+  describes how the source \textit{Object} responds to write and read accesses. The \textit{Object} pointed to 
+  by the "[]" (referred to as the access \textit{Object}) shall contain at least 2 key-value pairs.
+  "set", which describes how the value shall be written to the source \textit{Object}, and "get",
+  which describes how the value shall be read from the source object. Each value in this case 
+  must be a \textit{Function}: the "set" \textit{Function} shall take two parameters: "key" and "value", which 
+  is the incoming key and value requested to be written. The return value is what the assignment expression should return. 
+  The "get" \textit{Function} shall take one parameter: "key" and return what should be returned by the read access.
+  
+\lstinputlisting[language=Matte,firstnumber=1]{attributes_bracket.mt}
+
+  \item \textbf{"."}, the dot access operator. This invokes a set of \textit{Functions} to be called when 
+  the \textit{Object} has a dot access. The attribute must point to an \textit{Object} that 
+  describes how the source \textit{Object} responds to write and read accesses. The \textit{Object} pointed to 
+  by the "." (referred to as the access \textit{Object}) shall contain at least 2 key-value pairs.
+  "set", which describes how the value shall be written to the source \textit{Object}, and "get",
+  which describes how the value shall be read from the source object. Each value in this case 
+  must be a \textit{Function}: the "set" \textit{Function} shall take two parameters: "key" and "value", which 
+  is the incoming key and value requested to be written. The return value is what the assignment expression should return. 
+  The "get" \textit{Function} shall take one parameter: "key" and return what should be returned by the read access.
+
+\lstinputlisting[language=Matte,firstnumber=1]{attributes_dot.mt}
+
+  \item \textbf{"keys"}, the keys query. This attribute consists of a \textit{Function} that 
+  is called when the \textit{keys} query is accessed. When so, the attribute \textit{Function}
+  returns a value that represents the output of the \textit{keys} query. In most cases, this 
+  should be an array of values for consistency, but Matte places no such restriction or check 
+  for this.
+  
+\lstinputlisting[language=Matte,firstnumber=1]{attributes_keys.mt}
+
+  \item \textbf{"values"}, the values query. This attribute consists of a \textit{Function} that 
+  is called when the \textit{values} query is accessed. When so, the attribute \textit{Function}
+  returns a value that represents the output of the \textit{values} query. In most cases, this 
+  should be an array of values for consistency, but Matte places no such restriction or check 
+  for this.
+  
+\lstinputlisting[language=Matte,firstnumber=1]{attributes_values.mt}
+
+\end{itemize}
+
+
 \chapter{External Interaction}\label{External Interaction}
 \section{import}\label{import}
 \section{getExternalFunction}\label{getExternalFunction}
 \chapter{Built-in Modules}\label{Built-in Modules}
 \section{Class}\label{Class}
-\subsection{Introduction}\label{Introduction}
-\subsection{Instantiation}\label{Instantiation}
-\subsection{Interface}\label{Interface}
+
+The class core module is the standard way of providing class-like behavior 
+that is vital to Object-Oriented Programming patterns. Using classes gives a method 
+to standardly introduce information hiding ("private variables"), inheritance-like behavior, 
+interfaces with setter / getters, and basic constructors.
+\\\\
+The class module itself is a function that returns the "class" as a special \textit{Object}.
+Through special "class" \textit{Object} (simply referred to as "the class \textit{Object}"), instances are created through instantiation.
+Both instances and the class \textit{Object} are output as interfaces (see \autoref{SetIsInterface})
+and follow interface semantics. This is the core source of power of classes, as invalid use 
+of classes lead to thrown errors.
+\\\\
+As all the semantics of the class module are within the language itself,
+the use of classes can be demonstrated here by code example.
+\\\\
+The basic form is this:
+\\\\
+\lstinputlisting[language=Matte,firstnumber=1]{class_basic.mt}
+
+The class function has a number of arguments:
+
+\begin{itemize}
+  \item \textbf{define}: This must be a \textit{Function} which takes the argument "this".
+  The define function is where the behavior of the instance is determined.
+  
+  \item \textbf{new}: This is an optional parameter which replaces the behavior of "new",
+  thereby introducing custom external constructors. This parameter should be a \textit{Function} when 
+  present. Any arguments can be provided, but the expectation is that the return value of 
+  the \textit{Function} is most usefully a new instance of the class. As this replaces the new() function,
+  calling the class.new() function would result in infinite recursion. Instead, the default 
+  new function is available as a member of the class (class.defaultNew()) which can be 
+  used to create an instance as if the new function were never overridden.
+  
+  \item \textbf{name}: This is an optional parameter that is used when definition the 
+  class type. Class objects (and their instances) employ the use of \textit{Object.newType()}
+  to give instances their own types. When first created, the class \textit{Object} type will 
+  take the name given here. This can help especially when debugging.
+  
+  \item \textbf{inherits}: This is an optional parameter that defines inheritance for the 
+  class. Classes employ the use of \textit{Object.newType()}'s inheritance feature when present.
+  The parameter, when present, is expected to be an array of class \textit{Object}s. Each class \textit{Object}
+  will have its interfaces merged, in order, with the "this" output instance. In addition, the inheritance 
+  feature will allow Type-Strict \textit{Function}s to correctly allow type detection in 
+  accordance with type inheritance rules. Class statics are also merged from inherited 
+  classes into the resultant class \textit{Object}.
+  
+  \item \textbf{statics}: This is an optional parameter that defines members of the 
+  class \textit{Object} itself. This is much more limited than the "interface" feature of 
+  instance, but still provides the same \textit{setInterface()} semantics of \textit{String}-keyed
+  \textit{Function}s and setter/getters.
+  
+\end{itemize}
+
+
+Once called, the class function returns the class \textit{Object}. The class \textit{Object} has 
+the following members:
+
+\begin{itemize}
+  \item \textbf{type}: This is the type of instances created from this class \textit{Object}.
+  \item \textbf{name}: The name from the class function parameter, if any.
+  \item \textbf{defaultNew}: The default function that creates a new instance.
+  \item \textbf{new}: The function that creates a new instance. By default it is equivalent to 
+  defaultNew(), but can be overridden by the "new" parameter of the class function.
+\end{itemize}
+
+The class object may have more members, but only these are the standard accessible members.
+
+\subsection{Defining a Class}\label{Defining a Class}
+
+The key component when defining a class is working with the "this" parameter of the 
+define function. When called on your behalf, the define function provides "this" as an
+interface \textit{Object} with 2 members. "this" is exactly the instance that is returned when instantiating 
+from the class \textit{Object}
+
+\lstinputlisting[language=Matte,firstnumber=1]{class_this.mt}
+
+First, "this" contains an "interface" setter. When set, an \textit{Object} shall be provided with 
+\textit{String} keys. The members of this function become part of the interface of the output
+\textit{Object}. 
+
+\lstinputlisting[language=Matte,firstnumber=1]{class_interface1.mt}
+
+Notice how the "privateSize" variable is only accessible to the confines of the 
+define function, and thus, the implementation of the class and definition of the instance.
+This is the power of Matte classes.
+\\\\
+As instances are interfaces, they accept both \textit{Functions} and setter/getters:
+
+\lstinputlisting[language=Matte,firstnumber=1]{class_interface1.mt}
+
+Second, "this" contains a setter/getter for a constructor. Note that this is different from 
+the "new" that is optionally specified in the class function: the "this" constructor is a function 
+that is called once the instance has its final interface for this class. Instances 
+that inherit from multiple classes will have its constructor run for each base class in order as the interfaces are assembled.
+The intent of constructor is for final setup of "this" where its interface can be used safely
+and it can be used as user code would use the instance, but is done so before usercode has access 
+to it.
+
+
 \subsection{Inheritance}\label{Inheritance}
-\subsection{Automatic Pooling}\label{Automatic Pooling}
-\section{Array}\label{Array}
-\section{String}\label{String}
+
+Inheritance is done by providing one or more members of an array as the "inherits" member 
+of a the class function. Doing so shall be done with class \textit{Object}s. This is the main 
+way of providing common interfaces across types and using instances across Type-Strict
+inhertance semantics.
+
+\lstinputlisting[language=Matte,firstnumber=1]{class_inherits.mt}
+
+
+\subsection{Implementation}\label{Implementation}
+
+Below is a possible implementation adhering the behavior described above. It shall be that 
+all implementations of the class functions follow at least the behavior of the implementation below.
+
+\lstinputlisting[language=Matte,firstnumber=1]{class.mt}
+
+
 \section{Enum}\label{Enum}
 \section{JSON}\label{JSON}
 \chapter{Grammar}\label{Grammar}
