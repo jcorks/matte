@@ -846,6 +846,15 @@ keys and values may be overloaded.
 \section{import}\label{import}
 \section{getExternalFunction}\label{getExternalFunction}
 \chapter{Built-in Modules}\label{Built-in Modules}
+
+Matte comes with built-in modules that behave as specified below. Implementations 
+may have helper members of these modules which may not be documented here; such 
+members are not to be used for they are not covered by the specification.
+Only those mentioned here are going to be maintained across Matte implementations.
+\\\\
+Each module is accessible by the "Matte.Core." prefix using \textit{import()}. Exact
+names are labeled in the section titles and throughout examples.
+
 \section{Class}\label{Class}
 
 The class core module is the standard way of providing class-like behavior 
@@ -964,7 +973,17 @@ all implementations of the class functions follow at least the behavior of the i
 \lstinputlisting[language=Matte,firstnumber=1]{class.mt}
 
 
-\section{Enum}\label{Enum}
+\section{EventSystem}\label{EventSystem}
+
+The EventSystem module provides a generic approach to handling and emitting events. 
+EventSystem is a class and uses the built-in class module to implement itself.
+\\\\
+The EventSystem class has the following API:
+\begin{itemize}
+
+\end{itemize}
+
+
 \section{JSON}\label{JSON}
 \chapter{Grammar}\label{Grammar}
 

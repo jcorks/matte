@@ -124,15 +124,9 @@ DEALINGS IN THE SOFTWARE.
             uninstallHook::(event => String, hook) {
                 @: ev = events[event];
                 when(ev == empty) error(detail:"Cannot uninstall hook for non-existent event "+ev);
-                {:::} {
-                    for(0, ev.hookCount)::(i) {
-                        if (ev.hooks[i] == hook) ::<= { 
-                            ev.hooks->remove(key:i);
-                            ev.hookCount-=1;
-                            send();
-                        }
-                    }
-                }
+                @:index = ev.hooks->findIndex(value:hook);
+                when(index == -1) empty;
+                ev.hooks->remove(key:index);
             },
             
             uninstallHandler::(event => String, handler) {
