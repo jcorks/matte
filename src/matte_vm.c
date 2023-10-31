@@ -418,7 +418,6 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_NEGATE:      return vm_operator__negate(vm, a);
       case MATTE_OPERATOR_BITWISE_NOT: return vm_operator__bitwise_not(vm, a);
       case MATTE_OPERATOR_POUND:       return vm_operator__overload_only_1(vm, "#", a);
-      case MATTE_OPERATOR_TOKEN:       return vm_operator__overload_only_1(vm, "$", a);
 
       default:
         matte_vm_raise_error_cstring(vm, "unhandled OPR operator");                        
@@ -472,6 +471,9 @@ static const char * opcode_to_str(int oc) {
 #define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__);
 
 
+
+#define CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING 0xff
+
 static int vm_execution_loop__stack_depth = 0;
 #define VM_EXECUTABLE_LOOP_STACK_DEPTH_LIMIT 1024
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
@@ -494,6 +496,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     while(frame->pc < instCount) {
         inst = program+frame->pc++;
         
+
         
         // TODO: optimize out
         #ifdef MATTE_DEBUG__VM
@@ -789,6 +792,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_vm_raise_error_cstring(vm, "VM error: tried to prepare arguments for a call, but insufficient arguments on the stack.");    
                 break;
             }
+            
+            
 
 
             matteArray_t * args = matte_array_create(sizeof(matteValue_t));
@@ -796,25 +801,33 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             uint32_t i = 0;
             uint32_t stackSize = STACK_SIZE();
-            matteValue_t key = STACK_PEEK(0);
-            if (stackSize > 2 && key.binID == MATTE_VALUE_TYPE_STRING) {
-                while(i < stackSize && key.binID == MATTE_VALUE_TYPE_STRING) {
-                    matte_array_push(argnames, key);
-                    i++;
-                    key = STACK_PEEK(i);
-                    matte_array_push(args, key);                
-                    i++;
-                    key = STACK_PEEK(i);
+            int isDynBind = 0;
+            if (stackSize > 2) {
+                while(i < stackSize-1) {
+                    matteValue_t key = STACK_PEEK(i);
+                    matteValue_t value = STACK_PEEK(i+1);
+                
+                
+                    if (key.binID == MATTE_VALUE_TYPE_STRING) {
+                        matte_array_push(argnames, key);
+                        matte_array_push(args, value);                
+                    } else if (value.binID == CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING) {
+                        isDynBind = 1;
+                    } else {
+                        break;
+                    }
+
+                    i += 2;
                 }
             }
             uint32_t argcount = matte_array_get_size(args);
-            
+            /*
             if (i == stackSize) {
                 matte_vm_raise_error_cstring(vm, "VM error: tried to prepare arguments for a call, but insufficient arguments on the stack.");    
                 matte_array_destroy(args);            
                 matte_array_destroy(argnames);            
                 break;
-            }
+            }*/
 
             matteValue_t function = STACK_PEEK(i);
 
@@ -825,13 +838,17 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_store_track_neutral(vm->store, function, matte_string_get_c_str(info), inst->lineNumber);
                 matte_string_destroy(info);
             #endif
-
+            
             matteValue_t result = matte_vm_call(vm, function, args, argnames, NULL);
 
             for(i = 0; i < argcount; ++i) {
                 STACK_POP_NORET();
                 STACK_POP_NORET(); // always a string
             }
+            if (isDynBind) {
+                STACK_POP_NORET(); // extra function.
+                STACK_POP_NORET(); // extra function.
+            }            
             matte_array_destroy(args);
             matte_array_destroy(argnames);
             STACK_POP_NORET();
@@ -985,10 +1002,30 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t key = STACK_PEEK(0);
             matteValue_t object = STACK_PEEK(1);            
             matteValue_t output = matte_value_object_access(vm->store, object, key, isBracket);
+
+            
             
             STACK_POP_NORET();
             STACK_POP_NORET();
             STACK_PUSH(output);
+
+            // if a dynamic binding, cache the binding
+            if (matte_value_is_function(output) && key.binID == MATTE_VALUE_TYPE_STRING) {
+                matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, output);
+                if (matte_bytecode_stub_is_dynamic_bind(stub)) {                
+                    matteValue_t vname = matte_store_get_dynamic_bind_token(vm->store);
+
+                    STACK_PUSH(object);
+                    STACK_PUSH(vname);
+
+                    matteValue_t marker = {};
+                    marker.binID = CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING;
+                    STACK_PUSH(marker);
+                    STACK_PUSH(output);
+                }
+            }        
+
+
             break;
           }    
 
@@ -1228,8 +1265,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 case MATTE_OPERATOR_NOT:
                 case MATTE_OPERATOR_NEGATE:
                 case MATTE_OPERATOR_BITWISE_NOT:
-                case MATTE_OPERATOR_POUND:
-                case MATTE_OPERATOR_TOKEN:{
+                case MATTE_OPERATOR_POUND:{
                     if (STACK_SIZE() < 1) {
                         matte_vm_raise_error_cstring(vm, "OPR operator requires 1 operand.");                        
                     } else {

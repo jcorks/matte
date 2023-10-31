@@ -394,13 +394,14 @@ static matteString_t * consume_variable_name(uint8_t ** src) {
         case '9':
         return varname;
     }
+    
 
     int valid = 1;
     while(valid) {
         valid = (c > 47 && c < 58)  || // nums
                 (c > 64 && c < 91)  || // uppercase
                 (c > 96 && c < 123) || // lowercase
-                (c == '_') || // underscore
+                (c == '_') || (c == '$') ||  // underscore or binding token
                 (c > 127); // other things / unicode stuff
 
         if (valid) {
@@ -2488,7 +2489,6 @@ matteOperator_t string_to_operator(const matteString_t * s, matteTokenType_t hin
 
         case '#': return MATTE_OPERATOR_POUND; break;
         case '?': return MATTE_OPERATOR_TERNARY; break;
-        case '$': return MATTE_OPERATOR_TOKEN; break;
         case '^': return MATTE_OPERATOR_CARET; break;
         case '%': return MATTE_OPERATOR_MODULO; break;
 
@@ -2570,7 +2570,6 @@ struct matteExpressionNode_t {
 static int op_to_precedence(int op) {
     switch(op) {
       case MATTE_OPERATOR_POUND: // # 1 operand
-      case MATTE_OPERATOR_TOKEN: // $ 1 operand
         return 0;
       case MATTE_OPERATOR_POINT: // -> 2 operands
         return 1;
@@ -3195,6 +3194,13 @@ static matteArray_t * compile_function_call(
         // parse out the parameters
         uint32_t i = function_intern_string(block, (matteString_t*)iter->data);
         uint32_t nameLineNum = iter->line;
+
+        if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("$", matte_string_get_c_str(iter->data))) {
+            matte_syntax_graph_print_compile_error(g, iter, "Cannot bind as argument special dynamic binding character $.");
+            goto L_FAIL;            
+        }
+
+
         matteArray_t * exp;
         // usual case -> "name: expression"
         if (iter->next->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {           
@@ -4202,6 +4208,12 @@ static int compile_statement(
         varConst = 1;
       case MATTE_TOKEN_DECLARE: {
         uint32_t oln = iter->line;
+
+        if (iter->next->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("$", matte_string_get_c_str(iter->next->data))) {
+            matte_syntax_graph_print_compile_error(g, iter, "Cannot declare variable with special binding name $.");
+            return -1;
+        }
+
         iter = iter->next; // declaration
 
         uint32_t gl = get_local_referrable(g, block, iter);

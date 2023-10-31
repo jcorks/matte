@@ -10,7 +10,7 @@
         </style>
     </head>
     <body>
-    <script src="../matte.js"></script>
+    <script src="/matte.js"></script>
     <script> 
         const readBinary = function(name, onLoad) {
             const req = new XMLHttpRequest();
@@ -59,13 +59,13 @@
         });
 
         const initialModules = [
-            'Matte.Core.Class',
-            'mytestmodule.mt'
+            ['Matte.Core.Class', '/browser_test/Matte.Core.Class'],
+            ['mytestmodule.mt', '/browser_test/mytestmodule.mt']
         ];
         var modsLeft = initialModules.length;
 
         var testList = 1;
-        const fileCount = 121;
+        const fileCount = 122;
         var lock = false;;
         const runTest = function() {
             var result;
@@ -92,9 +92,9 @@
         var task = setInterval(function() {
             if (initialModules.length) {             
                 const mod = initialModules.pop(); 
-                readBinary(mod, function(data) {
-                    console.log('Loading ' + mod);
-                    matte.import(mod, null, data);
+                readBinary(mod[1], function(data) {
+                    console.log('Loading ' + mod[0]);
+                    matte.import(mod[0], null, data);
                     modsLeft--;
                 });
             } 

@@ -88,7 +88,9 @@ matteValue_t matte_bytecode_stub_get_local_name(const matteBytecodeStub_t *, uin
 // These local IDs are used for NST
 matteValue_t matte_bytecode_stub_get_string(const matteBytecodeStub_t *, uint32_t localStringID);
 
-
+// Returns whether the bytecode is dynamically bound, meaning 
+// an argument is named "$"
+int matte_bytecode_stub_is_dynamic_bind(const matteBytecodeStub_t *);
 
 // ID of a stub capture variable
 typedef struct {

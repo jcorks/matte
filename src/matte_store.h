@@ -170,6 +170,7 @@ matteValue_t * matte_value_object_function_get_closure_value(matteStore_t *, mat
 
 void matte_value_object_set_is_interface(matteStore_t *, matteValue_t v, int enabled);
 
+void matte_value_function_set_dynamic_bind(matteStore_t *, matteValue_t v, int enabled);
 
 matteValue_t * matte_value_object_array_at_unsafe(matteStore_t *, matteValue_t v, uint32_t index);
 
@@ -245,6 +246,14 @@ int matte_value_object_function_pre_typecheck_unsafe(matteStore_t *, matteValue_
 
 // assumes the first arg is a function and that the function is typestrict
 void matte_value_object_function_post_typecheck_unsafe(matteStore_t *, matteValue_t, matteValue_t);
+
+// Sets the dynamic binding for this function
+void matte_value_object_function_set_dynamic_binding_unsafe(matteStore_t *, matteValue_t, matteValue_t);
+
+void matte_value_object_function_unset_dynamic_binding_unsafe(matteStore_t *, matteValue_t);
+
+// Gets the dynamic binding for this function
+matteValue_t matte_value_object_function_get_dynamic_binding_unsafe(matteStore_t *, matteValue_t);
 
 
 // If the value points to an object, returns the value associated with the 
@@ -373,6 +382,9 @@ const matteValue_t * matte_store_get_object_type(matteStore_t *);
 const matteValue_t * matte_store_get_function_type(matteStore_t *);
 const matteValue_t * matte_store_get_type_type(matteStore_t *);
 const matteValue_t * matte_store_get_any_type(matteStore_t *);
+
+matteValue_t matte_store_get_dynamic_bind_token(matteStore_t *);
+
 
 void matte_store_garbage_collect(matteStore_t *);
 

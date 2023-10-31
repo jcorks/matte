@@ -177,7 +177,6 @@ typedef enum {
     MATTE_OPERATOR_POINT, // -> 2 operands
     MATTE_OPERATOR_POUND, // # 1 operand
     MATTE_OPERATOR_TERNARY, // ? 2 operands
-    MATTE_OPERATOR_TOKEN, // $ 1 operand
     MATTE_OPERATOR_GREATER, // > 2 operands
     MATTE_OPERATOR_LESS, // < 2 operands
     MATTE_OPERATOR_GREATEREQ, // >= 2 operands

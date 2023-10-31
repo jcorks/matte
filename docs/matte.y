@@ -209,7 +209,7 @@
                 (c > 47 && c < 58)  || // nums
                 (c > 64 && c < 91)  || // uppercase
                 (c > 96 && c < 123) || // lowercase
-                (c == '_') ||          // underscore
+                (c == '_') || (c == '$') || // underscore or binding token
                 (c > 127)              // other things / unicode
     
     

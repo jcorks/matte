@@ -63,16 +63,17 @@ const Matte = {
                 QUERY_SCAN : 34,
                 QUERY_SEARCH : 35,
                 QUERY_SEARCH_ALL : 36,
-                QUERY_SPLIT : 37,
-                QUERY_SUBSTR : 38,
-                QUERY_CONTAINS : 39,
-                QUERY_COUNT : 40,
-                QUERY_REPLACE : 41,
-                QUERY_REMOVECHAR : 42,
+                QUERY_FORMAT : 37,
+                QUERY_SPLIT : 38,
+                QUERY_SUBSTR : 39,
+                QUERY_CONTAINS : 40,
+                QUERY_COUNT : 41,
+                QUERY_REPLACE : 42,
+                QUERY_REMOVECHAR : 43,
                 
-                QUERY_SETISINTERFACE : 43,
+                QUERY_SETISINTERFACE : 44,
                 
-                GETEXTERNALFUNCTION : 44
+                GETEXTERNALFUNCTION : 45
                 
             },
             
@@ -311,8 +312,11 @@ const Matte = {
                     stub.stubID = bytes.chompUInt32();
                     stub.argCount = bytes.chompUInt8();
                     stub.argNames = [];
+                    stub.isDynamicBinding = false;
                     for(var i = 0; i < stub.argCount; ++i) {
                         stub.argNames[i] = bytes.chompString();
+                        if (stub.argNames[i] == '$')
+                            stub.isDynamicBinding = true;
                     }
                     
                     stub.localCount = bytes.chompUInt8();
@@ -402,35 +406,37 @@ const Matte = {
                 SCAN : 19,
                 LENGTH : 20,
                 SEARCH : 21,
-                SEARCH_ALL : 22,
-                CONTAINS : 23,
-                REPLACE : 24,
-                COUNT : 25,
-                CHARCODEAT : 26,
-                CHARAT : 27,
-                SETCHARCODEAT : 28,
-                SETCHARAT : 29,
+                FORMAT : 22,
+                SEARCH_ALL : 23,
+                CONTAINS : 24,
+                REPLACE : 25,
+                COUNT : 26,
+                CHARCODEAT : 27,
+                CHARAT : 28,
+                SETCHARCODEAT : 29,
+                SETCHARAT : 30,
                 
-                KEYCOUNT : 30,
-                KEYS : 31,
-                VALUES : 32,
-                PUSH : 33,
-                POP : 34,
-                INSERT : 35,
-                REMOVE : 36,
-                SETATTRIBUTES : 37,
-                ATTRIBUTES : 38,
-                SORT : 39,
-                SUBSET : 40,
-                FILTER : 41,
-                FINDINDEX : 42,
-                ISA : 43,
-                MAP : 44,
-                REDUCE : 45,
-                ANY : 46,
-                ALL : 47,
-                FOREACH : 48,
-                SETISINTERFACE : 49
+                KEYCOUNT : 31,
+                SIZE : 32,
+                KEYS : 33,
+                VALUES : 34,
+                PUSH : 35,
+                POP : 36,
+                INSERT : 37,
+                REMOVE : 38,
+                SETATTRIBUTES : 39,
+                ATTRIBUTES : 40,
+                SORT : 41,
+                SUBSET : 42,
+                FILTER : 43,
+                FINDINDEX : 44,
+                ISA : 45,
+                MAP : 46,
+                REDUCE : 47,
+                ANY : 48,
+                ALL : 49,
+                FOREACH : 50,
+                SETISINTERFACE : 51
             };
             
             var typecode_id_pool = 10;
@@ -762,6 +768,8 @@ const Matte = {
                 createExternalFunction : function(stub) {
                     return store.createFunction(stub);
                 },
+                
+                getDynamicBindToken : function() {return store_specialString_dynamicBindToken;},
                 
                 createTypedFunction : function(stub, args) {
                     for(var i = 0; i < args.length; ++i) {
@@ -1827,6 +1835,14 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_REPLACE);
             };
 
+            store_queryTable[QUERY.FORMAT] = function(value) {
+                if (value.binID != TYPE_STRING) {
+                    vm.raiseErrorString("format requires base value to be a string.");
+                    return createValue();
+                }
+                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FORMAT);
+            };
+
             store_queryTable[QUERY.COUNT] = function(value) {
                 if (value.binID != TYPE_STRING) {
                     vm.raiseErrorString("count requires base value to be a string.");
@@ -1877,6 +1893,15 @@ const Matte = {
                 }
                 return store.createNumber(store.valueObjectGetKeyCount(value));
             };
+
+            store_queryTable[QUERY.SIZE] = function(value) {
+                if (value.binID != TYPE_OBJECT) {
+                    vm.raiseErrorString("size requires base value to be an object.");
+                    return createValue();
+                }
+                return store.createNumber(store.valueObjectGetNumberKeyCount(value));
+            };
+
 
             store_queryTable[QUERY.KEYS] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
@@ -2088,6 +2113,7 @@ const Matte = {
             const store_specialString_inherits = store.createString('inherits');
             const store_specialString_key = store.createString('key');
             const store_specialString_value = store.createString('value');
+            const store_specialString_dynamicBindToken = store.createString('$');
             
             return store; 
         }();    
@@ -2115,17 +2141,16 @@ const Matte = {
                 MATTE_OPERATOR_POINT : 14, // -> 2 operands
                 MATTE_OPERATOR_POUND : 15, // # 1 operand
                 MATTE_OPERATOR_TERNARY : 16, // ? 2 operands
-                MATTE_OPERATOR_TOKEN : 17, // $ 1 operand
-                MATTE_OPERATOR_GREATER : 18, // > 2 operands
-                MATTE_OPERATOR_LESS : 19, // < 2 operands
-                MATTE_OPERATOR_GREATEREQ : 20, // >= 2 operands
-                MATTE_OPERATOR_LESSEQ : 21, // <= 2 operands
-                MATTE_OPERATOR_TRANSFORM : 22, // <> 2 operands
-                MATTE_OPERATOR_NOTEQ : 23, // != 2 operands
-                MATTE_OPERATOR_MODULO : 24, // % 2 operands
-                MATTE_OPERATOR_CARET : 25, // ^ 2 operands
-                MATTE_OPERATOR_NEGATE : 26, // - 1 operand
-                MATTE_OPERATOR_TYPESPEC : 27, // => 2 operands
+                MATTE_OPERATOR_GREATER : 17, // > 2 operands
+                MATTE_OPERATOR_LESS : 18, // < 2 operands
+                MATTE_OPERATOR_GREATEREQ : 19, // >= 2 operands
+                MATTE_OPERATOR_LESSEQ : 20, // <= 2 operands
+                MATTE_OPERATOR_TRANSFORM : 21, // <> 2 operands
+                MATTE_OPERATOR_NOTEQ : 22, // != 2 operands
+                MATTE_OPERATOR_MODULO : 23, // % 2 operands
+                MATTE_OPERATOR_CARET : 24, // ^ 2 operands
+                MATTE_OPERATOR_NEGATE : 25, // - 1 operand
+                MATTE_OPERATOR_TYPESPEC : 26, // => 2 operands
 
                 // special operators. They arent part of the OPR opcode
                 MATTE_OPERATOR_ASSIGNMENT_NONE : 100,
@@ -2169,6 +2194,7 @@ const Matte = {
             const vm_opcodeSwitch = [];
             const vm_id2importPath = {};
             const vm_importPath2ID = {};
+            const vm_CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING = 0xff;
 
             const vm_callstack = [];
             const vm_opcodesSwitch = [];
@@ -3029,7 +3055,6 @@ const Matte = {
             };
             
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_POUND] = function(a) {return vm_operatorOverloadOnly1("#", a);};
-            vm_operatorFunc[vm_operator.MATTE_OPERATOR_TOKEN] = function(a) {return vm_operatorOverloadOnly1("$", a);};
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_OR] = function(a, b) {
                 switch(a.binID) {
@@ -3685,31 +3710,43 @@ const Matte = {
                 const argNames = [];
                 
                 const stackSize = frame.valueStack.length;
-                var key = frame.valueStack[frame.valueStack.length-1];
                 
                 var i = 0;
-                if (stackSize > 2 && key.binID == store.TYPE_STRING) {
-                    while(i < stackSize && key.binID == store.TYPE_STRING) {
-                        argNames.push(key);
-                        i++;
-                        key = frame.valueStack[frame.valueStack.length - 1 - i];
-                        args.push(key);
-                        i++;
-                        key = frame.valueStack[frame.valueStack.length - 1 - i];
+                var isDynBind = false;
+                if (stackSize > 2) {
+                    while(i < stackSize-1) {
+                        var key = frame.valueStack[frame.valueStack.length - 1 - i];
+                        var value = frame.valueStack[frame.valueStack.length - 2 - i]
+
+                        if (key.binID == store.TYPE_STRING) {
+                            argNames.push(key);
+                            args.push(value);
+                            
+                        } else if (value.binID == vm_CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING) {
+                            isDynBind = true;
+                        } else {
+                            break;
+                        }
+                        i += 2;
                     }
                 }
                 
                 const argCount = args.length;
-                
+                /*
                 if (i == stackSize) {
                     vm.raiseErrorString("VM error: tried to prepare arguments for a call, but insufficient arguments on the stack.");         
                     return;
                 }
+                */
                 
                 const func = frame.valueStack[frame.valueStack.length - 1 - i];
                 const result = vm.callFunction(func, args, argNames);
                 
                 for(i = 0; i < argCount; ++i) {
+                    frame.valueStack.pop();
+                    frame.valueStack.pop();
+                }
+                if (isDynBind) {
                     frame.valueStack.pop();
                     frame.valueStack.pop();
                 }
@@ -3855,6 +3892,20 @@ const Matte = {
                 frame.valueStack.pop();
                 frame.valueStack.pop();
                 frame.valueStack.push(output);
+                
+                if (output) {
+                    const stub = store.valueGetBytecodeStub(output);
+                    if (stub && stub.isDynamicBinding && key.binID == store.TYPE_STRING) {
+                        frame.valueStack.push(object);
+                        frame.valueStack.push(store.getDynamicBindToken());
+                        
+                        const marker = {};
+                        marker.binID = vm_CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING;
+                        frame.valueStack.push(marker);
+                        frame.valueStack.push(output);
+                    }
+                }
+                
             };
             
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_EXT] = function(frame, inst) {
@@ -4047,7 +4098,6 @@ const Matte = {
                   case vm_operator.MATTE_OPERATOR_NEGATE:
                   case vm_operator.MATTE_OPERATOR_BITWISE_NOT:
                   case vm_operator.MATTE_OPERATOR_POUND:
-                  case vm_operator.MATTE_OPERATOR_TOKEN:
                     if (frame.valueStack.length < 1) {
                         vm.raiseErrorString("VM error: OPR operator requires 1 operand.");
                     } else {
@@ -4505,7 +4555,7 @@ const Matte = {
                 if (!ensureArgString(args)) return store.createEmpty();
                 const str2 = store.valueAsString(args[1]);    
                 const str3 = store.valueAsString(args[2]);    
-                const strs = store.valueAsString(args[3]);
+                const strs = (args[3]);
                 
                 
                 if (str2.binID) {      
@@ -4518,6 +4568,58 @@ const Matte = {
                     };
                     return store.createString(strOut);
                 }
+            });
+
+
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_FORMAT, ['base', 'items'], function(fn, args) {
+                if (!ensureArgString(args)) return store.createEmpty();
+                const items = args[1];
+                
+                if (items.binID != store.TYPE_OBJECT) {
+                    vm.raiseErrorString("items array input must be an object.");
+                    return 0;                    
+                }
+                
+
+                const len = store.valueObjectGetNumberKeyCount(items);
+                var input = args[0].data;
+                var output = '';
+                var iter = 0;
+
+                for(var i = 0; i < input.length; ++i) {
+                    if (input[i] == '%') {
+                        if (iter == input.length-1) {
+                            // incomplete sequence
+                            output += input[i]
+                        } else {
+                            if (input[i+1].search(/[0-9]/) != -1) {
+                                i+=1;
+                                // extract numbers 
+                                var number = '';
+                                for(; i < input.length; ++i) {
+                                    if (input[i].search(/[0-9]/) != -1) 
+                                        number += input[i];
+                                    else 
+                                        break;
+                                }
+                                if (i != input.length-1)
+                                    i--; // backup for next.
+                                const index = Number.parseInt(number);
+                                if (index >= 0 && index < len) {
+                                    output += store.valueAsString(store.valueObjectAccessIndex(items, index)).data
+                                }
+                            } else {
+                                output += input[i];                            
+                                if (input[i+1] == '%')
+                                    i += 1; // escaped;
+                            }
+                        }
+                    } else {
+                        output += input[i];
+                    }
+                }
+
+                return store.createString(output);
             });
 
 
@@ -4615,6 +4717,9 @@ const Matte = {
                 }
                 return store.createObjectArray(arr);
             });
+            
+            
+            
             return vm;
         }());
         ///

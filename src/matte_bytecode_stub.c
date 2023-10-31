@@ -59,6 +59,7 @@ struct matteBytecodeStub_t {
     uint16_t capturedCount;
     uint32_t instructionCount;
     uint32_t stringCount;
+    int isDynamicBinding;
 };  
 
 // prevents incomplete advances
@@ -95,6 +96,7 @@ static matteValue_t chomp_string(matteStore_t * store, uint8_t ** bytes, uint32_
 
 static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID, uint8_t ** bytes, uint32_t * left) {
     matteBytecodeStub_t * out = (matteBytecodeStub_t*)matte_allocate(sizeof(matteBytecodeStub_t));
+    out->isDynamicBinding = 0;
     uint32_t i;
     uint8_t ver = 0;
 
@@ -113,13 +115,18 @@ static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID
     ADVANCE(uint8_t, ver);
     if (ver != 1) return out;
 
+    matteValue_t dynamicBindTokenVal = matte_store_get_dynamic_bind_token(store);
+
 
     out->fileID = fileID;
     ADVANCE(uint32_t, out->stubID);
     ADVANCE(uint8_t, out->argCount);
     out->argNames = (matteValue_t*)matte_allocate(sizeof(matteValue_t)*out->argCount);
     for(i = 0; i < out->argCount; ++i) {
-        out->argNames[i] = chomp_string(store, bytes, left);    
+        out->argNames[i] = chomp_string(store, bytes, left); 
+        if (out->argNames[i].value.id == dynamicBindTokenVal.value.id) {
+            out->isDynamicBinding = 1;
+        }
     }        
     ADVANCE(uint8_t, out->localCount);
     out->localNames = (matteValue_t*)matte_allocate(sizeof(matteValue_t)*out->localCount);
@@ -245,6 +252,9 @@ const matteBytecodeStubInstruction_t * matte_bytecode_stub_get_instructions(cons
     return stub->instructions;
 }
 
+int matte_bytecode_stub_is_dynamic_bind(const matteBytecodeStub_t * stub) {
+    return stub->isDynamicBinding;
+}
 
 
 
