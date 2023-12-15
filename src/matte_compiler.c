@@ -3049,6 +3049,7 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "setCharAt")) return MATTE_QUERY__SETCHARAT;
     if (!strcmp(st, "keycount")) return MATTE_QUERY__KEYCOUNT;
     if (!strcmp(st, "size")) return MATTE_QUERY__SIZE;
+    if (!strcmp(st, "setSize")) return MATTE_QUERY__SETSIZE;
     if (!strcmp(st, "keys")) return MATTE_QUERY__KEYS;
     if (!strcmp(st, "values")) return MATTE_QUERY__VALUES;
     if (!strcmp(st, "push")) return MATTE_QUERY__PUSH;

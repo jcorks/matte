@@ -69,6 +69,13 @@ static matteValue_t vm_ext_call__object__push(matteVM_t * vm, matteValue_t fn, c
     return args[0];
 }
 
+static matteValue_t vm_ext_call__object__setsize(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_object(vm, args)) return matte_store_new_value(vm->store);
+    matte_value_object_array_set_size_unsafe(vm->store, args[0], matte_value_as_number(vm->store, args[1]));
+    return args[0];
+}
+
+
 static matteValue_t vm_ext_call__object__pop(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_object(vm, args)) return matte_store_new_value(vm->store);
     matteValue_t key = {};

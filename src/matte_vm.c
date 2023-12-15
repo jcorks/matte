@@ -1502,6 +1502,11 @@ matteVM_t * matte_vm_create(matte_t * m) {
         value
     };
 
+    const matteString_t * setsize_names[] = {
+        query_name,
+        MATTE_VM_STR_CAST(vm, "size")
+    };
+
     const matteString_t * insert_names[] = {
         query_name,
         MATTE_VM_STR_CAST(vm, "at"),
@@ -1634,6 +1639,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
 
     // QUERY: OBJECT 
     temp = MATTE_ARRAY_CAST(push_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__PUSH,     &temp, vm_ext_call__object__push);    
+    temp = MATTE_ARRAY_CAST(setsize_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SETSIZE,     &temp, vm_ext_call__object__setsize);    
     temp = MATTE_ARRAY_CAST(insert_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__INSERT,     &temp, vm_ext_call__object__insert);    
     temp = MATTE_ARRAY_CAST(removeKey_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REMOVE,     &temp, vm_ext_call__object__remove);    
     temp = MATTE_ARRAY_CAST(setAttributes_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SETATTRIBUTES,     &temp, vm_ext_call__object__set_attributes);    

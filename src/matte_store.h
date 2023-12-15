@@ -179,6 +179,8 @@ matteValue_t * matte_value_object_array_at_unsafe(matteStore_t *, matteValue_t v
 // case, as a new string object does not need to be created.
 const matteString_t * matte_value_string_get_string_unsafe(matteStore_t *, matteValue_t v);
 
+// Sets the size of the array, internally resizing if needed.
+void matte_value_object_array_set_size_unsafe(matteStore_t *, matteValue_t v, uint32_t index);
 
 // Given a function object, gets the in-scope referrable identified
 // by the given name. If none can be found, an error is raised and 

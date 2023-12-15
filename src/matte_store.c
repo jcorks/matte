@@ -1490,6 +1490,15 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return out;
       }
 
+      case MATTE_QUERY__SETSIZE: {
+        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+            matteString_t * str = matte_string_create_from_c_str("setSize requires base value to be an object.");
+            matte_vm_raise_error_string(store->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__SETSIZE);
+      }
 
       case MATTE_QUERY__KEYS: {
         if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
@@ -2093,6 +2102,31 @@ void matte_value_into_new_external_function_ref(matteStore_t * store, matteValue
 matteValue_t * matte_value_object_array_at_unsafe(matteStore_t * store, matteValue_t v, uint32_t index) {
     matteObject_t * d = matte_store_bin_fetch_table(store->bin, v.value.id);
     return &matte_array_at(d->table.keyvalues_number, matteValue_t, index);
+}
+
+void matte_value_object_array_set_size_unsafe(matteStore_t * store, matteValue_t v, uint32_t size) {
+    matteObject_t * d = matte_store_bin_fetch_table(store->bin, v.value.id);
+    if (!d->table.keyvalues_number) d->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
+    matteArray_t * arr = d->table.keyvalues_number;
+    uint32_t i;
+    uint32_t oldSize = matte_array_get_size(arr);
+    if (size > matte_array_get_size(arr)) {
+        matte_array_set_size(arr, size);
+        for(i = oldSize; i < size; ++i) {
+            matte_array_at(arr, matteValue_t, i) = matte_store_new_value(store);
+        }
+    } else if (size == oldSize) {
+        // whyd you do that!
+    } else {
+        for(i = size; i < oldSize; ++i) {
+            matteValue_t v = matte_array_at(arr, matteValue_t, i);
+            if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+                object_unlink_parent_value(store, d, &v);                
+            }
+            matte_store_recycle(store, v);
+        }
+        matte_array_set_size(arr, size);
+    }
 }
 
 
