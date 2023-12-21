@@ -55,25 +55,26 @@ const Matte = {
                 QUERY_ANY : 27,
                 QUERY_ALL : 28,
                 QUERY_FOREACH : 29,
+                QUERY_SETSIZE : 30,
                 
-                QUERY_CHARAT : 30,
-                QUERY_CHARCODEAT : 31,
-                QUERY_SETCHARAT : 32,
-                QUERY_SETCHARCODEAT : 33,
-                QUERY_SCAN : 34,
-                QUERY_SEARCH : 35,
-                QUERY_SEARCH_ALL : 36,
-                QUERY_FORMAT : 37,
-                QUERY_SPLIT : 38,
-                QUERY_SUBSTR : 39,
-                QUERY_CONTAINS : 40,
-                QUERY_COUNT : 41,
-                QUERY_REPLACE : 42,
-                QUERY_REMOVECHAR : 43,
+                QUERY_CHARAT : 31,
+                QUERY_CHARCODEAT : 32,
+                QUERY_SETCHARAT : 33,
+                QUERY_SETCHARCODEAT : 34,
+                QUERY_SCAN : 35,
+                QUERY_SEARCH : 36,
+                QUERY_SEARCH_ALL : 37,
+                QUERY_FORMAT : 38,
+                QUERY_SPLIT : 39,
+                QUERY_SUBSTR : 40,
+                QUERY_CONTAINS : 41,
+                QUERY_COUNT : 42,
+                QUERY_REPLACE : 43,
+                QUERY_REMOVECHAR : 44,
                 
-                QUERY_SETISINTERFACE : 44,
+                QUERY_SETISINTERFACE : 45,
                 
-                GETEXTERNALFUNCTION : 45
+                GETEXTERNALFUNCTION : 46
                 
             },
             
@@ -418,25 +419,26 @@ const Matte = {
                 
                 KEYCOUNT : 31,
                 SIZE : 32,
-                KEYS : 33,
-                VALUES : 34,
-                PUSH : 35,
-                POP : 36,
-                INSERT : 37,
-                REMOVE : 38,
-                SETATTRIBUTES : 39,
-                ATTRIBUTES : 40,
-                SORT : 41,
-                SUBSET : 42,
-                FILTER : 43,
-                FINDINDEX : 44,
-                ISA : 45,
-                MAP : 46,
-                REDUCE : 47,
-                ANY : 48,
-                ALL : 49,
-                FOREACH : 50,
-                SETISINTERFACE : 51
+                SETSIZE : 33,
+                KEYS : 34,
+                VALUES : 35,
+                PUSH : 36,
+                POP : 37,
+                INSERT : 38,
+                REMOVE : 39,
+                SETATTRIBUTES : 40,
+                ATTRIBUTES : 41,
+                SORT : 42,
+                SUBSET : 43,
+                FILTER : 44,
+                FINDINDEX : 45,
+                ISA : 46,
+                MAP : 47,
+                REDUCE : 48,
+                ANY : 49,
+                ALL : 50,
+                FOREACH : 51,
+                SETISINTERFACE : 52
             };
             
             var typecode_id_pool = 10;
@@ -1927,6 +1929,13 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_PUSH);
             };
 
+            store_queryTable[QUERY.SETSIZE] = function(value) {
+                if (value.binID != TYPE_OBJECT) {
+                    vm.raiseErrorString("setSize requires base value to be an object.");
+                    return createValue();
+                }
+                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETSIZE);
+            };
             store_queryTable[QUERY.POP] = function(value) {
                 if (value.binID != TYPE_OBJECT) {
                     vm.raiseErrorString("pop requires base value to be an object.");
@@ -4253,6 +4262,30 @@ const Matte = {
                 return args[0];
             });
 
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_SETSIZE, ['base', 'size'], function(fn, args) {
+                if (!ensureArgObject(args)) return store.createEmpty();
+
+                const object = args[0];
+
+                if (object.data.kv_number == undefined)
+                    object.data.kv_number = [];
+
+                const size = store.valueAsNumber(args[1])
+                const oldSize = object.data.kv_number.length;
+                
+                if (size > oldSize) {
+                    for(var i = oldSize; i < size; ++i) {
+                        object.data.kv_number.push(store.createEmpty());
+                    }
+                } else if (size == oldSize) {
+                    // again, whyd you do that!
+                } else {
+                    object.data.kv_number.splice(size, oldSize-size)
+                }
+                return store.createEmpty();
+            });
+
+
             vm_addBuiltIn(vm.EXT_CALL.QUERY_INSERT, ['base', 'at', 'value'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
                 store.valueObjectInsert(args[0], store.valueAsNumber(args[1]), args[2]);
@@ -4367,7 +4400,7 @@ const Matte = {
                 return store.createNumber(-1);
             });
             
-            vm_addBuiltIn(vm.EXT_CALL.QUERY_ISA, ['query', 'type'], function(fn, args) {
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_ISA, ['base', 'type'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
         
                 return store.createBoolean(store.valueIsA(args[0], args[1]));
@@ -4729,39 +4762,35 @@ const Matte = {
             
             const encode = function(val) {
                 switch(val.binID) {
-                  case store.TYPE_NUMBER: return ''+val.data; break;
+                  case store.TYPE_NUMBER: return val.data; break;
                   case store.TYPE_STRING: return val.data; break;
-                  case store.TYPE_BOOLEAN: return val.data == true ? 'true' : 'false'; break;
-                  case store.TYPE_EMPTY: return 'null';
+                  case store.TYPE_BOOLEAN: return val.data; break;
+                  case store.TYPE_EMPTY: return null;
                   case store.TYPE_OBJECT: (function(){
                     if (store.valueObjectGetKeyCount(val) != store.valueObjectGetNumberKeyCount(val)) {
                         const keys = store.valueObjectKeys(val);
                         const vals = store.valueObjectValues(val);
 
-                        var out = '{';                        
+                        var out = {};                        
                         for(var i = 0; i < keys.length; ++i) {
-                            if (i != 0)
-                                out += ',';
                             if (keys[i].binID == store.TYPE_OBJECT)
                                 continue;
-                            out += encode(keys[i]) + ':' + encode(values[i]);
+                            out[encode(keys[i])] = encode(values[i]);
                         }
-                        return out + '}';
+                        return out;
                     // simple array
                     } else {
-                        var out = '[';                        
+                        var out = [];                        
                         const vals = store.valueObjectValues(val);
                         for(var i = 0; i < vals.length; ++i) {
-                            if (i != 0)
-                                out += ',';
-                            out += encode(values[i]);
+                            out.push(encode(values[i]));
                         }                    
-                        return out + ']';
+                        return out;
                     }
                   })()
                 }
             };
-            return encode(obj);
+            return store.createString(JSON.stringify(encode(obj)));
         });
         vm.setExternalFunction('__matte_::json_decode', ['a'], function(fn, args) {
             const object = JSON.parse(args[0]);
