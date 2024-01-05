@@ -4766,34 +4766,39 @@ const Matte = {
                   case store.TYPE_STRING: return val.data; break;
                   case store.TYPE_BOOLEAN: return val.data; break;
                   case store.TYPE_EMPTY: return null;
-                  case store.TYPE_OBJECT: (function(){
+                  case store.TYPE_OBJECT: return (function(){
                     if (store.valueObjectGetKeyCount(val) != store.valueObjectGetNumberKeyCount(val)) {
                         const keys = store.valueObjectKeys(val);
                         const vals = store.valueObjectValues(val);
 
-                        var out = {};                        
-                        for(var i = 0; i < keys.length; ++i) {
-                            if (keys[i].binID == store.TYPE_OBJECT)
+                        var out = {};     
+                        const len = store.valueObjectGetNumberKeyCount(keys);                   
+                        for(var i = 0; i < len; ++i) {
+                            const key = store.valueObjectAccessIndex(keys, i);
+                            const value = store.valueObjectAccessIndex(vals, i);
+                            if (key.binID == store.TYPE_OBJECT)
                                 continue;
-                            out[encode(keys[i])] = encode(values[i]);
+                            out[encode(key)] = encode(value);
                         }
                         return out;
                     // simple array
                     } else {
                         var out = [];                        
                         const vals = store.valueObjectValues(val);
-                        for(var i = 0; i < vals.length; ++i) {
-                            out.push(encode(values[i]));
+                        const len = store.valueObjectGetNumberKeyCount(vals);                   
+                        for(var i = 0; i < len; ++i) {
+                            out.push(encode(store.valueObjectAccessIndex(vals, i)));
                         }                    
                         return out;
                     }
                   })()
                 }
             };
-            return store.createString(JSON.stringify(encode(obj)));
+            const str = JSON.stringify(encode(obj));
+            return store.createString(str);
         });
         vm.setExternalFunction('__matte_::json_decode', ['a'], function(fn, args) {
-            const object = JSON.parse(args[0]);
+            const object = JSON.parse(args[0].data);
             
             const decode = function(js) {
                 switch(typeof js) {
@@ -4809,20 +4814,32 @@ const Matte = {
                   case 'undefined':
                     return store.createEmpty();
                     
-                  case 'object': (function() {
+                  case 'object': return (function() {
                     if (js == null)
                         return store.createEmpty();
                     
-                    const out = store.createObject();
-                    const keys = Object.keys(js);
+                    if (Array.isArray(js)) {
+                        const vals = [];
+                        for(var i = 0; i < js.length; ++i) {
+                            const val = decode(js[i]);
+                            vals.push(val);
+                        }                        
+                        return store.createObjectArray(vals);
+                    } else {
                     
-                    for(var i = 0; i < keys.length; ++i) {
-                        const key = decode(keys[i]);
-                        const val = decode(js[keys[i]]);
-                        store.valueObjectSet(out, key, val);
+                        
+                        const out = store.createObject();
+                        const keys = Object.keys(js);
+                        
+                        for(var i = 0; i < keys.length; ++i) {
+                            const key = decode(keys[i]);
+                            const val = decode(js[keys[i]]);
+                            store.valueObjectSet(out, key, val);
+                        }
+                        return out;
                     }
-                    return out;
                   })()
+                  default: throw new Error('Unknown type!');
                 }
             };
             return decode(object);
