@@ -1,0 +1,10 @@
+all:
+	cd ./src/rom/ && make
+	cd ./src/rom/ && ./makerom
+	gcc -std=c99 -O2 -c ./src/*.c
+	gcc -std=c99 -O2 -c ./src/rom/native.c
+	ar rcs libmatte.a *.o
+	
+clean:
+	rm -f *.o
+	rm -f libmatte.a

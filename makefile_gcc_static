@@ -1,0 +1,10 @@
+all:
+	cd ./src/rom/ && make
+	cd ./src/rom/ && ./makerom
+	gcc -std=c99 -O2 -c ./src/*.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS
+	gcc -std=c99 -O2 -c ./src/rom/native.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS
+	ar rcs libmatte.a *.o
+	
+clean:
+	rm -f *.o
+	rm -f libmatte.a
