@@ -36,17 +36,11 @@ typedef struct matteArray_t matteArray_t;
 
 #include <stdint.h>
 
-enum {
-    MATTE_SYNTAX_GRAPH_NODE__TOKEN,
-    MATTE_SYNTAX_GRAPH_NODE__TOKEN_ALIAS,
-    MATTE_SYNTAX_GRAPH_NODE__END,
-    MATTE_SYNTAX_GRAPH_NODE__SPLIT,
-    MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT,
-    MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT
-};
 
 
-
+/// Graph tokens. 
+/// In the syntax graph, tokens are primitives that represent 
+/// a single syntactic string entity.
 typedef enum {
     MATTE_TOKEN_EMPTY,
 
@@ -151,6 +145,32 @@ typedef enum {
 
 } matteTokenType_t;
 
+
+
+/// Graph node types. These serve as control codes for how 
+/// information flows in the syntax graph.
+enum {
+    // The node is a token, which is a single string.
+    MATTE_SYNTAX_GRAPH_NODE__TOKEN,
+    // The node is an alias for another token.
+    MATTE_SYNTAX_GRAPH_NODE__TOKEN_ALIAS,
+    // The node denotes the end of a chain of nodes.
+    MATTE_SYNTAX_GRAPH_NODE__END,
+    // THe node denotes a set of paths that constitute correct flow behavior.
+    MATTE_SYNTAX_GRAPH_NODE__SPLIT,
+    // The node denotes flow back to a parent node.
+    MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT,
+    // The node denotes a collection of other nodes.
+    MATTE_SYNTAX_GRAPH_NODE__CONSTRUCT
+};
+
+
+
+/// Graph constructs. 
+/// In the syntax graph, constructs contain 
+/// chains of tokens in a specific order. They are the building 
+/// blocks of the syntax graph and define its flow and 
+/// structure.
 enum {
     MATTE_SYNTAX_CONSTRUCT_EXPRESSION = 1, 
     MATTE_SYNTAX_CONSTRUCT_NEW_FUNCTION,
@@ -217,16 +237,20 @@ typedef struct matteSyntaxGraphRoot_t {
 } matteSyntaxGraphRoot_t;
 
 
-
+/// Creates a new syntax graph.
 matteSyntaxGraph_t * matte_syntax_graph_create();
 
+/// Gets a token's human-readable string representation.
 const matteString_t * matte_syntax_graph_get_token_name(matteSyntaxGraph_t *, int);
 
+/// Gets the graph root for a particular construct within the graph node.
 matteSyntaxGraphRoot_t * matte_syntax_graph_get_root(
     matteSyntaxGraph_t *,
     uint32_t id
 );
+/// Creates whether the given node is a construct.
 int matte_syntax_graph_is_construct(matteSyntaxGraph_t * g, int id);
 
+/// Destroys the entire graph.
 void matte_syntax_graph_destroy(matteSyntaxGraph_t *);
 #endif

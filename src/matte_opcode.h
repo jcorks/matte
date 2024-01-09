@@ -30,6 +30,9 @@ DEALINGS IN THE SOFTWARE.
 #ifndef H_MATTE__OPCODE__INCLUDED
 #define H_MATTE__OPCODE__INCLUDED
 
+
+/// Opcodes define the operations that the VM can take that mutate 
+/// its state. 
 typedef enum {
     // no operation
     MATTE_OPCODE_NOP,
@@ -163,6 +166,8 @@ typedef enum {
 } matteOpcode_t;
 
 
+/// Operators are operations that work on 1 or more 
+/// values in the VM.
 typedef enum {
     MATTE_OPERATOR_ADD, // + 2 operands
     MATTE_OPERATOR_SUB, // - 2 operands
@@ -216,7 +221,13 @@ typedef enum {
     
 } matteOperator_t;
 
-
+/// The VM is able to understand 
+/// external calls, which are either sourced 
+/// from the VM directly or externally. Here 
+/// is the enumeration of the VM-sourced external 
+/// calls. The external less refers to where it is 
+/// in relation to the VM, but rather whether its from 
+/// pure Matte source or C.
 typedef enum {
     MATTE_EXT_CALL_NOOP,
     MATTE_EXT_CALL_IMPORT,
@@ -287,7 +298,8 @@ typedef enum {
 } matteExtCall_t;
 
 
-
+/// Queries represent built-in function calls that 
+/// any value can have based on its type.
 typedef enum {
     MATTE_QUERY__TYPE,
 

@@ -171,6 +171,10 @@ void matte_vm_find_in_stack(matteVM_t * vm, uint32_t id) {
 #endif
 
 
+matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID);
+void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID, matteValue_t val);
+
+
 
 // Function call with just one argument that is splayed to 
 // fill the calling functions arguments as best as possible.
@@ -2652,7 +2656,7 @@ matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, ui
 
     // get context
     if (referrableID < matte_array_get_size(frames[i]->referrables)) {
-        return matte_value_object_function_get_closure_value(vm->store, frames[i]->context, referrableID);        
+        return matte_value_object_function_get_closure_value_unsafe(vm->store, frames[i]->context, referrableID);        
     } else {
         matteValue_t * ref = matte_value_get_captured_value(vm->store, frames[i]->context, referrableID - matte_array_get_size(frames[i]->referrables));
 
@@ -2677,7 +2681,7 @@ void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t ref
 
     // get context
     if (referrableID < matte_array_get_size(frames[i]->referrables)) {
-        matte_value_object_function_set_closure_value(vm->store, frames[i]->context, referrableID, val);
+        matte_value_object_function_set_closure_value_unsafe(vm->store, frames[i]->context, referrableID, val);
     } else {
         matte_value_set_captured_value(vm->store, 
             frames[i]->context, 

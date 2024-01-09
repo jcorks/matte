@@ -34,20 +34,29 @@ DEALINGS IN THE SOFTWARE.
 typedef struct matteString_t matteString_t;
 typedef struct matteStringStore_t matteStringStore_t;
 
+/// Creates a string store, where strings are given 
+/// explicit reference counts that denote their lifetime.
 matteStringStore_t * matte_string_store_create();
 
+/// Destroys a string store.
 void matte_string_store_destroy(matteStringStore_t *);
 
+/// Adds a ref to a string, incrementing is reference count. 
+/// The ID pointing to the string is returned.
 uint32_t matte_string_store_ref(matteStringStore_t *, const matteString_t *);
 
-// same as matte_string_store_internalize(), but accepts a c string for convenience
+/// same as matte_string_store_ref(), but accepts a c string for convenience
 uint32_t matte_string_store_ref_cstring(matteStringStore_t *, const char *);
 
+/// Same as matte_string_store_ref, but accepts a pre-existing ID to a string.
 void matte_string_store_ref_id(matteStringStore_t *, uint32_t);
 
-
+/// Unrefs an ID pointing to a pre-existing string.
+/// If the number of references is 0 after this call, the 
+/// string is dissociated with the string store.
 void matte_string_store_unref(matteStringStore_t *, uint32_t);
 
+/// Finds a string based on its ID.
 const matteString_t * matte_string_store_find(const matteStringStore_t *, uint32_t);
 
 

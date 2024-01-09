@@ -270,8 +270,7 @@ static matteValue_t vm_ext_call__object__findindex(matteVM_t * vm, matteValue_t 
 }
 
 static matteValue_t vm_ext_call__object__newtype(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
-    matteValue_t out = matte_store_new_value(vm->store);
-    matte_value_into_new_type(vm->store, &out, args[0], args[1]);
+    matteValue_t out = matte_value_create_type(vm->store, args[0], args[1]);
     return out;
 }
 

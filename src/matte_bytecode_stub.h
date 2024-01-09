@@ -39,15 +39,19 @@ typedef struct matteString_t matteString_t;
 
 
 
-
+/// Bytecode Stubs
+///
+/// Bytecode stubs represent compiled entities of Matte source.
+/// They behave as a function, but may capture values from nearby functions.
+///
 
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 
-// Generates an array of bytecode stubs (matteBytecodeStub_t *) from 
-// raw bytecode. If an error occurs, err is populated and NULL is returned.
-// When done, each matteBytecodeStub_t * should be removed.
-//
-// Incomplete stubs are supported. If given, remaining attributes are 0.
+/// Generates an array of bytecode stubs (matteBytecodeStub_t *) from 
+/// raw bytecode. If an error occurs, err is populated and NULL is returned.
+/// When done, each matteBytecodeStub_t * should be removed.
+///
+/// Incomplete stubs are supported. If given, remaining attributes are 0.
 matteArray_t * matte_bytecode_stubs_from_bytecode(
     matteStore_t *,
     uint32_t fileID,
@@ -55,50 +59,50 @@ matteArray_t * matte_bytecode_stubs_from_bytecode(
     uint32_t len
 );
 
-// free
+/// Destroys a bytecode stub.
 void matte_bytecode_stub_destroy(matteBytecodeStub_t * b);
 
-// Returns the fileid that the stub was given.
-// fileids are only valid if all stubs come from the same parser 
-// instance.
+/// Returns the fileid that the stub was given.
+/// fileids are only valid if all stubs come from the same parser 
+/// instance.
 uint32_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t *);
 
-// Gets the id, local to the file.
-// stub ids are only valid if all stubs come from the same parser 
-// instance.
+/// Gets the id, local to the file.
+/// stub ids are only valid if all stubs come from the same parser 
+/// instance.
 uint32_t matte_bytecode_stub_get_id(const matteBytecodeStub_t *);
 
 
-// Gets the count of arguments to this function.
+/// Gets the count of arguments to this function.
 uint8_t matte_bytecode_stub_arg_count(const matteBytecodeStub_t *);
 
-// Gets the count of local variables to this function.
+/// Gets the count of local variables to this function.
 uint8_t matte_bytecode_stub_local_count(const matteBytecodeStub_t *);
 
 
-// Gets the argument name of the local variable at the given index
-// If none, empty is returned
+/// Gets the argument name of the local variable at the given index
+/// If none, empty is returned
 matteValue_t matte_bytecode_stub_get_arg_name(const matteBytecodeStub_t *, uint8_t);
 
-// Gets the local variable name of the local variable at the given index
-// If none, empty is returned.
+/// Gets the local variable name of the local variable at the given index
+/// If none, empty is returned.
 matteValue_t matte_bytecode_stub_get_local_name(const matteBytecodeStub_t *, uint8_t);
 
-// Gets the pre-compiled static string by local ID.
-// These local IDs are used for NST
+/// Gets the pre-compiled static string by local ID.
+/// These local IDs are used for NST
 matteValue_t matte_bytecode_stub_get_string(const matteBytecodeStub_t *, uint32_t localStringID);
 
-// Returns whether the function is a vararg function, meaning it will 
-// always have a single argument that contains all called arguments 
-// packed within it as an object.
+/// Returns whether the function is a vararg function, meaning it will 
+/// always have a single argument that contains all called arguments 
+/// packed within it as an object.
 int matte_bytecode_stub_is_vararg(const matteBytecodeStub_t *);
 
 
-// Returns whether the bytecode is dynamically bound, meaning 
-// an argument is named "$"
+/// Returns whether the bytecode is dynamically bound, meaning 
+/// an argument is named "$"
 int matte_bytecode_stub_is_dynamic_bind(const matteBytecodeStub_t *);
 
-// ID of a stub capture variable
+/// ID of a stub capture variable
 typedef struct {
     // stubID of the function that contains the captures.
     // during runtime, the stack will be walked for the nearest 
@@ -109,23 +113,25 @@ typedef struct {
     uint32_t referrable;
 } matteBytecodeStubCapture_t;
 
-// Get all the external stub captures registered to this stub.
+/// Get all the external stub captures registered to this stub.
 const matteBytecodeStubCapture_t * matte_bytecode_stub_get_captures(
     const matteBytecodeStub_t *, 
     uint32_t * count
 );
 
-// Get all the stub's instructions
+/// Get all the stub's instructions
 typedef struct {
-    // Line number for the parsed instruction
+    /// Line number for the parsed instruction
     int32_t lineNumber;
-    // The opcode of the 
+    /// The opcode of the 
     uint8_t  opcode;
+    /// Per-opcode data.
     double   data;
+    /// Per-opcode auxiliary data. Currently only used for fileID for nfn opcodes
     int32_t  nfnFileID;
 } matteBytecodeStubInstruction_t;
 
-// Gets all instructions held by the stub.
+/// Gets all instructions held by the stub.
 const matteBytecodeStubInstruction_t * matte_bytecode_stub_get_instructions(const matteBytecodeStub_t *, uint32_t * count);
 
 

@@ -59,7 +59,7 @@ static int vm_ext_call__for_restart_condition__up(
     if (d->usesi) {
         matteValue_t v = matte_store_new_value(vm->store);
         matte_value_into_number(vm->store, &v, d->i);
-        matte_value_object_function_set_closure_value(vm->store, frame->context, 1, v);
+        matte_value_object_function_set_closure_value_unsafe(vm->store, frame->context, 1, v);
         matte_store_recycle(vm->store, v);
     }
     return d->i < d->end;
@@ -81,7 +81,7 @@ static int vm_ext_call__for_restart_condition__down(
     if (d->usesi) {
         matteValue_t v = matte_store_new_value(vm->store);
         matte_value_into_number(vm->store, &v, d->i);
-        matte_value_object_function_set_closure_value(vm->store, frame->context, 1, v);
+        matte_value_object_function_set_closure_value_unsafe(vm->store, frame->context, 1, v);
         matte_store_recycle(vm->store, v);
     }
     return d->i > d->end;

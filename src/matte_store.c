@@ -128,6 +128,28 @@ enum {
 
 
 
+/// Gets a pointer to the special referrable value in question.
+/// If none, NULL is returned.
+/// Can raise error.
+/*
+    It can refer to an argument, local value, or captured variable.
+    0 -> context object
+    1, num args -1 -> arguments (this is the number of arguments that the function expected.)
+    num args, num args + num locals - 1 -> locals 
+    num args + num locals, num args + num locals + num captured -1 -> captured
+*/
+// Caller is responsible for recycling value.
+matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID);
+
+void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID, matteValue_t v);
+
+/// Functions for a built-in references. These are locked into the store 
+matteValue_t * matte_vm_get_external_builtin_function_as_value(
+    matteVM_t * vm,
+    matteExtCall_t ext
+);
+
+
 
 
 
@@ -910,28 +932,20 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     MatteTypeData dummyD = {};
     matte_array_push(out->typecode2data, dummyD);
 
-    out->type_empty = matte_store_new_value(out);
-    out->type_boolean = matte_store_new_value(out);
-    out->type_number = matte_store_new_value(out);
-    out->type_string = matte_store_new_value(out);
-    out->type_object = matte_store_new_value(out);
-    out->type_function = matte_store_new_value(out);
-    out->type_type = matte_store_new_value(out);
-    out->type_any = matte_store_new_value(out);
     srand(time(NULL));
     out->type_number_methods = matte_table_create_hash_pointer();
     out->type_object_methods = matte_table_create_hash_pointer();
     out->type_string_methods = matte_table_create_hash_pointer();
 
     matteValue_t dummy = {};
-    matte_value_into_new_type(out, &out->type_empty, dummy, dummy);
-    matte_value_into_new_type(out, &out->type_boolean, dummy, dummy);
-    matte_value_into_new_type(out, &out->type_number, dummy, dummy);
-    matte_value_into_new_type(out, &out->type_string, dummy, dummy);
-    matte_value_into_new_type(out, &out->type_object, dummy, dummy);
-    matte_value_into_new_type(out, &out->type_function, dummy, dummy);
-    matte_value_into_new_type(out, &out->type_type, dummy, dummy);
-    matte_value_into_new_type(out, &out->type_any, dummy, dummy);
+    out->type_empty = matte_value_create_type(out, dummy, dummy);
+    out->type_boolean = matte_value_create_type(out, dummy, dummy);
+    out->type_number = matte_value_create_type(out, dummy, dummy);
+    out->type_string = matte_value_create_type(out, dummy, dummy);
+    out->type_object = matte_value_create_type(out, dummy, dummy);
+    out->type_function = matte_value_create_type(out, dummy, dummy);
+    out->type_type = matte_value_create_type(out, dummy, dummy);
+    out->type_any = matte_value_create_type(out, dummy, dummy);
 
     out->specialString_empty.value.id = matte_string_store_ref_cstring(out->stringStore, "empty");
     out->specialString_nothing.value.id = matte_string_store_ref_cstring(out->stringStore, "");
@@ -1101,14 +1115,14 @@ static matteArray_t * type_array_to_isa(matteStore_t * store, matteValue_t val) 
     return array;
 }
 
-void matte_value_into_new_type_(matteStore_t * store, matteValue_t * v, matteValue_t name, matteValue_t inherits) {
-    matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_TYPE;
+matteValue_t matte_value_create_type_(matteStore_t * store, matteValue_t name, matteValue_t inherits) {
+    matteValue_t v = {};
+    v.binID = MATTE_VALUE_TYPE_TYPE;
     if (store->typepool == 0xffffffff) {
-        v->value.id = 0;
+        v.value.id = 0;
         matte_vm_raise_error_cstring(store->vm, "Type count limit reached. No more types can be created.");
     } else {
-        v->value.id = ++(store->typepool);
+        v.value.id = ++(store->typepool);
     }
     MatteTypeData data = {};
     data.name = store->specialString_empty;
@@ -1118,7 +1132,7 @@ void matte_value_into_new_type_(matteStore_t * store, matteValue_t * v, matteVal
         data.name = matte_value_as_string(store, val);
         matte_store_recycle(store, val);
     } else {
-        matteString_t * str = matte_string_create_from_c_str("<anonymous type %d>", v->value.id);
+        matteString_t * str = matte_string_create_from_c_str("<anonymous type %d>", v.value.id);
         data.name.value.id = matte_string_store_ref(store->stringStore, str);
         data.name.binID = MATTE_VALUE_TYPE_STRING;
         matte_string_destroy(str);        
@@ -1130,8 +1144,8 @@ void matte_value_into_new_type_(matteStore_t * store, matteValue_t * v, matteVal
         if (val.binID != MATTE_VALUE_TYPE_OBJECT) {
             matte_vm_raise_error_cstring(store->vm, "'inherits' attribute must be an object.");
             matte_store_recycle(store, val);
-            v->binID = 0;
-            return;
+            v.binID = 0;
+            return v;
         }            
         
         data.isa = type_array_to_isa(store, val);
@@ -1139,6 +1153,7 @@ void matte_value_into_new_type_(matteStore_t * store, matteValue_t * v, matteVal
     } 
                 
     matte_array_push(store->typecode2data, data);
+    return v;
 }
 
 
@@ -1978,7 +1993,7 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
 
 }
 
-void matte_value_object_function_set_closure_value(matteStore_t * store, matteValue_t v, uint32_t index, matteValue_t val) {
+void matte_value_object_function_set_closure_value_unsafe(matteStore_t * store, matteValue_t v, uint32_t index, matteValue_t val) {
     matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
     #ifdef MATTE_DEBUG__STORE
         assert(index < matte_array_get_size(m->function.referrables));
@@ -2001,7 +2016,7 @@ void matte_value_object_function_set_closure_value(matteStore_t * store, matteVa
     matte_array_at(m->function.referrables, matteValue_t, index) = vNew;
 }
 
-matteValue_t * matte_value_object_function_get_closure_value(matteStore_t * store, matteValue_t v, uint32_t index) {
+matteValue_t * matte_value_object_function_get_closure_value_unsafe(matteStore_t * store, matteValue_t v, uint32_t index) {
     matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
     #ifdef MATTE_DEBUG__STORE
         assert(index < matte_array_get_size(m->function.referrables));
