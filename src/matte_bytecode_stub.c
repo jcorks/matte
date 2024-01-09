@@ -60,6 +60,8 @@ struct matteBytecodeStub_t {
     uint32_t instructionCount;
     uint32_t stringCount;
     int isDynamicBinding;
+    uint8_t isVarArg;
+
 };  
 
 // prevents incomplete advances
@@ -120,6 +122,7 @@ static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID
 
     out->fileID = fileID;
     ADVANCE(uint32_t, out->stubID);
+    ADVANCE(uint8_t, out->isVarArg);
     ADVANCE(uint8_t, out->argCount);
     out->argNames = (matteValue_t*)matte_allocate(sizeof(matteValue_t)*out->argCount);
     for(i = 0; i < out->argCount; ++i) {
@@ -251,6 +254,11 @@ const matteBytecodeStubInstruction_t * matte_bytecode_stub_get_instructions(cons
     *count = stub->instructionCount;
     return stub->instructions;
 }
+
+int matte_bytecode_stub_is_vararg(const matteBytecodeStub_t * stub) {
+    return stub->isVarArg;
+}
+
 
 int matte_bytecode_stub_is_dynamic_bind(const matteBytecodeStub_t * stub) {
     return stub->isDynamicBinding;

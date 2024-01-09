@@ -42,7 +42,9 @@ DEALINGS IN THE SOFTWARE.
 
 
 
-
+#define FUNCTION_ARG_MAX 0xff
+#define FUNCTION_LOCAL_MAX 0xff
+#define FUNCTION_CAPTURES_MAX 0xffff
 
 
 #define MATTE_TOKEN_END -1
@@ -178,6 +180,9 @@ struct matteFunctionBlock_t {
     // whether the function is run immediately before parsing of 
     // additional tokens.
     int isDashed;
+    
+    // If the function has a vararg parameter
+    int isVarArg;
 
     matteArray_t * typestrict_types;
     // array of matteString_t *
@@ -1393,6 +1398,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '}');
         break;
       }
+      case MATTE_TOKEN_VARARG: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '*');
+        break;
+      }
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_WITH_SPECIFIER: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, ":::");
         break;  
@@ -2392,6 +2401,11 @@ static matteArray_t * push_variable_name(
 
                 }
             }
+            
+            if (matte_array_get_size(blockSrc->captures) > FUNCTION_CAPTURES_MAX)
+                matte_syntax_graph_print_compile_error(g, iter, "Function exceeds count limit of lexically captured variables.");
+            
+            
             block = block->parent;
         }
     }
@@ -3191,7 +3205,21 @@ static matteArray_t * compile_function_call(
     uint32_t argCount = 0;
     matteToken_t * iter = (*src)->next; // skip (
     matteArray_t * inst = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+    int isVarArg = 0;
     while(iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
+        matteArray_t * exp;
+
+        // first check if var arg call
+        if (iter->ttype == MATTE_TOKEN_VARARG) {
+            isVarArg = 1;
+            iter = iter->next; // skip *    
+            
+            // compile object to be the vararg
+            exp = compile_expression(g, block, functions, &iter);
+            merge_instructions(inst, exp); // push argument
+            break;
+        }
+    
         // parse out the parameters
         uint32_t i = function_intern_string(block, (matteString_t*)iter->data);
         uint32_t nameLineNum = iter->line;
@@ -3202,7 +3230,6 @@ static matteArray_t * compile_function_call(
         }
 
 
-        matteArray_t * exp;
         // usual case -> "name: expression"
         if (iter->next->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {           
             iter = iter->next->next; // skip :    
@@ -3229,8 +3256,10 @@ static matteArray_t * compile_function_call(
             iter = iter->next; // skip ,
     }
 
-    
-    write_instruction__cal(inst, iter->line, argCount);
+    if (isVarArg)
+        write_instruction__clv(inst, iter->line, argCount);
+    else
+        write_instruction__cal(inst, iter->line, argCount);
     *src = iter->next; // skip )
     return inst;
 
@@ -4324,59 +4353,71 @@ static matteFunctionBlock_t * compile_function_block(
         }    
     
         if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_BEGIN) {
-            // args must ALWAYS be variable names 
+            // args must ALWAYS be variable names or the vararg token
             iter = iter->next;
-            while(iter && iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
+            
+            if (iter && iter->ttype == MATTE_TOKEN_VARARG) {
+                b->isVarArg = 1;
+                iter = iter->next;
                 matteString_t * arg = matte_string_clone((matteString_t*)iter->data);
                 matte_array_push(b->args, arg);
-                #ifdef MATTE_DEBUG__COMPILER
-                    printf("  - Argument %d: %s\n", matte_array_get_size(b->args), matte_string_get_c_str(arg));
-                #endif
                 iter = iter->next;
-                
-                //
-                // typestrict arguments
-                //
-                if (iter->ttype == MATTE_TOKEN_FUNCTION_TYPESPEC) { // =>
-                    iter = iter->next; // skip =>
-                    // first argument with type specified. This means we need to insert 
-                    // "any" types for the others.
-                    if (!b->typestrict_types) {
-                        b->typestrict_types = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
-                        if (matte_array_get_size(b->args) != 1) {
-                            uint32_t i;
-                            uint32_t len = matte_array_get_size(b->args)-1;
-                            for(i = 0; i < len; ++i) {
-                                write_instruction__pto(b->typestrict_types, iter->line, 7); // any;
-                            }
-                        }                            
-                    }
-                    matteArray_t * expInst = compile_expression(
-                        g,
-                        parent,
-                        functions,
-                        &iter
-                    );    
-                    if (!expInst) {
-                        goto L_FAIL;
-                    }                      
-                    merge_instructions(b->typestrict_types, expInst);
+            } else {
+                while(iter && iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
+                    matteString_t * arg = matte_string_clone((matteString_t*)iter->data);
+                    matte_array_push(b->args, arg);
+                    #ifdef MATTE_DEBUG__COMPILER
+                        printf("  - Argument %d: %s\n", matte_array_get_size(b->args), matte_string_get_c_str(arg));
+                    #endif
+                    iter = iter->next;
+                    
+                    //
+                    // typestrict arguments
+                    //
+                    if (iter->ttype == MATTE_TOKEN_FUNCTION_TYPESPEC) { // =>
+                        iter = iter->next; // skip =>
+                        // first argument with type specified. This means we need to insert 
+                        // "any" types for the others.
+                        if (!b->typestrict_types) {
+                            b->typestrict_types = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+                            if (matte_array_get_size(b->args) != 1) {
+                                uint32_t i;
+                                uint32_t len = matte_array_get_size(b->args)-1;
+                                for(i = 0; i < len; ++i) {
+                                    write_instruction__pto(b->typestrict_types, iter->line, 7); // any;
+                                }
+                            }                            
+                        }
+                        matteArray_t * expInst = compile_expression(
+                            g,
+                            parent,
+                            functions,
+                            &iter
+                        );    
+                        if (!expInst) {
+                            goto L_FAIL;
+                        }                      
+                        merge_instructions(b->typestrict_types, expInst);
 
-                } else if (b->typestrict_types) {
-                    // because the typestrict_types exists, that means we have a 
-                    // tyestrict function, so any not specified still need an "any" type 
-                    // object.
-                    write_instruction__pto(b->typestrict_types, iter->line, 7); 
-                }   
-                if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_END) break;
-                
-                
-                if (iter->ttype != MATTE_TOKEN_FUNCTION_ARG_SEPARATOR) {
-                    matte_syntax_graph_print_compile_error(g, iter, "Expected ',' separator for arguments");
-                    goto L_FAIL;                
+                    } else if (b->typestrict_types) {
+                        // because the typestrict_types exists, that means we have a 
+                        // tyestrict function, so any not specified still need an "any" type 
+                        // object.
+                        write_instruction__pto(b->typestrict_types, iter->line, 7); 
+                    }   
+                    if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_END) break;
+                    
+                    
+                    if (iter->ttype != MATTE_TOKEN_FUNCTION_ARG_SEPARATOR) {
+                        matte_syntax_graph_print_compile_error(g, iter, "Expected ',' separator for arguments");
+                        goto L_FAIL;                
+                    }
+                    iter = iter->next;
                 }
-                iter = iter->next;
-            }
+                
+                if (matte_array_get_size(b->args) > FUNCTION_ARG_MAX)
+                    matte_syntax_graph_print_compile_error(g, iter, "Function exceeds argument count limit.");
+            }       
 
             if (iter->ttype != MATTE_TOKEN_FUNCTION_ARG_END) {
                 matte_syntax_graph_print_compile_error(g, iter, "Expected ')' to end function arguments");
@@ -4477,6 +4518,9 @@ static matteFunctionBlock_t * compile_function_block(
         } 
         iter = iter->next;
     }
+    
+    if (matte_array_get_size(b->locals) > FUNCTION_LOCAL_MAX)
+        matte_syntax_graph_print_compile_error(g, iter, "Function exceeds local variable count limit.");
 
     // reset
     iter = funcStart;
@@ -4566,6 +4610,9 @@ void * matte_function_block_array_to_bytecode(
         nSlots = 1;
         WRITE_NBYTES(7, tag); // HEADER + bytecode version
         WRITE_BYTES(uint32_t, block->stubID);
+        nSlots = block->isVarArg;
+        WRITE_BYTES(uint8_t, nSlots);
+
         nSlots = matte_array_get_size(block->args);
         WRITE_BYTES(uint8_t, nSlots);
         for(n = 0; n < nSlots; ++n) {

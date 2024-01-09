@@ -147,6 +147,14 @@ static void write_instruction__cal(matteArray_t * insts, uint32_t lineNumber, ui
     matte_array_push(insts, inst);
 }
 
+static void write_instruction__clv(matteArray_t * insts, uint32_t lineNumber, uint32_t args) {
+    matteBytecodeStubInstruction_t inst;
+    inst.lineNumber = lineNumber;
+    inst.opcode = MATTE_OPCODE_CLV;
+    inst.data = args;
+    matte_array_push(insts, inst);
+}
+
 static void write_instruction__arf(matteArray_t * insts, uint32_t lineNumber, uint32_t ref, uint32_t op) {
     matteBytecodeStubInstruction_t inst;
     inst.lineNumber = lineNumber;

@@ -145,6 +145,7 @@ typedef enum {
     MATTE_TOKEN_RETURN,
 
     MATTE_TOKEN_STATEMENT_END, // newline OR ;
+    MATTE_TOKEN_VARARG, // *
     
     MATTE_TOKEN_MARKER_EXPRESSION_END,
 

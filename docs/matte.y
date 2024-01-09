@@ -333,6 +333,8 @@
 /* Exactly: [newline character] OR ; */
 %token STATEMENT_END
 
+/* Exactly: * */
+%token VARARG
 
 %%
 
@@ -367,6 +369,7 @@ function_call : FUNCTION_ARG_BEGIN function_call__content
               ;
 
 function_call__content : FUNCTION_ARG_END
+                       | VARARG expression FUNCTION_ARG_END
                        | IDENTIFIER function_call__content_arg
                        ;
                        
@@ -476,6 +479,7 @@ match_implication__chunk : expression IMPLICATION_END value_binding
 /* function creation */
 
 value_function_creation_args : FUNCTION_ARG_BEGIN FUNCTION_ARG_END
+                             | FUNCTION_ARG_BEGIN VARARG IDENTIFIER FUNCTION_ARG_END
                              | FUNCTION_ARG_BEGIN value_function_creation_args__name_chunk
                              ;
 

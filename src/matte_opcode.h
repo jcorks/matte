@@ -154,6 +154,10 @@ typedef enum {
     // performs a foreach loop on an object (value[top-1])
     MATTE_OPCODE_FCH,
     
+    // VarArg call, calls with an object pushed as a single argument to be 
+    // distributed across the matched argument names in the calling function
+    MATTE_OPCODE_CLV,
+    
     MATTE_OPCODE_ERROR = -1
 
 } matteOpcode_t;

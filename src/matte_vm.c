@@ -172,6 +172,81 @@ void matte_vm_find_in_stack(matteVM_t * vm, uint32_t id) {
 
 
 
+// Function call with just one argument that is splayed to 
+// fill the calling functions arguments as best as possible.
+// The missing arguments are not matched, and any extra 
+// object names are ignored.
+static matteValue_t matte_vm_vararg_call(
+    matteVM_t * vm, 
+    matteValue_t func, 
+    matteValue_t args
+) {
+    if (args.binID != MATTE_VALUE_TYPE_OBJECT) {
+        matteString_t * err = matte_string_create_from_c_str("Vararg calls MUST provide an expression that results in an Object");
+        matte_vm_raise_error_string(vm, err);
+        matte_string_destroy(err);
+        return matte_store_new_value(vm->store);
+    }
+    
+    
+    matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, func);
+    matteArray_t * argVals = matte_array_create(sizeof(matteValue_t));
+    matteArray_t * argNames = matte_array_create(sizeof(matteValue_t));
+
+    uint32_t i;
+    uint32_t len;
+
+    if (matte_bytecode_stub_is_vararg(stub)) {
+        matteValue_t keys = matte_value_object_keys(vm->store, args);
+        uint32_t len = matte_value_object_get_number_key_count(vm->store, keys);
+        for(i = 0; i < len; ++i) {
+            matteValue_t key = matte_value_object_access_index(vm->store, keys, i);
+            if (key.binID != MATTE_VALUE_TYPE_STRING) continue;
+            matte_array_push(argNames, key);
+            matteValue_t arg = matte_value_object_access(
+                vm->store, 
+                args, 
+                key, 
+                0
+            );
+            matte_array_push(argVals, arg);
+        }        
+    } else {
+        len = matte_bytecode_stub_arg_count(stub);
+        for(i = 0; i < len; ++i) {
+            matteValue_t name = matte_bytecode_stub_get_arg_name(stub, i);
+            matteValue_t arg = matte_value_object_access(
+                vm->store, 
+                args, 
+                name, 
+                0
+            );
+            
+            matte_array_push(argVals, arg);
+            matte_array_push(argNames, name);
+        }
+    }    
+
+    matteValue_t out = matte_vm_call(vm, func, argVals, argNames, NULL);
+    
+    len = matte_array_get_size(argVals);
+    for(i = 0; i < len; ++i) {
+        matte_store_recycle(
+            vm->store,
+            matte_array_at(argVals, matteValue_t, i)
+        );
+        
+        // todo: recycle vararg keys?
+    }
+    matte_array_destroy(argVals);
+    matte_array_destroy(argNames);
+    
+    return out;
+}
+
+
+
+
 const matteString_t * matte_vm_cstring_to_string_temporary(matteVM_t * vm, const char * s) {
     if (vm->string_tempIter >= matte_string_temp_max_calls) 
         vm->string_tempIter = 0;
@@ -785,6 +860,19 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }
           
+          case MATTE_OPCODE_CLV: {
+
+            if (STACK_SIZE() < 2) {
+                matte_vm_raise_error_cstring(vm, "VM error: tried to prepare arguments for a vararg call, but insufficient arguments on the stack.");    
+                break;
+            }
+
+            matteValue_t result = matte_vm_vararg_call(vm, STACK_PEEK(1), STACK_PEEK(0));
+            STACK_POP_NORET(); // arg
+            STACK_POP_NORET(); // fn
+            STACK_PUSH(result);
+            break;            
+          }
   
           case MATTE_OPCODE_CAL: {
 
@@ -1374,6 +1462,8 @@ static void vm_add_built_in(
     uint32_t u32 = index;
     WRITE_NBYTES(tag, 7); 
     WRITE_BYTES(uint32_t, u32); 
+    u8 = 0;
+    WRITE_BYTES(uint8_t, u8); // varargs
     
     u8 = matte_array_get_size(argNames);
     WRITE_BYTES(uint8_t, u8); 
@@ -1855,6 +1945,8 @@ void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr) {
 matteStore_t * matte_vm_get_store(matteVM_t * vm) {return vm->store;}
 
 
+
+
 matteValue_t matte_vm_call(
     matteVM_t * vm, 
     matteValue_t func, 
@@ -1921,6 +2013,7 @@ matteValue_t matte_vm_call(
         // empty for any unset values.
         memset(matte_array_get_data(argsReal), 0, sizeof(matteValue_t)*len);
         
+        // external functions are never var arg functions.
         for(i = 0; i < lenReal; ++i) {
             for(n = 0; n < len; ++n) {
                 if (matte_bytecode_stub_get_arg_name(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
@@ -2020,42 +2113,60 @@ matteValue_t matte_vm_call(
         // empty for any unset values.
         memset(matte_array_get_data(referrables), 0, sizeof(matteValue_t)*(len+1));
 
-        
-        for(i = 0; i < lenReal; ++i) {
-            for(n = 0; n < len; ++n) {
-                if (matte_bytecode_stub_get_arg_name(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
-                    matte_array_at(referrables, matteValue_t, n+1) = matte_array_at(args, matteValue_t, i);
-                    break;
-                }
-            }       
+        if (matte_bytecode_stub_is_vararg(stub)) {
+            // var arg functions have a single argument
+            // that are prepared from the calling args.
+            matteValue_t val = matte_store_new_value(vm->store);
+            matte_value_into_new_object_ref(vm->store, &val);
             
-            if (n == len) {
-                // couldnt find the requested name. Throw an error.
-                matteString_t * str;
-                if (len) 
-                    str = matte_string_create_from_c_str(
-                        "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
-                    );
-                else {
-                    str = matte_string_create_from_c_str(
-                        "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
-                    );                
-                }
-                
-                
+            for(i = 0; i < lenReal; ++i) {
+                matte_value_object_set(
+                    vm->store,
+                    val,
+                    matte_array_at(argNames, matteValue_t, i),
+                    matte_array_at(args, matteValue_t, i),
+                    0
+                );
+            }
+            matte_array_at(referrables, matteValue_t, 1) = val;
+            
+        } else {
+            for(i = 0; i < lenReal; ++i) {
                 for(n = 0; n < len; ++n) {
-                    matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
-                    matte_string_concat_printf(str, " \"");
-                    matte_string_concat(str, matte_value_string_get_string_unsafe(vm->store, name));
-                    matte_string_concat_printf(str, "\" ");
-                }
+                    if (matte_bytecode_stub_get_arg_name(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
+                        matte_array_at(referrables, matteValue_t, n+1) = matte_array_at(args, matteValue_t, i);
+                        break;
+                    }
+                }       
+                
+                if (n == len) {
+                    // couldnt find the requested name. Throw an error.
+                    matteString_t * str;
+                    if (len) 
+                        str = matte_string_create_from_c_str(
+                            "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
+                        );
+                    else {
+                        str = matte_string_create_from_c_str(
+                            "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
+                        );                
+                    }
+                    
+                    
+                    for(n = 0; n < len; ++n) {
+                        matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
+                        matte_string_concat_printf(str, " \"");
+                        matte_string_concat(str, matte_value_string_get_string_unsafe(vm->store, name));
+                        matte_string_concat_printf(str, "\" ");
+                    }
 
-                matte_vm_raise_error_string(vm, str);
-                matte_string_destroy(str); 
-                return matte_store_new_value(vm->store);
+                    matte_vm_raise_error_string(vm, str);
+                    matte_string_destroy(str); 
+                    return matte_store_new_value(vm->store);
+                }
             }
         }
-
+        
         int ok = 1;
         if (callable == 2 && len) { // typestrictcheck
             matteArray_t arr = MATTE_ARRAY_CAST(
@@ -2178,6 +2289,13 @@ matteValue_t matte_vm_call(
         return result; // ok, vm_execution_loop returns new
     } 
 }
+
+
+
+
+
+
+
 
 matteValue_t matte_vm_run_fileid(
     matteVM_t * vm, 

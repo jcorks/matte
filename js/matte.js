@@ -200,7 +200,10 @@ const Matte = {
                 MATTE_OPCODE_FVR : 32,
 
                 // performs a foreach loop on an object (value[top-1])
-                MATTE_OPCODE_FCH : 33
+                MATTE_OPCODE_FCH : 33,
+                
+                // Performs a varargs call. Always expects one argument + the function.
+                MATTE_OPCODE_CLV : 34
                          
             
             }              
@@ -311,6 +314,7 @@ const Matte = {
                     };
                     
                     stub.stubID = bytes.chompUInt32();
+                    stub.isVarArg = bytes.chompUInt8();
                     stub.argCount = bytes.chompUInt8();
                     stub.argNames = [];
                     stub.isDynamicBinding = false;
@@ -2330,7 +2334,7 @@ const Matte = {
                     }
                 };
                 
-                const buffer = new Uint8Array(7 + 4 + 1 + charLen + argNames.length*4);
+                const buffer = new Uint8Array(7 + 4 + 2 + charLen + argNames.length*4);
                 
                 buffer[0] = 'M'.charCodeAt(0);
                 buffer[1] = 'A'.charCodeAt(0);
@@ -2344,6 +2348,7 @@ const Matte = {
                 const bufferView = new DataView(buffer.buffer);
                 var iter = 7;
                 bufferView.setUint32(iter, index, true); iter += 4;
+                bufferView.setUint8(iter, 0); iter += 1;
                 bufferView.setUint8(iter, argNames.length); iter += 1;
                 
                 for(var i = 0; i < argNames.length; ++i) {
@@ -2711,6 +2716,40 @@ const Matte = {
                 return result;
             },
                 
+            vm.callVarargFunction = function(func, args) {
+                if (args.binID != store.TYPE_OBJECT) {
+                    vm.raiseErrorString("Error: cannot call non-function value ");
+                    return store.createEmpty();
+                }
+                const stub = store.valueGetBytecodeStub(func);
+                const argNames = [];
+                const argVals = [];
+                
+                if (stub.isVarArg) {
+                    const keys = store.valueObjectKeys(args);
+                    const len = store.valueObjectGetNumberKeyCount(keys);
+                    for(var i = 0; i < len; ++i) {
+                        key = store.valueObjectAccessIndex(keys, i);
+                        if (key.binID != store.TYPE_STRING) continue;
+                        argNames[i] = key;
+                        const arg = store.valueObjectAccess(args, key, 0);
+                        argVals[i] = arg;
+                        argNames[i] = key;
+                        
+                    }
+                } else {
+                    const len = stub.argCount;
+                    for(var i = 0; i < len; ++i) {
+                        const name = store.createString(stub.argNames[i]);
+                        const arg = store.valueObjectAccess(args, name, 0);
+                        argVals[i] = arg;
+                        argNames[i] = name;
+                    }
+                }
+                
+                return vm.callFunction(func, argVals, argNames);
+            }
+                
             vm.callFunction = function(func, args, argNames) {
                 if (vm_pendingCatchable) return store.createEmpty();
                 const callable = store.valueIsCallable(func);
@@ -2801,41 +2840,48 @@ const Matte = {
                     }
                     
                     
-                    const nameMap = {};
-                    
-                    for(var i = 0; i < lenReal; ++i) {
-                        nameMap[argNames[i].data] = args[i];
-                    };
-                    
-                    for(var i = 0; i < len; ++i) {
-                        const name = stub.argNames[i];
-                        const res = nameMap[name];
-                        if (res == undefined) {                      
-                        } else {
-                            delete nameMap[name];
-                            referrables[i+1] = res;                            
+                    if (stub.isVarArg) {
+                        const val = store.createObject();
+                        for(i = 0; i < lenReal; ++i) {
+                            store.valueObjectSet(val, argNames[i], args[i], 0);
                         }
-                    }
-                    
-                    
-                    const unbound = Object.keys(nameMap);
-                    if (unbound.length) {
-                        const which = unbound[0];
-                        var str;
-                        if (len) {
-                            str = "Could not bind requested parameter: '"+which+"'.\n Bindable parameters for this function: ";
-                        } else {
-                            str = "Could not bind requested parameter: '"+which+"'.\n (no bindable parameters for this function)";                                
+                        referrables[1] = val;
+                    } else {
+                        const nameMap = {};
+                        
+                        for(var i = 0; i < lenReal; ++i) {
+                            nameMap[argNames[i].data] = args[i];
+                        };
+                        
+                        for(var i = 0; i < len; ++i) {
+                            const name = stub.argNames[i];
+                            const res = nameMap[name];
+                            if (res == undefined) {                      
+                            } else {
+                                delete nameMap[name];
+                                referrables[i+1] = res;                            
+                            }
                         }
                         
-                        for(n = 0; n < len; ++n) {
-                            str += " \"" + stub.argNames[n] + "\" ";
-                        }
                         
-                        vm.raiseErrorString(str);
-                        return store.createEmpty();                          
+                        const unbound = Object.keys(nameMap);
+                        if (unbound.length) {
+                            const which = unbound[0];
+                            var str;
+                            if (len) {
+                                str = "Could not bind requested parameter: '"+which+"'.\n Bindable parameters for this function: ";
+                            } else {
+                                str = "Could not bind requested parameter: '"+which+"'.\n (no bindable parameters for this function)";                                
+                            }
+                            
+                            for(n = 0; n < len; ++n) {
+                                str += " \"" + stub.argNames[n] + "\" ";
+                            }
+                            
+                            vm.raiseErrorString(str);
+                            return store.createEmpty();                          
+                        }
                     }
-
                     
                     var ok = 1;
                     if (callable == 2 && len) {
@@ -3710,8 +3756,26 @@ const Matte = {
                 frame.valueStack.push(v);
             };
             
+            vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_CLV] = function(frame, isnt) {
+                if (frame.valueStack.length < 2) {
+                    vm.raiseErrorString("VM error: tried to prepare arguments for a vararg call, but insufficient arguments on the stack.");
+                    return;
+                }          
+
+                const result = vm.callVarargFunction(
+                    frame.valueStack[frame.valueStack.length - 2],
+                    frame.valueStack[frame.valueStack.length - 1]
+                );
+                
+                
+                frame.valueStack.pop();
+                frame.valueStack.pop();
+                frame.valueStack.push(result);
+                  
+            }
+            
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_CAL] = function(frame, inst) {
-                if (frame.valueStack.length < 0) {
+                if (frame.valueStack.length < 1) {
                     vm.raiseErrorString("VM error: tried to prepare arguments for a call, but insufficient arguments on the stack.");
                     return;
                 }
