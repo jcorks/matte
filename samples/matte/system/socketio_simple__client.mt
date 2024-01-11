@@ -42,7 +42,7 @@ DEALINGS IN THE SOFTWARE.
     @:len = str->length; 
     m.size = len;
     for(0, len)::(i){
-        m[i] = str->charCodeAt(index:i);
+        m.writeI8(offset:i, value:str->charCodeAt(index:i));
     }
     
     client.send(bytes:m);
@@ -88,7 +88,7 @@ client.installHooks(events:{
         @str = '';
         for(0, data.size)::(i) {
             str = str + ' ';
-            str = str->setCharCodeAt(index:i, value:data[i]);
+            str = str->setCharCodeAt(index:i, value:data.readI8(offset:i));
         }
         ConsoleIO.println(message:'Message from server: ' + str);
     }

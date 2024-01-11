@@ -43,7 +43,7 @@ DEALINGS IN THE SOFTWARE.
     @:len = str->length; 
     m.size = len;
     for(0, len)::(i){
-        m[i] = str->charCodeAt(index:i);
+        m.writeI8(offset:i, value:str->charCodeAt(index:i));
     }
     
     client.send(bytes:m);
@@ -103,7 +103,7 @@ server.installHook(event:'onNewClient', hook:::(detail){
             @str = '';
             for(0, data.size)::(i) {
                 str = str + ' ';
-                str = str->setCharCodeAt(index:i, value:data[i]);
+                str = str->setCharCodeAt(index:i, value:data.readI8(offset:i));
             }
 
             print(message:'Server: ' + client.address + ' has sent ' + data.size + 'bytes :' + str);        

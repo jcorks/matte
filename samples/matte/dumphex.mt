@@ -193,7 +193,7 @@ when(parameters == empty || parameters.file == empty) ::<={
 
 
 
-@: dumphex ::(data => MemoryBuffer.type, onPageFinish => Function){
+@: dumphex ::(data => MemoryBuffer.type, onLineFinish => Function){
     line = '';
     for(0, BYTES_PER_LINE*2+BYTES_PER_LINE)::(i) {
         line = line + ' ';
@@ -212,50 +212,60 @@ when(parameters == empty || parameters.file == empty) ::<={
         return iterBytes+BYTES_PER_PAGE;
     }
 
+
+    @lines = [];
+    @linePoints = [];
+    @lineAsTextPoints = [];
+    @iter = 0;
+
+    @:flush ::{
+        lines->push(value: 
+            String.combine(strings:[                        
+                String.combine(strings:linePoints),
+                "      ",
+                String.combine(strings:lineAsTextPoints),
+                '\n'
+            ])
+        );;
+        iter = 0;
+        linePoints->setSize(size:0);
+        lineAsTextPoints->setSize(size:0);    
+    }
+
     {:::} {
         forever ::{
-            @iter = 0;
             @lineIter = 0;
             @lineAsTextIter = 0;
             @out = '';
-            @lines = [];
-
         
             for(iterBytes, endPoint()) ::(i) {
                 if (i%BYTES_PER_LINE == 0) ::<={
-                    lines->push(value: '' + line + "      " + lineAsText + '\n');
-                    iter = 0;
-                    line = '';
-                    lineAsText = '';
+                    flush();
                 }
 
                 @n = numberToHex(n:data[i]);
-                line = String.combine(strings:[line, n.first, n.second, ' ']);
+                linePoints->push(value:n.first);
+                linePoints->push(value:n.second);
+                linePoints->push(value:' ');
 
                 n = numberToAscii(n:data[i]);
-                lineAsText = String.combine(strings:[lineAsText, n.first, n.second]);  
+                lineAsTextPoints->push(value:n.first);
+                lineAsTextPoints->push(value:n.second);
 
                 iter += 1;
             }
             
             if (iter%BYTES_PER_LINE) ::<= {
-                for(iter, BYTES_PER_LINE) ::(i){
-                    @n = numberToHex(n:data[i]);
-                    line = String.combine(strings:[line, '   ']);
-
-                    n = numberToAscii(n:data[i]);
-                    lineAsText = String.combine(strings:[lineAsText, '   ']);  
-                }
-                lines->push(value: line + "      " + lineAsText + '\n');
-                line = '';
-                lineAsText = '';
+                flush();
             }
-
+            
 
 
             iterBytes = endPoint();
-            out = String.combine(strings:lines);
-            onPageFinish(page:String(from:out));
+            foreach(lines) ::(k, v) {
+                onLineFinish(page:v);
+            }
+            lines->setSize(size:0);
             
             when(iterBytes >= data.size) send();
         }
@@ -272,9 +282,9 @@ when(parameters == empty || parameters.file == empty) ::<={
 
             
             
-            dump::(buffer => MemoryBuffer.type, onPageFinish) {
-                onPageFinish = if(onPageFinish == empty) ::(page) {ConsoleIO.printf(format:page);} else onPageFinish;
-                dumphex(data:buffer, onPageFinish:onPageFinish); 
+            dump::(buffer => MemoryBuffer.type, onLineFinish) {
+                onLineFinish = if(onLineFinish == empty) ::(page) {ConsoleIO.printf(format:page);} else onLineFinish;
+                dumphex(data:buffer, onLineFinish:onLineFinish); 
             }
             
         }    

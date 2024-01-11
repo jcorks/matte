@@ -138,6 +138,7 @@ DEALINGS IN THE SOFTWARE.
                 checkReleased(t:this);
                 @h = MemoryBuffer.new();
                 h.bindNative(handle: _mbuffer_subset(a:buffer, b:from, c:to));
+                return h;
             },
             
             

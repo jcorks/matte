@@ -168,11 +168,6 @@ DEALINGS IN THE SOFTWARE.
         @:Client = class(
             name: 'Matte.System.Socket.Server.Client',
             inherits:[EventSystem],
-            new ::(id, handle, message) {
-                @:this = Client.defaultNew();
-                this.initialize(id, handle, message);
-                return this;
-            },
             define:::(this) {
                 @id_number;
                 @pendingMessages = {}
@@ -208,7 +203,8 @@ DEALINGS IN THE SOFTWARE.
                         @count = _socket_server_client_get_pending_byte_count(a:socket, b:id_number);
 
                         if (count > 0) ::<={
-                            @: bytes = MemoryBuffer.new(handle:_socket_server_client_read_bytes(a:socket, b:id_number));
+                            @: bytes = MemoryBuffer.new();
+                            bytes.bindNative(handle:_socket_server_client_read_bytes(a:socket, b:id_number));
                             this.emit(
                                 event:'onIncomingData',
                                 detail:bytes
@@ -226,22 +222,23 @@ DEALINGS IN THE SOFTWARE.
 
 
 
-
-                this.interface = {
-                    initialize::(id, handle, message) {
+                this.constructor = ::(id, handle, message) {
                     
-                        this.events = {
-                            onNewMessage ::(detail){},
-                            onIncomingData ::(detail){},
-                            onDisconnect ::(detail){}
-                        }                
-                        id_number = Number.parse(string:id);
-                        socket = handle;
-                        messageIn = message;
-                        
-                        info = _socket_server_client_infostring(a:socket, b:id_number);
-                        address = _socket_server_client_address(a:socket, b:id_number);
-                    },        
+                    this.events = {
+                        onNewMessage ::(detail){},
+                        onIncomingData ::(detail){},
+                        onDisconnect ::(detail){}
+                    }                
+                    id_number = Number.parse(string:id);
+                    socket = handle;
+                    messageIn = message;
+                    
+                    info = _socket_server_client_infostring(a:socket, b:id_number);
+                    address = _socket_server_client_address(a:socket, b:id_number);
+                };
+
+
+                this.interface = {        
                 
                     update : update,
                     'send' : sendData,
@@ -274,11 +271,6 @@ DEALINGS IN THE SOFTWARE.
         @:Server = class(
             name: 'Matte.System.Socket.Server',
             inherits:[EventSystem],
-            new ::(restrictAddress, messageMode, port) {
-                @:this = Server.defaultNew();
-                this.initialize(restrictAddress, messageMode, port);
-                return this;
-            },
             define:::(this) {
 
                 // initialize socket right away.
@@ -290,32 +282,35 @@ DEALINGS IN THE SOFTWARE.
                 // string id to 
                 @:clientIndex = [];
                                 
+
+                this.constructor = ::(restrictAddress, messageMode, port) {
+                    this.events = {
+                        onNewClient ::(detail){}
+                    }
+
+                    socket = ::(
+                        address => String,
+                        port => Number,
+                        type => Number,
+                        maxClients => Number,
+                        timeout => Number,
+                        messageMode => Boolean
+                    ) {
+                        return _socket_server_create(a:address, b:port, c:type, d:maxClients, e:timeout);
+                    } (
+                        address:(if (restrictAddress == empty) "" else restrictAddress),
+                        port:port,
+                        type:0, // => always TCP for now
+                        maxClients:128,
+                        timeout:100, // => timeout in seconds. not sure yet!
+                        messageMode:Boolean(from:messageMode)
+                    );
+                }
+
             
             
                 this.interface = {
-                    initialize ::(restrictAddress, messageMode, port) {
-                        this.events = {
-                            onNewClient ::(detail){}
-                        }
 
-                        socket = ::(
-                            address => String,
-                            port => Number,
-                            type => Number,
-                            maxClients => Number,
-                            timeout => Number,
-                            messageMode => Boolean
-                        ) {
-                            return _socket_server_create(a:address, b:port, c:type, d:maxClients, e:timeout);
-                        } (
-                            address:(if (restrictAddress == empty) "" else restrictAddress),
-                            port:port,
-                            type:0, // => always TCP for now
-                            maxClients:128,
-                            timeout:100, // => timeout in seconds. not sure yet!
-                            messageMode:Boolean(from:messageMode)
-                        );
-                    },
                 
                     'Client' : {
                         get ::<- Client
@@ -462,7 +457,8 @@ DEALINGS IN THE SOFTWARE.
                         
                         @count = _socket_get_pending_byte_count(a:socket);                        
                         if (count > 0) ::<={
-                            @: bytes = MemoryBuffer.new(handle:_socket_client_read_bytes(a:socket));
+                            @: bytes = MemoryBuffer.new();
+                            bytes.bindNative(handle:_socket_client_read_bytes(a:socket))
                             this.emit(
                                 event:'onIncomingData',
                                 detail:bytes

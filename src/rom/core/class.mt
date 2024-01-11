@@ -30,7 +30,7 @@ DEALINGS IN THE SOFTWARE.
 @classType = Object.newType(name:'Matte.Class');
 
 
-@:class ::(define => Function, new, name, inherits, statics) {
+@:class ::(define => Function, name, inherits, statics) {
     @classInstance = Object.instantiate(
         type: classType
     );
@@ -49,7 +49,7 @@ DEALINGS IN THE SOFTWARE.
     classInstance.define = define;
     classInstance.inherits = {get::<- inherits};
     classInstance.type = {get::<- type};
-    classInstance.construct = ::(this) {
+    classInstance.construct = ::(this, args) {
         if (inherits != empty) ::<= {
             foreach(inherits) ::(key, inherit) {
                 inherit.construct(this);
@@ -86,19 +86,17 @@ DEALINGS IN THE SOFTWARE.
         this->remove(key:'interface');
         if (constructInit) ::<= {        
             this->setIsInterface(enabled:true);
-            constructInit();
+            constructInit(*args);
             this->setIsInterface(enabled:false);
         }
     };
-    classInstance.defaultNew = :: {
+    classInstance.new = ::(*args) {
         @this = Object.instantiate(type);
-        classInstance.construct(this);
+        classInstance.construct(this, args);
         this->setIsInterface(enabled:true);
         return this;
     };
-    
-    classInstance.new = if (new) new else classInstance.defaultNew;
-   
+       
 
 
     

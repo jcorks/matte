@@ -104,7 +104,9 @@ return class(
             // Expects one argument: a path to the file
             // On failure, throws an error.
             readBytes : ::(path){            
-                return MemoryBuffer.new(handle:_readBytes(a:path));  
+                @:m = MemoryBuffer.new()  
+                m.bindNative(handle:_readBytes(a:path));
+                return m;
             },
 
             // Given a path and a string, writes the given file.

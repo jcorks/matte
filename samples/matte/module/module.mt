@@ -43,7 +43,6 @@ return class(
 
         this.constructor = ::(initial) {
             value2 = if (initial != empty) initial else empty; 
-            return this.instance;
         };
 
         this.interface = {

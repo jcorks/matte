@@ -49,7 +49,6 @@ DEALINGS IN THE SOFTWARE.
         
         this.constructor = ::(value) {
             value_ = value;
-            return this.instance;
         };
 
         this.interface = {

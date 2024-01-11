@@ -40,8 +40,8 @@ a.append(other:b);
 print(message: 'New size: ' + a.size);
 
 // Can access bytes directly
-a[0] = 255;
-b[0] = 255;
+a.writeI8(offset:0, value:255);
+a.writeI8(offset:0, value:255);
 
 // can also remove bytes from a buffer.
 // from and to are inclusive indices.
@@ -56,26 +56,35 @@ print(message: 'New subset buffer: ' + c.size);
 
 
 // or perform a C memset 
-c.set(selfOffset:0, value: 23, len:512);
-print(message: 'Some values within the c buffer after memset: ' + c[0] + c[1] + c[2]);
+c.set(thisOffset:0, value: 23, len:512);
+print(message: 'Some values within the c buffer after memset: ' + 
+    c.readI8(offset:0) + 
+    c.readI8(offset:1) + 
+    c.readI8(offset:2));
 
 // or! perform a C memcpy from some other buffer INTO the acting buffer.
 // This will copy 10 bytes from the start of "c" and place it within 
 // "a" starting at byte 1:
 a.copy(
-    selfOffset: 1,
+    thisOffset: 1,
     src: c,
     srcOffset: 0,
     len: 10
 );
-print(message: 'Some values within the a buffer after memcpy: ' + a[0] + a[1] + a[2]);
+print(message: 'Some values within the a buffer after memcpy: ' +
+    a.readI8(offset:0) + 
+    a.readI8(offset:1) + 
+    a.readI8(offset:2));
 
 @:d = MBuffer.new();
 d.appendByte(value:0);
 d.appendByte(value:1);
 d.appendByte(value:2);
 
-print(message: 'Appending bytes: ' + d[0] + d[1] + d[2]);
+print(message: 'Appending bytes: ' +
+    d.readI8(offset:0) + 
+    d.readI8(offset:1) + 
+    d.readI8(offset:2));
 
 
 

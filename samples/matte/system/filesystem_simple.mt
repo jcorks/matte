@@ -77,7 +77,7 @@ Filesystem.writeString(
 @:writeBuffer = MBuffer.new();
 writeBuffer.size = 10;
 for(0, 10) ::(i) {
-    writeBuffer[i] = i;
+    writeBuffer.writeI8(offset:i, value:i);
 }
 
 // The byte analogs of writing and reading
@@ -96,7 +96,7 @@ Filesystem.writeBytes(
 
 print(message: 'Read byte buffer from test.bin: ' + readBuffer.size + ' bytes');
 for(0, readBuffer.size) ::(i) {
-    print(message: 'Byte ' + i + ' = ' + readBuffer[i]);
+    print(message: 'Byte ' + i + ' = ' + readBuffer.readI8(offset:i));
 }
 
 

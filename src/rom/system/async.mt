@@ -150,11 +150,6 @@ return class(
             statics : {
                 State : {get::<- WORKER_STATE} 
             },
-            new::(module, input) {
-                @:this = Worker.defaultNew();
-                this.initalize(module, input);
-                return this;
-            },
             define:::(this) {
                 @:State = Worker.State;
                 @id;
@@ -165,22 +160,24 @@ return class(
                 @queryState ::() => Number {
                     return _workerstate(a:id);
                 }
+                
+                this.constructor = ::(module, input) {
+                    this.events = {
+                        onNewMessage::(detail){},
+                        // when the state is detected to have changed
+                        // If the state is Finished, result will return
+                        // the result of the worker if present.
+                        onStateChange::(detail){}
+                    }
+
+                    id = _workerstart(a:String(from:module), b:String(from:input));
+                    when(id == empty) error(detail:'The worker failed to start with the given args');
+                    workers.push(value:this);
+                    queryState();
+                };                
+                
 
                 this.interface = {
-                    initialize ::(module, input) {
-                        this.events = {
-                            onNewMessage::(detail){},
-                            // when the state is detected to have changed
-                            // If the state is Finished, result will return
-                            // the result of the worker if present.
-                            onStateChange::(detail){}
-                        }
-
-                        id = _workerstart(a:String(from:module), b:String(from:input));
-                        when(id == empty) error(detail:'The worker failed to start with the given args');
-                        workers.push(value:this);
-                        queryState();
-                    },
                     
                     wait ::{
                         @waiting = true;
@@ -194,14 +191,14 @@ return class(
                         {:::}{
                             forever ::{
                                 Time.sleep(milliseconds:50);
-                                this.update();
+                                this.updateState();
                                 when(!waiting) send();
                             }
                         }
-                        this.update();
+                        this.updateState();
                     },
 
-                    // semd ,essage tp a tjread
+                    // send message to a thread.
                     'send'::(message => String){
                         _workersendmessage(a:id, b:message);   
                     },
