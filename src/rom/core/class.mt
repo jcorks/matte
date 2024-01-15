@@ -52,7 +52,7 @@ DEALINGS IN THE SOFTWARE.
     classInstance.construct = ::(this, args) {
         if (inherits != empty) ::<= {
             foreach(inherits) ::(key, inherit) {
-                inherit.construct(this);
+                inherit.construct(this, args);
             };
         }
         @constructInterface;
