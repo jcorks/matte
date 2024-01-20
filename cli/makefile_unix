@@ -3,4 +3,9 @@ all:
 	cd ./package && ./make_package
 	cd ../ && make -f ./makefile_gcc_static
 	gcc -std=c99 -O2 -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS -fmax-errors=5 ./*.c ../libmatte.a -o ./matte -lm -lpthread -lssl -lcrypto
-	
+
+debug:
+	gcc -std=c99 -O2 ./package/make_package.c ./shared.c ../src/*.c ../src/rom/native.c -o ./package/make_package -lm
+	cd ./package && ./make_package
+	cd ../ && make -f ./makefile_gcc_static debug
+	gcc -std=c99 -g -fsanitize=address -fsanitize=undefined -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS -fmax-errors=5 ./*.c ../libmatte.a -o ./matte -lm -lpthread -lssl -lcrypto
