@@ -461,58 +461,56 @@ const Matte = {
             const createObject = function() {
                 return {
                     binID : TYPE_OBJECT,
-                    data : {
-                        id : OBJECT_ID_POOL++,
-                        typecode : TYPECODES.OBJECT
-                    }
+                    id : OBJECT_ID_POOL++,
+                    typecode : TYPECODES.OBJECT
                 }
             };
             
             const objectPutProp = function(object, key, value) {
                 switch(key.binID) {
                   case TYPE_STRING:
-                    if (object.data.kv_string == undefined)
-                        object.data.kv_string = Object.create(null, {});
-                    object.data.kv_string[key.data] = value;
+                    if (object.kv_string == undefined)
+                        object.kv_string = Object.create(null, {});
+                    object.kv_string[key.data] = value;
                     break;
                     
                   case TYPE_NUMBER:
-                    if (object.data.kv_number == undefined)
-                        object.data.kv_number = [];
+                    if (object.kv_number == undefined)
+                        object.kv_number = [];
                         
-                    if (key.data > object.data.kv_number.length) {
+                    if (key.data > object.kv_number.length) {
                         const index = Math.floor(key.data);
                         
-                        for(var i = object.data.kv_number.length; i < index+1; ++i) {
-                            object.data.kv_number[i] = store.createEmpty();                        
+                        for(var i = object.kv_number.length; i < index+1; ++i) {
+                            object.kv_number[i] = store.createEmpty();                        
                         }
                     }
                     
-                    object.data.kv_number[Math.floor(key.data)] = value;
+                    object.kv_number[Math.floor(key.data)] = value;
                     break;
                   case TYPE_BOOLEAN:
                     if (key.data == true) {
-                        object.data.kv_true = value;
+                        object.kv_true = value;
                     } else {
-                        object.data.kv_false = value;                    
+                        object.kv_false = value;                    
                     } 
                     break;
                   case TYPE_OBJECT:
-                    if (object.data.kv_object_values == undefined) {
-                        object.data.kv_object_keys   = [];
-                        object.data.kv_object_values = {};
+                    if (object.kv_object_values == undefined) {
+                        object.kv_object_keys   = [];
+                        object.kv_object_values = {};
                     }                    
-                    object.data.kv_object_values[key.data.id.toString()] = value;
-                    object.data.kv_object_keys.push(key);
+                    object.kv_object_values[key.id.toString()] = value;
+                    object.kv_object_keys.push(key);
                     break;
                     
                   case TYPE_TYPE:
-                    if (object.data.kv_types_values == undefined) {
-                        object.data.kv_types_keys   = [];
-                        object.data.kv_types_values = {};
+                    if (object.kv_types_values == undefined) {
+                        object.kv_types_keys   = [];
+                        object.kv_types_values = {};
                     }
-                    object.data.kv_types_values[key.data.id.toString()] = value;
-                    object.data.kv_types_keys.push(key);
+                    object.kv_types_values[key.id.toString()] = value;
+                    object.kv_types_keys.push(key);
                     break;
                 }
             }
@@ -520,17 +518,17 @@ const Matte = {
             
 
             const objectGetConvOperator = function(m, type) {
-                if (m.data.table_attribSet == undefined)
+                if (m.table_attribSet == undefined)
                     return createValue();
-                return store.valueObjectAccess(m.data.table_attribSet, type, 0);
+                return store.valueObjectAccess(m.table_attribSet, type, 0);
             };
 
             const objectGetAccessOperator = function(object, isBracket, read) {
                 var out = createValue();
-                if (object.data.table_attribSet == undefined)
+                if (object.table_attribSet == undefined)
                     return out;
                 
-                const set = store.valueObjectAccess(object.data.table_attribSet, isBracket ? store_specialString_bracketAccess : store_specialString_dotAccess, 0);
+                const set = store.valueObjectAccess(object.table_attribSet, isBracket ? store_specialString_bracketAccess : store_specialString_dotAccess, 0);
                 if (set && set.binID) {
                     if (set.binID != TYPE_OBJECT) {
                         vm.raiseErrorString("operator['[]'] and operator['.'] property must be an Object if it is set.");
@@ -543,11 +541,10 @@ const Matte = {
             
             const isaAdd = function(arr, v) {
                 arr.push(v);
-                const d = v.data;
-                if (d.isa) {
-                    const count = d.isa.length
+                if (v.isa) {
+                    const count = v.isa.length
                     for(var i = 0; i < count; ++i) {
-                        arr.push(d.isa[i]);
+                        arr.push(v.isa[i]);
                     }
                 }
             };
@@ -577,32 +574,32 @@ const Matte = {
                   case TYPE_EMPTY: return undefined;
 
                   case TYPE_STRING:
-                    if (object.data.kv_string == undefined) 
+                    if (object.kv_string == undefined) 
                         return undefined;
-                    return object.data.kv_string[key.data];
+                    return object.kv_string[key.data];
 
                   case TYPE_NUMBER:
                     if (key.data < 0) return undefined;
-                    if (object.data.kv_number == undefined)
+                    if (object.kv_number == undefined)
                         return undefined;
-                    if (key.data >= object.data.kv_number.length)
+                    if (key.data >= object.kv_number.length)
                         return undefined;
-                    return object.data.kv_number[Math.floor(key.data)];
+                    return object.kv_number[Math.floor(key.data)];
                    
                   case TYPE_BOOLEAN:
                     if (key.data == true) {
-                        return object.data.kv_true;
+                        return object.kv_true;
                     } else {
-                        return object.data.kv_true;                    
+                        return object.kv_true;                    
                     }
                   case TYPE_OBJECT:
-                    if (object.data.kv_object_values == undefined)
+                    if (object.kv_object_values == undefined)
                         return undefined;
-                    return object.data.kv_object_values[key.data.id.toString()];
+                    return object.kv_object_values[key.id.toString()];
                   case TYPE_TYPE:
-                    if (!object.data.kv_types_values)
+                    if (!object.kv_types_values)
                         return undefined;
-                    return object.data.kv_types_values[key.data.id.toString()];
+                    return object.kv_types_values[key.id.toString()];
                   
                 }
             };
@@ -668,7 +665,7 @@ const Matte = {
                         vm.raiseErrorString("Cannot instantiate object without a Type. (given value is of type " + store.valueTypeName(store.valueGetType(type)) + ')');
                         return out;
                     }
-                    out.data.typecode = type.data.id;
+                    out.typecode = type.id;
 
                     return out;
                 },
@@ -678,7 +675,7 @@ const Matte = {
                         vm.raiseErrorString('setIsInterface query requires an Object.');
                         return;
                     }
-                    value.data.hasInterface = enabled;
+                    value.hasInterface = enabled;
                 
                 },
                 
@@ -689,15 +686,13 @@ const Matte = {
                         vm.raiseErrorString('Type count limit reached. No more types can be created.');
                         return createValue();
                     } else {
-                        out.data = {
-                            id : ++store_typepool
-                        };
+                        out.id = ++store_typepool
                     }
                     
                     if (name && name.binID) {
-                        out.data.name = store.valueAsString(name);
+                        out.name = store.valueAsString(name);
                     } else {
-                        out.data.name = store.createString("<anonymous type " + out.data.id + ">");
+                        out.name = store.createString("<anonymous type " + out.id + ">");
                     }
 
                     if (inherits && inherits.binID) {
@@ -705,7 +700,7 @@ const Matte = {
                             vm.raiseErrorString("'inherits' attribute must be an object.");
                             return createValue();
                         }                    
-                        out.data.isa = typeArrayToIsA(inherits);
+                        out.isa = typeArrayToIsA(inherits);
                     }
                     store_typecode2data.push(out);
                     return out;
@@ -722,14 +717,14 @@ const Matte = {
                 
                 createObjectArray : function(values) {
                     const out = createObject();
-                    out.data.kv_number = values.slice(0);
+                    out.kv_number = values.slice(0);
                     return out;
                 },
                 
                 createFunction : function(stub) {
                     const out = createObject();
-                    out.data.function_stub = stub;
-                    out.data.function_captures = [];
+                    out.function_stub = stub;
+                    out.function_captures = [];
 
 
                     const captures = stub.captures;
@@ -737,8 +732,8 @@ const Matte = {
                     // always preserve origin
                     if (vm.getStackSize() > 0) {
                         frame = vm.getStackframe(0);
-                        out.data.function_origin = frame.context;
-                        out.data.function_origin_referrable = frame.referrable;
+                        out.function_origin = frame.context;
+                        out.function_origin_referrable = frame.referrable;
                     }
                     
                     if (captures.length == 0) return out;
@@ -751,21 +746,21 @@ const Matte = {
                         
                         while(context.binID != 0) {
                             const origin = context;
-                            if (origin.data.function_stub.stubID == captures[i].stubID) {
+                            if (origin.function_stub.stubID == captures[i].stubID) {
                                 const ref = {};
                                 ref.referrableSrc = contextReferrable;
                                 ref.index = captures[i].referrable;
                                 
-                                out.data.function_captures.push(ref);
+                                out.function_captures.push(ref);
                                 break;
                             }
-                            context = origin.data.function_origin;
-                            contextReferrable = origin.data.function_origin_referrable;
+                            context = origin.function_origin;
+                            contextReferrable = origin.function_origin_referrable;
                         }
                         
                         if (context.binID == 0) {
                             vm.raiseErrorString("Could not find captured variable!");
-                            out.data.function_captures.push({referrableSrc:createValue(), index:0});
+                            out.function_captures.push({referrableSrc:createValue(), index:0});
                         }
                     }
                     return out;
@@ -789,7 +784,7 @@ const Matte = {
                         }
                     }
                     const func = store.createFunction(stub);
-                    func.data.function_types = args;
+                    func.function_types = args;
                     return func;
                 },
                 
@@ -810,7 +805,7 @@ const Matte = {
                 },
                 
                 valueObjectArrayAtUnsafe : function(value, index) {
-                    return value.data.kv_number[index];
+                    return value.kv_number[index];
                 },
                 
                 valueStringGetStringUnsafe : function(value, index) {
@@ -822,8 +817,8 @@ const Matte = {
                 },
                 
                 valueSetCapturedValue : function(value, index, capt) {
-                    if (index >= value.data.function_captures.length) return;
-                    const ref = value.data.function_captures[index];
+                    if (index >= value.function_captures.length) return;
+                    const ref = value.function_captures[index];
                     store.valueObjectSet(
                         ref.referrableSrc, 
                         store.createNumber(ref.index),
@@ -832,25 +827,24 @@ const Matte = {
                 },
                 
                 valueGetBytecodeStub : function(value) {
-                    if (value.binID == TYPE_OBJECT && value.data.function_stub != undefined)
-                        return value.data.function_stub;
+                    return value.function_stub;
                 },
                 
                 valueGetCapturedValue : function(value, index) {
-                    if (value.binID != TYPE_OBJECT || value.data.function_stub == undefined) return;
-                    if (index >= value.data.function_captures.length) return;
+                    //if (value.binID != TYPE_OBJECT || value.function_stub == undefined) return;
+                    //if (index >= value.function_captures.length) return;
                     return store.valueObjectArrayAtUnsafe(
-                        value.data.function_captures[index].referrableSrc,
-                        value.data.function_captures[index].index
+                        value.function_captures[index].referrableSrc,
+                        value.function_captures[index].index
                     );
                 },
                 
                 valueSubset : function(value, from, to) {
                     if (value.binID == TYPE_OBJECT) {
-                        const curlen = value.data.kv_number ? value.data.kv_number.length : 0;
+                        const curlen = value.kv_number ? value.kv_number.length : 0;
                         if (from >= curlen || to >= curlen) return createValue();
                         
-                        return store.createObjectArray(value.data.kv_number.slice(from, to+1));
+                        return store.createObjectArray(value.kv_number.slice(from, to+1));
                     } else if (value.binID == TYPE_STRING) {
                         
                         const curlen = value.data.length;;
@@ -889,7 +883,7 @@ const Matte = {
                         vm.raiseErrorString('Cannot convert string value into a number');
                         return 0;
                       case TYPE_OBJECT:
-                        if (value.data.function_stub) {
+                        if (value.function_stub) {
                             vm.raiseErrorString("Cannot convert function value into a number.");
                             return 0;
                         }
@@ -923,7 +917,7 @@ const Matte = {
                         return value;
                         
                       case TYPE_OBJECT:
-                        if (value.data.function_stub != undefined) {
+                        if (value.function_stub != undefined) {
                             vm.raiseErrorString("Cannot convert function into a string.");
                             return store_specialString_empty;
                         }
@@ -949,7 +943,7 @@ const Matte = {
                       case TYPE_BOOLEAN: return value.data;
                       case TYPE_STRING:  return true;
                       case TYPE_OBJECT:
-                        if (value.data.function_stub != undefined)
+                        if (value.function_stub != undefined)
                             return 1;
 
                         const operator = objectGetConvOperator(value, store_type_boolean);                            
@@ -966,7 +960,7 @@ const Matte = {
                 },
                 
                 valueToType : function(v, t) {
-                    switch(t.data.id) {
+                    switch(t.id) {
                       case 1: // empty
                         if (v.binID != TYPE_EMPTY) {
                             vm.raiseErrorString("It is an error to convert any non-empty value to the Empty type.");
@@ -992,14 +986,14 @@ const Matte = {
                         return store.valueAsString(v);
                         
                       case 5: 
-                        if (v.binID == TYPE_OBJECT && !v.data.function_stub) {
+                        if (v.binID == TYPE_OBJECT && !v.function_stub) {
                             return v;
                         } else {
                             vm.raiseErrorString("Cannot convert value to Object type.");
                         }
                         break;
                       case 6: 
-                        if (v.binID == TYPE_OBJECT && v.data.function_stub) {
+                        if (v.binID == TYPE_OBJECT && v.function_stub) {
                             return v;
                         } else {
                             vm.raiseErrorString("Cannot convert value to Function type.");
@@ -1013,19 +1007,19 @@ const Matte = {
                 valueIsCallable : function(value) {
                     if (value.binID == TYPE_TYPE) return 1;
                     if (value.binID != TYPE_OBJECT) return 0;
-                    if (value.data.function_stub == undefined) return 0;
-                    if (value.data.function_types == undefined) return 1;
+                    if (value.function_stub == undefined) return 0;
+                    if (value.function_types == undefined) return 1;
                     return 2; // type-strict
                 },
                 
                 valueObjectFunctionPreTypeCheckUnsafe : function(func, args) {
                     const len = args.length;
                     for(var i = 0; i < len; ++i) {
-                        if (!store.valueIsA(args[i], func.data.function_types[i])) {
+                        if (!store.valueIsA(args[i], func.function_types[i])) {
                             vm.raiseErrorString(
-                                "Argument '" + func.data.function_stub.argNames[i] + 
+                                "Argument '" + func.function_stub.argNames[i] + 
                                 "' (type: " + store.valueTypeName(store.valueGetType(args[i])).data + ") is not of required type " + 
-                                store.valueTypeName(func.data.function_types[i]).data
+                                store.valueTypeName(func.function_types[i]).data
                             );
                             return 0;
                         }
@@ -1034,12 +1028,12 @@ const Matte = {
                 },
                 
                 valueObjectFunctionPostTypeCheckUnsafe : function(func, ret) {
-                    const end = func.data.function_types.length - 1;
-                    if (!store.valueIsA(ret, func.data.function_types[end])) {
+                    const end = func.function_types.length - 1;
+                    if (!store.valueIsA(ret, func.function_types[end])) {
                         matte.raiseErrorString(
                             "Return value" + 
                             " (type: " + store.valueTypeName(store.valueGetType(ret)).data + ") is not of required type " + 
-                            store.valueTypeName(func.data.function_types[end]).data
+                            store.valueTypeName(func.function_types[end]).data
                         );
                         return 0;
                     }
@@ -1052,27 +1046,27 @@ const Matte = {
                         return store.valueObjectAccessDirect(value, key, isBracket);
 
                       case TYPE_OBJECT:
-                        if (value.data.function_stub != undefined) {
+                        if (value.function_stub != undefined) {
                             vm.raiseErrorString("Functions do not have members.");
                             return createValue();
                         }
                         var accessor;
-                        if (value.data.table_attribSet != undefined)
+                        if (value.table_attribSet != undefined)
                             accessor = objectGetAccessOperator(value, isBracket, 1);
                         
-                        if (value.data.hasInterface == true && (!(isBracket && accessor && accessor.binID))) {
+                        if (value.hasInterface == true && (!(isBracket && accessor && accessor.binID))) {
                             if (key.binID != TYPE_STRING) {
                                 vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
                                 return createValue();
                             }
                             
-                            if (value.data.kv_string == undefined) {
+                            if (value.kv_string == undefined) {
                                 vm.raiseErrorString("Object's interface was empty.");
                                 return createValue();                        
                             }
                             
                             
-                            const v = value.data.kv_string[key.data];
+                            const v = value.kv_string[key.data];
                             if (!v) {
                                 vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
                                 return createValue();
@@ -1084,12 +1078,12 @@ const Matte = {
                             }
                             
                             // direct function, return
-                            if (v.data.function_stub) {
+                            if (v.function_stub) {
                                 return v;
                             }
                             
                             const setget = v;
-                            const getter = setget.data.kv_string[store_specialString_get.data];
+                            const getter = setget.kv_string[store_specialString_get.data];
                             if (!getter || !getter.binID) {
                                 vm.raiseErrorString("Object's interface disallows reading of the member \"" + key.data +"\".");
                                 return createValue();
@@ -1129,7 +1123,7 @@ const Matte = {
                         }
                         
                         var base;
-                        switch(value.data.id) {
+                        switch(value.id) {
                           case 3: base = store_type_number_methods; break;
                           case 4: base = store_type_string_methods; break;
                           case 5: base = store_type_object_methods; break;
@@ -1147,11 +1141,11 @@ const Matte = {
                         
                         
                       case TYPE_OBJECT:
-                        if (value.data.function_stub != undefined) {
+                        if (value.function_stub != undefined) {
                             vm.raiseErrorString("Cannot access member of type Function (Functions do not have members).");
                             return undefined;
                         }
-                        if (value.data.hasInterface) return undefined;
+                        if (value.hasInterface) return undefined;
                         
                         const accessor = objectGetAccessOperator(value, isBracket, 1);
                         if (accessor.binID) {
@@ -1184,52 +1178,52 @@ const Matte = {
                 },
                 
                 valueObjectKeys : function(value) {
-                    if (value.binID != TYPE_OBJECT || value.data.function_stub) {
+                    if (value.binID != TYPE_OBJECT || value.function_stub) {
                         vm.raiseErrorString("Can only get keys from something that's an Object.");
                         return createValue();
                     }
                 
                 
-                    if (value.data.table_attribSet != undefined) {
-                        const set = store.valueObjectAccess(value.data.table_attribSet, store_specialString_keys, 0);
+                    if (value.table_attribSet != undefined) {
+                        const set = store.valueObjectAccess(value.table_attribSet, store_specialString_keys, 0);
                         if (set && set.binID)
                             return store.valueObjectValues(vm.callFunction(set, [], []));
                     }
                     const out = [];
-                    if (value.data.kv_number) {
-                        const len = value.data.kv_number.length;
+                    if (value.kv_number) {
+                        const len = value.kv_number.length;
                         for(var i = 0; i < len; ++i) {
                             out.push(store.createNumber(i));
                         }
                     }
                                     
-                    if (value.data.kv_string) {
-                        const keys = Object.keys(value.data.kv_string);
+                    if (value.kv_string) {
+                        const keys = Object.keys(value.kv_string);
                         const len = keys.length;
                         for(var i = 0; i < len; ++i) {
                             out.push(store.createString(keys[i]));
                         }
                     }
 
-                    if (value.data.kv_object_keys) {
-                        const keys = Object.values(value.data.kv_object_keys);
+                    if (value.kv_object_keys) {
+                        const keys = Object.values(value.kv_object_keys);
                         const len = keys.length;
                         for(var i = 0; i < len; ++i) {
                             out.push(keys[i]); // OK, object 
                         }
                     }
                     
-                    if (value.data.kv_true) {
+                    if (value.kv_true) {
                         out.push(store.createBoolean(true));
                     }
 
-                    if (value.data.kv_false) {
+                    if (value.kv_false) {
                         out.push(store.createBoolean(false));
                     }
 
 
-                    if (value.data.kv_types_keys) {
-                        const keys = Object.values(value.data.kv_types_keys);
+                    if (value.kv_types_keys) {
+                        const keys = Object.values(value.kv_types_keys);
                         const len = keys.length;
                         for(var i = 0; i < len; ++i) {
                             out.push(keys[i]); // OK, type
@@ -1239,31 +1233,31 @@ const Matte = {
                 },
                 
                 valueObjectValues : function(value) {
-                    if (value.binID != TYPE_OBJECT || value.data.function_stub) {
+                    if (value.binID != TYPE_OBJECT || value.function_stub) {
                         vm.raiseErrorString("Can only get values from something that's an Object.");
                         return createValue();
                     }
 
-                    if (value.data.table_attribSet != undefined) {
-                        const set = store.valueObjectAccess(value.data.table_attribSet, store_specialString_values, 0);
+                    if (value.table_attribSet != undefined) {
+                        const set = store.valueObjectAccess(value.table_attribSet, store_specialString_values, 0);
                         if (set && set.binID)
                             return store.valueObjectValues(vm.callFunction(set, [], []));
                     }
                     const out = [];
 
                                     
-                    if (value.data.kv_string) {
-                        const values = Object.values(value.data.kv_string);
+                    if (value.kv_string) {
+                        const values = Object.values(value.kv_string);
                         const len = values.length;
                         
-                        if (value.data.hasInterface) {
+                        if (value.hasInterface) {
                             for(var i = 0; i < len; ++i) {
                                 const v = values[i];
-                                if (v.data.function_stub) {
+                                if (v.function_stub) {
                                     out.push(v);
                                 } else {
                                     const setget = v;
-                                    const getter = setget.data.kv_string[store_specialString_get.data];
+                                    const getter = setget.kv_string[store_specialString_get.data];
                                     if (!getter || !getter.binID) {
                                         continue;
                                     }
@@ -1277,32 +1271,32 @@ const Matte = {
                         }
                     }
                     
-                    if (!value.data.hasInterface) {
-                        if (value.data.kv_number) {
-                            const len = value.data.kv_number.length;
+                    if (!value.hasInterface) {
+                        if (value.kv_number) {
+                            const len = value.kv_number.length;
                             for(var i = 0; i < len; ++i) {
-                                out.push(value.data.kv_number[i]);
+                                out.push(value.kv_number[i]);
                             }
                         }
-                        if (value.data.kv_object_values) {
-                            const values = Object.values(value.data.kv_object_values);
+                        if (value.kv_object_values) {
+                            const values = Object.values(value.kv_object_values);
                             const len = values.length;
                             for(var i = 0; i < len; ++i) {
                                 out.push(values[i]); // OK, object 
                             }
                         }
                         
-                        if (value.data.kv_true) {
-                            out.push(store.createBoolean(value.data.kv_true));
+                        if (value.kv_true) {
+                            out.push(store.createBoolean(value.kv_true));
                         }
 
-                        if (value.data.kv_false) {
-                            out.push(store.createBoolean(value.data.kv_false));
+                        if (value.kv_false) {
+                            out.push(store.createBoolean(value.kv_false));
                         }
                     }
 
-                    if (value.data.kv_types_values) {
-                        const values = Object.values(value.data.kv_types_values);
+                    if (value.kv_types_values) {
+                        const values = Object.values(value.kv_types_values);
                         const len = values.length;
                         for(var i = 0; i < len; ++i) {
                             out.push(values[i]); // OK, type
@@ -1315,31 +1309,31 @@ const Matte = {
                 valueObjectGetKeyCount : function(value) {
                     if (value.binID != TYPE_OBJECT) return 0;
                     var out = 0;
-                    if (value.data.kv_number) {
-                        out += value.data.kv_number.length;
+                    if (value.kv_number) {
+                        out += value.kv_number.length;
                     }
                                     
-                    if (value.data.kv_string) {
-                        const keys = Object.keys(value.data.kv_string);
+                    if (value.kv_string) {
+                        const keys = Object.keys(value.kv_string);
                         out += keys.length;
                     }
 
-                    if (value.data.kv_object_keys) {
-                        const keys = Object.values(value.data.kv_object_keys);
+                    if (value.kv_object_keys) {
+                        const keys = Object.values(value.kv_object_keys);
                         out +=  keys.length;
                     }
                     
-                    if (value.data.kv_true) {
+                    if (value.kv_true) {
                         out += 1;
                     }
 
-                    if (value.data.kv_false) {
+                    if (value.kv_false) {
                         out += 1;
                     }
 
 
-                    if (value.data.kv_types_keys) {
-                        const keys = Object.values(value.data.kv_types_keys);
+                    if (value.kv_types_keys) {
+                        const keys = Object.values(value.kv_types_keys);
                         out += keys.length;
                     }
                     return out;                     
@@ -1347,26 +1341,26 @@ const Matte = {
                 
                 valueObjectGetNumberKeyCount : function(value) {
                     if (value.binID != TYPE_OBJECT) return 0;
-                    if (value.data.kv_number == undefined) return 0;
-                    return value.data.kv_number.length;                    
+                    if (value.kv_number == undefined) return 0;
+                    return value.kv_number.length;                    
                 },
                 
                 valueObjectInsert : function(value, plainIndex, v) {
                     if (value.binID != TYPE_OBJECT) return;
-                    if (value.data.kv_number == undefined) value.data.kv_number = [];
-                    value.data.kv_number.splice(plainIndex, 0, v);
+                    if (value.kv_number == undefined) value.kv_number = [];
+                    value.kv_number.splice(plainIndex, 0, v);
                 },
 
                 valueObjectPush : function(value, v) {
                     if (value.binID != TYPE_OBJECT) return;
-                    if (value.data.kv_number == undefined) value.data.kv_number = [];
-                    value.data.kv_number.push(v);
+                    if (value.kv_number == undefined) value.kv_number = [];
+                    value.kv_number.push(v);
                 },
 
                 
                 valueObjectSortUnsafe : function(value, lessFnValue) {
-                    if (value.data.kv_number == undefined) return;
-                    const vals = value.data.kv_number;
+                    if (value.kv_number == undefined) return;
+                    const vals = value.kv_number;
                     if (vals.length == 0) return;
                     
                     const names = [
@@ -1381,8 +1375,8 @@ const Matte = {
                 
                 
                 valueObjectForeach : function(value, func) {
-                    if (value.data.table_attribSet) {
-                        const set = store.valueObjectAccess(value.data.table_attribSet, store_specialString_foreach, 0);
+                    if (value.table_attribSet) {
+                        const set = store.valueObjectAccess(value.table_attribSet, store_specialString_foreach, 0);
                         if (set.binID) {
                             const v = vm.callFunction(set, [], []);
                             if (binID != TYPE_OBJECT) {
@@ -1398,7 +1392,7 @@ const Matte = {
                         store_specialString_key,
                         store_specialString_value
                     ];
-                    const stub = func.data.function_stub; 
+                    const stub = func.function_stub; 
                     if (stub && stub.argCount >= 2) {
                         names[0] = store.createString(stub.argNames[0]);
                         names[1] = store.createString(stub.argNames[1]);
@@ -1427,18 +1421,18 @@ const Matte = {
                     
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
                     
-                    if (value.data.hasInterface == true && (!(isBracket && assigner && assigner.binID))) {
+                    if (value.hasInterface == true && (!(isBracket && assigner && assigner.binID))) {
                         if (key.binID != TYPE_STRING) {
                             vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
                             return createValue();
                         }
                         
-                        if (value.data.kv_string == undefined) {
+                        if (value.kv_string == undefined) {
                             vm.raiseErrorString("Object's interface was empty.");
                             return createValue();                        
                         }
                         
-                        const vv = value.data.kv_string[key.data];
+                        const vv = value.kv_string[key.data];
                         if (!vv) {
                             vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
                             return createValue();
@@ -1450,13 +1444,13 @@ const Matte = {
                         }
                         
                         // direct function, return
-                        if (vv.data.function_stub) {
+                        if (vv.function_stub) {
                             vm.raiseErrorString("Object's \""+key.data+"\" is a member function and is read-only. Writing to this member is not allowed.");
                             return createValue();
                         }
                         
                         const setget = vv;
-                        const setter = setget.data.kv_string[store_specialString_set.data];
+                        const setter = setget.kv_string[store_specialString_set.data];
                         if (!setter || !setter.binID) {
                             vm.raiseErrorString("Object's interface disallows writing of the member \"" + key.data +"\".");
                             return createValue();
@@ -1493,7 +1487,7 @@ const Matte = {
                 },
                 
                 valueObjectSetIndexUnsafe : function(value, plainIndex, v) {
-                    value.data.kv_number[plainIndex] = v;
+                    value.kv_number[plainIndex] = v;
                 },
                 
                 valueObjectSetAttributes : function(value, opObject) {
@@ -1512,11 +1506,11 @@ const Matte = {
                         return;
                     }
                     
-                    value.data.table_attribSet = opObject;
+                    value.table_attribSet = opObject;
                 },
                 
                 valueObjectGetAttributesUnsafe : function(value) {
-                    return value.data.table_attribSet;
+                    return value.table_attribSet;
                 },
                 
                 valueObjectRemoveKey : function(value, key) {
@@ -1526,35 +1520,35 @@ const Matte = {
                     
                     switch(key.binID) {
                       case TYPE_STRING:
-                        if (value.data.kv_string == undefined) return;
-                        delete value.data.kv_string[key.data];
+                        if (value.kv_string == undefined) return;
+                        delete value.kv_string[key.data];
                         break;
                       case TYPE_TYPE:
-                        if (value.data.kv_types_keys == undefined) return;
-                        delete value.data.kv_types_values[key.data.id];
-                        for(var i = 0; i < value.data.kv_types_keys.length; ++i) {
-                            if (value.data.kv_types_keys[i] === key) {
-                                value.data.kv_types_keys.splice(i, 1);
+                        if (value.kv_types_keys == undefined) return;
+                        delete value.kv_types_values[key.id];
+                        for(var i = 0; i < value.kv_types_keys.length; ++i) {
+                            if (value.kv_types_keys[i] === key) {
+                                value.kv_types_keys.splice(i, 1);
                             }
                         }
                         break;
                       case TYPE_NUMBER:
-                        if (value.data.kv_number == undefined || value.data.kv_number.length == 0) return;
-                        value.data.kv_number.splice(Math.floor(key.data), 1);
+                        if (value.kv_number == undefined || value.kv_number.length == 0) return;
+                        value.kv_number.splice(Math.floor(key.data), 1);
                         break;
                       case TYPE_BOOLEAN:
                         if (key.data) {
-                            value.data.kv_true = undefined;
+                            value.kv_true = undefined;
                         } else {
-                            value.data.kv_false = undefined;                        
+                            value.kv_false = undefined;                        
                         }
                         break;
                       case TYPE_OBJECT:
-                        if (value.data.kv_object_keys == undefined) return;
-                        delete value.data.kv_object_values[key.data.id];
-                        for(var i = 0; i < value.data.kv_object_keys.length; ++i) {
-                            if (value.data.kv_object_keys[i] === key) {
-                                value.data.kv_object_keys.splice(i, 1);
+                        if (value.kv_object_keys == undefined) return;
+                        delete value.kv_object_values[key.id];
+                        for(var i = 0; i < value.kv_object_keys.length; ++i) {
+                            if (value.kv_object_keys[i] === key) {
+                                value.kv_object_keys.splice(i, 1);
                             }
                         }
                         break;
@@ -1567,8 +1561,8 @@ const Matte = {
                         return; // no error?
                     }
                     
-                    if (value.data.kv_string == undefined) return;
-                    delete value.data.kv_string[plainString];
+                    if (value.kv_string == undefined) return;
+                    delete value.kv_string[plainString];
                 },
                                 
                 valueIsA : function(value, typeobj) {
@@ -1577,17 +1571,17 @@ const Matte = {
                         return 0;
                     }
                     
-                    if (typeobj.data.id == store_type_any.data.id) return 1;
+                    if (typeobj.id == store_type_any.id) return 1;
                     if (value.binID != TYPE_OBJECT) {
-                        return (store.valueGetType(value)).data.id == typeobj.data.id;
+                        return (store.valueGetType(value)).id == typeobj.id;
                     } else {
-                        if (typeobj.data.id == store_type_object.data.id) return 1;
+                        if (typeobj.id == store_type_object.id) return 1;
                         const typep = store.valueGetType(value); 
-                        if (typep.data.id == typeobj.data.id) return 1;
+                        if (typep.id == typeobj.id) return 1;
                         
-                        if (typep.data.isa == undefined) return 0;
-                        for(var i = 0; i < typep.data.isa.length; ++i) {
-                            if (typep.data.isa[i].data.id == typeobj.data.id) return 1;
+                        if (typep.isa == undefined) return 0;
+                        for(var i = 0; i < typep.isa.length; ++i) {
+                            if (typep.isa[i].id == typeobj.id) return 1;
                         }
                         return 0;
                     }
@@ -1601,10 +1595,10 @@ const Matte = {
                       case TYPE_STRING:     return store_type_string;
                       case TYPE_TYPE:       return store_type_type;
                       case TYPE_OBJECT: 
-                        if (value.data.function_stub != undefined)
+                        if (value.function_stub != undefined)
                             return store_type_function;
                         else {
-                            return store_typecode2data[value.data.typecode];
+                            return store_typecode2data[value.typecode];
                         } 
                     }
                 },
@@ -1623,7 +1617,7 @@ const Matte = {
                         vm.raiseErrorString("VM error: cannot get type name of a non Type value.");
                         return store_specialString_empty;
                     }
-                    switch(value.data.id) {
+                    switch(value.id) {
                       case 1: return store_specialString_type_empty;
                       case 2: return store_specialString_type_boolean;
                       case 3: return store_specialString_type_number;
@@ -1632,7 +1626,7 @@ const Matte = {
                       case 6: return store_specialString_type_function;
                       case 7: return store_specialString_type_type;
                       default:
-                        return value.data.name;
+                        return value.name;
                     }
                 },
                 
@@ -2729,7 +2723,7 @@ const Matte = {
                     const keys = store.valueObjectKeys(args);
                     const len = store.valueObjectGetNumberKeyCount(keys);
                     for(var i = 0; i < len; ++i) {
-                        key = store.valueObjectAccessIndex(keys, i);
+                        const key = store.valueObjectAccessIndex(keys, i);
                         if (key.binID != store.TYPE_STRING) continue;
                         argNames[i] = key;
                         const arg = store.valueObjectAccess(args, key, 0);
@@ -3242,7 +3236,7 @@ const Matte = {
                     }
                   case store.TYPE_TYPE:
                     if (b.binID == a.binID) {
-                        return store.createBoolean(a.data.id == b.data.id);
+                        return store.createBoolean(a.id == b.id);
                     } else {
                         vm.raiseErrorString("!= operator with Type and non-type is undefined.");
                         return store.createEmpty();                        
@@ -3287,7 +3281,7 @@ const Matte = {
                     }
                   case store.TYPE_TYPE:
                     if (b.binID == a.binID) {
-                        return store.createBoolean(a.data.id != b.data.id);
+                        return store.createBoolean(a.id != b.id);
                     } else {
                         vm.raiseErrorString("!= operator with Type and non-type is undefined.");
                         return store.createEmpty();                        
@@ -4024,7 +4018,7 @@ const Matte = {
             };
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_FVR] = function(frame, inst) {
                 const a = frame.valueStack[frame.valueStack.length-1];
-                if (!(a.binID == store.TYPE_OBJECT && a.data.function_stub)) {
+                if (!(a.binID == store.TYPE_OBJECT && a.function_stub)) {
                     vm.raiseErrorString("'forever' requires the trailing expression to be a function.");
                     frame.valueStack.pop();
                     return;                    
@@ -4039,7 +4033,7 @@ const Matte = {
                 const a = frame.valueStack[frame.valueStack.length-2];
                 const b = frame.valueStack[frame.valueStack.length-1];
 
-                if (!(b.binID == store.TYPE_OBJECT && b.data.function_stub)) {
+                if (!(b.binID == store.TYPE_OBJECT && b.function_stub)) {
                     frame.valueStack.pop();
                     frame.valueStack.pop();
                     vm.raiseErrorString("'foreach' requires the trailing expression to be a function.");
@@ -4062,7 +4056,7 @@ const Matte = {
                 const to   = frame.valueStack[frame.valueStack.length-2];
                 const v    = frame.valueStack[frame.valueStack.length-1];
 
-                if (!(v.binID == store.TYPE_OBJECT && v.data.function_stub)) {
+                if (!(v.binID == store.TYPE_OBJECT && v.function_stub)) {
                     vm.raiseErrorString("'for' requires the trailing expression to be a function.");
                     frame.valueStack.pop();
                     frame.valueStack.pop();
@@ -4123,7 +4117,7 @@ const Matte = {
                 const output = store.valueQuery(o, inst.data);
                 frame.valueStack.pop();
                 frame.valueStack.push(output);
-                if (output.binID == store.TYPE_OBJECT && output.data.function_stub != undefined) {
+                if (output.binID == store.TYPE_OBJECT && output.function_stub != undefined) {
                     frame.valueStack.push(o);
                     frame.valueStack.push(vm_specialString_base);                    
                 }
@@ -4331,20 +4325,20 @@ const Matte = {
 
                 const object = args[0];
 
-                if (object.data.kv_number == undefined)
-                    object.data.kv_number = [];
+                if (object.kv_number == undefined)
+                    object.kv_number = [];
 
                 const size = store.valueAsNumber(args[1])
-                const oldSize = object.data.kv_number.length;
+                const oldSize = object.kv_number.length;
                 
                 if (size > oldSize) {
                     for(var i = oldSize; i < size; ++i) {
-                        object.data.kv_number.push(store.createEmpty());
+                        object.kv_number.push(store.createEmpty());
                     }
                 } else if (size == oldSize) {
                     // again, whyd you do that!
                 } else {
-                    object.data.kv_number.splice(size, oldSize-size)
+                    object.kv_number.splice(size, oldSize-size)
                 }
                 return store.createEmpty();
             });
@@ -4386,7 +4380,7 @@ const Matte = {
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SORT, ['base', 'comparator'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
-                if (store.binID == store.TYPE_OBJECT && store.data.function_stub) {
+                if (store.binID == store.TYPE_OBJECT && store.function_stub) {
                     vm.raiseErrorString("A function comparator is required for sorting.h");
                     return store.createEmpty();
                 }
