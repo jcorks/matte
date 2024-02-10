@@ -1541,7 +1541,9 @@ matteVM_t * matte_vm_create(matte_t * m) {
     };
     const matteString_t * import_names[] = {
         MATTE_VM_STR_CAST(vm, "module"),
-        MATTE_VM_STR_CAST(vm, "parameters")
+        MATTE_VM_STR_CAST(vm, "parameters"),
+        MATTE_VM_STR_CAST(vm, "alias"),
+        MATTE_VM_STR_CAST(vm, "preloadOnly")
     };
     const matteString_t * keyName = MATTE_VM_STR_CAST(vm, "key");
     const matteString_t * keys = MATTE_VM_STR_CAST(vm, "keys");
@@ -1691,10 +1693,11 @@ matteVM_t * matte_vm_create(matte_t * m) {
     };
 
 
+
     matteArray_t temp;
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,  matte_array_empty(), vm_ext_call__noop);
     vm_add_built_in(vm, MATTE_EXT_CALL_BREAKPOINT,  matte_array_empty(), vm_ext_call__breakpoint);
-    temp = MATTE_ARRAY_CAST(&import_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  &temp, vm_ext_call__import);
+    temp = MATTE_ARRAY_CAST(&import_names, matteString_t *, 4);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  &temp, vm_ext_call__import);
 
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      &temp, vm_ext_call__print);
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_SEND,       &temp, vm_ext_call__send);
@@ -2349,17 +2352,35 @@ matteValue_t matte_vm_run_fileid(
 matteValue_t matte_vm_import(
     matteVM_t * vm, 
     const matteString_t * path, 
+    const matteString_t * alias,
+    int preloadOnly,
     matteValue_t parameters
 ) {
     matteValue_t pathStr = matte_store_new_value(vm->store);
     matte_value_into_string(vm->store, &pathStr, path);
+
+    matteValue_t aliasStr = matte_store_new_value(vm->store);
+    if (alias != NULL)
+        matte_value_into_string(vm->store, &aliasStr, alias);
+    
+    matteValue_t preloadBool = matte_store_new_value(vm->store);
+    if (preloadOnly)
+        matte_value_into_boolean(vm->store, &preloadBool, preloadOnly);
+    
+    
     matteValue_t args[] = {
         pathStr,
-        parameters
+        parameters,
+        aliasStr,
+        preloadBool
     };
     matte_value_object_push_lock(vm->store, parameters);
     matteValue_t v =  vm_ext_call__import(vm, matte_store_new_value(vm->store), args, NULL);
     matte_value_object_pop_lock(vm->store, parameters);
+
+    matte_store_recycle(vm->store, pathStr);
+    matte_store_recycle(vm->store, aliasStr);
+    
 
 
     if (!vm->stacksize && vm->pendingCatchable) {

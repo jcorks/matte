@@ -102,6 +102,7 @@ static int load_package_recursive(matte_t * m, const char * name) {
 static uint32_t cli_importer(
     matte_t * m,
     const char * name,
+    const char * alias,
     void * userdata
 ) {
     
@@ -114,7 +115,7 @@ static uint32_t cli_importer(
     }
     if (settings && settings != (void*)0x1) {
         if (load_package_recursive(m, name)) {
-            return matte_vm_get_file_id_by_name(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), name)); 
+            return matte_vm_get_file_id_by_name(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name)); 
         }
     }
     
@@ -138,7 +139,7 @@ static uint32_t cli_importer(
     
 
     
-    uint32_t fileid = matte_vm_get_new_file_id(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), name));   
+    uint32_t fileid = matte_vm_get_new_file_id(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name));   
     // determine if bytecode or raw source OR package.
     // handle bytecodecase
     if (byteLen >= 6 &&
@@ -349,6 +350,8 @@ matteValue_t packager_run_debug(matteVM_t * vm, matteValue_t fn, const matteValu
     return matte_vm_import(
         vm,
         matte_value_string_get_string_unsafe(store, args[0]),
+        NULL,
+        0,
         matte_store_new_value(store)
     );
     
@@ -428,6 +431,8 @@ int main(int argc, char ** args) {
         matte_vm_import(
             vm,
             MATTE_VM_STR_CAST(vm, args[2]),
+            NULL,
+            0,
             parse_parameters(vm, args+3, argc-3)
         );
         return 0;        
@@ -500,7 +505,7 @@ int main(int argc, char ** args) {
         matteVM_t * vm = matte_get_vm(m);
         
         matteValue_t params = parse_parameters(vm, args+2, argc-2);
-        matteValue_t v = matte_vm_import(vm, MATTE_VM_STR_CAST(vm, args[i+1]), params);
+        matteValue_t v = matte_vm_import(vm, MATTE_VM_STR_CAST(vm, args[i+1]), NULL, 0, params);
         matte_store_recycle(matte_vm_get_store(vm), v);
         matte_destroy(m);
     }

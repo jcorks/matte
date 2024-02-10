@@ -83,7 +83,7 @@ struct matte_t {
     void   (*clear)(matte_t *);
     
     // importer function for when set_importer is called
-    uint32_t (*importer)(matte_t *, const char *, void *);
+    uint32_t (*importer)(matte_t *, const char *, const char *, void *);
     
     // importer user data
     void * importerData;
@@ -483,15 +483,18 @@ static uint32_t matte_importer(
     // The name of the module being requested
     const matteString_t * name,
     
+    const matteString_t * alias,
+    
     void * usrdata
 ) {
     matte_t * m = (matte_t*)usrdata;
-    return m->importer(m, matte_string_get_c_str(name), m->importerData);
+    return m->importer(m, matte_string_get_c_str(name), alias ? matte_string_get_c_str(alias) : NULL, m->importerData);
 }
 
 static uint32_t default_importer(
     matte_t * m,
     const char * name,
+    const char * alias,
     void * userdata
 ) {
 
@@ -523,7 +526,7 @@ static uint32_t default_importer(
 
     uint32_t fileID = matte_add_module(
         m,
-        name,
+        alias ? alias : name,
         bytes,
         bytelen
     );
@@ -685,7 +688,7 @@ matteValue_t matte_run_source(matte_t * m, const char * source) {
 
 void matte_set_importer(
     matte_t * m,
-    uint32_t(*importer)(matte_t *, const char * name, void *),
+    uint32_t(*importer)(matte_t *, const char * name, const char * alias, void *),
     void * userData
 ) {
     if (importer == NULL) {

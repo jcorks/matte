@@ -198,6 +198,8 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
 
     matteValue_t a = args[0];
     matteValue_t params = args[1];
+    matteValue_t as = args[2];
+    matteValue_t preload = args[3];
     
     if (matte_value_type(a) != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Argument to import MUST be a string."));        
@@ -206,10 +208,15 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
     
     
     const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
-
+    const matteString_t * alias = NULL;
+    int preloadOnly = preload.binID == MATTE_VALUE_TYPE_EMPTY || matte_value_as_boolean(vm->store, preload) == 0;
+    
+    if (as.binID == MATTE_VALUE_TYPE_STRING)
+        alias = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, as));
+    
 
     // first, see if the requested script has been preloaded
-    uint32_t * fileidPtr = (uint32_t*)matte_table_find(vm->importName2ID, strSrc);
+    uint32_t * fileidPtr = (uint32_t*)matte_table_find(vm->importName2ID, alias ? alias : strSrc);
     uint32_t fileid = fileidPtr ? *fileidPtr : 0;
     
     // if the name does not have a fileid associated with it,
@@ -219,6 +226,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
             fileid = vm->importFunction(
                 vm,
                 strSrc,
+                alias,
                 vm->importFunctionData
             );        
         }
@@ -238,9 +246,13 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
             //fflush(stdout);
         #endif
     } else {
-        v = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
-       *v = matte_vm_run_fileid(vm, fileid, params);
-       matte_table_insert_by_uint(vm->imported, fileid, v);
+        if (preloadOnly) {
+            v = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
+            *v = matte_vm_run_fileid(vm, fileid, params);
+            matte_table_insert_by_uint(vm->imported, fileid, v);
+        } else {
+            return matte_store_new_value(vm->store);
+        }
     }
 
     return *v;

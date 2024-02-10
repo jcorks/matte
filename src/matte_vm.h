@@ -85,6 +85,10 @@ typedef uint32_t (*matteImportFunction_t)(
     // The name of the module being requested
     const matteString_t * name,
     
+    // The alias of the module that it will be refered to as within Matte.
+    // If NULL, it is the same as the name.
+    const matteString_t * alias,
+    
     void * userdata
 );
 
@@ -124,7 +128,9 @@ void matte_vm_set_import(
 /// the pre-computed value of the previous import is returned.
 matteValue_t matte_vm_import(
     matteVM_t *, 
-    const matteString_t * name, 
+    const matteString_t * path, 
+    const matteString_t * alias,
+    int preloadOnly,
     matteValue_t parameters
 );
 

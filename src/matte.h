@@ -293,7 +293,7 @@ void matte_set_importer(
     /// hand using the matte_vm_* family of functions.
     ///
     /// When NULL, a default file-based importer will be used.
-    uint32_t(*)(matte_t *, const char * name, void * userData),
+    uint32_t(*)(matte_t *, const char * name, const char * alias, void * userData),
     
     // Optional user data for the importer function
     void * userData
