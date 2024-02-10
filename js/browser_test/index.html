@@ -78,12 +78,12 @@
                 readText('/browser_test/test'+test+'.out', function(text) {
                     text = text.replaceAll(' ', '');
                     text = text.replaceAll('\n', '');
-                    if (matte.store.valueAsString(result).data == text) {
+                    if (matte.store.valueAsString(result) == text) {
                         if (test >= fileCount) {
                             console.log("Tests complete! All pass.");
                         }
                     } else {
-                        throw new Error('Test ' + test + ' failed! Expected [' + text + '], but received [' + matte.store.valueAsString(result).data + ']');
+                        throw new Error('Test ' + test + ' failed! Expected [' + text + '], but received [' + matte.store.valueAsString(result) + ']');
                     }
                     lock = false;
                 });                

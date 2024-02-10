@@ -386,6 +386,16 @@ const Matte = {
             const TYPE_OBJECT = 4;
             const TYPE_TYPE = 5;
             
+            const valToType = function(val) {
+                switch(typeof val) {
+                  case 'string': return TYPE_STRING;
+                  case 'boolean': return TYPE_BOOLEAN;
+                  case 'undefined' : return TYPE_EMPTY;
+                  case 'number' : return TYPE_NUMBER;
+                  default :
+                    return val.binID;                  
+                }
+            }
             
             const QUERY = {
                 TYPE: 0,
@@ -449,13 +459,9 @@ const Matte = {
             const TYPECODES = {
                 OBJECT : 5
             };
-            const EMPTY_VALUE = {
-                binID : TYPE_EMPTY,
-                data : null
-            };
         
             const createValue = function() {
-                return EMPTY_VALUE;
+                return undefined;
             };
 
             const createObject = function() {
@@ -467,29 +473,29 @@ const Matte = {
             };
             
             const objectPutProp = function(object, key, value) {
-                switch(key.binID) {
+                switch(valToType(key)) {
                   case TYPE_STRING:
                     if (object.kv_string == undefined)
                         object.kv_string = Object.create(null, {});
-                    object.kv_string[key.data] = value;
+                    object.kv_string[key] = value;
                     break;
                     
                   case TYPE_NUMBER:
                     if (object.kv_number == undefined)
                         object.kv_number = [];
                         
-                    if (key.data > object.kv_number.length) {
-                        const index = Math.floor(key.data);
+                    if (key > object.kv_number.length) {
+                        const index = Math.floor(key);
                         
                         for(var i = object.kv_number.length; i < index+1; ++i) {
                             object.kv_number[i] = store.createEmpty();                        
                         }
                     }
                     
-                    object.kv_number[Math.floor(key.data)] = value;
+                    object.kv_number[Math.floor(key)] = value;
                     break;
                   case TYPE_BOOLEAN:
-                    if (key.data == true) {
+                    if (key == true) {
                         object.kv_true = value;
                     } else {
                         object.kv_false = value;                    
@@ -529,8 +535,8 @@ const Matte = {
                     return out;
                 
                 const set = store.valueObjectAccess(object.table_attribSet, isBracket ? store_specialString_bracketAccess : store_specialString_dotAccess, 0);
-                if (set && set.binID) {
-                    if (set.binID != TYPE_OBJECT) {
+                if (set) {
+                    if (valToType(set) != TYPE_OBJECT) {
                         vm.raiseErrorString("operator['[]'] and operator['.'] property must be an Object if it is set.");
                     } else {
                         out = store.valueObjectAccess(set, read ? store_specialString_get : store_specialString_set, 0);
@@ -558,7 +564,7 @@ const Matte = {
                 }
                 for(var i = 0; i < count; ++i) {
                     const v = store.valueObjectArrayAtUnsafe(val, i);
-                    if (v.binID != TYPE_TYPE) {
+                    if (valToType(v) != TYPE_TYPE) {
                         vm.raiseErrorString("'inherits' attribute must have Type values only.");
                         return array;
                     }
@@ -570,24 +576,24 @@ const Matte = {
 
             // either returns lookup value or undefined if no such key
             const objectLookup = function(object, key) {
-                switch(key.binID) {
+                switch(valToType(key)) {
                   case TYPE_EMPTY: return undefined;
 
                   case TYPE_STRING:
                     if (object.kv_string == undefined) 
                         return undefined;
-                    return object.kv_string[key.data];
+                    return object.kv_string[key];
 
                   case TYPE_NUMBER:
-                    if (key.data < 0) return undefined;
+                    if (key < 0) return undefined;
                     if (object.kv_number == undefined)
                         return undefined;
-                    if (key.data >= object.kv_number.length)
+                    if (key >= object.kv_number.length)
                         return undefined;
-                    return object.kv_number[Math.floor(key.data)];
+                    return object.kv_number[Math.floor(key)];
                    
                   case TYPE_BOOLEAN:
-                    if (key.data == true) {
+                    if (key == true) {
                         return object.kv_true;
                     } else {
                         return object.kv_true;                    
@@ -630,29 +636,21 @@ const Matte = {
                 TYPE_OBJECT : TYPE_OBJECT,
                 TYPE_TYPE : TYPE_TYPE,
                 TYPE_STRING : TYPE_STRING,
+                valToType : valToType,
                 createEmpty : function() {
                     return createValue();
                 },
                 
                 createNumber : function(val) {
-                    const out = {};
-                    out.binID = TYPE_NUMBER;
-                    out.data = val;
-                    return out
+                    return val;
                 },
                 
                 createBoolean : function(val) {
-                    const out = {};
-                    out.binID = TYPE_BOOLEAN;
-                    out.data = !val ? false : true;
-                    return out;
+                    return !val ? false : true;
                 },
                 
                 createString : function(val) {
-                    const out = {};
-                    out.binID = TYPE_STRING;
-                    out.data = val;
-                    return out;
+                    return val;
                 },
                 
                 createObject : function() {
@@ -661,7 +659,7 @@ const Matte = {
                 
                 createObjectTyped : function(type) {
                     const out = createObject();
-                    if (type.binID != TYPE_TYPE) {
+                    if (valToType(type) != TYPE_TYPE) {
                         vm.raiseErrorString("Cannot instantiate object without a Type. (given value is of type " + store.valueTypeName(store.valueGetType(type)) + ')');
                         return out;
                     }
@@ -671,7 +669,7 @@ const Matte = {
                 },
                 
                 valueObjectSetIsInterface : function(value, enabled) {
-                    if (value.binID != TYPE_OBJECT) {
+                    if (valToType(value) != TYPE_OBJECT) {
                         vm.raiseErrorString('setIsInterface query requires an Object.');
                         return;
                     }
@@ -689,14 +687,14 @@ const Matte = {
                         out.id = ++store_typepool
                     }
                     
-                    if (name && name.binID) {
+                    if (name && valToType(name)) {
                         out.name = store.valueAsString(name);
                     } else {
                         out.name = store.createString("<anonymous type " + out.id + ">");
                     }
 
-                    if (inherits && inherits.binID) {
-                        if (inherits.binID != TYPE_OBJECT) {
+                    if (inherits && valToType(inherits)) {
+                        if (valToType(inherits) != TYPE_OBJECT) {
                             vm.raiseErrorString("'inherits' attribute must be an object.");
                             return createValue();
                         }                    
@@ -774,7 +772,7 @@ const Matte = {
                 
                 createTypedFunction : function(stub, args) {
                     for(var i = 0; i < args.length; ++i) {
-                        if (args[i].binID != TYPE_TYPE) {
+                        if (valToType(args[i]) != TYPE_TYPE) {
                             if (i == len-1) {
                                 vm.raiseErrorString("Function constructor with type specifiers requires those specifications to be Types. The return value specifier is not a Type.");
                             } else {
@@ -809,7 +807,7 @@ const Matte = {
                 },
                 
                 valueStringGetStringUnsafe : function(value, index) {
-                    return value.data;
+                    return value;
                 },
                 
                 valueFrameGetNamedReferrable : function(frame, value) {
@@ -840,17 +838,18 @@ const Matte = {
                 },
                 
                 valueSubset : function(value, from, to) {
-                    if (value.binID == TYPE_OBJECT) {
+                    const typ = valToType(value); 
+                    if (typ == TYPE_OBJECT) {
                         const curlen = value.kv_number ? value.kv_number.length : 0;
                         if (from >= curlen || to >= curlen) return createValue();
                         
                         return store.createObjectArray(value.kv_number.slice(from, to+1));
-                    } else if (value.binID == TYPE_STRING) {
+                    } else if (typ == TYPE_STRING) {
                         
-                        const curlen = value.data.length;;
+                        const curlen = value.length;;
                         if (from >= curlen || to >= curlen) return createValue();
                         return store.createString(
-                            value.data.substr(from, to+1)
+                            value.substr(from, to+1)
                         );
                     }
                 },
@@ -860,11 +859,11 @@ const Matte = {
                 // valueObjectSetNativeFinalizer are not implemented.
                 
                 valueIsEmpty : function(value) {
-                    return value.binID == TYPE_EMPTY
+                    return value == undefined;
                 },
                 
                 valueAsNumber : function(value) {
-                    switch(value.binID) {
+                    switch(valToType(value)) {
                       case TYPE_EMPTY:
                         vm.raiseErrorString('Cannot convert empty into a number');
                         return 0;
@@ -874,10 +873,10 @@ const Matte = {
                         return 0;
 
                       case TYPE_NUMBER:
-                        return value.data;
+                        return value;
                         
                       case TYPE_BOOLEAN:
-                        return value.data == true ? 1 : 0;
+                        return value == true ? 1 : 0;
                         
                       case TYPE_STRING:
                         vm.raiseErrorString('Cannot convert string value into a number');
@@ -889,7 +888,7 @@ const Matte = {
                         }
 
                         const operator = objectGetConvOperator(value, store_type_number);
-                        if (operator.binID) {
+                        if (operator != undefined) {
                             return store.valueAsNumber(vm.callFunction(operator, [], []));
                         } else {
                             vm.raiseErrorString("Object has no valid conversion to number");
@@ -900,7 +899,7 @@ const Matte = {
                 },
                 
                 valueAsString : function(value) {
-                    switch(value.binID) {
+                    switch(valToType(value)) {
                       case TYPE_EMPTY:
                         return store_specialString_empty;
 
@@ -908,10 +907,10 @@ const Matte = {
                         return store.valueTypeName(value);
 
                       case TYPE_NUMBER:
-                        return store.createString(Number.parseFloat(value.data));
+                        return store.createString(Number.parseFloat(value));
 
                       case TYPE_BOOLEAN:
-                        return value.data == true ? store_specialString_true : store_specialString_false;
+                        return value == true ? store_specialString_true : store_specialString_false;
                         
                       case TYPE_STRING:
                         return value;
@@ -923,7 +922,7 @@ const Matte = {
                         }
 
                         const operator = objectGetConvOperator(value, store_type_string);
-                        if (operator.binID) {
+                        if (operator != undefined) {
                             return store.valueAsString(vm.callFunction(operator, [], []));
                         } else {
                             vm.raiseErrorString("Object has no valid conversion to string");
@@ -936,18 +935,18 @@ const Matte = {
                 
                 
                 valueAsBoolean : function(value) {
-                    switch(value.binID) {
+                    switch(valToType(value)) {
                       case TYPE_EMPTY:   return false;
                       case TYPE_TYPE:    return true;
-                      case TYPE_NUMBER:  return value.data != 0;
-                      case TYPE_BOOLEAN: return value.data;
+                      case TYPE_NUMBER:  return value != 0;
+                      case TYPE_BOOLEAN: return value;
                       case TYPE_STRING:  return true;
                       case TYPE_OBJECT:
                         if (value.function_stub != undefined)
                             return 1;
 
                         const operator = objectGetConvOperator(value, store_type_boolean);                            
-                        if (operator.binID) {
+                        if (operator != undefined) {
                             const r = vm.callFunction(operator, [], []);
                             return store.valueAsBoolean(r);
                         } else {
@@ -960,16 +959,17 @@ const Matte = {
                 },
                 
                 valueToType : function(v, t) {
+                    const typ = valToType(v);
                     switch(t.id) {
                       case 1: // empty
-                        if (v.binID != TYPE_EMPTY) {
+                        if (typ != TYPE_EMPTY) {
                             vm.raiseErrorString("It is an error to convert any non-empty value to the Empty type.");
                         } else {
                             return v;
                         }
                         break;
                       case 7: // type
-                        if (v.binID != TYPE_TYPE) {
+                        if (typ != TYPE_TYPE) {
                             vm.raiseErrorString("It is an error to convert any non-Type value to a Type.");
                         } else {
                             return v;
@@ -986,14 +986,14 @@ const Matte = {
                         return store.valueAsString(v);
                         
                       case 5: 
-                        if (v.binID == TYPE_OBJECT && !v.function_stub) {
+                        if (typ == TYPE_OBJECT && !v.function_stub) {
                             return v;
                         } else {
                             vm.raiseErrorString("Cannot convert value to Object type.");
                         }
                         break;
                       case 6: 
-                        if (v.binID == TYPE_OBJECT && v.function_stub) {
+                        if (typ == TYPE_OBJECT && v.function_stub) {
                             return v;
                         } else {
                             vm.raiseErrorString("Cannot convert value to Function type.");
@@ -1005,8 +1005,9 @@ const Matte = {
                 },
                 
                 valueIsCallable : function(value) {
-                    if (value.binID == TYPE_TYPE) return 1;
-                    if (value.binID != TYPE_OBJECT) return 0;
+                    const typ = valToType(value);
+                    if (typ == TYPE_TYPE) return 1;
+                    if (typ != TYPE_OBJECT) return 0;
                     if (value.function_stub == undefined) return 0;
                     if (value.function_types == undefined) return 1;
                     return 2; // type-strict
@@ -1018,8 +1019,8 @@ const Matte = {
                         if (!store.valueIsA(args[i], func.function_types[i])) {
                             vm.raiseErrorString(
                                 "Argument '" + func.function_stub.argNames[i] + 
-                                "' (type: " + store.valueTypeName(store.valueGetType(args[i])).data + ") is not of required type " + 
-                                store.valueTypeName(func.function_types[i]).data
+                                "' (type: " + store.valueTypeName(store.valueGetType(args[i])) + ") is not of required type " + 
+                                store.valueTypeName(func.function_types[i])
                             );
                             return 0;
                         }
@@ -1032,8 +1033,8 @@ const Matte = {
                     if (!store.valueIsA(ret, func.function_types[end])) {
                         matte.raiseErrorString(
                             "Return value" + 
-                            " (type: " + store.valueTypeName(store.valueGetType(ret)).data + ") is not of required type " + 
-                            store.valueTypeName(func.function_types[end]).data
+                            " (type: " + store.valueTypeName(store.valueGetType(ret)) + ") is not of required type " + 
+                            store.valueTypeName(func.function_types[end])
                         );
                         return 0;
                     }
@@ -1041,7 +1042,7 @@ const Matte = {
                 },
                 
                 valueObjectAccess : function(value, key, isBracket) {
-                    switch(value.binID) {
+                    switch(valToType(value)) {
                       case TYPE_TYPE:
                         return store.valueObjectAccessDirect(value, key, isBracket);
 
@@ -1055,7 +1056,7 @@ const Matte = {
                             accessor = objectGetAccessOperator(value, isBracket, 1);
                         
                         if (value.hasInterface == true && (!(isBracket && accessor && accessor.binID))) {
-                            if (key.binID != TYPE_STRING) {
+                            if (valToType(key) != TYPE_STRING) {
                                 vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
                                 return createValue();
                             }
@@ -1066,14 +1067,14 @@ const Matte = {
                             }
                             
                             
-                            const v = value.kv_string[key.data];
+                            const v = value.kv_string[key];
                             if (!v) {
-                                vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
+                                vm.raiseErrorString("Object's interface has no member \"" + key + "\".");
                                 return createValue();
                             }
                             
-                            if (v.binID != TYPE_OBJECT) {
-                                vm.raiseErrorString("Object's interface member \"" + key.data + "\" is neither a Function nor an Object. Interface is malformed.");
+                            if (valToType(v) != TYPE_OBJECT) {
+                                vm.raiseErrorString("Object's interface member \"" + key + "\" is neither a Function nor an Object. Interface is malformed.");
                                 return createValue();
                             }
                             
@@ -1083,9 +1084,9 @@ const Matte = {
                             }
                             
                             const setget = v;
-                            const getter = setget.kv_string[store_specialString_get.data];
-                            if (!getter || !getter.binID) {
-                                vm.raiseErrorString("Object's interface disallows reading of the member \"" + key.data +"\".");
+                            const getter = setget.kv_string[store_specialString_get];
+                            if (getter == undefined) {
+                                vm.raiseErrorString("Object's interface disallows reading of the member \"" + key +"\".");
                                 return createValue();
                             }
                             return vm.callFunction(getter, [], []);
@@ -1094,7 +1095,7 @@ const Matte = {
                         
                         
                         
-                        if (accessor && accessor.binID) {
+                        if (accessor != undefined) {
                             return vm.callFunction(accessor, [key], [store_specialString_key]);
                         } else {
                             const output = objectLookup(value, key);
@@ -1103,21 +1104,21 @@ const Matte = {
                             return output;
                         }
                       default:
-                        vm.raiseErrorString("Cannot access member of a non-object type. (Given value is of type: " + store.valueTypeName(store.valueGetType(value)).data + ")");
+                        vm.raiseErrorString("Cannot access member of a non-object type. (Given value is of type: " + store.valueTypeName(store.valueGetType(value)) + ")");
                         return createValue();
                     }
                 },
                 
                 // will return undefined if no such access
                 valueObjectAccessDirect : function(value, key, isBracket) {
-                    switch(value.binID) {
+                    switch(valToType(value)) {
                       case TYPE_TYPE:
                         if (isBracket) {
                             vm.raiseErrorString("Types can only yield access to built-in functions through the dot '.' accessor.");
                             return;
                         }
                         
-                        if (key.binID != TYPE_STRING) {
+                        if (valToType(key) != TYPE_STRING) {
                             vm.raiseErrorString("Types can only yield access to built-in functions through the string keys.");
                             return;
                         }
@@ -1132,9 +1133,9 @@ const Matte = {
                             vm.raiseErrorString("The given type has no built-in functions.");
                             return;
                         }
-                        const out = base[key.data];
+                        const out = base[key];
                         if (out == undefined) {
-                            vm.raiseErrorString("The given type has no built-in function by the name '" + key.data + "'");
+                            vm.raiseErrorString("The given type has no built-in function by the name '" + key + "'");
                             return;
                         }
                         return vm.getBuiltinFunctionAsValue(out);
@@ -1148,14 +1149,14 @@ const Matte = {
                         if (value.hasInterface) return undefined;
                         
                         const accessor = objectGetAccessOperator(value, isBracket, 1);
-                        if (accessor.binID) {
+                        if (accessor != undefined) {
                             return undefined;
                         } else {
                             return objectLookup(value, key);
                         }
                       
                       default:
-                        vm.raiseErrorString("Cannot access member of a non-object type. (Given value is of type: " + store.valueTypeName(store.valueGetType(value)).data + ")");
+                        vm.raiseErrorString("Cannot access member of a non-object type. (Given value is of type: " + store.valueTypeName(store.valueGetType(value)) + ")");
                         return undefined;                      
                     }
                 },
@@ -1178,7 +1179,7 @@ const Matte = {
                 },
                 
                 valueObjectKeys : function(value) {
-                    if (value.binID != TYPE_OBJECT || value.function_stub) {
+                    if (valToType(value) != TYPE_OBJECT || value.function_stub) {
                         vm.raiseErrorString("Can only get keys from something that's an Object.");
                         return createValue();
                     }
@@ -1186,7 +1187,7 @@ const Matte = {
                 
                     if (value.table_attribSet != undefined) {
                         const set = store.valueObjectAccess(value.table_attribSet, store_specialString_keys, 0);
-                        if (set && set.binID)
+                        if (set != undefined)
                             return store.valueObjectValues(vm.callFunction(set, [], []));
                     }
                     const out = [];
@@ -1233,14 +1234,14 @@ const Matte = {
                 },
                 
                 valueObjectValues : function(value) {
-                    if (value.binID != TYPE_OBJECT || value.function_stub) {
+                    if (valToType(value) != TYPE_OBJECT || value.function_stub) {
                         vm.raiseErrorString("Can only get values from something that's an Object.");
                         return createValue();
                     }
 
                     if (value.table_attribSet != undefined) {
                         const set = store.valueObjectAccess(value.table_attribSet, store_specialString_values, 0);
-                        if (set && set.binID)
+                        if (set)
                             return store.valueObjectValues(vm.callFunction(set, [], []));
                     }
                     const out = [];
@@ -1257,8 +1258,8 @@ const Matte = {
                                     out.push(v);
                                 } else {
                                     const setget = v;
-                                    const getter = setget.kv_string[store_specialString_get.data];
-                                    if (!getter || !getter.binID) {
+                                    const getter = setget.kv_string[store_specialString_get];
+                                    if (!getter) {
                                         continue;
                                     }
                                     out.push(vm.callFunction(getter, [], []));                                    
@@ -1307,7 +1308,7 @@ const Matte = {
                 
                 
                 valueObjectGetKeyCount : function(value) {
-                    if (value.binID != TYPE_OBJECT) return 0;
+                    if (valToType(value) != TYPE_OBJECT) return 0;
                     var out = 0;
                     if (value.kv_number) {
                         out += value.kv_number.length;
@@ -1340,19 +1341,19 @@ const Matte = {
                 },
                 
                 valueObjectGetNumberKeyCount : function(value) {
-                    if (value.binID != TYPE_OBJECT) return 0;
+                    if (valToType(value) != TYPE_OBJECT) return 0;
                     if (value.kv_number == undefined) return 0;
                     return value.kv_number.length;                    
                 },
                 
                 valueObjectInsert : function(value, plainIndex, v) {
-                    if (value.binID != TYPE_OBJECT) return;
+                    if (valToType(value) != TYPE_OBJECT) return;
                     if (value.kv_number == undefined) value.kv_number = [];
                     value.kv_number.splice(plainIndex, 0, v);
                 },
 
                 valueObjectPush : function(value, v) {
-                    if (value.binID != TYPE_OBJECT) return;
+                    if (valToType(value) != TYPE_OBJECT) return;
                     if (value.kv_number == undefined) value.kv_number = [];
                     value.kv_number.push(v);
                 },
@@ -1377,9 +1378,9 @@ const Matte = {
                 valueObjectForeach : function(value, func) {
                     if (value.table_attribSet) {
                         const set = store.valueObjectAccess(value.table_attribSet, store_specialString_foreach, 0);
-                        if (set.binID) {
+                        if (set != undefined) {
                             const v = vm.callFunction(set, [], []);
-                            if (binID != TYPE_OBJECT) {
+                            if (valToType(v) != TYPE_OBJECT) {
                                 vm.raiseErrorString("foreach attribute MUST return an object.");
                                 return;
                             } else {
@@ -1409,20 +1410,20 @@ const Matte = {
                 },
                 
                 valueObjectSet : function(value, key, v, isBracket) {
-                    if (value.binID != TYPE_OBJECT) {
+                    if (valToType(value) != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot set property on something that isn't an object.");
                         return store.createEmpty();
                     }
                     
-                    if (key.binID == TYPE_EMPTY) {
+                    if (key == undefined) {
                         vm.raiseErrorString("Cannot set property with an empty key");
                         return store.createEmpty();
                     }
                     
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
                     
-                    if (value.hasInterface == true && (!(isBracket && assigner && assigner.binID))) {
-                        if (key.binID != TYPE_STRING) {
+                    if (value.hasInterface == true && (!(isBracket && assigner))) {
+                        if (valToType(key) != TYPE_STRING) {
                             vm.raiseErrorString("Objects with interfaces only have string-keyed members.");
                             return createValue();
                         }
@@ -1432,27 +1433,27 @@ const Matte = {
                             return createValue();                        
                         }
                         
-                        const vv = value.kv_string[key.data];
+                        const vv = value.kv_string[key];
                         if (!vv) {
-                            vm.raiseErrorString("Object's interface has no member \"" + key.data + "\".");
+                            vm.raiseErrorString("Object's interface has no member \"" + key + "\".");
                             return createValue();
                         }
 
-                        if (vv.binID != TYPE_OBJECT) {
-                            vm.raiseErrorString("Object's interface member \"" + key.data + "\" is neither a Function nor an Object. Interface is malformed.");
+                        if (valToType(vv) != TYPE_OBJECT) {
+                            vm.raiseErrorString("Object's interface member \"" + key + "\" is neither a Function nor an Object. Interface is malformed.");
                             return createValue();
                         }
                         
                         // direct function, return
                         if (vv.function_stub) {
-                            vm.raiseErrorString("Object's \""+key.data+"\" is a member function and is read-only. Writing to this member is not allowed.");
+                            vm.raiseErrorString("Object's \""+key+"\" is a member function and is read-only. Writing to this member is not allowed.");
                             return createValue();
                         }
                         
                         const setget = vv;
-                        const setter = setget.kv_string[store_specialString_set.data];
-                        if (!setter || !setter.binID) {
-                            vm.raiseErrorString("Object's interface disallows writing of the member \"" + key.data +"\".");
+                        const setter = setget.kv_string[store_specialString_set];
+                        if (!setter) {
+                            vm.raiseErrorString("Object's interface disallows writing of the member \"" + key +"\".");
                             return createValue();
                         }
                         vm.callFunction(setter, [v], [store_specialString_value]);
@@ -1463,9 +1464,9 @@ const Matte = {
 
 
 
-                    if (assigner.binID) {
+                    if (assigner) {
                         const r = vm.callFunction(assigner, [key, v], [store_specialString_key, store_specialString_value]);
-                        if (r.binID == TYPE_BOOLEAN && !r.data) {
+                        if (valToType(r) == TYPE_BOOLEAN && !r) {
                             return store.createEmpty();
                         }
                     }
@@ -1473,7 +1474,7 @@ const Matte = {
                 },
                 
                 valueObjectSetTable: function(value, srcTable) {
-                    if (srcTable.binID != TYPE_OBJECT) {
+                    if (valToType(srcTable) != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot use object set assignment syntax something that isnt an object.");
                         return;
                     }
@@ -1491,12 +1492,12 @@ const Matte = {
                 },
                 
                 valueObjectSetAttributes : function(value, opObject) {
-                    if (value.binID != TYPE_OBJECT) {
+                    if (valToType(value) != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot assign attributes set to something that isnt an object.");
                         return;
                     }
                     
-                    if (opObject.binID != TYPE_OBJECT) {
+                    if (valToType(opObject) != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot assign attributes set that isn't an object.");
                         return;
                     }
@@ -1514,14 +1515,14 @@ const Matte = {
                 },
                 
                 valueObjectRemoveKey : function(value, key) {
-                    if (value.binID != TYPE_OBJECT) {
+                    if (valToType(value) != TYPE_OBJECT) {
                         return; // no error?
                     }
                     
-                    switch(key.binID) {
+                    switch(valToType(key)) {
                       case TYPE_STRING:
                         if (value.kv_string == undefined) return;
-                        delete value.kv_string[key.data];
+                        delete value.kv_string[key];
                         break;
                       case TYPE_TYPE:
                         if (value.kv_types_keys == undefined) return;
@@ -1534,10 +1535,10 @@ const Matte = {
                         break;
                       case TYPE_NUMBER:
                         if (value.kv_number == undefined || value.kv_number.length == 0) return;
-                        value.kv_number.splice(Math.floor(key.data), 1);
+                        value.kv_number.splice(Math.floor(key), 1);
                         break;
                       case TYPE_BOOLEAN:
-                        if (key.data) {
+                        if (key) {
                             value.kv_true = undefined;
                         } else {
                             value.kv_false = undefined;                        
@@ -1557,7 +1558,7 @@ const Matte = {
                 
                 
                 valueObjectRemoveKeyString : function(value, plainString) {
-                    if (value.binID != TYPE_OBJECT) {
+                    if (valToType(value) != TYPE_OBJECT) {
                         return; // no error?
                     }
                     
@@ -1566,13 +1567,13 @@ const Matte = {
                 },
                                 
                 valueIsA : function(value, typeobj) {
-                    if (typeobj.binID != TYPE_TYPE) {
+                    if (valToType(typeobj) != TYPE_TYPE) {
                         vm.raiseErrorString("VM error: cannot query isa() with a non Type value.");
                         return 0;
                     }
                     
                     if (typeobj.id == store_type_any.id) return 1;
-                    if (value.binID != TYPE_OBJECT) {
+                    if (valToType(value) != TYPE_OBJECT) {
                         return (store.valueGetType(value)).id == typeobj.id;
                     } else {
                         if (typeobj.id == store_type_object.id) return 1;
@@ -1588,7 +1589,7 @@ const Matte = {
                 },
                 
                 valueGetType : function(value) {
-                    switch(value.binID) {
+                    switch(valToType(value)) {
                       case TYPE_EMPTY:      return store_type_empty;
                       case TYPE_BOOLEAN:    return store_type_boolean;
                       case TYPE_NUMBER:     return store_type_number;
@@ -1613,7 +1614,7 @@ const Matte = {
                 },
                 
                 valueTypeName : function(value) {
-                    if (value.binID != TYPE_TYPE) {
+                    if (valToType(value) != TYPE_TYPE) {
                         vm.raiseErrorString("VM error: cannot get type name of a non Type value.");
                         return store_specialString_empty;
                     }
@@ -1648,113 +1649,113 @@ const Matte = {
             
                         
             store_queryTable[QUERY.COS] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("cos requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.cos(value.data));
+                return store.createNumber(Math.cos(value));
             };
             
             store_queryTable[QUERY.SIN] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("sin requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.sin(value.data));
+                return store.createNumber(Math.sin(value));
             };
             
             
             store_queryTable[QUERY.TAN] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("tan requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.tan(value.data));
+                return store.createNumber(Math.tan(value));
             };
             
 
             store_queryTable[QUERY.ACOS] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("acos requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.acos(value.data));
+                return store.createNumber(Math.acos(value));
             };
             
             store_queryTable[QUERY.ASIN] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("asin requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.asin(value.data));
+                return store.createNumber(Math.asin(value));
             };
             
             
             store_queryTable[QUERY.ATAN] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("atan requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.atan(value.data));
+                return store.createNumber(Math.atan(value));
             };
             store_queryTable[QUERY.ATAN2] = function(value) {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_ATAN2);
             };
             store_queryTable[QUERY.SQRT] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("sqrt requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.atan(value.data));
+                return store.createNumber(Math.atan(value));
             };
             store_queryTable[QUERY.ABS] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("abs requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.abs(value.data));
+                return store.createNumber(Math.abs(value));
             };
             store_queryTable[QUERY.ISNAN] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("isNaN requires base value to be a number.");
                     return createValue();
                 }
-                return store.createBoolean(isNaN(value.data));
+                return store.createBoolean(isNaN(value));
             };
             store_queryTable[QUERY.FLOOR] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("floor requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.floor(value.data));
+                return store.createNumber(Math.floor(value));
             };
             store_queryTable[QUERY.CEIL] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("ceil requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.ceil(value.data));
+                return store.createNumber(Math.ceil(value));
             };
             store_queryTable[QUERY.ROUND] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("round requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(Math.round(value.data));
+                return store.createNumber(Math.round(value));
             };
             store_queryTable[QUERY.RADIANS] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("radian conversion requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(value.data * (Math.PI / 180.0));
+                return store.createNumber(value * (Math.PI / 180.0));
             };
             store_queryTable[QUERY.DEGREES] = function(value) {
-                if (value.binID != TYPE_NUMBER) {
+                if (valToType(value) != TYPE_NUMBER) {
                     vm.raiseErrorString("degree conversion requires base value to be a number.");
                     return createValue();
                 }
-                return store.createNumber(value.data * (180.0 / Math.PI));
+                return store.createNumber(value * (180.0 / Math.PI));
             };
 
 
@@ -1764,7 +1765,7 @@ const Matte = {
 
 
             store_queryTable[QUERY.REMOVECHAR] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("removeChar requires base value to be a string.");
                     return createValue();
                 }
@@ -1772,7 +1773,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SUBSTR] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("substr requires base value to be a string.");
                     return createValue();
                 }
@@ -1780,7 +1781,7 @@ const Matte = {
             };
             
             store_queryTable[QUERY.SPLIT] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("split requires base value to be a string.");
                     return createValue();
                 }
@@ -1788,7 +1789,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SCAN] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("scan requires base value to be a string.");
                     return createValue();
                 }
@@ -1796,15 +1797,15 @@ const Matte = {
             };
 
             store_queryTable[QUERY.LENGTH] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("length requires base value to be a string.");
                     return createValue();
                 }
-                return store.createNumber(value.data.length);
+                return store.createNumber(value.length);
             };
             
             store_queryTable[QUERY.SEARCH] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("search requires base value to be a string.");
                     return createValue();
                 }
@@ -1812,7 +1813,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SEARCH_ALL] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("searchAll requires base value to be a string.");
                     return createValue();
                 }
@@ -1820,7 +1821,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.CONTAINS] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("contains requires base value to be a string.");
                     return createValue();
                 }
@@ -1828,7 +1829,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.REPLACE] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("replace requires base value to be a string.");
                     return createValue();
                 }
@@ -1836,7 +1837,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.FORMAT] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("format requires base value to be a string.");
                     return createValue();
                 }
@@ -1844,7 +1845,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.COUNT] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("count requires base value to be a string.");
                     return createValue();
                 }
@@ -1852,7 +1853,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SETCHARCODEAT] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("setCharCodeAt requires base value to be a string.");
                     return createValue();
                 }
@@ -1860,14 +1861,14 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SETCHARAT] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("setCharAt requires base value to be a string.");
                     return createValue();
                 }
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETCHARAT);
             };
             store_queryTable[QUERY.CHARCODEAT] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("charCodeAt requires base value to be a string.");
                     return createValue();
                 }
@@ -1875,7 +1876,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.CHARAT] = function(value) {
-                if (value.binID != TYPE_STRING) {
+                if (valToType(value) != TYPE_STRING) {
                     vm.raiseErrorString("charAt requires base value to be a string.");
                     return createValue();
                 }
@@ -1887,7 +1888,7 @@ const Matte = {
 
 
             store_queryTable[QUERY.KEYCOUNT] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("keycount requires base value to be an object.");
                     return createValue();
                 }
@@ -1895,7 +1896,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SIZE] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("size requires base value to be an object.");
                     return createValue();
                 }
@@ -1904,7 +1905,7 @@ const Matte = {
 
 
             store_queryTable[QUERY.KEYS] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("keys requires base value to be an object.");
                     return createValue();
                 }
@@ -1912,7 +1913,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.VALUES] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("values requires base value to be an object.");
                     return createValue();
                 }
@@ -1920,7 +1921,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.PUSH] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("push requires base value to be an object.");
                     return createValue();
                 }
@@ -1928,14 +1929,14 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SETSIZE] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("setSize requires base value to be an object.");
                     return createValue();
                 }
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETSIZE);
             };
             store_queryTable[QUERY.POP] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("pop requires base value to be an object.");
                     return createValue();
                 }
@@ -1951,7 +1952,7 @@ const Matte = {
             };
             
             store_queryTable[QUERY.INSERT] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("insert requires base value to be an object.");
                     return createValue();
                 }
@@ -1959,7 +1960,7 @@ const Matte = {
             };
             
             store_queryTable[QUERY.REMOVE] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("remove requires base value to be an object.");
                     return createValue();
                 }
@@ -1967,7 +1968,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SETATTRIBUTES] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("setAttributes requires base value to be an object.");
                     return createValue();
                 }
@@ -1975,7 +1976,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.ATTRIBUTES] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("setAttributes requires base value to be an object.");
                     return createValue();
                 }
@@ -1987,7 +1988,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SORT] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("sort requires base value to be an object.");
                     return createValue();
                 }
@@ -1995,7 +1996,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.SUBSET] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("subset requires base value to be an object.");
                     return createValue();
                 }
@@ -2003,7 +2004,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.FILTER] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("filter requires base value to be an object.");
                     return createValue();
                 }
@@ -2011,7 +2012,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.FINDINDEX] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("findIndex requires base value to be an object.");
                     return createValue();
                 }
@@ -2019,7 +2020,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.ISA] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("isa requires base value to be an object.");
                     return createValue();
                 }
@@ -2027,7 +2028,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.MAP] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("map requires base value to be an object.");
                     return createValue();
                 }
@@ -2035,7 +2036,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.ANY] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("any requires base value to be an object.");
                     return createValue();
                 }
@@ -2044,7 +2045,7 @@ const Matte = {
 
 
             store_queryTable[QUERY.FOREACH] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("foreach requires base value to be an object.");
                     return createValue();
                 }
@@ -2052,7 +2053,7 @@ const Matte = {
             };
             
             store_queryTable[QUERY.SETISINTERFACE] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("setIsInterface requires base value to be an object.");
                     return createValue();
                 }
@@ -2060,7 +2061,7 @@ const Matte = {
             };            
 
             store_queryTable[QUERY.ALL] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("all requires base value to be an object.");
                     return createValue();
                 }
@@ -2068,7 +2069,7 @@ const Matte = {
             };
 
             store_queryTable[QUERY.REDUCE] = function(value) {
-                if (value.binID != TYPE_OBJECT) {
+                if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("reduce requires base value to be an object.");
                     return createValue();
                 }
@@ -2129,7 +2130,8 @@ const Matte = {
         
         (function(){
             
-            
+            const valToType = store.valToType;
+
             const vm_operator = {
                 MATTE_OPERATOR_ADD : 0, // + 2 operands
                 MATTE_OPERATOR_SUB : 1, // - 2 operands
@@ -2180,7 +2182,6 @@ const Matte = {
             
             };
             const vm_operatorFunc = [];
-            
             
             
             const vm_imports = [];
@@ -2240,8 +2241,8 @@ const Matte = {
                 
                 const arr = [];
                 var str;
-                if (detail.binID == store.TYPE_STRING) {
-                    str = detail.data + '\n';
+                if (valToType(detail) == store.TYPE_STRING) {
+                    str = detail + '\n';
                 } else {
                     str = "<no string data available>";
                 }
@@ -2403,12 +2404,7 @@ const Matte = {
                 if (referrableID < vm_callstack[i].referrableSize) {
                     return store.valueObjectArrayAtUnsafe(vm_callstack[i].referrable, referrableID);
                 } else {
-                    const ref = store.valueGetCapturedValue(vm_callstack[i].context, referrableID - vm_callstack[i].referrableSize);
-                    if (!ref) {
-                        vm.raiseErrorString("Invalid referrable");
-                        return undefined;
-                    }
-                    return ref;
+                    return store.valueGetCapturedValue(vm_callstack[i].context, referrableID - vm_callstack[i].referrableSize);
                 }
             };
             
@@ -2442,21 +2438,22 @@ const Matte = {
                     return store.createEmpty();
                 }
                 
-                if (respObject.binID != store.TYPE_EMPTY && respObject.binID != store.TYPE_OBJECT) {
+                const typ_respObject = valToType(respObject);
+                if (typ_respObject != store.TYPE_EMPTY && typ_respObject != store.TYPE_OBJECT) {
                     vm.raiseErrorString("Listen requires that the response expression is an object.");
                     return store.createEmpty();                    
                 }
                 
                 var onSend;
                 var onError;
-                if (respObject.binID != store.TYPE_EMPTY) {
+                if (typ_respObject != store.TYPE_EMPTY) {
                     onSend = store.valueObjectAccessDirect(respObject, vm_specialString_onsend, 0);
-                    if (onSend && onSend.binID != store.TYPE_EMPTY && !store.valueIsCallable(onSend)) {
+                    if (onSend && !store.valueIsCallable(onSend)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onSend' attribute be a Function.");
                         return store.createEmpty();                                            
                     }
                     onError = store.valueObjectAccessDirect(respObject, vm_specialString_onerror, 0);
-                    if (onError && onError.binID != store.TYPE_EMPTY && !store.valueIsCallable(onError)) {
+                    if (onError && !store.valueIsCallable(onError)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onError' attribute be a Function.");
                         return store.createEmpty();                                            
                     }
@@ -2632,7 +2629,7 @@ const Matte = {
             
             
             vm.valueToString = function(val) {
-                return store.valueAsString(val).data + ' => (' + store.valueTypeName(store.valueGetType(val)).data + ')';
+                return store.valueAsString(val) + ' => (' + store.valueTypeName(store.valueGetType(val)) + ')';
             };
                 
                 
@@ -2711,7 +2708,7 @@ const Matte = {
             },
                 
             vm.callVarargFunction = function(func, args) {
-                if (args.binID != store.TYPE_OBJECT) {
+                if (valToType(args) != store.TYPE_OBJECT) {
                     vm.raiseErrorString("Error: cannot call non-function value ");
                     return store.createEmpty();
                 }
@@ -2724,7 +2721,7 @@ const Matte = {
                     const len = store.valueObjectGetNumberKeyCount(keys);
                     for(var i = 0; i < len; ++i) {
                         const key = store.valueObjectAccessIndex(keys, i);
-                        if (key.binID != store.TYPE_STRING) continue;
+                        if (valToType(key) != store.TYPE_STRING) continue;
                         argNames[i] = key;
                         const arg = store.valueObjectAccess(args, key, 0);
                         argVals[i] = arg;
@@ -2757,9 +2754,9 @@ const Matte = {
                     return store.createEmpty();                        
                 }
                 
-                if (func.binID == store.TYPE_TYPE) {
+                if (valToType(func) == store.TYPE_TYPE) {
                     if (args.length) {
-                        if (argNames[0].data != vm_specialString_from.data) {
+                        if (argNames[0] != vm_specialString_from) {
                             vm.raiseErrorString("Type conversion failed: unbound parameter to function ('from')");
                         }
                         return store.valueToType(args[0], func);
@@ -2790,7 +2787,7 @@ const Matte = {
                     
                     for(var i = 0; i < lenReal; ++i) {
                         for(var n = 0; n < len; ++n) {
-                            if (stub.argNames[n] == argNames[i].data) {
+                            if (stub.argNames[n] == argNames[i]) {
                                 argsReal[n] = args[i];
                                 break;
                             }
@@ -2799,9 +2796,9 @@ const Matte = {
                         if (n == len) {
                             var str;
                             if (len) {
-                                str = "Could not bind requested parameter: '"+argNames[i].data+"'.\n Bindable parameters for this function: ";
+                                str = "Could not bind requested parameter: '"+argNames[i]+"'.\n Bindable parameters for this function: ";
                             } else {
-                                str = "Could not bind requested parameter: '"+argNames[i].data+"'.\n (no bindable parameters for this function)";                                
+                                str = "Could not bind requested parameter: '"+argNames[i]+"'.\n (no bindable parameters for this function)";                                
                             }
                             
                             for(n = 0; n < len; ++n) {
@@ -2844,7 +2841,7 @@ const Matte = {
                         const nameMap = {};
                         
                         for(var i = 0; i < lenReal; ++i) {
-                            nameMap[argNames[i].data] = args[i];
+                            nameMap[argNames[i]] = i;
                         };
                         
                         for(var i = 0; i < len; ++i) {
@@ -2853,7 +2850,7 @@ const Matte = {
                             if (res == undefined) {                      
                             } else {
                                 delete nameMap[name];
-                                referrables[i+1] = res;                            
+                                referrables[i+1] = args[res];                            
                             }
                         }
                         
@@ -2906,7 +2903,7 @@ const Matte = {
                     vm_popFrame();
                     
                     if (!vm_stacksize && vm_pendingCatchable) {
-                        console.log('Uncaught error: ' + store.valueObjectAccessString(vm_catchable, 'summary').data);                        
+                        console.log('Uncaught error: ' + store.valueObjectAccessString(vm_catchable, 'summary'));                        
                         /*
                         if (vm_unhandled) {
                             vm_unhandled(
@@ -2955,7 +2952,7 @@ const Matte = {
             /////////////////////////////////////////////////////////////////
             const vm_badOperator = function(op, value) {
                 vm.raiseErrorString(
-                    op + " operator on value of type " + store.valueTypeName(store.valueGetType(value)).data + " is undefined."
+                    op + " operator on value of type " + store.valueTypeName(store.valueGetType(value)) + " is undefined."
                 );
             };
             
@@ -2964,7 +2961,7 @@ const Matte = {
                 if (opSrc == undefined)
                     return false;
                 
-                return store.valueObjectAccessString(opSrc, op).binID != 0;
+                return store.valueObjectAccessString(opSrc, op) != undefined;
             };
             
             const vm_runObjectOperator2 = function(a, op, b) {
@@ -2998,13 +2995,13 @@ const Matte = {
                 }                
             };          
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ADD] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data + store.valueAsNumber(b));
+                    return store.createNumber(a + store.valueAsNumber(b));
                     
                   case store.TYPE_STRING:
-                    const astr = a.data;
-                    const bstr = store.valueAsString(b).data;
+                    const astr = a;
+                    const bstr = store.valueAsString(b);
                     return store.createString(astr + bstr);
                     
                   case store.TYPE_OBJECT:
@@ -3019,9 +3016,9 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_SUB] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data - store.valueAsNumber(b));
+                    return store.createNumber(a - store.valueAsNumber(b));
                     
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '-', b);
@@ -3033,9 +3030,9 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_DIV] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data / store.valueAsNumber(b));
+                    return store.createNumber(a / store.valueAsNumber(b));
                     
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '/', b);
@@ -3047,9 +3044,9 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_MULT] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data * store.valueAsNumber(b));
+                    return store.createNumber(a * store.valueAsNumber(b));
                     
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '*', b);
@@ -3062,7 +3059,7 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NOT] = function(a) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_BOOLEAN:
                     return store.createBoolean(!store.valueAsBoolean(a));
                     
@@ -3076,9 +3073,9 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NEGATE] = function(a) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(-a.data);
+                    return store.createNumber(-a);
                     
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '-()');
@@ -3090,9 +3087,9 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_NOT] = function(a) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(~(a.data));
+                    return store.createNumber(~(a));
                 
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '~');
@@ -3106,12 +3103,12 @@ const Matte = {
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_POUND] = function(a) {return vm_operatorOverloadOnly1("#", a);};
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_OR] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data | store.valueAsNumber(b));
+                    return store.createNumber(a | store.valueAsNumber(b));
 
                   case store.TYPE_BOOLEAN:
-                    return store.createBoolean(a.data | store.valueAsBoolean(b));
+                    return store.createBoolean(a | store.valueAsBoolean(b));
 
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '|');
@@ -3123,9 +3120,9 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_OR] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_BOOLEAN:
-                    return store.createBoolean(a.data || store.valueAsBoolean(b));
+                    return store.createBoolean(a || store.valueAsBoolean(b));
 
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '||');
@@ -3137,12 +3134,12 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_AND] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data & store.valueAsNumber(b));                
+                    return store.createNumber(a & store.valueAsNumber(b));                
                 
                   case store.TYPE_BOOLEAN:
-                    return store.createBoolean(a.data & store.valueAsBoolean(b));
+                    return store.createBoolean(a & store.valueAsBoolean(b));
 
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '&');
@@ -3154,9 +3151,9 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_AND] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_BOOLEAN:
-                    return store.createBoolean(a.data && store.valueAsBoolean(b));
+                    return store.createBoolean(a && store.valueAsBoolean(b));
 
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '&&');
@@ -3169,7 +3166,7 @@ const Matte = {
 
 
             const vm_operatorOverloadOnly2 = function(operator, a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, operator, b);
                   default:
@@ -3179,7 +3176,7 @@ const Matte = {
             };
 
             const vm_operatorOverloadOnly1 = function(operator, a) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, operator);
                   default:
@@ -3190,9 +3187,9 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_POW] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(Math.pow(a.data, store.valueAsNumber(b)));
+                    return store.createNumber(Math.pow(a, store.valueAsNumber(b)));
 
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator1(a, '**');
@@ -3205,29 +3202,31 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ] = function(a, b) {
-                if (b.binID == store.TYPE_EMPTY && a.binID != store.TYPE_EMPTY) {
+                const typ_a = valToType(a);
+                const typ_b = valToType(b);
+                if (typ_b == store.TYPE_EMPTY && typ_a != store.TYPE_EMPTY) {
                     return store.createBoolean(false);
                 }
-                switch(a.binID) {
+                switch(typ_a) {
                   case store.TYPE_EMPTY:
-                    return store.createBoolean(b.binID == 0);
+                    return store.createBoolean(typ_b == 0);
                     
                   case store.TYPE_NUMBER:
-                    return store.createBoolean(a.data == store.valueAsNumber(b));
+                    return store.createBoolean(a == store.valueAsNumber(b));
 
                   case store.TYPE_STRING:
-                    return store.createBoolean(a.data == store.valueAsString(b).data);
+                    return store.createBoolean(a == store.valueAsString(b));
 
                   case store.TYPE_BOOLEAN:
-                    return store.createBoolean(a.data == store.valueAsBoolean(b));
+                    return store.createBoolean(a == store.valueAsBoolean(b));
 
                   case store.TYPE_OBJECT:
                     if (vm_objectHasOperator(a, '==')) {
                         return vm_runObjectOperator2(a, '==', b);
                     } else {
-                        if (b.binID == 0) {
+                        if (typ_b == 0) {
                             return store.createBoolean(false);
-                        } else if (b.binID == store.TYPE_OBJECT) {
+                        } else if (typ_b == store.TYPE_OBJECT) {
                             return store.createBoolean(a === b);
                         } else {
                             vm.raiseErrorString("== operator with object and non-empty or non-object values is undefined.");
@@ -3235,7 +3234,7 @@ const Matte = {
                         }
                     }
                   case store.TYPE_TYPE:
-                    if (b.binID == a.binID) {
+                    if (typ_b == typ_a) {
                         return store.createBoolean(a.id == b.id);
                     } else {
                         vm.raiseErrorString("!= operator with Type and non-type is undefined.");
@@ -3249,30 +3248,33 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NOTEQ] = function(a, b) {
-                if (b.binID == store.TYPE_EMPTY && a.binID != store.TYPE_EMPTY) {
+                const typ_a = valToType(a);
+                const typ_b = valToType(b);
+
+                if (typ_b == store.TYPE_EMPTY && typ_a != store.TYPE_EMPTY) {
                     return store.createBoolean(true);
                 }
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_EMPTY:
-                    return store.createBoolean(b.binID != 0);
+                    return store.createBoolean(typ_b != 0);
                     
                   case store.TYPE_NUMBER:
-                    return store.createBoolean(a.data != store.valueAsNumber(b));
+                    return store.createBoolean(a != store.valueAsNumber(b));
 
                   case store.TYPE_STRING:
-                    return store.createBoolean(a.data != store.valueAsString(b).data);
+                    return store.createBoolean(a != store.valueAsString(b));
 
                   case store.TYPE_BOOLEAN:
-                    return store.createBoolean(a.data != store.valueAsBoolean(b));
+                    return store.createBoolean(a != store.valueAsBoolean(b));
 
 
                   case store.TYPE_OBJECT:
                     if (vm_objectHasOperator(a, '!=')) {
                         return vm_runObjectOperator2(a, '!=', b);
                     } else {
-                        if (b.binID == 0) {
+                        if (typ_b == 0) {
                             return store.createBoolean(true);
-                        } else if (b.binID == store.TYPE_OBJECT) {
+                        } else if (typ_b == store.TYPE_OBJECT) {
                             return store.createBoolean(a != b);
                         } else {
                             vm.raiseErrorString("!= operator with object and non-empty or non-object values is undefined.");
@@ -3280,7 +3282,7 @@ const Matte = {
                         }
                     }
                   case store.TYPE_TYPE:
-                    if (b.binID == a.binID) {
+                    if (typ_b == typ_a) {
                         return store.createBoolean(a.id != b.id);
                     } else {
                         vm.raiseErrorString("!= operator with Type and non-type is undefined.");
@@ -3296,13 +3298,13 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESS] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createBoolean(a.data < store.valueAsNumber(b));
+                    return store.createBoolean(a < store.valueAsNumber(b));
                     
                   case store.TYPE_STRING:
                     return store.createBoolean(
-                        a.data < store.valueAsString(b).data
+                        a < store.valueAsString(b)
                     );
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<", b);
@@ -3313,13 +3315,13 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATER] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createBoolean(a.data > store.valueAsNumber(b));
+                    return store.createBoolean(a > store.valueAsNumber(b));
                     
                   case store.TYPE_STRING:
                     return store.createBoolean(
-                        a.data > store.valueAsString(b).data
+                        a > store.valueAsString(b)
                     );
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">", b);
@@ -3331,13 +3333,13 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_LESSEQ] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createBoolean(a.data <= store.valueAsNumber(b));
+                    return store.createBoolean(a <= store.valueAsNumber(b));
                     
                   case store.TYPE_STRING:
                     return store.createBoolean(
-                        a.data <= store.valueAsString(b).data
+                        a <= store.valueAsString(b)
                     );
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<=", b);
@@ -3348,13 +3350,13 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_GREATEREQ] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createBoolean(a.data >= store.valueAsNumber(b));
+                    return store.createBoolean(a >= store.valueAsNumber(b));
                     
                   case store.TYPE_STRING:
                     return store.createBoolean(
-                        a.data >= store.valueAsString(b).data
+                        a >= store.valueAsString(b)
                     );
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">=", b);
@@ -3366,9 +3368,9 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_MODULO] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data % store.valueAsNumber(b));
+                    return store.createNumber(a % store.valueAsNumber(b));
                     
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '%', b);
@@ -3381,10 +3383,10 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_TYPESPEC] = function(a, b) {
-                switch(b.binID) {
+                switch(valToType(b)) {
                   case store.TYPE_TYPE:
                     if (!store.valueIsA(a, b)) {
-                        vm.raiseErrorString("Type specifier (=>) failure: expected value of type '"+store.valueTypeName(b).data+"', but received value of type '"+store.valueTypeName(store.valueGetType(a)).data+"'");
+                        vm.raiseErrorString("Type specifier (=>) failure: expected value of type '"+store.valueTypeName(b)+"', but received value of type '"+store.valueTypeName(store.valueGetType(a)).data+"'");
                     }
                     return a;
                   default:
@@ -3395,11 +3397,11 @@ const Matte = {
 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_CARET] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data ^ store.valueAsNumber(b));
+                    return store.createNumber(a ^ store.valueAsNumber(b));
                   case store.TYPE_BOOLEAN:
-                    return store.createBoolean(a.data ^ store.valueAsBoolean(b));
+                    return store.createBoolean(a ^ store.valueAsBoolean(b));
                     
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '^', b);
@@ -3411,9 +3413,9 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_LEFT] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data << store.valueAsNumber(b));
+                    return store.createNumber(a << store.valueAsNumber(b));
                     
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '<<', b);
@@ -3425,9 +3427,9 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_RIGHT] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data >> store.valueAsNumber(b));
+                    return store.createNumber(a >> store.valueAsNumber(b));
                     
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, '>>', b);
@@ -3449,9 +3451,9 @@ const Matte = {
         
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_ADD] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data + store.valueAsNumber(b));
+                    return store.createNumber(a + store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "+=", b);
                   default:
@@ -3462,9 +3464,9 @@ const Matte = {
             
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_SUB] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data - store.valueAsNumber(b));
+                    return store.createNumber(a - store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "-=", b);
                   default:
@@ -3474,9 +3476,9 @@ const Matte = {
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_DIV] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data / store.valueAsNumber(b));
+                    return store.createNumber(a / store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "/=", b);
                   default:
@@ -3486,9 +3488,9 @@ const Matte = {
             };            
             
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_MULT] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data * store.valueAsNumber(b));
+                    return store.createNumber(a * store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "*=", b);
                   default:
@@ -3498,9 +3500,9 @@ const Matte = {
             };            
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_MOD] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data % store.valueAsNumber(b));
+                    return store.createNumber(a % store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "%=", b);
                   default:
@@ -3510,9 +3512,9 @@ const Matte = {
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_POW] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(Math.pow(a.data, store.valueAsNumber(b)));
+                    return store.createNumber(Math.pow(a, store.valueAsNumber(b)));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "**=", b);
                   default:
@@ -3522,9 +3524,9 @@ const Matte = {
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_AND] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data & store.valueAsNumber(b));
+                    return store.createNumber(a & store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "&=", b);
                   default:
@@ -3534,9 +3536,9 @@ const Matte = {
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_OR] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data | store.valueAsNumber(b));
+                    return store.createNumber(a | store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "|=", b);
                   default:
@@ -3546,9 +3548,9 @@ const Matte = {
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_XOR] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data ^ store.valueAsNumber(b));
+                    return store.createNumber(a ^ store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "^=", b);
                   default:
@@ -3558,9 +3560,9 @@ const Matte = {
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data << store.valueAsNumber(b));
+                    return store.createNumber(a << store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, "<<=", b);
                   default:
@@ -3570,9 +3572,9 @@ const Matte = {
             };                 
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT] = function(a, b) {
-                switch(a.binID) {
+                switch(valToType(a)) {
                   case store.TYPE_NUMBER:
-                    return store.createNumber(a.data >> store.valueAsNumber(b));
+                    return store.createNumber(a >> store.valueAsNumber(b));
                   case store.TYPE_OBJECT:
                     return vm_runObjectOperator2(a, ">>=", b);
                   default:
@@ -3597,11 +3599,7 @@ const Matte = {
             
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_PRF] = function(frame, inst) {
                 const v = vm_stackframeGetReferrable(0, Math.floor(inst.data));
-                if (v) {
-                    frame.valueStack.push(v);
-                } else {
-                    vm.raiseErrorString("VM Error: Tried to push non-existant referrable.");                
-                }
+                frame.valueStack.push(v);
             };
 
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_PNR] = function(frame, inst) {
@@ -3785,11 +3783,11 @@ const Matte = {
                         var key = frame.valueStack[frame.valueStack.length - 1 - i];
                         var value = frame.valueStack[frame.valueStack.length - 2 - i]
 
-                        if (key.binID == store.TYPE_STRING) {
+                        if (valToType(key) == store.TYPE_STRING) {
                             argNames.push(key);
                             args.push(value);
                             
-                        } else if (value.binID == vm_CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING) {
+                        } else if (valToType(value) == vm_CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING) {
                             isDynBind = true;
                         } else {
                             break;
@@ -3831,42 +3829,37 @@ const Matte = {
                 const op = Math.floor(inst.data / 0xffffffff);
                 
                 const ref = vm_stackframeGetReferrable(0, refn);
-                if (ref) {
-                    const v = frame.valueStack[frame.valueStack.length-1];
-                    var vOut;
-                    switch(op + vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE) {
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE:
-                        vOut = v;
+                const v = frame.valueStack[frame.valueStack.length-1];
+                var vOut;
+                switch(op + vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE) {
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE:
+                    vOut = v;
+                    vm_stackframeSetReferrable(0, refn, vOut);                    
+                    break;
+                    
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_ADD:
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_SUB:
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_MULT:
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_DIV: 
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_MOD:
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_POW:
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_AND:
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_OR: 
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_XOR: 
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT: 
+                  case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT: 
+                    vOut = vm_operatorFunc[op + vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE](ref, v); 
+                    if (valToType(ref) != store.TYPE_OBJECT)
                         vm_stackframeSetReferrable(0, refn, vOut);                    
-                        break;
-                        
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_ADD:
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_SUB:
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_MULT:
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_DIV: 
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_MOD:
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_POW:
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_AND:
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_OR: 
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_XOR: 
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT: 
-                      case vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT: 
-                        vOut = vm_operatorFunc[op + vm_operator.MATTE_OPERATOR_ASSIGNMENT_NONE](ref, v); 
-                        if (ref.binID != store.TYPE_OBJECT)
-                            vm_stackframeSetReferrable(0, refn, vOut);                    
 
-                        break;
-                        
-                      default:
-                        vOut = store.createEmpty();
-                        vm.raiseErrorString("VM error: tried to access non-existent referrable operation (corrupt bytecode?).");
-                    }
-                    frame.valueStack.pop();
-                    frame.valueStack.push(vOut);
-
-                } else {
-                    vm.raiseErrorString("VM error: tried to access non-existent referrable.");
+                    break;
+                    
+                  default:
+                    vOut = store.createEmpty();
+                    vm.raiseErrorString("VM error: tried to access non-existent referrable operation (corrupt bytecode?).");
                 }
+                frame.valueStack.pop();
+                frame.valueStack.push(vOut);
             };
             
             
@@ -3935,7 +3928,7 @@ const Matte = {
                         out = vm_operatorFunc[opr](ref, val); 
                     }
                     
-                    if (!isDirect || val.binID != store.TYPE_OBJECT) {
+                    if (!isDirect || valToType(val) != store.TYPE_OBJECT) {
                         store.valueObjectSet(object, key, out, isBracket);
                     }
                     frame.valueStack.pop();
@@ -3962,7 +3955,7 @@ const Matte = {
                 
                 if (output) {
                     const stub = store.valueGetBytecodeStub(output);
-                    if (stub && stub.isDynamicBinding && key.binID == store.TYPE_STRING) {
+                    if (stub && stub.isDynamicBinding && valToType(key) == store.TYPE_STRING) {
                         frame.valueStack.push(object);
                         frame.valueStack.push(store.getDynamicBindToken());
                         
@@ -4018,7 +4011,7 @@ const Matte = {
             };
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_FVR] = function(frame, inst) {
                 const a = frame.valueStack[frame.valueStack.length-1];
-                if (!(a.binID == store.TYPE_OBJECT && a.function_stub)) {
+                if (!(valToType(a) == store.TYPE_OBJECT && a.function_stub)) {
                     vm.raiseErrorString("'forever' requires the trailing expression to be a function.");
                     frame.valueStack.pop();
                     return;                    
@@ -4033,13 +4026,13 @@ const Matte = {
                 const a = frame.valueStack[frame.valueStack.length-2];
                 const b = frame.valueStack[frame.valueStack.length-1];
 
-                if (!(b.binID == store.TYPE_OBJECT && b.function_stub)) {
+                if (!(valToType(b) == store.TYPE_OBJECT && b.function_stub)) {
                     frame.valueStack.pop();
                     frame.valueStack.pop();
                     vm.raiseErrorString("'foreach' requires the trailing expression to be a function.");
                     return;        
                 }
-                if (!(b.binID == store.TYPE_OBJECT)) {
+                if (!(valToType(b) == store.TYPE_OBJECT)) {
                     frame.valueStack.pop();
                     frame.valueStack.pop();
                     vm.raiseErrorString("'for' requires an object.");
@@ -4056,7 +4049,7 @@ const Matte = {
                 const to   = frame.valueStack[frame.valueStack.length-2];
                 const v    = frame.valueStack[frame.valueStack.length-1];
 
-                if (!(v.binID == store.TYPE_OBJECT && v.function_stub)) {
+                if (!(valToType(v) == store.TYPE_OBJECT && v.function_stub)) {
                     vm.raiseErrorString("'for' requires the trailing expression to be a function.");
                     frame.valueStack.pop();
                     frame.valueStack.pop();
@@ -4117,7 +4110,7 @@ const Matte = {
                 const output = store.valueQuery(o, inst.data);
                 frame.valueStack.pop();
                 frame.valueStack.push(output);
-                if (output.binID == store.TYPE_OBJECT && output.function_stub != undefined) {
+                if (valToType(output) == store.TYPE_OBJECT && output.function_stub != undefined) {
                     frame.valueStack.push(o);
                     frame.valueStack.push(vm_specialString_base);                    
                 }
@@ -4193,11 +4186,11 @@ const Matte = {
             
             
             vm_addBuiltIn(vm.EXT_CALL.IMPORT, ['module', 'parameters'], function(fn, args) {
-                return vm.import(store.valueAsString(args[0]).data, args[1]);
+                return vm.import(store.valueAsString(args[0]), args[1]);
             });
             
             vm_addBuiltIn(vm.EXT_CALL.PRINT, ['message'], function(fn, args) {
-                onPrint(store.valueAsString(args[0]).data);
+                onPrint(store.valueAsString(args[0]));
                 return store.createEmpty();
             });
             
@@ -4214,7 +4207,7 @@ const Matte = {
             });
             
             vm_addBuiltIn(vm.EXT_CALL.GETEXTERNALFUNCTION, ['name'], function(fn, args) {
-                const str = store.valueAsString(args[0]).data;
+                const str = store.valueAsString(args[0]);
                 if (vm_pendingCatchable) {
                     return store.createEmpty();
                 }
@@ -4238,7 +4231,7 @@ const Matte = {
 
             vm_addBuiltIn(vm.EXT_CALL.NUMBER_PARSE, ['string'], function(fn, args) {
                 const aconv = store.valueAsString(args[0]);
-                const p = Number.parseFloat(aconv.data);
+                const p = Number.parseFloat(aconv);
                 if (Number.isNaN(p)) {
                     vm.raiseErrorString("Could not interpret String as a Number");
                 } else {
@@ -4254,16 +4247,16 @@ const Matte = {
 
             //// strings
             vm_addBuiltIn(vm.EXT_CALL.STRING_COMBINE, ["strings"], function(fn, args) {
-                if (args[0].binID != store.TYPE_OBJECT) {
+                if (valToType(args[0]) != store.TYPE_OBJECT) {
                     vm.raiseErrorString( "Expected Object as parameter for string combination. (The object should contain string values to combine).");
                     return store.createEmpty();
                 }
                 
-                const index = store.createNumber(0);
+                var index = store.createNumber(0);
                 const len = store.valueObjectGetNumberKeyCount(args[0]);
                 var str = "";
-                for(; index.data < len; ++index.data) {
-                    str += store.valueAsString(store.valueObjectAccessIndex(args[0], index.data)).data;
+                for(; index < len; ++index) {
+                    str += store.valueAsString(store.valueObjectAccessIndex(args[0], index));
                 }
                 
                 return store.createString(str);
@@ -4304,7 +4297,7 @@ const Matte = {
             });
 
             const ensureArgObject = function(args) {
-                if (args[0].binID != store.TYPE_OBJECT) {
+                if (valToType(args[0]) != store.TYPE_OBJECT) {
                     vm.raiseErrorString("Built-in Object function expects a value of type Object to work with.");
                     return 0;
                 }
@@ -4352,10 +4345,10 @@ const Matte = {
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REMOVE, ['base', 'key', 'keys'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
-                if (args[1].binID) {
+                if (valToType(args[1])) {
                     store.valueObjectRemoveKey(args[0], args[1])
-                } else if (args[2].binID) {
-                    if (args[2].binID != store.TYPE_OBJECT) {
+                } else if (valToType(args[2])) {
+                    if (valToType(args[2]) != store.TYPE_OBJECT) {
                         vm.raiseErrorString("'keys' for remove query requires argument to be an Object.");
                         return store.createEmpty();
                     }                
@@ -4370,7 +4363,7 @@ const Matte = {
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETATTRIBUTES, ['base', 'attributes'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
-                if (args[1].binID != store.TYPE_OBJECT) {
+                if (valToType(args[1]) != store.TYPE_OBJECT) {
                     vm.raiseErrorString("'setAttributes' requires an Object to be the 'attributes'");
                     return store.createEmpty();
                 }
@@ -4380,8 +4373,8 @@ const Matte = {
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SORT, ['base', 'comparator'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
-                if (store.binID == store.TYPE_OBJECT && store.function_stub) {
-                    vm.raiseErrorString("A function comparator is required for sorting.h");
+                if (valToType(args[1]) == store.TYPE_OBJECT && store.function_stub) {
+                    vm.raiseErrorString("A function comparator is required for sorting.");
                     return store.createEmpty();
                 }
                 store.valueObjectSortUnsafe(args[0], args[1]);
@@ -4420,15 +4413,15 @@ const Matte = {
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FINDINDEX, ['base', 'value', 'query'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.createEmpty();
-                if (args[1].binID != store.TYPE_EMPTY &&
-                    args[2].binID != store.TYPE_EMPTY) {
+                if (valToType(args[1]) != store.TYPE_EMPTY &&
+                    valToType(args[2]) != store.TYPE_EMPTY) {
                     vm.raiseErrorString("findIndex() cannot have both 'value' and 'query' specified.");
                     return store.createEmpty();                    
                 }
 
                 const len = store.valueObjectGetNumberKeyCount(args[0]);
 
-                if (args[2].binID != store.TYPE_EMPTY) {
+                if (valToType(args[2]) != store.TYPE_EMPTY) {
                     const names = [vm_specialString_value];
                     const vals = [];
                     if (!store.valueIsCallable(args[2])) {
@@ -4540,7 +4533,7 @@ const Matte = {
 
             const vm_extCall_forRestartCondition_up = function(frame, res, data) {
                 const d = data;
-                if (res.binID != 0) {
+                if (res != undefined) {
                     d.i = store.valueAsNumber(res);
                 } else {
                     d.i += d.offset;
@@ -4558,7 +4551,7 @@ const Matte = {
 
             const vm_extCall_forRestartCondition_down = function(frame, res, data) {
                 const d = data;
-                if (res.binID != 0) {
+                if (res != undefined) {
                     d.i = store.valueAsNumber(res);
                 } else {
                     d.i += d.offset;
@@ -4596,7 +4589,7 @@ const Matte = {
             
 
             const ensureArgString = function(args) {
-                if (args[0].binID != store.TYPE_STRING) {
+                if (valToType(args[0]) != store.TYPE_STRING) {
                     vm.raiseErrorString("Built-in String function expects a value of type String to work with.");
                     return 0;
                 }
@@ -4610,15 +4603,15 @@ const Matte = {
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SEARCH, ['base', 'key'], function(fn, args) {
                 if (!ensureArgString(args)) return store.createEmpty();
                 const str2 = store.valueAsString(args[1]);
-                if (str2.data == '') return store.createNumber(-1);
-                return store.createNumber(args[0].data.indexOf(str2.data));
+                if (str2 == '') return store.createNumber(-1);
+                return store.createNumber(args[0].indexOf(str2));
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_CONTAINS, ['base', 'key'], function(fn, args) {
                 if (!ensureArgString(args)) return store.createEmpty();
                 const str2 = store.valueAsString(args[1]);
-                if (str2.data == '') return store.createBoolean(false);
-                return store.createBoolean(args[0].data.indexOf(str2.data) != -1);
+                if (str2 == '') return store.createBoolean(false);
+                return store.createBoolean(args[0].indexOf(str2) != -1);
             });
 
 
@@ -4627,16 +4620,16 @@ const Matte = {
                 const str2 = store.valueAsString(args[1]);
                 
                 const outArr = [];
-                var str = args[0].data;
+                var str = args[0];
                 var at = 0;
                 while(true) {
-                    const index = str.indexOf(str2.data);
+                    const index = str.indexOf(str2);
                     if (index == -1) {
                         break;
                     }
                     outArr.push(store.createNumber(at+index));
-                    at += index+str2.data.length;
-                    str = str.substring(index+str2.data.length, str.length);
+                    at += index+str2.length;
+                    str = str.substring(index+str2.length, str.length);
                 }
                 
                 return store.createObjectArray(outArr);
@@ -4649,13 +4642,13 @@ const Matte = {
                 const strs = (args[3]);
                 
                 
-                if (str2.binID) {      
-                    return store.createString(args[0].data.replaceAll(str2.data, str3.data));
+                if (str2 != undefined) {      
+                    return store.createString(args[0].replaceAll(str2, str3));
                 } else {
-                    var strOut = args[0].data;
+                    var strOut = args[0];
                     const len = store.valueObjectGetNumberKeyCount(strs);
                     for(var i = 0; i < len; ++i) {
-                        strOut = strOut.replaceAll(store.valueAsString(store.valueObjectAccessIndex(strs, i)).data, str3.data);                
+                        strOut = strOut.replaceAll(store.valueAsString(store.valueObjectAccessIndex(strs, i)), str3);                
                     };
                     return store.createString(strOut);
                 }
@@ -4666,14 +4659,14 @@ const Matte = {
                 if (!ensureArgString(args)) return store.createEmpty();
                 const items = args[1];
                 
-                if (items.binID != store.TYPE_OBJECT) {
+                if (valToType(items) != store.TYPE_OBJECT) {
                     vm.raiseErrorString("items array input must be an object.");
                     return 0;                    
                 }
                 
 
                 const len = store.valueObjectGetNumberKeyCount(items);
-                var input = args[0].data;
+                var input = args[0];
                 var output = '';
                 var iter = 0;
 
@@ -4697,7 +4690,7 @@ const Matte = {
                                     i--; // backup for next.
                                 const index = Number.parseInt(number);
                                 if (index >= 0 && index < len) {
-                                    output += store.valueAsString(store.valueObjectAccessIndex(items, index)).data
+                                    output += store.valueAsString(store.valueObjectAccessIndex(items, index))
                                 }
                             } else {
                                 output += input[i];                            
@@ -4718,14 +4711,14 @@ const Matte = {
                 if (!ensureArgString(args)) return store.createEmpty();
                 const str2 = store.valueAsString(args[1]);    
 
-                var str = args[0].data;
+                var str = args[0];
                 var count = 0;
                 while(true) {
-                    if (str.indexOf(str2.data) == -1)
+                    if (str.indexOf(str2) == -1)
                         break;
                         
                     count ++;
-                    str = str.replace(str2.data, '');
+                    str = str.replace(str2, '');
                 }           
                 return store.createNumber(count); 
             });
@@ -4733,13 +4726,13 @@ const Matte = {
             vm_addBuiltIn(vm.EXT_CALL.QUERY_CHARCODEAT, ['base', 'index'], function(fn, args) {
                 if (!ensureArgString(args)) return store.createEmpty();
                 const index = store.valueAsNumber(args[1]);
-                return store.createNumber(args[0].data.charCodeAt(index));
+                return store.createNumber(args[0].charCodeAt(index));
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_CHARAT, ['base', 'index'], function(fn, args) {
                 if (!ensureArgString(args)) return store.createEmpty();
                 const index = store.valueAsNumber(args[1]);
-                return store.createString(args[0].data.charAt(index));
+                return store.createString(args[0].charAt(index));
             });
 
 
@@ -4748,7 +4741,7 @@ const Matte = {
                 const index = store.valueAsNumber(args[1]);
                 const val = store.valueAsNumber(args[2]);
                 
-                var str = args[0].data;
+                var str = args[0];
                 return store.createString(str.substring(0, index) + String.fromCharCode(val) + str.substring(index + 1));                
             });
 
@@ -4758,15 +4751,15 @@ const Matte = {
                 const index = store.valueAsNumber(args[1]);
                 const val = store.valueAsString(args[2]);
                 
-                var str = args[0].data;
-                return store.createString(str.substring(0, index) + val.data + str.substring(index + 1));                
+                var str = args[0];
+                return store.createString(str.substring(0, index) + val + str.substring(index + 1));                
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REMOVECHAR, ['base', 'index'], function(fn, args) {
                 if (!ensureArgString(args)) return store.createEmpty();
                 const index = store.valueAsNumber(args[1]);
                 
-                var str = args[0].data;
+                var str = args[0];
                 return store.createString(str.substring(0, index) + str.substring(index + 1));                
             });
 
@@ -4775,14 +4768,14 @@ const Matte = {
                 const from = store.valueAsNumber(args[1]);
                 const to   = store.valueAsNumber(args[2]);
 
-                var str = args[0].data;
+                var str = args[0];
                 return store.createString(str.substring(from, to+1));                
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SPLIT, ['base', 'token'], function(fn, args) {
                 if (!ensureArgString(args)) return store.createEmpty();
-                const token = store.valueAsString(args[1]).data;
-                const results = args[0].data.split(token);
+                const token = store.valueAsString(args[1]);
+                const results = args[0].split(token);
                 for(var i = 0; i < results.length; ++i) {
                     results[i] = store.createString(results[i]);
                 }
@@ -4793,10 +4786,10 @@ const Matte = {
                 if (!ensureArgString(args)) return store.createEmpty();
 
                 // this is not a good method.
-                var exp = store.valueAsString(args[1]).data;
+                var exp = store.valueAsString(args[1]);
                 exp = exp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 exp = exp.replaceAll('\\[%\\]', '(.*)');
-                const strs = args[0].data.match(new RegExp(exp, "i"));
+                const strs = args[0].match(new RegExp(exp, "i"));
                 
                 if (strs == null || strs.length == 0) {
                     return store.createObject();
@@ -4819,10 +4812,10 @@ const Matte = {
             const obj = args[0];
             
             const encode = function(val) {
-                switch(val.binID) {
-                  case store.TYPE_NUMBER: return val.data; break;
-                  case store.TYPE_STRING: return val.data; break;
-                  case store.TYPE_BOOLEAN: return val.data; break;
+                switch(valToType(val)) {
+                  case store.TYPE_NUMBER: return val; break;
+                  case store.TYPE_STRING: return val; break;
+                  case store.TYPE_BOOLEAN: return val; break;
                   case store.TYPE_EMPTY: return null;
                   case store.TYPE_OBJECT: return (function(){
                     if (store.valueObjectGetKeyCount(val) != store.valueObjectGetNumberKeyCount(val)) {
@@ -4834,7 +4827,7 @@ const Matte = {
                         for(var i = 0; i < len; ++i) {
                             const key = store.valueObjectAccessIndex(keys, i);
                             const value = store.valueObjectAccessIndex(vals, i);
-                            if (key.binID == store.TYPE_OBJECT)
+                            if (valToType(key) == store.TYPE_OBJECT)
                                 continue;
                             out[encode(key)] = encode(value);
                         }
@@ -4856,7 +4849,7 @@ const Matte = {
             return store.createString(str);
         });
         vm.setExternalFunction('__matte_::json_decode', ['a'], function(fn, args) {
-            const object = JSON.parse(args[0].data);
+            const object = JSON.parse(args[0]);
             
             const decode = function(js) {
                 switch(typeof js) {
