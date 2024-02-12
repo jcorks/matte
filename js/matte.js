@@ -1376,6 +1376,10 @@ const Matte = {
                 
                 
                 valueObjectForeach : function(value, func) {
+                    if (valToType(value) != TYPE_OBJECT) {
+                        vm.raiseErrorString("Cannot foreach on something that isn't an object.");
+                        return store.createEmpty();
+                    }                    
                     if (value.table_attribSet) {
                         const set = store.valueObjectAccess(value.table_attribSet, store_specialString_foreach, 0);
                         if (set != undefined) {
