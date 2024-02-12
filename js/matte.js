@@ -4810,6 +4810,7 @@ const Matte = {
         
         vm.setExternalFunction('__matte_::json_encode', ['a'], function(fn, args) {
             const obj = args[0];
+            const valToType = store.valToType;
             
             const encode = function(val) {
                 switch(valToType(val)) {
@@ -4850,6 +4851,7 @@ const Matte = {
         });
         vm.setExternalFunction('__matte_::json_decode', ['a'], function(fn, args) {
             const object = JSON.parse(args[0]);
+            const valToType = store.valToType;
             
             const decode = function(js) {
                 switch(typeof js) {
