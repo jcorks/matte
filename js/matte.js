@@ -3705,7 +3705,7 @@ const Matte = {
                 const p = frame.valueStack.pop();
                 const target = frame.valueStack[frame.valueStack.length-1];
                 const len = store.valueObjectGetNumberKeyCount(p);
-                var keylen = store.valueObjectGetNumberKeyCount(p);
+                var keylen = store.valueObjectGetNumberKeyCount(target);
                 for(var i = 0; i < len; ++i) {
                     store.valueObjectInsert(
                         target, 
