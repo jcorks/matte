@@ -34,123 +34,147 @@ DEALINGS IN THE SOFTWARE.
 #include <inttypes.h>
 #include <math.h>
 
-static void encode_value__clean_string(matteString_t * str) {
-    uint32_t len = matte_string_get_length(str);
-    uint32_t i;
-    for(i = 0; i < len; ++i) {
-        if (matte_string_get_char(str, i) == '\\') {
-            uint32_t ch = '\\';
-            matte_string_insert_n_chars(str, i, &ch, 1);
-            len++;
-            i++;
-        } 
+static uint32_t utf8_next_char(uint8_t ** source) {
+    uint8_t * iter = *source;
+    uint32_t val = (*source)[0];
+    if (val < 128 && *iter) {
+        val = (iter[0]) & 0x7F;
+        (*source)++;
+        return val;
+    } else if (val < 224 && *iter && iter[1]) {
+        val = ((iter[0] & 0x1F)<<6) + (iter[1] & 0x3F);
+        (*source)+=2;
+        return val;
+    } else if (val < 240 && *iter && iter[1] && iter[2]) {
+        val = ((iter[0] & 0x0F)<<12) + ((iter[1] & 0x3F)<<6) + (iter[2] & 0x3F);
+        (*source)+=3;
+        return val;
+    } else if (*iter && iter[1] && iter[2] && iter[3]) {
+        val = ((iter[0] & 0x7)<<18) + ((iter[1] & 0x3F)<<12) + ((iter[2] & 0x3F)<<6) + (iter[3] & 0x3F);
+        (*source)+=4;
+        return val;
     }
+    return 0;
+}
 
-    for(i = 0; i < len; ++i) {
-        if (matte_string_get_char(str, i) == '"') {
-            uint32_t ch = '\\';
-            matte_string_insert_n_chars(str, i, &ch, 1);
-            len++;
-            i++;
-        } 
+static void push_char_buffer(matteArray_t * buffer, uint32_t ch) {
+    matte_array_push(buffer, ch);
+}
+
+static void push_cstr_buffer(matteArray_t * buffer, const char * str) {
+    while(*str) {
+        uint32_t next = utf8_next_char((uint8_t**)&str);
+        matte_array_push(buffer, next);
     }
 }
 
-static matteString_t * encode_value(matteStore_t * store, matteValue_t val) {
+static void push_cstr_buffer_cleaned(matteArray_t * buffer, const char * str) {
+    while(*str) {
+        uint32_t next = utf8_next_char((uint8_t**)&str);
+        if (next == '\\') {
+            matte_array_push(buffer, next);  
+        }
+        
+        if (next == '"') {
+            uint32_t n = '\\';
+            matte_array_push(buffer, n);   
+        }
+        matte_array_push(buffer, next);
+    }
+}
+
+
+static void push_double_buffer(matteArray_t * buffer, double val) {
+    static char tempstr[128];
+    
+    if (fabs(val - (int64_t)val) < DBL_EPSILON) {
+        sprintf(tempstr, "%" PRId64 "", (int64_t)val);
+    } else {
+        sprintf(tempstr, "%.15g", val);        
+    }
+    
+    push_cstr_buffer(buffer, tempstr);
+}
+
+
+static void encode_value(matteStore_t * store, matteValue_t val, matteArray_t * buffer) {
     switch(val.binID) {
       case MATTE_VALUE_TYPE_BOOLEAN: 
-        return matte_string_create_from_c_str("%s", matte_value_as_boolean(store, val) == 1 ? "true" : "false");
-        
+        push_cstr_buffer(buffer, matte_value_as_boolean(store, val) == 1 ? "true" : "false");
+        break;        
     
       case MATTE_VALUE_TYPE_NUMBER: 
-        if (fabs(val.value.number - (int64_t)val.value.number) < DBL_EPSILON) {
-            return matte_string_create_from_c_str("%" PRId64 "", (int64_t)val.value.number);                
-        } else {
-            return matte_string_create_from_c_str("%.15g", val.value.number);        
-        }
+        push_double_buffer(buffer, val.value.number);
+        break;
 
       case MATTE_VALUE_TYPE_STRING: {
-        matteString_t * clean = matte_string_clone(matte_value_string_get_string_unsafe(store, val));
-        encode_value__clean_string(clean);
-        matteString_t * out = matte_string_create_from_c_str("\"%s\"", matte_string_get_c_str(clean));
-        matte_string_destroy(clean);
-        return out;
+        push_char_buffer(buffer, '"');
+        push_cstr_buffer_cleaned(buffer, matte_string_get_c_str(matte_value_string_get_string_unsafe(store, val)));
+        push_char_buffer(buffer, '"');
+        break;
       }        
       case MATTE_VALUE_TYPE_EMPTY:
-        return matte_string_create_from_c_str("null");
+        push_cstr_buffer(buffer, "null");
+        break;
         
       case MATTE_VALUE_TYPE_OBJECT: {
         matteString_t * out = matte_string_create();
         // if is array
         if (matte_value_object_get_key_count(store, val) == matte_value_object_get_number_key_count(store, val)) {
-            matte_string_append_char(out, '[');
-            
+            push_char_buffer(buffer, '[');
             uint32_t len = matte_value_object_get_key_count(store, val);
             uint32_t i;
             for(i = 0; i < len; ++i) {
                 if (i != 0)
-                    matte_string_append_char(out, ',');
+                    push_char_buffer(buffer, ',');
 
                 matteValue_t * subval = matte_value_object_array_at_unsafe(store, val, i);
-                matteString_t * substr = encode_value(store, *subval);
-                matte_string_concat(out, substr);
-                matte_string_destroy(substr);
+                encode_value(store, *subval, buffer);
             }
             
-            matte_string_append_char(out, ']');            
+            push_char_buffer(buffer, ']');
         } else {
             matteValue_t keys = matte_value_object_keys(store, val);
             
             uint32_t len = matte_value_object_get_key_count(store, keys);
             uint32_t i;
-            matte_string_append_char(out, '{');
+            push_char_buffer(buffer, '{');
             
             for(i = 0; i < len; ++i) {
                 matteValue_t * key = matte_value_object_array_at_unsafe(store, keys, i);
                 if (key->binID != MATTE_VALUE_TYPE_STRING) continue;
 
                 if (i != 0)
-                    matte_string_append_char(out, ',');
+                    push_char_buffer(buffer, ',');
                     
                     
                 // key
-                matteString_t * keystr = matte_string_clone(matte_value_string_get_string_unsafe(store, *key));
-                encode_value__clean_string(keystr);
-                matte_string_concat_printf(
-                    out,
-                    "\"%s\"", matte_string_get_c_str(keystr)
-                );                
-                matte_string_destroy(keystr);
-                
-                
-                matte_string_append_char(out, ':');
+                push_char_buffer(buffer, '"');
+                push_cstr_buffer_cleaned(buffer, matte_string_get_c_str(matte_value_string_get_string_unsafe(store, *key)));
+                push_char_buffer(buffer, '"');
+                push_char_buffer(buffer, ':');
 
 
                 // value;
                 matteValue_t keyval = matte_value_object_access(store, val, *key, 1);
-                matteString_t * keyvalstr = encode_value(store, keyval);
-                matte_string_concat(out, keyvalstr);
-                matte_string_destroy(keyvalstr);
+                encode_value(store, keyval, buffer);
             }
-            matte_string_append_char(out, '}');
+            push_char_buffer(buffer, '}');
         }
-        return out;      
       }
-        
     }
-    
-    return matte_string_create_from_c_str("");
 }
 
 MATTE_EXT_FN(matte_json__encode) {
     matteStore_t * store = matte_vm_get_store(vm);
-    matteString_t * str = encode_value(store, args[0]);   
+    matteArray_t * arr = matte_array_create(sizeof(uint32_t));
+    encode_value(store, args[0], arr);    
+    matteString_t * str = matte_string_create_from_array_xfer(arr);
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_string(store, &out, str);
     matte_string_destroy(str);
     return out;
 }
-
 typedef struct{
     int index;
     matteString_t * str;

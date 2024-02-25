@@ -46,20 +46,25 @@ DEALINGS IN THE SOFTWARE.
 #define TRUE 1
 #define FALSE 0
 
-#define table_bucket_start_size 16      
-#define table_bucket_max_size 32        //<- larger than this triggers resize
-
+#define table_bucket_start_size 8      
+#define table_bucket_fill_rate 0.80       //<- larger than this triggers resize
+#define table_bucket_fill_amount 16
 
 // holds an individual key-value pair
 typedef struct matteTableEntry_t matteTableEntry_t;
 struct matteTableEntry_t {
-    matteTableEntry_t * next;
-    uint32_t hash;
     int keyLen;
     void * value;
     void * key;
 };
 
+
+typedef struct matteTableBucket_t matteTableBucket_t;
+struct matteTableBucket_t {
+    matteTableEntry_t * entries;
+    uint32_t size;
+    uint32_t alloc;
+};
 
 
 
@@ -81,7 +86,9 @@ struct matteTable_t {
     uint32_t nBuckets;
 
     // actual buckets
-    matteTableEntry_t ** buckets;
+    matteTableBucket_t * buckets;
+    
+    uint32_t bucketsFilled;
 
 
 
@@ -118,6 +125,9 @@ struct matteTableIter_t {
 
     // current bucket in reference
     uint32_t currentBucketID;
+    
+    // current bucket index;
+    uint32_t currentBucketIndex;
 
     // whether the iterator has reached the end.
     int isEnd;
@@ -161,7 +171,30 @@ static int key_cmp_fn_matte_str(const void * a, const void * b, uint32_t len) {
     return matte_string_test_eq((matteString_t*)a, (matteString_t*)b);
 }
 
+static void bucket_add(matteTableBucket_t * bucket, matteTableEntry_t entry) {
+    // for now...
+    if (bucket->size + 1 > bucket->alloc) {
+        uint32_t oldSize = bucket->alloc;
+        matteTableEntry_t * oldEntries = bucket->entries;
+        
+        if (bucket->alloc == 0) bucket->alloc = 1;
+        else                    bucket->alloc *= 2;
+        
+        bucket->entries = matte_allocate(bucket->alloc*sizeof(matteTableEntry_t));
+        uint32_t i;
+        for(i = 0; i < oldSize; ++i)
+            bucket->entries[i] = oldEntries[i];
+        matte_deallocate(oldEntries);
+    }
+    
+    
+    bucket->entries[bucket->size++] = entry;
+}
 
+static void bucket_remove(matteTableBucket_t * bucket, uint32_t i) {
+    bucket->entries[i] = bucket->entries[bucket->size-1];
+    bucket->size--;
+}
 
 
 
@@ -194,7 +227,7 @@ static void matte_table_resize(matteTable_t * t) {
     #ifdef MATTE_DEBUG
         assert(t && "matteTable_t pointer cannot be NULL.");
     #endif
-    matteTableEntry_t ** entries = (matteTableEntry_t**)matte_allocate(sizeof(matteTableEntry_t*)*t->size);
+    matteTableBucket_t * buckets;
     matteTableEntry_t * entry;
     matteTableEntry_t * next;
     matteTableEntry_t * prev;
@@ -204,45 +237,34 @@ static void matte_table_resize(matteTable_t * t) {
 
 
     // first, gather ALL key-value pairs
-    memset(&iter, 0, sizeof(matteTableIter_t));
-    matte_table_iter_start(&iter, t);
-    for(; !matte_table_iter_is_end(&iter); matte_table_iter_proceed(&iter)) {
-        entries[nEntries++] = iter.current;
-    }
+    buckets = t->buckets;
+    nEntries = t->nBuckets;
     
 
     // then resize
-    t->nBuckets *= 1.4;
-    matte_deallocate(t->buckets);
-    t->buckets = (matteTableEntry_t**)matte_allocate(t->nBuckets * sizeof(matteTableEntry_t*));
-
+    t->nBuckets *= 2;
+    t->buckets = (matteTableBucket_t*)matte_allocate(t->nBuckets * sizeof(matteTableBucket_t));
+    t->bucketsFilled = 0;
 
     // redistribute in-place
+    uint32_t n;
+    matteTableBucket_t * bucket;
     for(i = 0; i < nEntries; ++i) {
-        entry = entries[i];
-        entry->next = NULL;
+        bucket = buckets+i;
+        for(n = 0; n < bucket->size; ++n) {
+            entry = bucket->entries+n;
+            uint32_t keyLen = t->keyLen == -1 ? strlen((char*)entry->key)+1 : t->keyLen == -2 ? 0 : t->keyLen;
+            uint32_t hash = t->hash(entry->key, keyLen);
+            index = hash_to_index(t, hash);
 
-        index = hash_to_index(t, entry->hash);
-
-
-        next = t->buckets[index];
-        prev = NULL;    
-        while(next) {
-            prev = next;
-            next = next->next;
+            matteTableBucket_t * next = t->buckets+index;
+            if (next->size == table_bucket_fill_amount)
+                t->bucketsFilled ++;
+            bucket_add(next, *entry);
         }
-
-
-        if (next == prev) {
-            t->buckets[index] = entry;
-        } else {
-            prev->next = entry;
-        }
+        matte_deallocate(bucket->entries);
     }
-    matte_deallocate(entries);
-        
-
-    
+    matte_deallocate(buckets);
 }
 
 
@@ -260,7 +282,7 @@ static matteTable_t * matte_table_initialize(matteTable_t * t) {
         assert(t && "matteTable_t pointer cannot be NULL.");
     #endif
 
-    t->buckets = (matteTableEntry_t**)matte_allocate(sizeof(matteTableEntry_t*) * table_bucket_start_size);
+    t->buckets = (matteTableBucket_t*)matte_allocate(sizeof(matteTableBucket_t) * table_bucket_start_size);
     t->nBuckets = table_bucket_start_size;
 
     t->size = 0;
@@ -269,39 +291,26 @@ static matteTable_t * matte_table_initialize(matteTable_t * t) {
 
 
 
-static matteTableEntry_t * matte_table_new_entry(matteTable_t * t, const void * key, void * value, uint32_t keyLen, uint32_t hash) {
+static matteTableEntry_t matte_table_new_entry(matteTable_t * t, const void * key, void * value, uint32_t keyLen, uint32_t hash) {
     #ifdef MATTE_DEBUG
         assert(t && "matteTable_t pointer cannot be NULL.");
     #endif
 
-    matteTableEntry_t * out;
+    matteTableEntry_t out = {};
 
-    out = (matteTableEntry_t*)matte_allocate(sizeof(matteTableEntry_t));
-    out->value = value;
-    out->next = NULL;
-    out->keyLen = keyLen;
+    out.value = value;
+    out.keyLen = keyLen;
     // if the key is dynamically allocated, we need a local copy 
     if (keyLen) {    
-        out->key = matte_allocate(keyLen);
-        memcpy(out->key, key, keyLen);
+        out.key = matte_allocate(keyLen);
+        memcpy(out.key, key, keyLen);
     } else { // else simple copy (no modify)
-        out->key = (void*)key;
+        out.key = (void*)key;
     }
-    out->hash = hash;
     return out;
 }
 
 
-static void matte_table_remove_entry(matteTable_t * t, matteTableEntry_t * entry) {
-    #ifdef MATTE_DEBUG
-        assert(t && "matteTable_t pointer cannot be NULL.");
-        assert(entry && "matteTableEntry_t pointer cannot be NULL.");
-    #endif
-
-    t->keyRemove(entry->key);
-    matte_deallocate(entry);
-    t->size--;
-}
 
 
 matteTable_t * matte_table_create_hash_pointer() {
@@ -361,25 +370,21 @@ void matte_table_insert(matteTable_t * t, const void * key, void * value) {
     uint32_t bucketID = hash_to_index(t, hash);
 
 
-    matteTableEntry_t * src  = t->buckets[bucketID];
+    matteTableBucket_t * src  = t->buckets+bucketID;
     matteTableEntry_t * prev = NULL;
-    int bucketLen = 0;
-
+    int bucketLen = src->size;
+    uint32_t i;
     // look for preexisting entry
-    while(src) {
-
-        if (src->hash   == hash && 
-            src->keyLen == keyLen) { // hash must equal before key does, so 
+    for(i = 0; i < bucketLen; ++i) {
+        matteTableEntry_t * next = src->entries+i;
+        if (next->keyLen == keyLen) { // hash must equal before key does, so 
                                  // this is an easy check
-            if (t->keyCmp(key, src->key, src->keyLen)) {
+            if (t->keyCmp(key, next->key, next->keyLen)) {
                 // update data for key
-                src->value = value;
+                next->value = value;
                 return;            
             }
         }
-        prev = src;
-        src = src->next;
-        bucketLen++;
     }    
 
     // case for 
@@ -388,7 +393,7 @@ void matte_table_insert(matteTable_t * t, const void * key, void * value) {
     }    
 
     // add to chain at the end
-    src = matte_table_new_entry(
+    matteTableEntry_t entry = matte_table_new_entry(
         t, 
 
         key, 
@@ -399,20 +404,14 @@ void matte_table_insert(matteTable_t * t, const void * key, void * value) {
     );
 
 
-    if (prev) {
-        prev->next = src;
-    } else { // start of new chain
-        t->buckets[bucketID] = src;
-    }
+    if (src->size == table_bucket_fill_amount)
+        t->bucketsFilled ++;
+    bucket_add(src, entry);
     t->size++;
 
     // invariant broken, expand and reform the hashtable.
-    if (bucketLen > table_bucket_max_size) {
+    if (t->bucketsFilled / (float)t->nBuckets  > table_bucket_fill_rate) {
         matte_table_resize(t);
-
-        // try again.
-        matte_table_insert(t, key, value);
-        return;
     }
 
 }
@@ -428,20 +427,18 @@ void * matte_table_find(const matteTable_t * t, const void * key) {
     uint32_t bucketID = hash_to_index(t, hash);
 
 
-    matteTableEntry_t * src  = t->buckets[bucketID];
-
+    matteTableBucket_t * bucket  = t->buckets+bucketID;
+    matteTableEntry_t * next;
     // look for preexisting entry
-    while(src) {
-
-        if (src->hash   == hash && 
-            src->keyLen == keyLen) { // hash must equal before key does, so 
+    uint32_t i;
+    for(i = 0; i < bucket->size; ++i) {
+        next = bucket->entries+i;
+        if (next->keyLen == keyLen) { // hash must equal before key does, so 
                                  // this is an easy check
-            if (t->keyCmp(key, src->key, src->keyLen)) {
-
-                return src->value;
+            if (t->keyCmp(key, next->key, next->keyLen)) {
+                return next->value;
             }
         }
-        src = src->next;
     }    
     return NULL;
 }
@@ -451,10 +448,8 @@ void * matte_table_get_any(
 ) {
     uint32_t i;
     for(i = 0; i < table->nBuckets; ++i) {
-        matteTableEntry_t * src  = table->buckets[i];
-        if (src) {
-            return src->value;
-        }
+        if (table->buckets[i].size)
+            return table->buckets[i].entries[0].value;
     }
     return NULL;
 }
@@ -469,18 +464,17 @@ int matte_table_entry_exists(const matteTable_t * t, const void * key) {
     uint32_t bucketID = hash_to_index(t, hash);
 
 
-    matteTableEntry_t * src  = t->buckets[bucketID];
-
+    matteTableBucket_t * bucket  = t->buckets+bucketID;
+    matteTableEntry_t * next;
     // look for preexisting entry
-    while(src) {
-
-        if (src->hash   == hash && 
-            src->keyLen == keyLen) { // hash must equal before key does, so 
-            if (t->keyCmp(key, src->key, src->keyLen)) {
+    uint32_t i;
+    for(i = 0; i < bucket->size; ++i) {
+        next = bucket->entries+i;
+        if (next->keyLen == keyLen) { // hash must equal before key does, so 
+            if (t->keyCmp(key, next->key, next->keyLen)) {
                 return TRUE;
             }
         }
-        src = src->next;
     }    
     return FALSE;
 }
@@ -495,29 +489,20 @@ void matte_table_remove(matteTable_t * t, const void * key) {
     uint32_t bucketID = hash_to_index(t, hash);
 
 
-    matteTableEntry_t * src  = t->buckets[bucketID];
-    matteTableEntry_t * prev = NULL;
-
+    matteTableBucket_t * bucket  = t->buckets+bucketID;
+    matteTableEntry_t * next;
     // look for preexisting entry
-    while(src) {
-
-        if (src->hash   == hash && 
-            src->keyLen == keyLen) { // hash must equal before key does, so 
-            if (t->keyCmp(key, src->key, src->keyLen)) {
-
-                if (prev) {
-                    // skip over entry
-                    prev->next = src->next;
-                } else {
-                    t->buckets[bucketID] = src->next;                    
-                }
-                matte_table_remove_entry(t, src);
-
+    uint32_t i;
+    for(i = 0; i < bucket->size; ++i) {
+        next = bucket->entries+i;
+        if (next->keyLen == keyLen) { // hash must equal before key does, so 
+            if (t->keyCmp(key, next->key, next->keyLen)) {
+                t->keyRemove(next->key);
+                t->size--;
+                bucket_remove(bucket, i);
                 return;
             }
         }
-        prev = src;
-        src = src->next;
     }    
 }
 
@@ -530,19 +515,19 @@ void matte_table_clear(matteTable_t * t) {
         assert(t && "matteTable_t pointer cannot be NULL.");
     #endif
     uint32_t i = 0;
-    matteTableEntry_t * src;
+    matteTableBucket_t * src;
     matteTableEntry_t * toRemove;
-
+    uint32_t n;
     for(; i < t->nBuckets; ++i) {
-        src = t->buckets[i];
-        while(src) {
-            toRemove = src;
-            src = toRemove->next;
-
-            matte_table_remove_entry(t, toRemove);
+        src = t->buckets+i;
+        for(n = 0; n < src->size; ++n) {
+            toRemove = src->entries+n;
+            t->keyRemove(toRemove->key);
         }
-
-        t->buckets[i] = NULL;
+        matte_deallocate(src->entries);
+        src->entries = NULL;
+        src->size = 0;
+        src->alloc = 0;
     }
 }
 
@@ -551,11 +536,15 @@ void matte_table_get_all_keys(const matteTable_t * t, matteArray_t * arr) {
 
     // look for preexisting entry
     uint32_t i;
+    uint32_t n;
+    
+    matteTableBucket_t * bucket;
+    matteTableEntry_t * next;
     for(i = 0; i < t->nBuckets; ++i) {
-        matteTableEntry_t * src = t->buckets[i];
-        while(src) {
-            matte_array_push(arr, src->key);
-            src = src->next;
+        bucket = t->buckets+i;
+        for(n = 0; n < bucket->size; ++n) {
+            next = bucket->entries+n;
+            matte_array_push(arr, next->key);
         }
     }
 }
@@ -566,12 +555,16 @@ void matte_table_get_limited_keys(const matteTable_t * t, matteArray_t * arr, in
 
     // look for preexisting entry
     uint32_t i;
+    uint32_t n;
+    
+    matteTableBucket_t * bucket;
+    matteTableEntry_t * next;
     for(i = 0; i < t->nBuckets; ++i) {
-        matteTableEntry_t * src = t->buckets[i];
-        while(src) {
-            matte_array_push(arr, src->key);
+        bucket = t->buckets+i;
+        for(n = 0; n < bucket->size; ++n) {
+            next = bucket->entries+n;
+            matte_array_push(arr, next->key);
             if (arr->size >= count) return;
-            src = src->next;
         }
     }
 }
@@ -579,14 +572,17 @@ void matte_table_get_limited_keys(const matteTable_t * t, matteArray_t * arr, in
 
 
 void matte_table_get_all_values(const matteTable_t * t, matteArray_t * arr) {
-    if (t->size == 0) return;
     // look for preexisting entry
     uint32_t i;
+    uint32_t n;
+    
+    matteTableBucket_t * bucket;
+    matteTableEntry_t * next;
     for(i = 0; i < t->nBuckets; ++i) {
-        matteTableEntry_t * src = t->buckets[i];
-        while(src) {
-            matte_array_push(arr, src->value);
-            src = src->next;
+        bucket = t->buckets+i;
+        for(n = 0; n < bucket->size; ++n) {
+            next = bucket->entries+n;
+            matte_array_push(arr, next->value);
         }
     }
 }
@@ -606,27 +602,6 @@ void matte_table_iter_destroy(matteTableIter_t * t) {
 
 
 
-inline static void find_next(matteTableIter_t * t) {
-    // iter points to next in bucket
-    if (t->current)
-        return;
-
-    
-    // need to move to next buckt
-    uint32_t i = t->currentBucketID+1;
-    uint32_t len = t->src->nBuckets;
-    matteTableEntry_t ** iter = t->src->buckets+i; 
-    for(; i < len; ++i, iter++) {
-        if (*iter) {
-            t->current = *iter;
-            t->currentBucketID = i;
-            return;
-        }        
-    }
-
-    t->current = NULL;
-    t->isEnd = TRUE;
-}
 
 void matte_table_iter_start(matteTableIter_t * t, matteTable_t * src) {
     #ifdef MATTE_DEBUG
@@ -635,13 +610,12 @@ void matte_table_iter_start(matteTableIter_t * t, matteTable_t * src) {
     #endif
     t->src = src;
     t->currentBucketID = 0;
-    t->current = src->buckets[0];
+    t->currentBucketIndex = 0;
+    t->current = NULL;
     t->isEnd = 0;
     
     
-    if (!t->current)
-        find_next(t);
-
+    matte_table_iter_proceed(t);
 }
 
 void matte_table_iter_proceed(matteTableIter_t * t) {
@@ -649,9 +623,22 @@ void matte_table_iter_proceed(matteTableIter_t * t) {
         assert(t && "matteTableIter_t pointer cannot be NULL.");
     #endif
     if (t->isEnd) return;
+
+    matteTableBucket_t * buckets = t->src->buckets;
+
+    matteTableBucket_t * bucket = buckets+t->currentBucketID;
+    while(t->currentBucketIndex == bucket->size) {
+        t->currentBucketIndex = 0;
+        t->currentBucketID++;
+        if (t->currentBucketID == t->src->nBuckets) {
+            t->isEnd = 1;
+            t->current = NULL;
+            return;
+        }
+        bucket = buckets+(t->currentBucketID);
+    }
     
-    t->current = t->current->next;
-    find_next(t);
+    t->current = bucket->entries + t->currentBucketIndex++;
 }
 
 int matte_table_iter_is_end(const matteTableIter_t * t) {

@@ -701,7 +701,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             matte_store_recycle(store, out);
             return NULL;
         }
-        if (!m->table.keyvalues_number) m->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
+        if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));
         uint32_t index = (uint32_t)key.value.number;
         if (index >= matte_array_get_size(m->table.keyvalues_number)) {
             uint32_t currentLen = matte_array_get_size(m->table.keyvalues_number);
@@ -1822,7 +1822,7 @@ void matte_value_into_new_object_array_ref_(matteStore_t * store, matteValue_t *
     uint32_t i;
     uint32_t len = matte_array_get_size(args);
 
-    if (!d->table.keyvalues_number) d->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
+    if (!d->table.keyvalues_number) d->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));//(matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
     matte_array_set_size(d->table.keyvalues_number, len);
     for(i = 0; i < len; ++i) {
         matteValue_t val = matte_store_new_value(store);
@@ -2121,7 +2121,7 @@ matteValue_t * matte_value_object_array_at_unsafe(matteStore_t * store, matteVal
 
 void matte_value_object_array_set_size_unsafe(matteStore_t * store, matteValue_t v, uint32_t size) {
     matteObject_t * d = matte_store_bin_fetch_table(store->bin, v.value.id);
-    if (!d->table.keyvalues_number) d->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
+    if (!d->table.keyvalues_number) d->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));//(matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
     matteArray_t * arr = d->table.keyvalues_number;
     uint32_t i;
     uint32_t oldSize = matte_array_get_size(arr);
@@ -3680,7 +3680,7 @@ void matte_value_object_insert(
     if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(store, m, &val);
     }
-    if (!m->table.keyvalues_number) m->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
+    if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));//(matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
     matte_array_insert(
         m->table.keyvalues_number,
         index,
@@ -3706,7 +3706,7 @@ void matte_value_object_push(
     
     matteValue_t vv = matte_store_new_value(store);
     matte_value_into_copy(store, &vv, val);
-    if (!m->table.keyvalues_number) m->table.keyvalues_number = (matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
+    if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));//(matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
     matte_array_push(
         m->table.keyvalues_number,
         vv

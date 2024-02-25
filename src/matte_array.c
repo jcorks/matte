@@ -60,6 +60,13 @@ void matte_array_destroy(matteArray_t * t) {
     matte_deallocate(t);
 }
 
+void matte_array_destroy_xfer(matteArray_t * t) {
+    #ifdef MATTE_DEBUG
+        assert(t && "matteArray_t pointer cannot be NULL.");
+    #endif
+    matte_deallocate(t);
+}
+
 const matteArray_t * matte_array_empty() {
     static matteArray_t empty = {};
     return &empty;
@@ -127,7 +134,7 @@ void matte_array_push_n(matteArray_t * t, const void * elements, uint32_t count)
     #endif
     while(t->size + count > t->allocSize) {
         uint32_t oldSize = t->allocSize*t->sizeofType;
-        t->allocSize += t->allocSize*array_resize_amt+1;
+        t->allocSize = t->allocSize*array_resize_amt+1;
         uint8_t * newData = (uint8_t*)matte_allocate(t->allocSize*t->sizeofType);
         memcpy(newData, t->data, oldSize);
         matte_deallocate(t->data);
@@ -184,7 +191,7 @@ void matte_array_set_size(matteArray_t * t, uint32_t size) {
     #endif
     while(size >= t->allocSize) {
         uint32_t oldSize = t->allocSize*t->sizeofType;
-        t->allocSize += t->allocSize*array_resize_amt;
+        t->allocSize = t->allocSize*array_resize_amt+1;
         uint8_t * newData = (uint8_t*)matte_allocate(t->allocSize*t->sizeofType);
         memcpy(newData, t->data, oldSize);
         matte_deallocate(t->data);

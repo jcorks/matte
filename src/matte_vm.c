@@ -2578,6 +2578,20 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
     return out;
 }
 
+void matte_vm_print_stack(matteVM_t * vm) {
+    matteValue_t a = vm_info_new_object(vm, matte_store_new_value(vm->store));
+    printf("%s", matte_string_get_c_str(
+        matte_value_string_get_string_unsafe(
+            vm->store,
+            matte_value_object_access_string(   
+                vm->store,
+                a,
+                MATTE_VM_STR_CAST(vm, "summary")
+            )
+        )
+    ));
+}
+
 
 void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     if (vm->pendingCatchable) {

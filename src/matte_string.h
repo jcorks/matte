@@ -33,7 +33,7 @@ DEALINGS IN THE SOFTWARE.
 #define H_MATTE__STRING__INCLUDED
 
 #include <stdint.h>
-
+typedef struct matteArray_t matteArray_t;
 ///
 /// Holds an array of characters, usually meant to convey text.
 ///
@@ -52,6 +52,15 @@ matteString_t * matte_string_create_from_c_str(
 
     /// The variable args following the format.
     ...
+);
+
+/// Creates a new string from an array of uint32_t characters.
+/// The memory of the array is transferred to the string. The 
+/// array should not be used after this call.
+///
+matteString_t * matte_string_create_from_array_xfer(
+    /// The source array.
+    matteArray_t * src
 );
 
 /// Creates a new string as a copy of the given string 

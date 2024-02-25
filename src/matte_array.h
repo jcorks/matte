@@ -65,6 +65,15 @@ void matte_array_destroy(
 );
 
 
+/// Destroys the container, but does not touch the buffer it manages.
+///
+void matte_array_destroy_xfer(
+    /// The array to destroy.
+    matteArray_t * t
+);
+
+
+
 /// Returns an empty, read-only array. 
 ///
 const matteArray_t * matte_array_empty();

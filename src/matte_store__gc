@@ -269,8 +269,7 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                 for(n = 0; n < subl; ++n) {
                     object_unlink_parent_value(h, m, &matte_array_at(m->table.keyvalues_number, matteValue_t, n));                
                 }
-                matte_array_set_size(m->table.keyvalues_number, 0);
-                matte_pool_recycle(h->keyvalues_numberPool, m->table.keyvalues_number);
+                matte_array_destroy(m->table.keyvalues_number);
                 m->table.keyvalues_number = NULL;
             }
 

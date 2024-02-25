@@ -29,6 +29,7 @@ DEALINGS IN THE SOFTWARE.
 */
 
 #include "matte_string.h"
+#include "matte_array.h"
 #include "matte.h"
 #include <stdlib.h>
 #include <string.h>
@@ -131,6 +132,16 @@ static void matte_string_set_cstr(matteString_t * s, const uint8_t * cstr, uint3
     matte_string_concat_cstr(s, cstr, len);
 }
 
+matteString_t * matte_string_create_from_array_xfer(
+    matteArray_t * src
+) {
+    matteString_t * out = (matteString_t*)matte_allocate(sizeof(matteString_t));
+    out->utf8 = matte_array_get_data(src);
+    out->len = matte_array_get_size(src);
+    matte_array_destroy_xfer(src);
+    out->cstrtemp = NULL;
+    return out;
+}
 
 
 
