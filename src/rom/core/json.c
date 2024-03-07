@@ -33,6 +33,9 @@ DEALINGS IN THE SOFTWARE.
 #include <float.h>
 #include <inttypes.h>
 #include <math.h>
+#include <stdio.h>
+#include "../../matte_string.h"
+#include "../../matte_table.h"
 
 static uint32_t utf8_next_char(uint8_t ** source) {
     uint8_t * iter = *source;
@@ -62,15 +65,18 @@ static void push_char_buffer(matteArray_t * buffer, uint32_t ch) {
 }
 
 static void push_cstr_buffer(matteArray_t * buffer, const char * str) {
-    while(*str) {
+    for(;;) {
         uint32_t next = utf8_next_char((uint8_t**)&str);
+        if (next == 0) break;
         matte_array_push(buffer, next);
     }
 }
 
 static void push_cstr_buffer_cleaned(matteArray_t * buffer, const char * str) {
-    while(*str) {
+    for(;;) {
         uint32_t next = utf8_next_char((uint8_t**)&str);
+        if (next == 0) break;
+        
         if (next == '\\') {
             matte_array_push(buffer, next);  
         }
@@ -96,8 +102,17 @@ static void push_double_buffer(matteArray_t * buffer, double val) {
     push_cstr_buffer(buffer, tempstr);
 }
 
+typedef struct {
+    matteVM_t * vm;
+    matteStore_t * store;
+    matteString_t * lastNamedRef;
+    matteTable_t * recur;
+    matteArray_t * buffer;
+} JSONEncodeData;
 
-static void encode_value(matteStore_t * store, matteValue_t val, matteArray_t * buffer) {
+static int encode_value(JSONEncodeData * data, matteValue_t val) {
+    matteStore_t * store = data->store;
+    matteArray_t * buffer = data->buffer;
     switch(val.binID) {
       case MATTE_VALUE_TYPE_BOOLEAN: 
         push_cstr_buffer(buffer, matte_value_as_boolean(store, val) == 1 ? "true" : "false");
@@ -118,7 +133,18 @@ static void encode_value(matteStore_t * store, matteValue_t val, matteArray_t * 
         break;
         
       case MATTE_VALUE_TYPE_OBJECT: {
+        if (matte_value_is_function(val)) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "JSON encoding error: member \"%s\" is a function and is therefore unserializable.",
+                matte_string_get_c_str(data->lastNamedRef)
+            );
+            matte_vm_raise_error_string(data->vm, err);
+            matte_string_destroy(err);
+            return 0;
+        }
+      
         matteString_t * out = matte_string_create();
+        matte_table_insert_by_uint(data->recur, val.value.id, (void*)0x1);
         // if is array
         if (matte_value_object_get_key_count(store, val) == matte_value_object_get_number_key_count(store, val)) {
             push_char_buffer(buffer, '[');
@@ -129,7 +155,22 @@ static void encode_value(matteStore_t * store, matteValue_t val, matteArray_t * 
                     push_char_buffer(buffer, ',');
 
                 matteValue_t * subval = matte_value_object_array_at_unsafe(store, val, i);
-                encode_value(store, *subval, buffer);
+
+                matte_string_truncate(data->lastNamedRef, 0);
+                matte_string_concat_printf(data->lastNamedRef, "[array index %d]", i);
+
+
+                if (subval->binID == MATTE_VALUE_TYPE_OBJECT && matte_table_find_by_uint(data->recur, subval->value.id)) {
+                    matteString_t * err = matte_string_create_from_c_str(
+                        "JSON encoding error: circular dependency detected in %d index while trying to encode member \"%s\".",
+                        (int) i,
+                        matte_string_get_c_str(data->lastNamedRef)
+                    );
+                    matte_vm_raise_error_string(data->vm, err);
+                    matte_string_destroy(err);
+                    return 0;
+                }
+                if (!encode_value(data, *subval)) return 0;
             }
             
             push_char_buffer(buffer, ']');
@@ -157,18 +198,56 @@ static void encode_value(matteStore_t * store, matteValue_t val, matteArray_t * 
 
                 // value;
                 matteValue_t keyval = matte_value_object_access(store, val, *key, 1);
-                encode_value(store, keyval, buffer);
+                matte_string_truncate(data->lastNamedRef, 0);
+                matte_string_concat(data->lastNamedRef, matte_value_string_get_string_unsafe(store, *key));
+                
+                if (keyval.binID == MATTE_VALUE_TYPE_OBJECT && matte_table_find_by_uint(data->recur, keyval.value.id)) {
+                    matteString_t * err = matte_string_create_from_c_str(
+                        "JSON encoding error: circular dependency detected; member \"%s\" was already encoded.",
+                        (int) i,
+                        matte_string_get_c_str(data->lastNamedRef)
+                    );
+                    matte_vm_raise_error_string(data->vm, err);
+                    matte_string_destroy(err);
+                    return 0;
+                }
+                
+                if (!encode_value(data, keyval)) return 0;
             }
             push_char_buffer(buffer, '}');
         }
+        break;
+      }
+      
+      default : {
+        matteString_t * err = matte_string_create_from_c_str(
+            "JSON encoding error: member \"%s\" is an unknown value type.",
+            matte_string_get_c_str(data->lastNamedRef)
+        );
+        matte_vm_raise_error_string(data->vm, err);
+        matte_string_destroy(err);
+        return 0;
       }
     }
+    return 1;
 }
 
 MATTE_EXT_FN(matte_json__encode) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteArray_t * arr = matte_array_create(sizeof(uint32_t));
-    encode_value(store, args[0], arr);    
+    matteTable_t * recur = matte_table_create_hash_pointer();
+    
+    JSONEncodeData data = {};
+    data.store = store;
+    data.vm = vm;
+    data.recur = recur;
+    data.lastNamedRef = matte_string_create_from_c_str("[toplevel object]");
+    data.buffer = arr;
+   
+    
+    encode_value(&data, args[0]);    
+    
+    matte_string_destroy(data.lastNamedRef);
     matteString_t * str = matte_string_create_from_array_xfer(arr);
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_string(store, &out, str);
