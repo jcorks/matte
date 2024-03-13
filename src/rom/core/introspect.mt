@@ -29,41 +29,52 @@ DEALINGS IN THE SOFTWARE.
 */
 return ::(value) {
     @already = {}
+    @strings = [];
     @pspace ::(level) {
-        @str = '';
         for(0,level)::{
-            str = str + '  ';
+            strings->push(value:'  ');
         }
-        return str;
     }
     @helper ::(obj, level) {
         @poself = helper;
 
-        return match(obj->type) {
-            (String) : '(type => String): \'' + obj + '\'',
-            (Number) : '(type => Number): '+obj,
-            (Boolean): '(type => Boolean): '+obj,
-            (Function): '(type => Function) ::',
-            (Empty)  : '<empty>',
-            (Type): '(type => Type): ' + obj,
+        match(obj->type) {
+            (String) :  strings->push(value:'(type => String): \'' + obj + '\''),
+            (Number) :  strings->push(value:'(type => Number): '+obj),
+            (Boolean):  strings->push(value:'(type => Boolean): '+obj),
+            (Function): strings->push(value:'(type => Function)'),
+            (Empty)  :  strings->push(value:'<empty>'),
+            (Type):     strings->push(value:'(type => Type): ' + obj),
             default: ::<={
-                when(already[obj] == true) '(type => '+obj->type+'): [already printed]';
+                when(already[obj] == true) strings->push(value:
+                    '(type => '+obj->type+'): [already printed]'
+                );
                 already[obj] = true;
 
-                @output = '(type => '+obj->type+'): {';
+                strings->push(value:'(type => '+obj->type+'): {');
 
                 @multi = false;
                 foreach(obj)::(key, val) {                        
-                    output = output + (if (multi) ',\n' else '\n'); 
-                    output = output + pspace(level:level+1)+(String(from:key))+' : '+poself(obj:val, level:level+1);
+                    strings->push(value:(if (multi) ',\n' else '\n')); 
+                    pspace(level:level+1);
+                    strings->push(value:String(from:key));
+                    strings->push(value:' : ');
+                    poself(obj:val, level:level+1);
                     multi = true;
                 }
-                output = output + pspace(level:level) + (if (multi) '\n' + pspace(level:level)+'}' else '}');
-                return output;                
+                pspace(level:level);
+                if (multi) ::<= {
+                    strings->push(value:'\n');
+                    pspace(level:level);
+                    strings->push(value:'}');
+                } else 
+                    strings->push(value:'}');
             }
         }
     }
-    return pspace(level:1) + helper(obj:value, level:1);
+    pspace(level:1);
+    helper(obj:value, level:1);
+    return String.combine(strings);
 }
 
 

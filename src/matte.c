@@ -108,8 +108,6 @@ struct matte_t {
     // Used for debugging print areas.
     matteTable_t * lines; // fileid -> array of lines (matteString);
     
-    // for matte_print(), formatting output buffer.
-    char * formatBuffer;
     
     // result of last introspect.
     matteString_t * introspectResult;
@@ -145,13 +143,22 @@ static char * matte_strdup(const char * str) {
 static void matte_print(matte_t * m, const char * fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    vsnprintf(
-        m->formatBuffer,
-        MATTE_PRINT_LIMIT,
+    int size = vsnprintf(
+        NULL,
+        0,
         fmt,
         args
     );
-    m->output(m, m->formatBuffer);
+    if (size <= 0) return;
+    char * buffer = matte_allocate(size+2);
+    vsnprintf(
+        buffer,
+        size+1,
+        fmt,
+        args
+    );    
+    m->output(m, buffer);
+    matte_deallocate(buffer);
 }
 
 
@@ -540,7 +547,6 @@ matte_t * matte_create() {
     matte_t * m = (matte_t*)matte_allocate(1*sizeof(matte_t));
     m->output = default_output;
     m->input = default_input;
-    m->formatBuffer = (char *)matte_allocate(MATTE_PRINT_LIMIT+1);
     m->graph = matte_syntax_graph_create();
     m->vm = matte_vm_create(m);
     m->packages = matte_table_create_hash_c_string();
@@ -555,7 +561,6 @@ matteVM_t * matte_get_vm(matte_t * m) {
 void matte_destroy(matte_t * m) {
     matte_vm_destroy(m->vm);
     matte_syntax_graph_destroy(m->graph);
-    matte_deallocate(m->formatBuffer);
     matte_deallocate(m);
 }
 
