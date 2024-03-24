@@ -209,24 +209,32 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         if (IS_FUNCTION_OBJECT(m)) {
             m->function.stub = NULL;
             uint32_t n;
-            uint32_t subl = matte_array_get_size(m->function.captures);
+            uint32_t subl = m->function.capturesCount;
             // should be unlinked already because of above
             for(n = 0; n < subl; ++n) {
-                object_unlink_parent(h, m, matte_array_at(m->function.captures, CapturedReferrable_t, n).functionSrc);
+                object_unlink_parent(h, m, m->function.captures[n].functionSrc);
             }
-            matte_array_set_size(m->function.captures, 0);
+            if (m->function.captures)
+                matte_deallocate(m->function.captures);
+            m->function.capturesCount = 0;
+            m->function.captures = NULL;
+
+
             object_unlink_parent(h, m, m->function.origin);
             m->function.origin = NULL;
 
-            subl = matte_array_get_size(m->function.referrables);
+            subl = m->function.referrablesCount;
             for(n = 0; n < subl; ++n) {
-                matteValue_t child = matte_array_at(m->function.referrables, matteValue_t, n);
+                matteValue_t child = m->function.referrables[n];
                 if (child.binID == MATTE_VALUE_TYPE_OBJECT) {
                     object_unlink_parent_value(h, m, &child);
                 }
                 matte_store_recycle(h, child);
             }
-            m->function.referrables->size = 0;
+            if (m->function.referrables)
+                matte_deallocate(m->function.referrables);
+            m->function.referrablesCount = 0;
+            m->function.referrables = NULL;
 
 
 

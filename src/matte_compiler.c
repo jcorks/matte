@@ -1725,16 +1725,24 @@ static matteString_t * matte_syntax_graph_node_get_string(
 
 static void matte_syntax_graph_print_error(
     matteSyntaxGraphWalker_t * graph,
-    matteSyntaxGraphNode_t * node
+    matteSyntaxGraphNode_t * node,
+    int startedLine
 ) {
     matteString_t * message = matte_string_create_from_c_str("Syntax Error: Expected ");
     matteString_t * c = matte_syntax_graph_node_get_string(graph->graphsrc, node);
     matte_string_concat(message, c);
     matte_string_destroy(c);
 
-    matte_string_concat_printf(message, " but received '");
-    matte_string_append_char(message, matte_tokenizer_peek_next(graph->tokenizer));
-    matte_string_concat_printf(message, "' instead.");
+    if (matte_tokenizer_peek_next(graph->tokenizer)) {
+        matte_string_concat_printf(message, " but received '");
+        matte_string_append_char(message, matte_tokenizer_peek_next(graph->tokenizer));
+        matte_string_concat_printf(message, "' instead.");
+    } else {
+        matte_string_concat_printf(message, " but reached the end of the source instead.");
+    }
+    if (startedLine > 0) {
+        matte_string_concat_printf(message, " (Note: This syntactic construct started at line %d)", startedLine);    
+    }
 
     if (graph->onError)
         graph->onError(
@@ -1815,6 +1823,16 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
         static int level = 0;
         level++;
     #endif
+
+    // If we expect a token but theres no characters left, drop out.    
+    if (!(
+        node->type == MATTE_SYNTAX_GRAPH_NODE__END ||
+        node->type == MATTE_SYNTAX_GRAPH_NODE__SPLIT ||
+        node->type == MATTE_SYNTAX_GRAPH_NODE__PARENT_REDIRECT
+    )) {
+        if (matte_tokenizer_is_end(graph->tokenizer))
+            return NULL;
+    }
     
     switch(node->type) {
       // node is simply a token / token set.
@@ -1880,7 +1898,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
         }
         // failure
         if (!silent) {
-            matte_syntax_graph_print_error(graph, node);
+            matte_syntax_graph_print_error(graph, node, -1);
             *error = 1;
         }
         #ifdef MATTE_DEBUG__COMPILER
@@ -1922,7 +1940,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
         }
         // failure
         if (!silent) {
-            matte_syntax_graph_print_error(graph, node);
+            matte_syntax_graph_print_error(graph, node, -1);
             *error = 1;
         }
         #ifdef MATTE_DEBUG__COMPILER
@@ -1948,7 +1966,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
         }
         if (!n) {
             if (!silent) {
-                matte_syntax_graph_print_error(graph, node);
+                matte_syntax_graph_print_error(graph, node, -1);
                 *error = 1;
             }
             #ifdef MATTE_DEBUG__COMPILER
@@ -1987,6 +2005,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
 
         #endif
         matteSyntaxGraphRoot_t * root = matte_syntax_graph_get_root(graph->graphsrc, node->construct);
+        int lastLine = matte_tokenizer_current_line(graph->tokenizer);
 
         uint32_t i;
         uint32_t len = matte_array_get_size(root->paths);
@@ -2021,7 +2040,7 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
             }
         }
         if (!silent) {
-            matte_syntax_graph_print_error(graph, node);
+            matte_syntax_graph_print_error(graph, node, lastLine);
             *error = 1;
         }
         #ifdef MATTE_DEBUG__COMPILER
@@ -2035,6 +2054,12 @@ static matteSyntaxGraphNode_t * matte_syntax_graph_walk_helper(
 
     }
     assert(!"should not reach here");
+}
+
+static int matte_syntax_graph_is_end(
+    matteSyntaxGraphWalker_t * graph
+) {
+    return matte_tokenizer_is_end(graph->tokenizer);
 }
 
 
@@ -2079,7 +2104,11 @@ int matte_syntax_graph_continue(
         // The only way to validly finish a path
         if (next && next->type == MATTE_SYNTAX_GRAPH_NODE__END) {
             return 1;
-            break;          
+        }
+        
+        // or if we're out of characters
+        if (matte_syntax_graph_is_end(graph)) {
+            return 0;
         }
     }
     return 0;
