@@ -59,6 +59,7 @@ struct matteBytecodeStub_t {
     uint16_t capturedCount;
     uint32_t instructionCount;
     uint32_t stringCount;
+    uint32_t startingLine;
     int isDynamicBinding;
     uint8_t isVarArg;
 
@@ -94,6 +95,11 @@ static matteValue_t chomp_string(matteStore_t * store, uint8_t ** bytes, uint32_
     return v;
 }
 
+matteBytecodeStub_t * matte_bytecode_stub_create_symbolic() {
+    matteBytecodeStub_t * out = (matteBytecodeStub_t*)matte_allocate(sizeof(matteBytecodeStub_t));
+    out->isDynamicBinding = 1;
+    return out;
+}
 
 
 static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID, uint8_t ** bytes, uint32_t * left) {
@@ -147,24 +153,21 @@ static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID
         ADVANCEN(sizeof(matteBytecodeStubCapture_t)*out->capturedCount, out->captures[0]);
     }
     ADVANCE(uint32_t, out->instructionCount);
-    uint32_t baseLine = 0;
-    ADVANCE(uint32_t, baseLine);
+    ADVANCE(uint32_t, out->startingLine);
     if (out->instructionCount) {
         out->instructions = (matteBytecodeStubInstruction_t*)matte_allocate(sizeof(matteBytecodeStubInstruction_t)* out->instructionCount);    
         for(i = 0; i < out->instructionCount; ++i) {
-            uint16_t lineOffset;
-            ADVANCE(uint16_t, lineOffset);
-            ADVANCE(uint8_t,  out->instructions[i].opcode);
+            ADVANCE(uint16_t, out->instructions[i].info.lineOffset);
+            ADVANCE(uint8_t,  out->instructions[i].info.opcode);
             ADVANCE(double,   out->instructions[i].data);
-            out->instructions[i].lineNumber = baseLine + lineOffset;
         }
     }
 
     // complete linkage for NFN instructions
     // This will help other instances know the originating
     for(i = 0; i < out->instructionCount; ++i) {
-        if (out->instructions[i].opcode == MATTE_OPCODE_NFN) {
-            out->instructions[i].nfnFileID = fileID;
+        if (out->instructions[i].info.opcode == MATTE_OPCODE_NFN) {
+            out->instructions[i].funcData.nfnFileID = fileID;
         }
     }
     return out;    
@@ -199,6 +202,11 @@ matteArray_t * matte_bytecode_stubs_from_bytecode(
 uint32_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t * stub) {
     return stub->fileID;
 }
+
+uint32_t matte_bytecode_stub_get_starting_line(const matteBytecodeStub_t * stub) {
+    return stub->startingLine;
+}
+
 
 uint32_t matte_bytecode_stub_get_id(const matteBytecodeStub_t * stub) {
     return stub->stubID;

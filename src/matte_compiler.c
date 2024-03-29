@@ -170,6 +170,9 @@ static void matte_syntax_graph_walker_destroy(matteSyntaxGraphWalker_t *);
 // Returns the first parsed token from the user source
 //static matteToken_t * matte_syntax_graph_get_first(matteSyntaxGraphWalker_t * g);
 
+
+#define GET_LINE_OFFSET(__f__) (iter->line - (__f__)->startingLine)
+
 // compiles all nodes into bytecode function blocks.
 typedef struct matteFunctionBlock_t matteFunctionBlock_t;
 struct matteFunctionBlock_t {
@@ -183,6 +186,13 @@ struct matteFunctionBlock_t {
     
     // If the function has a vararg parameter
     int isVarArg;
+    
+    // whether the function does nothign useful. This will be replaced with 
+    // The Empty Function
+    int isEmpty;
+    
+    // Starting line of the function block
+    uint32_t startingLine;
 
     matteArray_t * typestrict_types;
     // array of matteString_t *
@@ -2360,7 +2370,7 @@ static matteArray_t * push_variable_name(
         iter
     );
     if (referrable != 0xffffffff) {
-        write_instruction__prf(inst, iter->line, referrable);
+        write_instruction__prf(inst, GET_LINE_OFFSET(block), referrable);
         *src = iter->next;
         return inst;
     } else {
@@ -2371,7 +2381,7 @@ static matteArray_t * push_variable_name(
         len = matte_array_get_size(block->captureNames);
         for(i = 0; i < len; ++i) {
             if (matte_string_test_eq((const matteString_t*)iter->data, matte_array_at(block->captureNames, matteString_t *, i))) {
-                write_instruction__prf(inst, iter->line, i+1+matte_array_get_size(block->locals)+matte_array_get_size(block->args));
+                write_instruction__prf(inst, GET_LINE_OFFSET(block), i+1+matte_array_get_size(block->locals)+matte_array_get_size(block->args));
                 *src = iter->next;
                 return inst;                    
             }
@@ -2391,7 +2401,7 @@ static matteArray_t * push_variable_name(
                     capture.stubID = block->stubID;
                     capture.referrable = i+1;
                     write_instruction__prf(
-                        inst, iter->line, 
+                        inst, GET_LINE_OFFSET(block), 
                         1+matte_array_get_size(blockSrc->locals)+
                           matte_array_get_size(blockSrc->args) +
                           matte_array_get_size(blockSrc->captures)
@@ -2414,7 +2424,7 @@ static matteArray_t * push_variable_name(
                     capture.stubID = block->stubID;
                     capture.referrable = i+offset;
                     write_instruction__prf(
-                        inst, iter->line, 
+                        inst, GET_LINE_OFFSET(block), 
                         1+matte_array_get_size(blockSrc->locals)+
                           matte_array_get_size(blockSrc->args) +
                           matte_array_get_size(blockSrc->captures)
@@ -2441,7 +2451,7 @@ static matteArray_t * push_variable_name(
 
     if (OPTION__NAMED_REFERENCES) {
         uint32_t i = function_intern_string(blockOrig, (const matteString_t*)iter->data);
-        write_instruction__pnr(inst, iter->line, i);
+        write_instruction__pnr(inst, GET_LINE_OFFSET(block), i);
         *src = iter->next;
         return inst;
     } else {
@@ -2740,7 +2750,7 @@ static matteArray_t * compile_base_value(
 
     switch(iter->ttype) {
       case MATTE_TOKEN_LITERAL_BOOLEAN:
-        write_instruction__nbl(inst, iter->line, !strcmp(matte_string_get_c_str((matteString_t*)iter->data), "true"));
+        write_instruction__nbl(inst, GET_LINE_OFFSET(block), !strcmp(matte_string_get_c_str((matteString_t*)iter->data), "true"));
         *src = iter->next;
         return inst;
 
@@ -2748,15 +2758,15 @@ static matteArray_t * compile_base_value(
         double val = 0.0;
         uint32_t valh = 0;
         if (sscanf(matte_string_get_c_str((matteString_t*)iter->data), "%lf", &val)) {
-            write_instruction__nnm(inst, iter->line, val); 
+            write_instruction__nnm(inst, GET_LINE_OFFSET(block), val); 
         } else if (sscanf(matte_string_get_c_str((matteString_t*)iter->data), "%x", &valh)) {            
-            write_instruction__nnm(inst, iter->line, valh); 
+            write_instruction__nnm(inst, GET_LINE_OFFSET(block), valh); 
         }
         *src = iter->next;
         return inst;
       }
       case MATTE_TOKEN_LITERAL_EMPTY: {
-        write_instruction__nem(inst, iter->line);
+        write_instruction__nem(inst, GET_LINE_OFFSET(block));
         *src = iter->next;
         return inst;
       }
@@ -2766,10 +2776,10 @@ static matteArray_t * compile_base_value(
         uint32_t strl = matte_string_get_length(str);
         if(strl == 2) {
             matteString_t * empty = matte_string_create();
-            write_instruction__nst(inst, iter->line, function_intern_string(block, empty));
+            write_instruction__nst(inst, GET_LINE_OFFSET(block), function_intern_string(block, empty));
             matte_string_destroy(empty);
         } else {        
-            write_instruction__nst(inst, iter->line, function_intern_string(block, matte_string_get_substr((matteString_t*)iter->data, 1, strl-2)));
+            write_instruction__nst(inst, GET_LINE_OFFSET(block), function_intern_string(block, matte_string_get_substr((matteString_t*)iter->data, 1, strl-2)));
         }
         *src = iter->next;
         return inst;
@@ -2777,69 +2787,69 @@ static matteArray_t * compile_base_value(
 
 
       case MATTE_TOKEN_EXTERNAL_PRINT: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_PRINT);
+        write_instruction__ext(inst, GET_LINE_OFFSET(block), MATTE_EXT_CALL_PRINT);
         *src = iter->next;
         return inst;
       }
       case MATTE_TOKEN_EXTERNAL_SEND: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_SEND);
+        write_instruction__ext(inst, GET_LINE_OFFSET(block), MATTE_EXT_CALL_SEND);
         *src = iter->next;
         return inst;
       }
       case MATTE_TOKEN_EXTERNAL_BREAKPOINT: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_BREAKPOINT);
+        write_instruction__ext(inst, GET_LINE_OFFSET(block), MATTE_EXT_CALL_BREAKPOINT);
         *src = iter->next;
         return inst;
       }
       case MATTE_TOKEN_EXTERNAL_ERROR: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_ERROR);
+        write_instruction__ext(inst, GET_LINE_OFFSET(block), MATTE_EXT_CALL_ERROR);
         *src = iter->next;
         return inst;
       }
       case MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_GETEXTERNALFUNCTION);
+        write_instruction__ext(inst, GET_LINE_OFFSET(block), MATTE_EXT_CALL_GETEXTERNALFUNCTION);
         *src = iter->next;
         return inst;
       }
       case MATTE_TOKEN_EXTERNAL_IMPORT: {
-        write_instruction__ext(inst, iter->line, MATTE_EXT_CALL_IMPORT);
+        write_instruction__ext(inst, GET_LINE_OFFSET(block), MATTE_EXT_CALL_IMPORT);
         *src = iter->next;
         return inst;
       }
 
       
       case MATTE_TOKEN_EXTERNAL_TYPEEMPTY: {
-        write_instruction__pto(inst, iter->line, 0);
+        write_instruction__pto(inst, GET_LINE_OFFSET(block), 0);
         *src = iter->next;
         return inst;
       } 
       case MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN: {
-        write_instruction__pto(inst, iter->line, 1);
+        write_instruction__pto(inst, GET_LINE_OFFSET(block), 1);
         *src = iter->next;
         return inst;
       } 
       case MATTE_TOKEN_EXTERNAL_TYPENUMBER: {
-        write_instruction__pto(inst, iter->line, 2);
+        write_instruction__pto(inst, GET_LINE_OFFSET(block), 2);
         *src = iter->next;
         return inst;
       } 
       case MATTE_TOKEN_EXTERNAL_TYPESTRING: {
-        write_instruction__pto(inst, iter->line, 3);
+        write_instruction__pto(inst, GET_LINE_OFFSET(block), 3);
         *src = iter->next;
         return inst;
       } 
       case MATTE_TOKEN_EXTERNAL_TYPEOBJECT: {
-        write_instruction__pto(inst, iter->line, 4);
+        write_instruction__pto(inst, GET_LINE_OFFSET(block), 4);
         *src = iter->next;
         return inst;
       } 
       case MATTE_TOKEN_EXTERNAL_TYPEFUNCTION: {
-        write_instruction__pto(inst, iter->line, 5);
+        write_instruction__pto(inst, GET_LINE_OFFSET(block), 5);
         *src = iter->next;
         return inst;
       } 
       case MATTE_TOKEN_EXTERNAL_TYPETYPE: {
-        write_instruction__pto(inst, iter->line, 6);
+        write_instruction__pto(inst, GET_LINE_OFFSET(block), 6);
         *src = iter->next;
         return inst;
       } 
@@ -2860,7 +2870,7 @@ static matteArray_t * compile_base_value(
 
       // array literal
       case MATTE_TOKEN_OBJECT_ARRAY_START: {
-        write_instruction__nob(inst, iter->line);
+        write_instruction__nob(inst, GET_LINE_OFFSET(block));
         iter = iter->next;
         
         while(iter->ttype != MATTE_TOKEN_OBJECT_ARRAY_END) {
@@ -2886,9 +2896,9 @@ static matteArray_t * compile_base_value(
             
             merge_instructions(inst, expInst);
             if (spread) {
-                write_instruction__spa(inst, spread->line);            
+                write_instruction__spa(inst, iter->line - spread->line);            
             } else {
-                write_instruction__caa(inst, iter->line);            
+                write_instruction__caa(inst, GET_LINE_OFFSET(block));            
             }
         }
         *src = iter->next; // skip ]
@@ -2900,7 +2910,7 @@ static matteArray_t * compile_base_value(
 
       // object literal
       case MATTE_TOKEN_OBJECT_LITERAL_BEGIN: {
-        write_instruction__nob(inst, iter->line);
+        write_instruction__nob(inst, GET_LINE_OFFSET(block));
         iter = iter->next;
         while(iter->ttype != MATTE_TOKEN_OBJECT_LITERAL_END) {
             // key : value,
@@ -2919,7 +2929,7 @@ static matteArray_t * compile_base_value(
                  iter->next->next->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR)
             ) {
                 
-                write_instruction__nst(inst, iter->line, function_intern_string(block, (matteString_t*)iter->data));
+                write_instruction__nst(inst, GET_LINE_OFFSET(block), function_intern_string(block, (matteString_t*)iter->data));
                 iter = iter->next; // skip name
                 iter = iter->next; // skip marker
                 
@@ -2959,9 +2969,9 @@ static matteArray_t * compile_base_value(
 
             merge_instructions(inst, expInst);            
             if (spread) {
-                write_instruction__spo(inst, spread->line);                        
+                write_instruction__spo(inst, spread->line - block->startingLine);                        
             } else {
-                write_instruction__cas(inst, iter->line);                        
+                write_instruction__cas(inst, GET_LINE_OFFSET(block));                        
             }
 
 
@@ -3012,30 +3022,36 @@ static matteArray_t * compile_base_value(
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR:  {
 
         matteFunctionBlock_t * fn = (matteFunctionBlock_t*)iter->data; // the sneaky IV in action....
-        if (fn->typestrict) {
+        if (fn->isEmpty) {
+            write_instruction__nef(
+                inst, 
+                GET_LINE_OFFSET(block)
+            );
+            
+        } else if (fn->typestrict) {
             merge_instructions(inst, matte_array_clone(fn->typestrict_types));
             write_instruction__sfs(
                 inst, 
-                iter->line,
+                GET_LINE_OFFSET(block),
                 fn->typestrict
             );
             write_instruction__nfn(
                 inst, 
-                iter->line,
+                GET_LINE_OFFSET(block),
                 fn->stubID
             );
         
         } else {
             write_instruction__nfn(
                 inst, 
-                iter->line,
+                GET_LINE_OFFSET(block),
                 fn->stubID
             );
         }
         if (fn->isDashed) {
             write_instruction__cal(
                 inst, 
-                iter->line,
+                GET_LINE_OFFSET(block),
                 0
             );        
         }
@@ -3150,8 +3166,8 @@ static matteArray_t * compile_value(
             iter = iter->next; // skip .
             // if so, the next will be a variable name
             if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
-                write_instruction__nst(inst, iter->line, function_intern_string(block, (matteString_t*) iter->data));
-                write_instruction__olk(inst, iter->line, 0);
+                write_instruction__nst(inst, GET_LINE_OFFSET(block), function_intern_string(block, (matteString_t*) iter->data));
+                write_instruction__olk(inst, GET_LINE_OFFSET(block), 0);
                 *lvalue = 1;
                 iter = iter->next;
             } else if (iter->ttype == MATTE_TOKEN_ASSIGNMENT) {
@@ -3165,7 +3181,7 @@ static matteArray_t * compile_value(
                 iter->dataType = -1;
                 iter = iter->next; // skip =
                 merge_instructions(inst, arr); // push argument
-                write_instruction__oas(inst, iter->line);
+                write_instruction__oas(inst, GET_LINE_OFFSET(block));
             } else {                
             
                 matte_syntax_graph_print_compile_error(g, iter, "Dot accessor expects variable name-style member to access as a string.");
@@ -3180,7 +3196,7 @@ static matteArray_t * compile_value(
                 return NULL;               
             }
             merge_instructions(inst, exp); // push argument
-            write_instruction__olk(inst, iter->line, 1);
+            write_instruction__olk(inst, GET_LINE_OFFSET(block), 1);
             iter = iter->next; // skip ]        
         // function calls are kind of like special operators
         // here, they use the compiled value above as the function object 
@@ -3207,7 +3223,7 @@ static matteArray_t * compile_value(
             }
             write_instruction__qry(
                 inst,
-                iter->line,
+                GET_LINE_OFFSET(block),
                 index
             );
             iter = iter->next;
@@ -3279,16 +3295,16 @@ static matteArray_t * compile_function_call(
             goto L_FAIL;
         }
         merge_instructions(inst, exp); // push argument
-        write_instruction__nst(inst, nameLineNum, i);
+        write_instruction__nst(inst, nameLineNum - block->startingLine, i);
         argCount++;
         if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_SEPARATOR)
             iter = iter->next; // skip ,
     }
 
     if (isVarArg)
-        write_instruction__clv(inst, iter->line, argCount);
+        write_instruction__clv(inst, GET_LINE_OFFSET(block), argCount);
     else
-        write_instruction__cal(inst, iter->line, argCount);
+        write_instruction__cal(inst, GET_LINE_OFFSET(block), argCount);
     *src = iter->next; // skip )
     return inst;
 
@@ -3368,7 +3384,7 @@ static matteArray_t * compile_listen(
     matte_array_push(functions, b);
     write_instruction__nfn(
         instOut, 
-        iter->line,
+        GET_LINE_OFFSET(block),
         b->stubID
     );
 
@@ -3380,10 +3396,10 @@ static matteArray_t * compile_listen(
             goto L_FAIL;
         }
         merge_instructions(instOut, inst);
-        write_instruction__lst(instOut, iter->line);
+        write_instruction__lst(instOut, GET_LINE_OFFSET(block));
     } else {
-        write_instruction__nem(instOut, iter->line);
-        write_instruction__lst(instOut, iter->line);
+        write_instruction__nem(instOut, GET_LINE_OFFSET(block));
+        write_instruction__lst(instOut, GET_LINE_OFFSET(block));
     }
     *src = iter;
     return instOut;
@@ -3546,24 +3562,24 @@ static matteArray_t * compile_match(
         matchcondition c = matte_array_at(conditionExpressions, matchcondition, i);
         matchresult r = matte_array_at(resultExpressions, matchresult, c.matchResult);
         uint32_t len = matte_array_get_size(c.condition);
-        write_instruction__cpy(instOut, c.line);
+        write_instruction__cpy(instOut, c.line - block->startingLine);
         merge_instructions(instOut, c.condition);
-        write_instruction__opr(instOut, c.line, MATTE_OPERATOR_EQ);
+        write_instruction__opr(instOut, c.line - block->startingLine, MATTE_OPERATOR_EQ);
         write_instruction__skp_insert(instOut, c.line, 1);
         pivotDistance -= 4+len;
-        write_instruction__asp(instOut, c.line, pivotDistance+r.offset);
+        write_instruction__asp(instOut, c.line - block->startingLine, pivotDistance+r.offset);
     }
     assert(pivotDistance == 0);
     matte_array_destroy(conditionExpressions);
 
-    write_instruction__pop(instOut, defaultLine, 1); endDistance--;
+    write_instruction__pop(instOut, defaultLine - block->startingLine, 1); endDistance--;
     if (defaultExpression) {
         endDistance-=matte_array_get_size(defaultExpression);
         merge_instructions(instOut, defaultExpression);
     } else {
-        write_instruction__nem(instOut, defaultLine);endDistance--;
+        write_instruction__nem(instOut, defaultLine - block->startingLine);endDistance--;
     }
-    write_instruction__asp(instOut, defaultLine, endDistance-1);endDistance--;
+    write_instruction__asp(instOut, defaultLine - block->startingLine, endDistance-1);endDistance--;
 
 
     for(i = 0; i < matte_array_get_size(resultExpressions); ++i) {
@@ -3572,7 +3588,7 @@ static matteArray_t * compile_match(
         write_instruction__pop(instOut, defaultLine, 1);
         merge_instructions(instOut, r.result);
         endDistance -= len + 2;
-        write_instruction__asp(instOut, defaultLine, endDistance);
+        write_instruction__asp(instOut, defaultLine - block->startingLine, endDistance);
     }
     matte_array_destroy(resultExpressions);
     assert(endDistance == 0);
@@ -3716,16 +3732,16 @@ static matteArray_t * compile_expression(
                 }
             } else {
                 iffalse = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
-                write_instruction__nem(iffalse, start->line);
+                write_instruction__nem(iffalse, start->line - block->startingLine);
             }
 
 
 
 
             matteToken_t * end = iter;
-            write_instruction__skp_insert(inst, start->line, matte_array_get_size(iftrue)+1); // +1 for the ASP
+            write_instruction__skp_insert(inst, start->line - block->startingLine, matte_array_get_size(iftrue)+1); // +1 for the ASP
             merge_instructions(inst, iftrue);
-            write_instruction__asp(inst, start->line, matte_array_get_size(iffalse));
+            write_instruction__asp(inst, start->line - block->startingLine, matte_array_get_size(iffalse));
             merge_instructions(inst, iffalse);
 
             
@@ -3899,7 +3915,7 @@ static matteArray_t * compile_expression(
             goto L_FAIL;
         }
         if (preOp != -1) {
-            write_instruction__opr(valueInst, line, preOp);
+            write_instruction__opr(valueInst, line - block->startingLine, preOp);
         }
         
         if (iter->ttype == MATTE_TOKEN_GENERAL_OPERATOR2) {
@@ -3932,7 +3948,7 @@ static matteArray_t * compile_expression(
             uint32_t n;
             for(n = 0; n < size; ++n) {
                 matteBytecodeStubInstruction_t u = matte_array_at(valueInst, matteBytecodeStubInstruction_t, n);
-                if (u.opcode == MATTE_OPCODE_OLK) {
+                if (u.info.opcode == MATTE_OPCODE_OLK) {
                     isSimpleReferrable = 0;
                     break;
                 }
@@ -3942,7 +3958,7 @@ static matteArray_t * compile_expression(
             // values that got reduced to a referrable OR an expression dot access OR a table lookup result.
             if (isSimpleReferrable) {
                 //postOp = POST_OP_SYMBOLIC__ASSIGN_REFERRABLE + assignment_token_to_op_index(iter->ttype);        
-                if (undo.opcode != MATTE_OPCODE_PRF) {
+                if (undo.info.opcode != MATTE_OPCODE_PRF) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing referrable token. (internal error)");
                     goto L_FAIL;
                 }
@@ -3953,7 +3969,7 @@ static matteArray_t * compile_expression(
                 }
                 // removed the referrable value, since thats already wrapped in the ARF
                 matte_array_set_size(valueInst, size-1);
-                write_instruction__arf(valueInst, line, (uint32_t)(undo.data), assignment_token_to_op_index(iter->ttype));
+                write_instruction__arf(valueInst, line - block->startingLine, (uint32_t)(undo.data), assignment_token_to_op_index(iter->ttype));
                 
             } else {
                 // for handling assignment for the dot access and the [] lookup, 
@@ -3961,11 +3977,11 @@ static matteArray_t * compile_expression(
                 // object AND the key on the stack (since OLK would normally consume both)
                 //postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER + assignment_token_to_op_index(iter->ttype) + (*((uint32_t*)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0);
                 matte_array_set_size(valueInst, size-1);
-                if (undo.opcode != MATTE_OPCODE_OLK) {
+                if (undo.info.opcode != MATTE_OPCODE_OLK) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing lookup token. (internal error)");
                     goto L_FAIL;
                 }
-                write_instruction__osn(valueInst, line, assignment_token_to_op_index(iter->ttype) + (((uint32_t)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0));                
+                write_instruction__osn(valueInst, line - block->startingLine, assignment_token_to_op_index(iter->ttype) + (((uint32_t)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0));                
 
             }
             
@@ -4022,7 +4038,7 @@ static matteArray_t * compile_expression(
                 uint32_t referrable;
                 memcpy(&referrable, &lastPRF.data[0], sizeof(uint32_t));
 
-                if (lastPRF.opcode != MATTE_OPCODE_PRF) {
+                if (lastPRF.info.opcode != MATTE_OPCODE_PRF) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing referrable token. (internal error)");
                     goto L_FAIL;
                 }
@@ -4042,22 +4058,22 @@ static matteArray_t * compile_expression(
                     // Since we don't know the end of the expression yet, we will add a special marker
                     // instead and replace it after the expression has ended.
                     matteBytecodeStubInstruction_t marker;
-                    marker.lineNumber = n->line;
-                    marker.opcode = 0xff;
+                    marker.info.lineOffset = n->line - block->startingLine;
+                    marker.info.opcode = 0xff;
                     marker.data = 1;
                     matte_array_push(n->value, marker);
                     hasandor = 1;
                 } else if (n->postOp == MATTE_OPERATOR_OR) {
                     matteBytecodeStubInstruction_t marker;
-                    marker.lineNumber = n->line;
-                    marker.opcode = 0xff;
+                    marker.info.lineOffset = n->line - block->startingLine;
+                    marker.info.opcode = 0xff;
                     marker.data = 2;
                     matte_array_push(n->value, marker);                    
                     hasandor = 1;
                 }
                 // [1] op [2] -> [1 2 op]
                 merge_instructions_rev(n->next->value, n->value);
-                write_instruction__opr(n->next->value, n->next->line, n->postOp);
+                write_instruction__opr(n->next->value, n->next->line - block->startingLine, n->postOp);
             }
 
 
@@ -4088,16 +4104,16 @@ static matteArray_t * compile_expression(
         uint32_t len = matte_array_get_size(outInst);
         for(i = 0; i < len; ++i) {
             matteBytecodeStubInstruction_t * inst = &matte_array_at(outInst, matteBytecodeStubInstruction_t, i);
-            if (inst->opcode == 0xff) {
+            if (inst->info.opcode == 0xff) {
                 switch((int)inst->data) {
                   case 1: {// AND 
-                    inst->opcode = MATTE_OPCODE_SCA;
+                    inst->info.opcode = MATTE_OPCODE_SCA;
                     uint32_t skipAmt = len - i - 1;
                     inst->data = skipAmt;                    
                     break;
                   }
                   case 2: {// OLD
-                    inst->opcode = MATTE_OPCODE_SCO;
+                    inst->info.opcode = MATTE_OPCODE_SCO;
                     uint32_t skipAmt = len - i - 1;
                     inst->data = skipAmt;  
                     break;
@@ -4146,11 +4162,11 @@ static int compile_statement(
         return 0;
     }
     int varConst = 0;
+    uint32_t oln = iter->line - block->startingLine;
     switch(iter->ttype) {
       // return statement
       case MATTE_TOKEN_RETURN: {
         iter = iter->next; // skip "return"
-        uint32_t oln = iter->line;
         matteArray_t * inst;
         if (!(inst = compile_expression(g, block, functions, &iter))) {
             // error reporting handled by compile_expression
@@ -4169,7 +4185,6 @@ static int compile_statement(
         break;
       }
       case MATTE_TOKEN_WHEN: {
-        uint32_t oln = iter->line;
         iter = iter->next; // skip when 
         iter = iter->next; // skip (
         matteArray_t * cond = compile_expression(g, block, functions, &iter);
@@ -4192,7 +4207,6 @@ static int compile_statement(
         break;
       }
       case MATTE_TOKEN_FOR: {
-        uint32_t oln = iter->line;
         iter = iter->next; // skip for
         iter = iter->next; // skip (
         matteArray_t * from = compile_expression(g, block, functions, &iter);
@@ -4223,7 +4237,6 @@ static int compile_statement(
 
 
       case MATTE_TOKEN_FOREVER: {
-        uint32_t oln = iter->line;
         iter = iter->next; // skip forever 
         matteArray_t * func = compile_expression(g, block, functions, &iter);
         if (!func) {
@@ -4238,7 +4251,6 @@ static int compile_statement(
       }
 
       case MATTE_TOKEN_FOREACH: {
-        uint32_t oln = iter->line;
         iter = iter->next; // skip foreach
         iter = iter->next; // skip (
         matteArray_t * from = compile_expression(g, block, functions, &iter);
@@ -4266,8 +4278,6 @@ static int compile_statement(
       case MATTE_TOKEN_DECLARE_CONST:
         varConst = 1;
       case MATTE_TOKEN_DECLARE: {
-        uint32_t oln = iter->line;
-
         if (iter->next->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("$", matte_string_get_c_str(iter->next->data))) {
             matte_syntax_graph_print_compile_error(g, iter, "Cannot declare variable with special binding name $.");
             return -1;
@@ -4311,7 +4321,6 @@ static int compile_statement(
       }
 
       default: {
-        uint32_t oln = iter->line;
         // when computed, should leave one value on the stack
         matteArray_t * inst;
         if (!(inst = compile_expression(g, block, functions, &iter))) {
@@ -4348,6 +4357,7 @@ static matteFunctionBlock_t * compile_function_block(
 ) {
     matteToken_t * iter = *src;
     matteFunctionBlock_t * b = (matteFunctionBlock_t*)matte_allocate(sizeof(matteFunctionBlock_t));
+    b->startingLine = iter->line;
     b->args = matte_array_create(sizeof(matteString_t *));
     b->strings = matte_array_create(sizeof(matteString_t *));
     b->locals = matte_array_create(sizeof(matteString_t *));
@@ -4357,6 +4367,7 @@ static matteFunctionBlock_t * compile_function_block(
     b->captureNames = matte_array_create(sizeof(matteString_t *));
     b->capture_isConst = matte_array_create(sizeof(int));
     b->stubID = g->functionStubID++;
+    b->isEmpty = 1;
     b->parent = parent;
     matteToken_t * funcStart;
     
@@ -4404,6 +4415,7 @@ static matteFunctionBlock_t * compile_function_block(
                     // typestrict arguments
                     //
                     if (iter->ttype == MATTE_TOKEN_FUNCTION_TYPESPEC) { // =>
+                        b->isEmpty = 0; // typespecifying implies behavior
                         iter = iter->next; // skip =>
                         // first argument with type specified. This means we need to insert 
                         // "any" types for the others.
@@ -4413,7 +4425,7 @@ static matteFunctionBlock_t * compile_function_block(
                                 uint32_t i;
                                 uint32_t len = matte_array_get_size(b->args)-1;
                                 for(i = 0; i < len; ++i) {
-                                    write_instruction__pto(b->typestrict_types, iter->line, 7); // any;
+                                    write_instruction__pto(b->typestrict_types, GET_LINE_OFFSET(b), 7); // any;
                                 }
                             }                            
                         }
@@ -4432,7 +4444,7 @@ static matteFunctionBlock_t * compile_function_block(
                         // because the typestrict_types exists, that means we have a 
                         // tyestrict function, so any not specified still need an "any" type 
                         // object.
-                        write_instruction__pto(b->typestrict_types, iter->line, 7); 
+                        write_instruction__pto(b->typestrict_types, GET_LINE_OFFSET(b), 7); 
                     }   
                     if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_END) break;
                     
@@ -4459,6 +4471,7 @@ static matteFunctionBlock_t * compile_function_block(
             // Return value type 
             //
             if (iter->ttype == MATTE_TOKEN_FUNCTION_TYPESPEC) {
+                b->isEmpty = 0; // typespecifying implies behavior
                 iter = iter->next; // skip =>
                 if (!b->typestrict_types) {
                     b->typestrict_types = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
@@ -4466,7 +4479,7 @@ static matteFunctionBlock_t * compile_function_block(
                     uint32_t i;
                     uint32_t len = matte_array_get_size(b->args);
                     for(i = 0; i < len; ++i) {
-                        write_instruction__pto(b->typestrict_types, iter->line, 7); // any;
+                        write_instruction__pto(b->typestrict_types, GET_LINE_OFFSET(b), 7); // any;
                     }
 
                 }
@@ -4483,8 +4496,9 @@ static matteFunctionBlock_t * compile_function_block(
                 merge_instructions(b->typestrict_types, expInst);
 
             } else if (b->typestrict_types) { 
+                b->isEmpty = 0; // type specifying implies behavior
                 // no return value type, but we're in strict mode. So enter an "any" type.
-                write_instruction__pto(b->typestrict_types, iter->line, 7);             
+                write_instruction__pto(b->typestrict_types, GET_LINE_OFFSET(b), 7);             
             }
         }
         if (b->typestrict_types) {
@@ -4492,6 +4506,7 @@ static matteFunctionBlock_t * compile_function_block(
         }
 
         if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR_INLINE) {
+            b->isEmpty = 0; // inlines cant be empty;
             iter = iter->next;
             matteArray_t * expInst = compile_expression(
                 g,
@@ -4558,6 +4573,7 @@ static matteFunctionBlock_t * compile_function_block(
 
     // now that we have all the locals and args, we can start emitting bytecode.
     if (iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
+        b->isEmpty = 0;
         int status;
         do {
             status = compile_statement(g, b, functions, &iter);
@@ -4569,12 +4585,13 @@ static matteFunctionBlock_t * compile_function_block(
             goto L_FAIL;
         }
     }
+    
     // in the case that a user has not explicitly placed a return, then 
     // we by default "return empty"
     // we aren't C after all...
-    if (iter) {
-        write_instruction__nem(b->instructions, iter->line);
-        write_instruction__ret(b->instructions, iter->line);
+    if (!b->isEmpty && iter) {
+        write_instruction__nem(b->instructions, GET_LINE_OFFSET(b));
+        write_instruction__ret(b->instructions, GET_LINE_OFFSET(b));
     }
     
     // for every except stubID == 0, there should be an end brace here. Consume it.
@@ -4668,16 +4685,12 @@ void * matte_function_block_array_to_bytecode(
         nInst = matte_array_get_size(block->instructions);
         WRITE_BYTES(uint32_t, nInst);
 
-        uint32_t baseLine = 0;
-        if (nInst)
-            baseLine = matte_array_at(block->instructions, matteBytecodeStubInstruction_t, 0).lineNumber;
-        WRITE_BYTES(uint32_t, baseLine);
+        WRITE_BYTES(uint32_t, block->startingLine);
 
         for(n = 0; n < nInst; ++n) {
             matteBytecodeStubInstruction_t * inst = &matte_array_at(block->instructions, matteBytecodeStubInstruction_t, n);
-            uint16_t offset = inst->lineNumber - baseLine;
-            WRITE_BYTES(uint16_t, offset);
-            WRITE_BYTES(uint8_t, inst->opcode);
+            WRITE_BYTES(uint16_t, inst->info.lineOffset);
+            WRITE_BYTES(uint8_t, inst->info.opcode);
             WRITE_BYTES(double, inst->data);        
         }
 

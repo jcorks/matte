@@ -189,7 +189,7 @@ static void onErrorCatch(
         printf("(@%d, file %s, line %d)\n", 
             i,
             str ? matte_string_get_c_str(str) : "???",
-            (matte_bytecode_stub_get_instructions(frame.stub, &count))[frame.pc].lineNumber
+            (matte_bytecode_stub_get_instructions(frame.stub, &count))[frame.pc].info.lineOffset + matte_bytecode_stub_get_starting_line(frame.stub)
         );
     }
 

@@ -33,262 +33,269 @@ DEALINGS IN THE SOFTWARE.
 
 
 
-static void write_instruction__prf(matteArray_t * insts, uint32_t lineNumber, uint32_t referrable) {
+static void write_instruction__prf(matteArray_t * insts, uint16_t lineOffset, uint32_t referrable) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_PRF;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_PRF;
     inst.data = referrable;
     matte_array_push(insts, inst);
 }
 
 
 
-static void write_instruction__nem(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__nem(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_NEM;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_NEM;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__nnm(matteArray_t * insts, uint32_t lineNumber, double val) {
+static void write_instruction__nnm(matteArray_t * insts, uint16_t lineOffset, double val) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_NNM;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_NNM;
     inst.data = val;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__nbl(matteArray_t * insts, uint32_t lineNumber, int b) {
+static void write_instruction__nbl(matteArray_t * insts, uint16_t lineOffset, int b) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_NBL;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_NBL;
     inst.data = b;
     matte_array_push(insts, inst);
 }
 
 
-static void write_instruction__nst(matteArray_t * insts, uint32_t lineNumber, uint32_t id) {
+static void write_instruction__nst(matteArray_t * insts, uint16_t lineOffset, uint32_t id) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_NST;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_NST;
     inst.data = id;
     matte_array_push(insts, inst);
 }
 
 
-static void write_instruction__nob(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__nob(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_NOB;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_NOB;
     matte_array_push(insts, inst);
 }
 
 
 
-static void write_instruction__nfn(matteArray_t * insts, uint32_t lineNumber, uint32_t stubID) {
+static void write_instruction__nfn(matteArray_t * insts, uint16_t lineOffset, uint32_t stubID) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_NFN;
-    inst.data = stubID;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_NFN;
+    inst.funcData.stubID = stubID;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__sfs(matteArray_t * insts, uint32_t lineNumber, uint32_t sfsCount) {
+static void write_instruction__nef(matteArray_t * insts, uint16_t lineOffset) {
+    matteBytecodeStubInstruction_t inst = {};
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_NEF;
+    matte_array_push(insts, inst);
+}
+
+static void write_instruction__sfs(matteArray_t * insts, uint16_t lineOffset, uint32_t sfsCount) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_SFS;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_SFS;
     inst.data = sfsCount;
     matte_array_push(insts, inst);
 }
 
 
-static void write_instruction__cas(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__cas(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_CAS;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_CAS;
     matte_array_push(insts, inst);    
 }
 
-static void write_instruction__caa(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__caa(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_CAA;
-    matte_array_push(insts, inst);    
-}
-
-
-static void write_instruction__spa(matteArray_t * insts, uint32_t lineNumber) {
-    matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_SPA;
-    matte_array_push(insts, inst);    
-}
-
-static void write_instruction__spo(matteArray_t * insts, uint32_t lineNumber) {
-    matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_SPO;
-    matte_array_push(insts, inst);    
-}
-
-static void write_instruction__lst(matteArray_t * insts, uint32_t lineNumber) {
-    matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_LST;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_CAA;
     matte_array_push(insts, inst);    
 }
 
 
-static void write_instruction__cal(matteArray_t * insts, uint32_t lineNumber, uint32_t args) {
+static void write_instruction__spa(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_CAL;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_SPA;
+    matte_array_push(insts, inst);    
+}
+
+static void write_instruction__spo(matteArray_t * insts, uint16_t lineOffset) {
+    matteBytecodeStubInstruction_t inst;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_SPO;
+    matte_array_push(insts, inst);    
+}
+
+static void write_instruction__lst(matteArray_t * insts, uint16_t lineOffset) {
+    matteBytecodeStubInstruction_t inst;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_LST;
+    matte_array_push(insts, inst);    
+}
+
+
+static void write_instruction__cal(matteArray_t * insts, uint16_t lineOffset, uint32_t args) {
+    matteBytecodeStubInstruction_t inst;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_CAL;
     inst.data = args;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__clv(matteArray_t * insts, uint32_t lineNumber, uint32_t args) {
+static void write_instruction__clv(matteArray_t * insts, uint16_t lineOffset, uint32_t args) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_CLV;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_CLV;
     inst.data = args;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__arf(matteArray_t * insts, uint32_t lineNumber, uint32_t ref, uint32_t op) {
+static void write_instruction__arf(matteArray_t * insts, uint16_t lineOffset, uint32_t ref, uint32_t op) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_ARF;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_ARF;
     uint64_t packed = ref;
     packed += ((uint64_t)op) * (0xffffffff);
     inst.data = (double)packed;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__osn(matteArray_t * insts, uint32_t lineNumber, uint32_t opcode) {
+static void write_instruction__osn(matteArray_t * insts, uint16_t lineOffset, uint32_t opcode) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_OSN;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_OSN;
     inst.data = opcode;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__olk(matteArray_t * insts, uint32_t lineNumber, uint32_t bracket) {
+static void write_instruction__olk(matteArray_t * insts, uint16_t lineOffset, uint32_t bracket) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_OLK;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_OLK;
     inst.data = bracket;
     matte_array_push(insts, inst);
 }
 
 
-static void write_instruction__opr(matteArray_t * insts, uint32_t lineNumber, int op) {
+static void write_instruction__opr(matteArray_t * insts, uint16_t lineOffset, int op) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_OPR;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_OPR;
     inst.data = op;
     matte_array_push(insts, inst);
 }
 
 
-static void write_instruction__ext(matteArray_t * insts, uint32_t lineNumber, matteExtCall_t ext) {
+static void write_instruction__ext(matteArray_t * insts, uint16_t lineOffset, matteExtCall_t ext) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_EXT;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_EXT;
     inst.data = ext;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__pop(matteArray_t * insts, uint32_t lineNumber, uint32_t n) {
+static void write_instruction__pop(matteArray_t * insts, uint16_t lineOffset, uint32_t n) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_POP;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_POP;
     inst.data = n;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__pnr(matteArray_t * insts, uint32_t lineNumber, uint32_t n) {
+static void write_instruction__pnr(matteArray_t * insts, uint16_t lineOffset, uint32_t n) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_PNR;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_PNR;
     inst.data = n;
     matte_array_push(insts, inst);
 }
 
 
 
-static void write_instruction__cpy(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__cpy(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_CPY;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_CPY;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__qry(matteArray_t * insts, uint32_t lineNumber, uint32_t query) {
+static void write_instruction__qry(matteArray_t * insts, uint16_t lineOffset, uint32_t query) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_QRY;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_QRY;
     inst.data = query;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__ret(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__ret(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_RET;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_RET;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__lop(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__lop(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_LOP;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_LOP;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__fvr(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__fvr(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_FVR;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_FVR;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__fch(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__fch(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_FCH;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_FCH;
     matte_array_push(insts, inst);
 }
 
 
-static void write_instruction__skp_insert(matteArray_t * insts, uint32_t lineNumber, uint32_t ninst) {
+static void write_instruction__skp_insert(matteArray_t * insts, uint16_t lineOffset, uint32_t ninst) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_SKP;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_SKP;
     inst.data = ninst;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__asp(matteArray_t * insts, uint32_t lineNumber, uint32_t ninst) {
+static void write_instruction__asp(matteArray_t * insts, uint16_t lineOffset, uint32_t ninst) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_ASP;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_ASP;
     inst.data = ninst;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__pto(matteArray_t * insts, uint32_t lineNumber, uint32_t type) {
+static void write_instruction__pto(matteArray_t * insts, uint16_t lineOffset, uint32_t type) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_PTO;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_PTO;
     inst.data = type;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__oas(matteArray_t * insts, uint32_t lineNumber) {
+static void write_instruction__oas(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
-    inst.lineNumber = lineNumber;
-    inst.opcode = MATTE_OPCODE_OAS;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_OAS;
     matte_array_push(insts, inst);
 }
 

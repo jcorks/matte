@@ -104,7 +104,7 @@ static matteValue_t vm_ext_call__breakpoint(matteVM_t * vm, matteValue_t fn, con
         const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
         uint32_t line = 0;
         if (frame.pc-1 < numinst && frame.pc-1 >= 0)
-            line = inst[frame.pc-1].lineNumber;        
+            line = inst[frame.pc-1].info.lineOffset + matte_bytecode_stub_get_starting_line(frame.stub);        
         vm->debug(
             vm,
             MATTE_VM_DEBUG_EVENT__BREAKPOINT,
@@ -169,7 +169,7 @@ static matteValue_t vm_ext_call__send(matteVM_t * vm, matteValue_t fn, const mat
     const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(framesrc.stub, &instcount);        
     int lineNumber = 0;
     if (framesrc.pc - 1 < instcount) {
-        lineNumber = inst[framesrc.pc-1].lineNumber;                
+        lineNumber = inst[framesrc.pc-1].info.lineOffset + matte_bytecode_stub_get_starting_line(framesrc.stub);                
     } 
     vm->errorLastFile = matte_bytecode_stub_get_file_id(framesrc.stub);
     vm->errorLastLine = lineNumber;
@@ -234,7 +234,8 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
     
     if (!fileid) {
         matteString_t * err = matte_string_create_from_c_str("Could not import '%s'", matte_string_get_c_str(strSrc));
-        matte_vm_raise_error_string(vm, err);        
+        matte_vm_raise_error_string(vm, err);    
+        matte_string_destroy(err);    
         return matte_store_new_value(vm->store);
     }
     

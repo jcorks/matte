@@ -47,6 +47,10 @@ typedef struct matteString_t matteString_t;
 
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 
+/// Creates a symbolic bytecode stub that doesnt do anything 
+/// and accepts all arguments.
+matteBytecodeStub_t * matte_bytecode_stub_create_symbolic();
+
 /// Generates an array of bytecode stubs (matteBytecodeStub_t *) from 
 /// raw bytecode. If an error occurs, err is populated and NULL is returned.
 /// When done, each matteBytecodeStub_t * should be removed.
@@ -66,6 +70,9 @@ void matte_bytecode_stub_destroy(matteBytecodeStub_t * b);
 /// fileids are only valid if all stubs come from the same parser 
 /// instance.
 uint32_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t *);
+
+/// Gets the line that this function started at in source.
+uint32_t matte_bytecode_stub_get_starting_line(const matteBytecodeStub_t *);
 
 /// Gets the id, local to the file.
 /// stub ids are only valid if all stubs come from the same parser 
@@ -119,16 +126,31 @@ const matteBytecodeStubCapture_t * matte_bytecode_stub_get_captures(
     uint32_t * count
 );
 
-/// Get all the stub's instructions
 typedef struct {
-    /// Line number for the parsed instruction
-    int32_t lineNumber;
-    /// The opcode of the 
-    uint8_t  opcode;
-    /// Per-opcode data.
-    double   data;
-    /// Per-opcode auxiliary data. Currently only used for fileID for nfn opcodes
-    int32_t  nfnFileID;
+    /// Line offset for the instruction from the stub function
+    uint16_t lineOffset;
+    /// The opcode;
+    uint8_t opcode;
+} matteBytecodeStubInstruction_Info_t;
+
+
+
+
+/// Get all the stub's instructions
+typedef struct {    
+    /// information on the instruction;
+    matteBytecodeStubInstruction_Info_t info;
+
+    // auxiliary data
+    union {
+        double data;
+        struct {
+            uint32_t stubID;
+            /// Per-opcode auxiliary data. Currently only used for fileID for nfn opcodes
+            int32_t  nfnFileID;
+        } funcData;
+    };
+
 } matteBytecodeStubInstruction_t;
 
 /// Gets all instructions held by the stub.

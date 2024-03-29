@@ -173,7 +173,7 @@ static void debug_print_area(matte_t * m) {
     const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
     uint32_t line = 0;
     if (frame.pc-1 >= 0 && frame.pc-1 < numinst)
-        line = inst[frame.pc-1].lineNumber;
+        line = inst[frame.pc-1].info.lineOffset + matte_bytecode_stub_get_starting_line(frame.stub);
 
     m->clear(m);
     matte_print(m, "<file %s, line %d>", 
@@ -284,11 +284,11 @@ static int exec_command(matte_t * m) {
 
             uint32_t fileid = matte_bytecode_stub_get_file_id(frame.stub);
             const matteString_t * fileName = matte_vm_get_script_name_by_id(vm, fileid);
-
+            uint32_t lineNumber = inst[frame.pc].info.lineOffset + matte_bytecode_stub_get_starting_line(frame.stub); 
             if (i == m->stackframe) {
-                matte_print(m, " -> @%d: <%s>, line %d", i, fileName ? matte_string_get_c_str(fileName) : "???", inst[frame.pc].lineNumber);
+                matte_print(m, " -> @%d: <%s>, line %d", i, fileName ? matte_string_get_c_str(fileName) : "???", (int)lineNumber);
             } else {
-                matte_print(m, "    @%d: <%s>, line %d", i, fileName ? matte_string_get_c_str(fileName) : "???", inst[frame.pc].lineNumber);
+                matte_print(m, "    @%d: <%s>, line %d", i, fileName ? matte_string_get_c_str(fileName) : "???", (int)lineNumber);
             }
         }
 

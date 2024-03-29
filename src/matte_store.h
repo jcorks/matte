@@ -64,6 +64,13 @@ typedef enum {
 } matteValue_Type_t;
 
 
+typedef enum {
+    MATTE_VALUE_EXTENDED_FLAG_NONE,
+    // When the id == 0 and this flag is active, 
+    // the id points to the empty function.
+    MATTE_VALUE_EXTENDED_FLAG_EMPTY_FUNCTION = 1,
+} matteValue_ExtendedFlag_t;
+
 
 /// Every operation that works with Matte values on the C level 
 /// refers to those values as matteValue_t instances.
@@ -87,6 +94,8 @@ typedef struct  {
     } value;
 } matteValue_t;
 
+/// macro for quickly determining if a funciton is the empty function.
+#define matte_value_is_empty_function(__V__) ((__V__).binID == MATTE_VALUE_TYPE_OBJECT && (__V__).value.id == 0)
 
 /// macro for getting the type of a matteValue_t
 #define matte_value_type(__V__) ((__V__).binID)
@@ -127,6 +136,9 @@ matteStore_t * matte_store_create(matteVM_t *);
 void matte_store_destroy(matteStore_t *);
 
 
+/// Returns the special ID for the empty function.
+matteValue_t matte_store_empty_function(matteStore_t *);
+
 
 
 
@@ -140,6 +152,7 @@ void matte_store_destroy(matteStore_t *);
 /// from a pre-existing value. Thus, new values are the first step 
 /// to creating other values.
 matteValue_t matte_store_new_value(matteStore_t *);
+
 
 /// Changes the value into empty. 
 ///

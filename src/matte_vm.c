@@ -555,6 +555,7 @@ static const char * opcode_to_str(int oc) {
 
 static int vm_execution_loop__stack_depth = 0;
 #define VM_EXECUTABLE_LOOP_STACK_DEPTH_LIMIT 1024
+#define VM_EXECUTABLE_LOOP_CURRENT_LINE (matte_bytecode_stub_get_starting_line(frame->stub) + inst->info.lineOffset)
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
     vm_execution_loop__stack_depth ++;
     
@@ -581,20 +582,20 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         #ifdef MATTE_DEBUG__VM
             if (matte_array_get_size(frame->valueStack))
                 matte_value_print(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1));
-            printf("from %s, line %d, CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", str ? matte_string_get_c_str(str) : "???", inst->lineNumber, vm->stacksize, frame->pc, opcode_to_str(inst->opcode), matte_array_get_size(frame->valueStack));
+            printf("from %s, line %d, CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", str ? matte_string_get_c_str(str) : "???", VM_EXECUTABLE_LOOP_CURRENT_LINE, vm->stacksize, frame->pc, opcode_to_str(inst->info.opcode), matte_array_get_size(frame->valueStack));
             fflush(stdout);
         #endif
         if (vm->debug) {
-            if (vm->lastLine != inst->lineNumber) {
+            if (vm->lastLine != VM_EXECUTABLE_LOOP_CURRENT_LINE) {
                 matteValue_t db = matte_store_new_value(vm->store);
-                vm->debug(vm, MATTE_VM_DEBUG_EVENT__LINE_CHANGE, matte_bytecode_stub_get_file_id(frame->stub), inst->lineNumber, db, vm->debugData);
-                vm->lastLine = inst->lineNumber;
+                vm->debug(vm, MATTE_VM_DEBUG_EVENT__LINE_CHANGE, matte_bytecode_stub_get_file_id(frame->stub), VM_EXECUTABLE_LOOP_CURRENT_LINE, db, vm->debugData);
+                vm->lastLine = VM_EXECUTABLE_LOOP_CURRENT_LINE;
                 matte_store_recycle(vm->store, db);
             }
         }
 
 
-        switch(inst->opcode) {
+        switch(inst->info.opcode) {
           case MATTE_OPCODE_NOP:
             break;
             
@@ -677,11 +678,19 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t v = matte_store_new_value(vm->store);
             matte_value_into_new_object_ref(vm->store, &v);
             #ifdef MATTE_DEBUG__STORE
-                matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+                matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
             #endif
             STACK_PUSH(v);
             break;
           }
+          
+
+          case MATTE_OPCODE_NEF: {
+            matteValue_t v = matte_store_empty_function(vm->store);
+            STACK_PUSH(v);
+            break;
+          }
+                    
           case MATTE_OPCODE_SFS:
             sfscount = (uint32_t)inst->data;
 
@@ -690,14 +699,12 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }
             inst = program+frame->pc++;
 
-            // FALLTHROUGH PURPOSEFULLY
-            
-          
+            // FALLTHROUGH PURPOSEFULLY          
           
           case MATTE_OPCODE_NFN: {
             uint32_t ids[2];
-            ids[0] = inst->nfnFileID;
-            ids[1] = inst->data;
+            ids[0] = inst->funcData.nfnFileID;
+            ids[1] = inst->funcData.stubID;
 
             matteBytecodeStub_t * stub = vm_find_stub(vm, ids[0], ids[1]);
 
@@ -723,7 +730,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteArray_t arr = MATTE_ARRAY_CAST(vals, matteValue_t, sfscount);
                 matte_value_into_new_typed_function_ref(vm->store, &v, stub, &arr);
                 #ifdef MATTE_DEBUG__STORE
-                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
                 #endif
 
                 matte_deallocate(vals);
@@ -738,7 +745,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteValue_t v = matte_store_new_value(vm->store);
                 matte_value_into_new_function_ref(vm->store, &v, stub);
                 #ifdef MATTE_DEBUG__STORE
-                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), inst->lineNumber);
+                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
                 #endif
 
                 STACK_PUSH(v);
@@ -927,7 +934,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteString_t * info = matte_string_create_from_c_str("FUNCTION CALLED @");
                 if (matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)))
                     matte_string_concat(info, matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)));
-                matte_store_track_neutral(vm->store, function, matte_string_get_c_str(info), inst->lineNumber);
+                matte_store_track_neutral(vm->store, function, matte_string_get_c_str(info), VM_EXECUTABLE_LOOP_CURRENT_LINE);
                 matte_string_destroy(info);
             #endif
             
@@ -1907,6 +1914,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t *, i);
         matte_string_destroy(frame->prettyName);
         matte_array_destroy(frame->valueStack);
+        matte_array_destroy(frame->referrables);
         matte_deallocate(frame);
     }
 
@@ -1962,6 +1970,11 @@ matteValue_t matte_vm_call(
     const matteString_t * prettyName
 ) {
     if (vm->pendingCatchable) return matte_store_new_value(vm->store);
+    if (matte_value_is_empty_function(func)) {
+        vm->pendingRestartCondition = NULL;
+        vm->pendingRestartConditionData = NULL;
+        return matte_store_new_value(vm->store);
+    }
     int callable = matte_value_is_callable(vm->store, func); 
     if (!callable) {
         matteString_t * err = matte_string_create_from_c_str("Error: cannot call non-function value ");
@@ -2543,9 +2556,9 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
         const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(framesrc.stub, &instcount);        
         
         matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "lineNumber"));        
-        int lineNumber = 0;
+        uint32_t lineNumber = 0;
         if (framesrc.pc - 1 < instcount) {
-            lineNumber = inst[framesrc.pc-1].lineNumber;                
+            lineNumber = inst[framesrc.pc-1].info.lineOffset + matte_bytecode_stub_get_starting_line(framesrc.stub);                
         } 
         matte_value_into_number(vm->store, &val, lineNumber);
         matte_value_object_set(vm->store, frame, key, val, 0);
@@ -2624,7 +2637,7 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
     matteVMStackFrame_t framesrc = matte_vm_get_stackframe(vm, 0);
     const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(framesrc.stub, &instcount);        
     if (framesrc.pc - 1 < instcount) {
-        vm->errorLastLine = inst[framesrc.pc-1].lineNumber;                
+        vm->errorLastLine = inst[framesrc.pc-1].info.lineOffset + matte_bytecode_stub_get_starting_line(framesrc.stub);                
     } else {
         vm->errorLastLine = -1;
     }
@@ -2638,7 +2651,7 @@ void matte_vm_raise_error(matteVM_t * vm, matteValue_t val) {
         const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
         uint32_t line = 0;
         if (frame.pc-1 < numinst && frame.pc-1 >= 0)
-            line = inst[frame.pc-1].lineNumber;        
+            line = inst[frame.pc-1].info.lineOffset + matte_bytecode_stub_get_starting_line(frame.stub);        
         vm->debug(
             vm,
             MATTE_VM_DEBUG_EVENT__ERROR_RAISED,

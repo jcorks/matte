@@ -161,6 +161,9 @@ typedef enum {
     // distributed across the matched argument names in the calling function
     MATTE_OPCODE_CLV,
     
+    // pushes the empty function, a special function with no effects.
+    MATTE_OPCODE_NEF,
+    
     MATTE_OPCODE_ERROR = -1
 
 } matteOpcode_t;

@@ -20,6 +20,7 @@
 } : {
     onError:::(message) {
         // caught, but doesnt do anything
+        return empty;
     }
 }
 

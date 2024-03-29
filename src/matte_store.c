@@ -81,38 +81,38 @@ typedef struct matteStoreBin_t matteStoreBin_t;
 static matteStoreBin_t * matte_store_bin_create();
 
 // Fetches a free table object.
-matteObject_t * matte_store_bin_add_table(matteStoreBin_t *);
+static matteObject_t * matte_store_bin_add_table(matteStoreBin_t *);
 
 // Fetches a free function object.
-matteObject_t * matte_store_bin_add_function(matteStoreBin_t *);
+static matteObject_t * matte_store_bin_add_function(matteStoreBin_t *);
 
 // fetches the object from the given ID, returning NULL if there is no such object.
-matteObject_t * matte_store_bin_fetch(matteStoreBin_t *, uint32_t id);
+static matteObject_t * matte_store_bin_fetch(matteStoreBin_t *, uint32_t id);
 
-matteObject_t * matte_store_bin_fetch_function(matteStoreBin_t * store, uint32_t id);
-matteObject_t * matte_store_bin_fetch_table(matteStoreBin_t * store, uint32_t id);
+static matteObject_t * matte_store_bin_fetch_function(matteStoreBin_t * store, uint32_t id);
+static matteObject_t * matte_store_bin_fetch_table(matteStoreBin_t * store, uint32_t id);
 
 
 // recycles an object.
-void matte_store_bin_recycle(matteStoreBin_t *, uint32_t id);
+static void matte_store_bin_recycle(matteStoreBin_t *, uint32_t id);
 
-void matte_store_bin_destroy(matteStoreBin_t *);
+static void matte_store_bin_destroy(matteStoreBin_t *);
 
 
 
 
 typedef struct matteObjectPool_t matteObjectPool_t;
 
-matteObjectPool_t * matte_pool_create(void*(*)(), void (*)(void *));
+static matteObjectPool_t * matte_pool_create(void*(*)(), void (*)(void *));
 
-void matte_pool_destroy(matteObjectPool_t *);
+static void matte_pool_destroy(matteObjectPool_t *);
 
 // returns a pre-allocated instance else
 // returns a new instance from the first creation argument (create function)
-void * matte_pool_fetch(matteObjectPool_t *);
+static void * matte_pool_fetch(matteObjectPool_t *);
 
 // returns a reference to be return by an additional fetch.
-void matte_pool_recycle(matteObjectPool_t *, void *);
+static void matte_pool_recycle(matteObjectPool_t *, void *);
 
 
 
@@ -259,7 +259,7 @@ struct matteStore_t {
 // location of it when updating it but also allows 
 // fetching copies as needed.
 typedef struct {
-    matteObject_t * functionSrc;
+    uint32_t functionID;
     uint32_t index;
 } CapturedReferrable_t;
 
@@ -290,7 +290,7 @@ typedef struct {
 typedef struct matteObjectChildNode_t matteObjectChildNode_t;
 struct matteObjectChildNode_t {
     matteObjectChildNode_t * next;
-    matteObject_t * data;
+    uint32_t dataID;
     uint32_t count;
 };
 
@@ -546,7 +546,7 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
     matteObjectChildNode_t * ch = parent->children;
     int added = 0;
     while(ch) {
-        if (ch->data == child) {
+        if (ch->dataID == child->storeID) {
             added = 1;
             ch->count++;
             break;
@@ -555,7 +555,7 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
     }
     if (!added) {
         matteObjectChildNode_t * newC = (matteObjectChildNode_t*)matte_allocate(sizeof(matteObjectChildNode_t));
-        newC->data = child;
+        newC->dataID = child->storeID;
         newC->next = parent->children;
         newC->count++;
         parent->children = newC;
@@ -585,7 +585,7 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
     matteObjectChildNode_t * ch = parent->children;
     matteObjectChildNode_t * prev = NULL;
     if (ch) {
-        if (ch->data == child) {
+        if (ch->dataID == child->storeID) {
             ch->count--;
             if (ch->count == 0) {
                 parent->children = ch->next;
@@ -593,7 +593,7 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
             }        
         } else {
             while(ch) {
-                if (ch->data == child) {
+                if (ch->dataID == child->storeID) {
                     ch->count--;
                     if (ch->count == 0) {
                         if (prev)
@@ -1011,6 +1011,8 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
 
     out->ticksGC = matte_os_get_ticks();
 
+
+    matte_value_object_push_lock(out, matte_store_empty_function(out));
     return out;
     
 }
@@ -1023,6 +1025,11 @@ void matte_store_destroy(matteStore_t * h) {
         matteValue_t val = matte_array_at(h->external, matteValue_t, i);
         matte_value_object_pop_lock(h, val);
     }
+
+    matteObject_t * m = matte_store_bin_fetch_function(h->bin, 0);
+    matte_deallocate(m->function.stub);
+
+    matte_value_object_pop_lock(h, matte_store_empty_function(h));
     matte_array_destroy(h->external);
     
     while(
@@ -1056,6 +1063,7 @@ void matte_store_destroy(matteStore_t * h) {
     store_free_value_pointers(h);
     matte_array_destroy(h->toRemove);
     matte_array_destroy(h->pendingRoots);
+    matte_table_iter_destroy(h->freeIter);
     matte_deallocate(h);
 }
 
@@ -1065,6 +1073,14 @@ matteValue_t matte_store_new_value_(matteStore_t * h) {
     out.binID = 0;
     return out;
 }
+
+matteValue_t matte_store_empty_function(matteStore_t * h) {
+    matteValue_t out;
+    out.binID = MATTE_VALUE_TYPE_OBJECT;
+    out.value.id = 0;
+    return out;
+}
+
 
 void matte_value_into_empty_(matteStore_t * store, matteValue_t * v) {
     matte_store_recycle(store, *v);
@@ -1995,7 +2011,7 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
     uint32_t len = d->function.capturesCount;
     for(i = 0; i < len; ++i) {
         CapturedReferrable_t ref = src->function.captures[i];
-        object_link_parent(store, d, ref.functionSrc);
+        object_link_parent(store, d, matte_store_bin_fetch_function(store->bin, ref.functionID));
         d->function.captures[i] = ref;
     }
 
@@ -2087,7 +2103,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
             if (matte_bytecode_stub_get_id(origin->function.stub) == capturesRaw[i].stubID) {
                 CapturedReferrable_t ref;                
 
-                ref.functionSrc = origin;
+                ref.functionID = origin->storeID;
                 object_link_parent(store, d, origin);
 
                 ref.index = capturesRaw[i].referrable;
@@ -2101,7 +2117,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
         if (!origin) {
             matte_vm_raise_error_cstring(store->vm, "Could not find captured variable!");
             CapturedReferrable_t ref;
-            ref.functionSrc = d; // need a valid reference
+            ref.functionID = d->storeID; // need a valid reference
             ref.index = 0;
             matte_array_push(captures, ref);
         }
@@ -2187,7 +2203,7 @@ matteValue_t * matte_value_get_captured_value(matteStore_t * store, matteValue_t
 
 
 
-        return referrable.functionSrc->function.referrables+referrable.index;
+        return matte_store_bin_fetch_function(store->bin, referrable.functionID)->function.referrables+referrable.index;
     }
     return NULL;
 }
@@ -2198,22 +2214,23 @@ void matte_value_set_captured_value(matteStore_t * store, matteValue_t v, uint32
         if (index >= m->function.capturesCount) return;
 
         CapturedReferrable_t referrable = m->function.captures[index];
-        matteValue_t vOld = referrable.functionSrc->function.referrables[referrable.index];
+        matteObject_t * functionSrc = matte_store_bin_fetch_function(store->bin, referrable.functionID);
+        matteValue_t vOld = matte_store_bin_fetch_function(store->bin, referrable.functionID)->function.referrables[referrable.index];
 
         matteValue_t vNew = matte_store_new_value(store);
         matte_value_into_copy(store, &vNew, val);
 
         if (vOld.binID == MATTE_VALUE_TYPE_OBJECT) {
-            object_unlink_parent_value(store, referrable.functionSrc, &vOld);
+            object_unlink_parent_value(store, functionSrc, &vOld);
         }        
         matte_store_recycle(store, vOld);
         
         if (vNew.binID == MATTE_VALUE_TYPE_OBJECT) {
-            object_link_parent_value(store, referrable.functionSrc, &vNew);
+            object_link_parent_value(store, functionSrc, &vNew);
         }    
 
 
-        referrable.functionSrc->function.referrables[referrable.index] = vNew;
+        functionSrc->function.referrables[referrable.index] = vNew;
     }
 }
 
@@ -4263,6 +4280,11 @@ matteStoreBin_t * matte_store_bin_create() {
     
     store->functions = matte_array_create(sizeof(matteObject_t *));
     store->tables    = matte_array_create(sizeof(matteObject_t *));
+
+    // empty function
+    matteObject_t * o = create_function();
+    o->function.stub = matte_bytecode_stub_create_symbolic();
+    matte_array_push(store->functions, o);
 
     store->deadFunctions = matte_array_create(sizeof(uint32_t));
     store->deadTables    = matte_array_create(sizeof(uint32_t));

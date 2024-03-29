@@ -203,7 +203,10 @@ const Matte = {
                 MATTE_OPCODE_FCH : 33,
                 
                 // Performs a varargs call. Always expects one argument + the function.
-                MATTE_OPCODE_CLV : 34
+                MATTE_OPCODE_CLV : 34,
+                
+                // Pushes the empty function.
+                MATTE_OPCODE_NEF : 35
                          
             
             }              
@@ -353,12 +356,19 @@ const Matte = {
                         const offset = bytes.chompUInt16();
                         stub.instructions[i] = {
                             lineNumber : baseLine + offset,
-                            opcode     : bytes.chompUInt8(),
-                            data       : bytes.chompDouble(),
+                            opcode     : bytes.chompUInt8()
                         };
                         
-                        if (stub.instructions[i].opcode == vm.opcodes.MATTE_OPCODE_NFN)
+                        if (stub.instructions[i].opcode == vm.opcodes.MATTE_OPCODE_NFN) {
                             stub.instructions[i].nfnFileID = fileID;
+                            
+                            // only the first 32 bits of data is the stubID.
+                            // rewind and take only that
+                            stub.instructions[i].data = bytes.chompUInt32();
+                            bytes.chompUInt32(); // dump;
+                        } else {
+                            stub.instructions[i].data = bytes.chompDouble();                        
+                        }
                     }
                     stub.endByte = bytes.iter;
 
@@ -488,7 +498,7 @@ const Matte = {
                         const index = Math.floor(key);
                         
                         for(var i = object.kv_number.length; i < index+1; ++i) {
-                            object.kv_number[i] = store.createEmpty();                        
+                            object.kv_number[i] = store.empty;                        
                         }
                     }
                     
@@ -637,9 +647,9 @@ const Matte = {
                 TYPE_TYPE : TYPE_TYPE,
                 TYPE_STRING : TYPE_STRING,
                 valToType : valToType,
-                createEmpty : function() {
+                empty : (function() {
                     return createValue();
-                },
+                })(),
                 
                 createNumber : function(val) {
                     return val;
@@ -718,6 +728,27 @@ const Matte = {
                     out.kv_number = values.slice(0);
                     return out;
                 },
+                
+                emptyFunction : (function() {
+                    const out = createObject();
+                    out.function_stub = {
+                        stubID : 0,
+                        isVarArg : 0,
+                        argCount : 0,
+                        argNames : [],
+                        isDynamicBinding : true,
+                        localCount : 0,
+                        localNames : [],
+                        stringCount : 0,
+                        strings : [],
+                        capturedCount : 0,
+                        captures : [],
+                        instructionCount : 0,
+                        instructions : []
+                    };
+                    out.function_captures = [];
+                    return out;
+                })(),
                 
                 createFunction : function(stub) {
                     const out = createObject();
@@ -1001,7 +1032,7 @@ const Matte = {
                         break;
                       
                     }
-                    return store.createEmpty();
+                    return store.empty;
                 },
                 
                 valueIsCallable : function(value) {
@@ -1378,7 +1409,7 @@ const Matte = {
                 valueObjectForeach : function(value, func) {
                     if (valToType(value) != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot foreach on something that isn't an object.");
-                        return store.createEmpty();
+                        return store.empty;
                     }                    
                     if (value.table_attribSet) {
                         const set = store.valueObjectAccess(value.table_attribSet, store_specialString_foreach, 0);
@@ -1416,12 +1447,12 @@ const Matte = {
                 valueObjectSet : function(value, key, v, isBracket) {
                     if (valToType(value) != TYPE_OBJECT) {
                         vm.raiseErrorString("Cannot set property on something that isn't an object.");
-                        return store.createEmpty();
+                        return store.empty;
                     }
                     
                     if (key == undefined) {
                         vm.raiseErrorString("Cannot set property with an empty key");
-                        return store.createEmpty();
+                        return store.empty;
                     }
                     
                     const assigner = objectGetAccessOperator(value, isBracket, 0);
@@ -1471,7 +1502,7 @@ const Matte = {
                     if (assigner) {
                         const r = vm.callFunction(assigner, [key, v], [store_specialString_key, store_specialString_value]);
                         if (valToType(r) == TYPE_BOOLEAN && !r) {
-                            return store.createEmpty();
+                            return store.empty;
                         }
                     }
                     return objectPutProp(value, key, v);
@@ -2439,13 +2470,13 @@ const Matte = {
             const vm_listen = function(v, respObject) {
                 if (!store.valueIsCallable(v)) {
                     vm.raiseErrorString("Listen expressions require that the listened-to expression is a function. ");
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 
                 const typ_respObject = valToType(respObject);
                 if (typ_respObject != store.TYPE_EMPTY && typ_respObject != store.TYPE_OBJECT) {
                     vm.raiseErrorString("Listen requires that the response expression is an object.");
-                    return store.createEmpty();                    
+                    return store.empty;                    
                 }
                 
                 var onSend;
@@ -2454,19 +2485,19 @@ const Matte = {
                     onSend = store.valueObjectAccessDirect(respObject, vm_specialString_onsend, 0);
                     if (onSend && !store.valueIsCallable(onSend)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onSend' attribute be a Function.");
-                        return store.createEmpty();                                            
+                        return store.empty;                                            
                     }
                     onError = store.valueObjectAccessDirect(respObject, vm_specialString_onerror, 0);
                     if (onError && !store.valueIsCallable(onError)) {
                         vm.raiseErrorString("Listen requires that the response object's 'onError' attribute be a Function.");
-                        return store.createEmpty();                                            
+                        return store.empty;                                            
                     }
                 }
                 
                 var out = vm.callFunction(v, [], []);
                 if (vm_pendingCatchable) {
                     const catchable = vm_catchable;
-                    vm_catchable = store.createEmpty();;
+                    vm_catchable = store.empty;;
                     vm_pendingCatchable = 0;
                     
                     if (vm_pendingCatchableIsError && onSend) {
@@ -2484,7 +2515,7 @@ const Matte = {
                             return catchable
                         }
                     }
-                    return store.createEmpty(); // shouldnt get here
+                    return store.empty; // shouldnt get here
                 } else {
                     return out;
                 }
@@ -2498,7 +2529,7 @@ const Matte = {
                     vm_callstack.push({
                         pc : 0,
                         prettyName : "",
-                        context : store.createEmpty(),
+                        context : store.empty,
                         stub : null,
                         valueStack : []
                     });
@@ -2555,11 +2586,11 @@ const Matte = {
                     if (frame.valueStack.length) {
                         output = frame.valueStack[frame.valueStack.length-1];
                         if (vm_pendingCatchable)
-                            output = store.createEmpty();
+                            output = store.empty;
                         while(frame.valueStack.length)
                             frame.valueStack.pop();
                     } else {
-                        output = store.createEmpty();
+                        output = store.empty;
                     }
                     
                     if (frame.restartCondition && !vm_pendingCatchable) {
@@ -2698,12 +2729,12 @@ const Matte = {
                 if (precomp != undefined) return precomp;
                 
                 if (parameters == undefined)
-                    parameters = store.createEmpty();
+                    parameters = store.empty;
                 
                 const stub = vm_findStub(fileid, 0);
                 if (stub == undefined) {
                     vm.raiseErrorString('Script has no toplevel context to run');
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 const func = store.createFunction(stub);
                 const result = vm.callFunction(func, [parameters], [vm_specialString_parameters]);
@@ -2714,7 +2745,7 @@ const Matte = {
             vm.callVarargFunction = function(func, args) {
                 if (valToType(args) != store.TYPE_OBJECT) {
                     vm.raiseErrorString("Error: cannot call non-function value ");
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 const stub = store.valueGetBytecodeStub(func);
                 const argNames = [];
@@ -2746,16 +2777,21 @@ const Matte = {
             }
                 
             vm.callFunction = function(func, args, argNames) {
-                if (vm_pendingCatchable) return store.createEmpty();
+                if (vm_pendingCatchable) return store.empty;
+                if (func == store.emptyFunction) {
+                    vm_pendingRestartCondition = null;
+                    vm_pendingRestartConditionData = null;
+                    return store.empty;
+                }
                 const callable = store.valueIsCallable(func);
                 if (callable == 0) {
                     vm.raiseErrorString("Error: cannot call non-function value ");
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 
                 if (args.length != argNames.length) {
                     vm.raiseErrorString("VM call as mismatching arguments and parameter names.");
-                    return store.createEmpty();                        
+                    return store.empty;                        
                 }
                 
                 if (valToType(func) == store.TYPE_TYPE) {
@@ -2766,7 +2802,7 @@ const Matte = {
                         return store.valueToType(args[0], func);
                     } else {
                         vm.raiseErrorString("Type conversion failed (no value given to convert).");
-                        return store.createEmpty();
+                        return store.empty;
                     }
                 }
                 
@@ -2776,7 +2812,7 @@ const Matte = {
                 if (stub.fileID == 0) {
                     const external = stub.stubID;
                     if (external >= vm_externalFunctionIndex.length) {
-                        return store.createEmpty();
+                        return store.empty;
                     }
                     
                     const set = vm_externalFunctionIndex[external];
@@ -2785,7 +2821,7 @@ const Matte = {
                     const len = stub.argCount;
 
                     for(var i = 0; i < len; ++i) {
-                        argsReal.push(store.createEmpty());
+                        argsReal.push(store.empty);
                     }
                     
                     
@@ -2810,7 +2846,7 @@ const Matte = {
                             }
                             
                             vm.raiseErrorString(str);
-                            return store.createEmpty();
+                            return store.empty;
                         }
                     }
                     
@@ -2831,7 +2867,7 @@ const Matte = {
                     var   len = stub.argCount;
                     const referrables = [];
                     for(var i = 0; i < len+1; ++i) {
-                        referrables.push(store.createEmpty());
+                        referrables.push(store.empty);
                     }
                     
                     
@@ -2874,7 +2910,7 @@ const Matte = {
                             }
                             
                             vm.raiseErrorString(str);
-                            return store.createEmpty();                          
+                            return store.empty;                          
                         }
                     }
                     
@@ -2885,7 +2921,7 @@ const Matte = {
                     }
                     len = stub.localCount;
                     for(var i = 0; i < len; ++i) {
-                        referrables.push(store.createEmpty());
+                        referrables.push(store.empty);
                     }
                     const frame = vm_pushFrame();
                     frame.context = func;
@@ -2926,11 +2962,11 @@ const Matte = {
                         } else 
                             throw new Error('Uncaught error');
                         
-                        vm_catchable = store.createEmpty();
+                        vm_catchable = store.empty;
                         vm_pendingCatchable = 0;
                         vm_pendingCatchableIsError = 0;
                         //throw new Error("Fatal error.");
-                        return store.createEmpty();
+                        return store.empty;
                     }
 
 
@@ -2972,7 +3008,7 @@ const Matte = {
                 const opSrc = store.valueObjectGetAttributesUnsafe(a);
                 if (opSrc == undefined) {
                     vm.raiseErrorString(op + ' operator on object without operator overloading is undefined.');
-                    return store.createEmpty();
+                    return store.empty;
                 } else {
                     const oper = store.valueObjectAccessString(opSrc, op);
                     return vm.callFunction(
@@ -2988,7 +3024,7 @@ const Matte = {
                 const opSrc = store.valueObjectGetAttributesUnsafe(a);
                 if (opSrc == undefined) {
                     vm.raiseErrorString(op + ' operator on object without operator overloading is undefined.');
-                    return store.createEmpty();
+                    return store.empty;
                 } else {
                     const oper = store.valueObjectAccessString(opSrc, op);
                     return vm.callFunction(
@@ -3014,7 +3050,7 @@ const Matte = {
                   default:
                     vm_badOperator('+', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
 
@@ -3030,7 +3066,7 @@ const Matte = {
                   default:
                     vm_badOperator('-', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_DIV] = function(a, b) {
@@ -3044,7 +3080,7 @@ const Matte = {
                   default:
                     vm_badOperator('/', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_MULT] = function(a, b) {
@@ -3058,7 +3094,7 @@ const Matte = {
                   default:
                     vm_badOperator('*', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
 
@@ -3073,7 +3109,7 @@ const Matte = {
                   default:
                     vm_badOperator('!', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_NEGATE] = function(a) {
@@ -3087,7 +3123,7 @@ const Matte = {
                   default:
                     vm_badOperator('-()', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_NOT] = function(a) {
@@ -3101,7 +3137,7 @@ const Matte = {
                   default:
                     vm_badOperator('~', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
             
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_POUND] = function(a) {return vm_operatorOverloadOnly1("#", a);};
@@ -3120,7 +3156,7 @@ const Matte = {
                   default:
                     vm_badOperator('|', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_OR] = function(a, b) {
@@ -3134,7 +3170,7 @@ const Matte = {
                   default:
                     vm_badOperator('||', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_AND] = function(a, b) {
@@ -3151,7 +3187,7 @@ const Matte = {
                   default:
                     vm_badOperator('&', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_AND] = function(a, b) {
@@ -3165,7 +3201,7 @@ const Matte = {
                   default:
                     vm_badOperator('&&', a);                  
                 }
-                return store.createEmpty();                                
+                return store.empty;                                
             };
 
 
@@ -3176,7 +3212,7 @@ const Matte = {
                   default:
                     vm_badOperator(operator, a);
                 };
-                return store.createEmpty();
+                return store.empty;
             };
 
             const vm_operatorOverloadOnly1 = function(operator, a) {
@@ -3186,7 +3222,7 @@ const Matte = {
                   default:
                     vm_badOperator(operator, a);
                 };
-                return store.createEmpty();
+                return store.empty;
             };
 
 
@@ -3201,7 +3237,7 @@ const Matte = {
                   default:
                     vm_badOperator('**', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
 
@@ -3242,12 +3278,12 @@ const Matte = {
                         return store.createBoolean(a.id == b.id);
                     } else {
                         vm.raiseErrorString("!= operator with Type and non-type is undefined.");
-                        return store.createEmpty();                        
+                        return store.empty;                        
                     }
                   default:
                     vm_badOperator('==', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
 
@@ -3290,12 +3326,12 @@ const Matte = {
                         return store.createBoolean(a.id != b.id);
                     } else {
                         vm.raiseErrorString("!= operator with Type and non-type is undefined.");
-                        return store.createEmpty();                        
+                        return store.empty;                        
                     }
                   default:
                     vm_badOperator('!=', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
 
@@ -3314,7 +3350,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "<", b);
                   default:
                     vm_badOperator("<", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };
 
@@ -3331,7 +3367,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, ">", b);
                   default:
                     vm_badOperator(">", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };
 
@@ -3349,7 +3385,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "<=", b);
                   default:
                     vm_badOperator("<=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };
 
@@ -3366,7 +3402,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, ">=", b);
                   default:
                     vm_badOperator(">=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };
 
@@ -3382,7 +3418,7 @@ const Matte = {
                   default:
                     vm_badOperator('%', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
 
@@ -3396,7 +3432,7 @@ const Matte = {
                   default:
                     vm_badOperator('=>', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
 
@@ -3413,7 +3449,7 @@ const Matte = {
                   default:
                     vm_badOperator('^', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_LEFT] = function(a, b) {
@@ -3427,7 +3463,7 @@ const Matte = {
                   default:
                     vm_badOperator('<<', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
             vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_RIGHT] = function(a, b) {
@@ -3441,7 +3477,7 @@ const Matte = {
                   default:
                     vm_badOperator('>>', a);                  
                 }
-                return store.createEmpty();
+                return store.empty;
             };
 
 
@@ -3462,7 +3498,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "+=", b);
                   default:
                     vm_badOperator("+=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };
             
@@ -3475,7 +3511,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "-=", b);
                   default:
                     vm_badOperator("-=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };
 
@@ -3487,7 +3523,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "/=", b);
                   default:
                     vm_badOperator("/=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };            
             
@@ -3499,7 +3535,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "*=", b);
                   default:
                     vm_badOperator("*=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };            
 
@@ -3511,7 +3547,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "%=", b);
                   default:
                     vm_badOperator("%=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };                 
 
@@ -3523,7 +3559,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "**=", b);
                   default:
                     vm_badOperator("**=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };                 
 
@@ -3535,7 +3571,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "&=", b);
                   default:
                     vm_badOperator("&=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };                 
 
@@ -3547,7 +3583,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "|=", b);
                   default:
                     vm_badOperator("|=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };                 
 
@@ -3559,7 +3595,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "^=", b);
                   default:
                     vm_badOperator("^=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };                 
 
@@ -3571,7 +3607,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, "<<=", b);
                   default:
                     vm_badOperator("<<=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };                 
 
@@ -3583,7 +3619,7 @@ const Matte = {
                     return vm_runObjectOperator2(a, ">>=", b);
                   default:
                     vm_badOperator(">>=", a);
-                    return store.createEmpty();
+                    return store.empty;
                 }
             };                 
 
@@ -3611,7 +3647,7 @@ const Matte = {
             };
             
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NEM] = function(frame, inst) {
-                frame.valueStack.push(store.createEmpty());
+                frame.valueStack.push(store.empty);
             };
 
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NNM] = function(frame, inst) {
@@ -3637,6 +3673,10 @@ const Matte = {
                 inst = frame.stub.instructions[frame.pc++];
                 vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NFN](frame, inst);   
             };
+            
+            vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NEF] = function(frame, inst) {
+                frame.valueStack.push(store.emptyFunction);
+            };
 
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NFN] = function(frame, inst) {
                 const stub = vm_findStub(inst.nfnFileID, inst.data);
@@ -3653,7 +3693,7 @@ const Matte = {
                     
                     const vals = [];
                     for(var i = 0; i < frame.sfsCount; ++i) {
-                        vals.push(store.createEmpty());
+                        vals.push(store.empty);
                     }
                     for(var i = 0; i < frame.sfsCount; ++i) {
                         vals[frame.sfsCount - i - 1] = frame.valueStack[frame.valueStack.length-1-i];
@@ -3859,7 +3899,7 @@ const Matte = {
                     break;
                     
                   default:
-                    vOut = store.createEmpty();
+                    vOut = store.empty;
                     vm.raiseErrorString("VM error: tried to access non-existent referrable operation (corrupt bytecode?).");
                 }
                 frame.valueStack.pop();
@@ -3907,7 +3947,7 @@ const Matte = {
                     frame.valueStack.pop();
                     const out = store.valueObjectSet(object, key, val, isBracket);
                     frame.valueStack.push(
-                        out ? out : store.createEmpty()
+                        out ? out : store.empty
                     );   
                 } else {
                     var ref = store.valueObjectAccessDirect(object, key, isBracket);
@@ -4178,9 +4218,9 @@ const Matte = {
             
             
             ////////////////////////////////////// add builtin ext calls           
-            vm_addBuiltIn(vm.EXT_CALL.NOOP, [], function(fn, args){return store.createEmpty();});
+            vm_addBuiltIn(vm.EXT_CALL.NOOP, [], function(fn, args){return store.empty;});
             vm_addBuiltIn(vm.EXT_CALL.BREAKPOINT, [], function(fn, args){
-                return store.createEmpty();
+                return store.empty;
             });
             
             
@@ -4195,31 +4235,31 @@ const Matte = {
             
             vm_addBuiltIn(vm.EXT_CALL.PRINT, ['message'], function(fn, args) {
                 onPrint(store.valueAsString(args[0]));
-                return store.createEmpty();
+                return store.empty;
             });
             
             vm_addBuiltIn(vm.EXT_CALL.SEND, ['message'], function(fn, args) {
                 vm_catchable = args[0];
                 vm_pendingCatchable = 1;
                 vm_pendingCatchableIsError = 0;
-                return store.createEmpty();                
+                return store.empty;                
             });
             
             vm_addBuiltIn(vm.EXT_CALL.ERROR, ['detail'], function(fn, args) {
                 vm.raiseError(args[0]);
-                return store.createEmpty();
+                return store.empty;
             });
             
             vm_addBuiltIn(vm.EXT_CALL.GETEXTERNALFUNCTION, ['name'], function(fn, args) {
                 const str = store.valueAsString(args[0]);
                 if (vm_pendingCatchable) {
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 
                 const id = vm_externalFunctions[str];
                 if (!id) {
                     vm.raiseErrorString("getExternalFunction() was unable to find an external function of the name: " + str);
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 
                 const out = store.createFunction(vm_extStubs[id]);
@@ -4241,7 +4281,7 @@ const Matte = {
                 } else {
                     return store.createNumber(p);
                 }
-                return store.createEmpty();
+                return store.empty;
             });
 
             vm_addBuiltIn(vm.EXT_CALL.NUMBER_RANDOM, [], function(fn, args) {
@@ -4253,7 +4293,7 @@ const Matte = {
             vm_addBuiltIn(vm.EXT_CALL.STRING_COMBINE, ["strings"], function(fn, args) {
                 if (valToType(args[0]) != store.TYPE_OBJECT) {
                     vm.raiseErrorString( "Expected Object as parameter for string combination. (The object should contain string values to combine).");
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 
                 var index = store.createNumber(0);
@@ -4280,15 +4320,15 @@ const Matte = {
             
 
             vm_addBuiltIn(vm.EXT_CALL.OBJECT_FREEZEGC, [], function(fn, args) {
-                return store.createEmpty();
+                return store.empty;
             });
 
             vm_addBuiltIn(vm.EXT_CALL.OBJECT_THAWGC, [], function(fn, args) {
-                return store.createEmpty();
+                return store.empty;
 
             });
             vm_addBuiltIn(vm.EXT_CALL.OBJECT_GARBAGECOLLECT, [], function(fn, args) {
-                return store.createEmpty();
+                return store.empty;
 
             });
 
@@ -4311,14 +4351,14 @@ const Matte = {
 
             /// query object
             vm_addBuiltIn(vm.EXT_CALL.QUERY_PUSH, ['base', 'value'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 const ind = store.createNumber(store.valueObjectGetNumberKeyCount(args[0]));
                 store.valueObjectSet(args[0], ind, args[1], 1);
                 return args[0];
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETSIZE, ['base', 'size'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
 
                 const object = args[0];
 
@@ -4330,31 +4370,31 @@ const Matte = {
                 
                 if (size > oldSize) {
                     for(var i = oldSize; i < size; ++i) {
-                        object.kv_number.push(store.createEmpty());
+                        object.kv_number.push(store.empty);
                     }
                 } else if (size == oldSize) {
                     // again, whyd you do that!
                 } else {
                     object.kv_number.splice(size, oldSize-size)
                 }
-                return store.createEmpty();
+                return store.empty;
             });
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_INSERT, ['base', 'at', 'value'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 store.valueObjectInsert(args[0], store.valueAsNumber(args[1]), args[2]);
                 return args[0];
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REMOVE, ['base', 'key', 'keys'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 if (valToType(args[1])) {
                     store.valueObjectRemoveKey(args[0], args[1])
                 } else if (valToType(args[2])) {
                     if (valToType(args[2]) != store.TYPE_OBJECT) {
                         vm.raiseErrorString("'keys' for remove query requires argument to be an Object.");
-                        return store.createEmpty();
+                        return store.empty;
                     }                
                     const len = store.valueObjectGetNumberKeyCount(args[2]);
                     for(var i = 0; i < len; ++i) {
@@ -4362,31 +4402,31 @@ const Matte = {
                         store.valueObjectRemoveKey(args[0], v);
                     }
                 }
-                return store.createEmpty();
+                return store.empty;
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETATTRIBUTES, ['base', 'attributes'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 if (valToType(args[1]) != store.TYPE_OBJECT) {
                     vm.raiseErrorString("'setAttributes' requires an Object to be the 'attributes'");
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 store.valueObjectSetAttributes(args[0], args[1]);
-                return store.createEmpty();
+                return store.empty;
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SORT, ['base', 'comparator'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 if (valToType(args[1]) == store.TYPE_OBJECT && store.function_stub) {
                     vm.raiseErrorString("A function comparator is required for sorting.");
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 store.valueObjectSortUnsafe(args[0], args[1]);
-                return store.createEmpty();
+                return store.empty;
             });
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SUBSET, ['base', 'from', 'to'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 return store.valueSubset(
                     args[0],
                     store.valueAsNumber(args[1]), 
@@ -4395,7 +4435,7 @@ const Matte = {
             });            
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FILTER, ['base', 'by'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 
                 var ctout = 0;
                 const len = store.valueObjectGetKeyCount(args[0]);
@@ -4416,11 +4456,11 @@ const Matte = {
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FINDINDEX, ['base', 'value', 'query'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 if (valToType(args[1]) != store.TYPE_EMPTY &&
                     valToType(args[2]) != store.TYPE_EMPTY) {
                     vm.raiseErrorString("findIndex() cannot have both 'value' and 'query' specified.");
-                    return store.createEmpty();                    
+                    return store.empty;                    
                 }
 
                 const len = store.valueObjectGetNumberKeyCount(args[0]);
@@ -4456,14 +4496,14 @@ const Matte = {
             });
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_ISA, ['base', 'type'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
         
                 return store.createBoolean(store.valueIsA(args[0], args[1]));
             });            
             
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_MAP, ['base', 'to'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 const names = [vm_specialString_value];
                 const vals = [0];
                 const object = store.createObject();
@@ -4480,7 +4520,7 @@ const Matte = {
             });            
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REDUCE, ['base', 'to'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 const names = [
                     vm_specialString_previous,
                     vm_specialString_value
@@ -4488,7 +4528,7 @@ const Matte = {
                 const vals = [
                     0, 0
                 ];
-                var out = store.createEmpty();
+                var out = store.empty;
                 const len = store.valueObjectGetNumberKeyCount(args[0]);
                 for(var i = 0; i < len; ++i) {
                     vals[0] = out;
@@ -4500,7 +4540,7 @@ const Matte = {
             });
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_ANY, ['base', 'condition'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 const names = [
                     vm_specialString_value
                 ];
@@ -4518,7 +4558,7 @@ const Matte = {
             });            
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_ALL, ['base', 'condition'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 const names = [
                     vm_specialString_value
                 ];
@@ -4573,10 +4613,10 @@ const Matte = {
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FOREACH, ['base', 'do'], function(fn, args) {
-                if (!ensureArgObject(args)) return store.createEmpty();
+                if (!ensureArgObject(args)) return store.empty;
                 if (!store.valueIsCallable(args[1])) {
                     vm.raiseErrorString("'foreach' requires the first argument to be a function.");
-                    return store.createEmpty();
+                    return store.empty;
                 }
                 store.valueObjectForeach(args[0], args[1]);
                 return args[0];
@@ -4585,9 +4625,9 @@ const Matte = {
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETISINTERFACE, ['base', 'enabled'], function(fn, args) {
                 const which = store.valueAsBoolean(args[1]);
-                if (vm_pendingCatchable) return store.createEmpty();
+                if (vm_pendingCatchable) return store.empty;
                 store.valueObjectSetIsInterface(args[0], which);
-                return store.createEmpty();
+                return store.empty;
             });                        
             
             
@@ -4605,14 +4645,14 @@ const Matte = {
             
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SEARCH, ['base', 'key'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const str2 = store.valueAsString(args[1]);
                 if (str2 == '') return store.createNumber(-1);
                 return store.createNumber(args[0].indexOf(str2));
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_CONTAINS, ['base', 'key'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const str2 = store.valueAsString(args[1]);
                 if (str2 == '') return store.createBoolean(false);
                 return store.createBoolean(args[0].indexOf(str2) != -1);
@@ -4620,7 +4660,7 @@ const Matte = {
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SEARCH_ALL, ['base', 'key'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const str2 = store.valueAsString(args[1]);
                 
                 const outArr = [];
@@ -4640,7 +4680,7 @@ const Matte = {
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REPLACE, ['base', 'key', 'with', 'keys'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const str2 = store.valueAsString(args[1]);    
                 const str3 = store.valueAsString(args[2]);    
                 const strs = (args[3]);
@@ -4660,7 +4700,7 @@ const Matte = {
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_FORMAT, ['base', 'items'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const items = args[1];
                 
                 if (valToType(items) != store.TYPE_OBJECT) {
@@ -4712,7 +4752,7 @@ const Matte = {
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_COUNT, ['base', 'key'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const str2 = store.valueAsString(args[1]);    
 
                 var str = args[0];
@@ -4728,20 +4768,20 @@ const Matte = {
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_CHARCODEAT, ['base', 'index'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const index = store.valueAsNumber(args[1]);
                 return store.createNumber(args[0].charCodeAt(index));
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_CHARAT, ['base', 'index'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const index = store.valueAsNumber(args[1]);
                 return store.createString(args[0].charAt(index));
             });
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETCHARCODEAT, ['base', 'index', 'value'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const index = store.valueAsNumber(args[1]);
                 const val = store.valueAsNumber(args[2]);
                 
@@ -4751,7 +4791,7 @@ const Matte = {
 
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SETCHARAT, ['base', 'index', 'value'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const index = store.valueAsNumber(args[1]);
                 const val = store.valueAsString(args[2]);
                 
@@ -4760,7 +4800,7 @@ const Matte = {
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_REMOVECHAR, ['base', 'index'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const index = store.valueAsNumber(args[1]);
                 
                 var str = args[0];
@@ -4768,7 +4808,7 @@ const Matte = {
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SUBSTR, ['base', 'from', 'to'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const from = store.valueAsNumber(args[1]);
                 const to   = store.valueAsNumber(args[2]);
 
@@ -4777,7 +4817,7 @@ const Matte = {
             });
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SPLIT, ['base', 'token'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
                 const token = store.valueAsString(args[1]);
                 const results = args[0].split(token);
                 for(var i = 0; i < results.length; ++i) {
@@ -4787,7 +4827,7 @@ const Matte = {
             });                
 
             vm_addBuiltIn(vm.EXT_CALL.QUERY_SCAN, ['base', 'format'], function(fn, args) {
-                if (!ensureArgString(args)) return store.createEmpty();
+                if (!ensureArgString(args)) return store.empty;
 
                 // this is not a good method.
                 var exp = store.valueAsString(args[1]);
@@ -4869,11 +4909,11 @@ const Matte = {
                     return store.createBoolean(js);
                     
                   case 'undefined':
-                    return store.createEmpty();
+                    return store.empty;
                     
                   case 'object': return (function() {
                     if (js == null)
-                        return store.createEmpty();
+                        return store.empty;
                     
                     if (Array.isArray(js)) {
                         const vals = [];
