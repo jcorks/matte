@@ -2451,7 +2451,7 @@ static matteArray_t * push_variable_name(
 
     if (OPTION__NAMED_REFERENCES) {
         uint32_t i = function_intern_string(blockOrig, (const matteString_t*)iter->data);
-        write_instruction__pnr(inst, GET_LINE_OFFSET(block), i);
+        write_instruction__pnr(inst, block ? GET_LINE_OFFSET(block) : 0, i);
         *src = iter->next;
         return inst;
     } else {

@@ -91,6 +91,14 @@ typedef struct  {
         double number;
         /// For string, type, and Object, this is an ID uniquely identifying the value among its type.
         uint32_t id; 
+        /// For when auxiliary data is needed in addition to an id 
+        struct {
+            uint32_t id;
+            // For devs: MAKE SURE that if you modify the VM to use auxiliary IDs that the 
+            // created objects clean their aux ID on creation! The only ones that are cleaned right 
+            // now are Functions, as they are used for dynamic binding.
+            uint32_t idAux;
+        } extended;
     } value;
 } matteValue_t;
 
@@ -269,7 +277,11 @@ void matte_value_into_cloned_function_ref(matteStore_t *, matteValue_t * v, matt
 /// - reading an attribute that doesnt have a getter
 /// - writing to a function attribute 
 /// - accessing an interface with a non-string key.
-void matte_value_object_set_is_interface(matteStore_t *, matteValue_t v, int enabled);
+///
+/// An interface can also have a custom dynamic binding object. This is passed to the 
+/// object's members (including setters + getters) in the interface's stead, allowing 
+/// for a private datastore for the interface.
+void matte_value_object_set_is_interface(matteStore_t *, matteValue_t v, int enabled, matteValue_t dynamicInterface);
 
 
 /// Gets a reference (no copying) of a value within an object's 
@@ -450,6 +462,12 @@ void matte_value_object_set_attributes(matteStore_t *, matteValue_t v, matteValu
 /// Gets the attributes set for an object, assuming that the value is an object.
 /// If the object has no attributes set, NULL is returned.
 const matteValue_t * matte_value_object_get_attributes_unsafe(matteStore_t *, matteValue_t);
+
+/// Gets the dynamic binding for an object, assuming that the value is an object.
+/// If the object has no attributes set, the given object is returned.
+matteValue_t matte_value_object_get_dynamic_binding_unsafe(matteStore_t *, matteValue_t);
+
+
 
 /// Removes a key from an object if it exists. If the value is 
 /// not an object or the key does not exist, no action is taken.

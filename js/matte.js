@@ -678,13 +678,19 @@ const Matte = {
                     return out;
                 },
                 
-                valueObjectSetIsInterface : function(value, enabled) {
+                valueObjectSetIsInterface : function(value, enabled, dynBinding) {
                     if (valToType(value) != TYPE_OBJECT) {
                         vm.raiseErrorString('setIsInterface query requires an Object.');
                         return;
                     }
                     value.hasInterface = enabled;
-                
+                    if (dynBinding != undefined) {
+                        if (valToType(dynBinding) != TYPE_OBJECT) {
+                            vm.raiseErrorString("Cannot use a custom dynamic binding for an interface that isn't an Object.")
+                            return
+                        }
+                        value.table_customDynamicBinding = dynBinding;
+                    }
                 },
                 
                 createType : function(name, inherits) {
@@ -1120,6 +1126,14 @@ const Matte = {
                                 vm.raiseErrorString("Object's interface disallows reading of the member \"" + key +"\".");
                                 return createValue();
                             }
+                            if (store.valueGetBytecodeStub(getter).isDynamicBinding) {
+                            
+                                return vm.callFunction(
+                                    getter,
+                                    [store.valueObjectGetDynamicBindingUnsafe(value)],
+                                    [store_specialString_dynamicBindToken]
+                                );
+                            }
                             return vm.callFunction(getter, [], []);
                             
                         }
@@ -1491,7 +1505,14 @@ const Matte = {
                             vm.raiseErrorString("Object's interface disallows writing of the member \"" + key +"\".");
                             return createValue();
                         }
-                        vm.callFunction(setter, [v], [store_specialString_value]);
+                        if (store.valueGetBytecodeStub(setter).isDynamicBinding) {
+                            vm.callFunction(setter, 
+                                [v, store.valueObjectGetDynamicBindingUnsafe(value)], 
+                                [store_specialString_value, store_specialString_dynamicBindToken]
+                            );                            
+                        } else {
+                            vm.callFunction(setter, [v], [store_specialString_value]);
+                        }
                         return createValue();
                         
                     }
@@ -1547,6 +1568,10 @@ const Matte = {
                 
                 valueObjectGetAttributesUnsafe : function(value) {
                     return value.table_attribSet;
+                },
+
+                valueObjectGetDynamicBindingUnsafe : function(value) {
+                    return value.table_customDynamicBinding == undefined ? value : value.table_customDynamicBinding;
                 },
                 
                 valueObjectRemoveKey : function(value, key) {
@@ -2742,14 +2767,30 @@ const Matte = {
                 return result;
             },
                 
-            vm.callVarargFunction = function(func, args) {
+            vm.callVarargFunction = function(func, args, dynBind) {
                 if (valToType(args) != store.TYPE_OBJECT) {
-                    vm.raiseErrorString("Error: cannot call non-function value ");
+                    vm.raiseErrorString("Vararg calls MUST provide an expression that results in an Object.");
                     return store.empty;
                 }
+                
                 const stub = store.valueGetBytecodeStub(func);
+                
+                if (!stub) {
+                    vm.raiseErrorString("Cannot use a vararg call on something that isnt a function.");
+                    return store.empty;
+                    
+                }
+                
+                
                 const argNames = [];
                 const argVals = [];
+                const dynBindName = store.getDynamicBindToken();
+                
+                if (dynBind != store.empty) {
+                    argVals.push(dynBind);
+                    argNames.push(dynBindName);
+                }
+                
                 
                 if (stub.isVarArg) {
                     const keys = store.valueObjectKeys(args);
@@ -2757,6 +2798,9 @@ const Matte = {
                     for(var i = 0; i < len; ++i) {
                         const key = store.valueObjectAccessIndex(keys, i);
                         if (valToType(key) != store.TYPE_STRING) continue;
+                        
+                        if (key == dynBindName) continue;
+                        
                         argNames[i] = key;
                         const arg = store.valueObjectAccess(args, key, 0);
                         argVals[i] = arg;
@@ -2767,6 +2811,9 @@ const Matte = {
                     const len = stub.argCount;
                     for(var i = 0; i < len; ++i) {
                         const name = store.createString(stub.argNames[i]);
+                        
+                        if (name == dynBindName) continue;
+                        
                         const arg = store.valueObjectAccess(args, name, 0);
                         argVals[i] = arg;
                         argNames[i] = name;
@@ -3798,11 +3845,22 @@ const Matte = {
                     return;
                 }          
 
-                const result = vm.callVarargFunction(
-                    frame.valueStack[frame.valueStack.length - 2],
-                    frame.valueStack[frame.valueStack.length - 1]
-                );
+                var result;
                 
+                const func = frame.valueStack[frame.valueStack.length - 2];
+                    
+                if (func.idAux != undefined) {        
+                    result = vm.callVarargFunction(
+                        frame.valueStack[frame.valueStack.length - 2],
+                        frame.valueStack[frame.valueStack.length - 1],
+                        func.idAux
+                    );                
+                } else {
+                    result = vm.callVarargFunction(
+                        frame.valueStack[frame.valueStack.length - 2],
+                        frame.valueStack[frame.valueStack.length - 1]
+                    );                
+                }
                 
                 frame.valueStack.pop();
                 frame.valueStack.pop();
@@ -3831,8 +3889,6 @@ const Matte = {
                             argNames.push(key);
                             args.push(value);
                             
-                        } else if (valToType(value) == vm_CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING) {
-                            isDynBind = true;
                         } else {
                             break;
                         }
@@ -3849,13 +3905,16 @@ const Matte = {
                 */
                 
                 const func = frame.valueStack[frame.valueStack.length - 1 - i];
+                
+                if (func.idAux != undefined) {
+                    args.push(func.idAux);
+                    argNames.push(store.getDynamicBindToken());
+                }
+                
+                
                 const result = vm.callFunction(func, args, argNames);
                 
                 for(i = 0; i < argCount; ++i) {
-                    frame.valueStack.pop();
-                    frame.valueStack.pop();
-                }
-                if (isDynBind) {
                     frame.valueStack.pop();
                     frame.valueStack.pop();
                 }
@@ -3995,20 +4054,14 @@ const Matte = {
                 
                 frame.valueStack.pop();
                 frame.valueStack.pop();
-                frame.valueStack.push(output);
                 
                 if (output) {
                     const stub = store.valueGetBytecodeStub(output);
                     if (stub && stub.isDynamicBinding && valToType(key) == store.TYPE_STRING) {
-                        frame.valueStack.push(object);
-                        frame.valueStack.push(store.getDynamicBindToken());
-                        
-                        const marker = {};
-                        marker.binID = vm_CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING;
-                        frame.valueStack.push(marker);
-                        frame.valueStack.push(output);
+                        output.idAux = store.valueObjectGetDynamicBindingUnsafe(object);
                     }
                 }
+                frame.valueStack.push(output);
                 
             };
             
@@ -4623,10 +4676,10 @@ const Matte = {
             });            
             
             
-            vm_addBuiltIn(vm.EXT_CALL.QUERY_SETISINTERFACE, ['base', 'enabled'], function(fn, args) {
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_SETISINTERFACE, ['base', 'enabled', 'dynamicBinding'], function(fn, args) {
                 const which = store.valueAsBoolean(args[1]);
                 if (vm_pendingCatchable) return store.empty;
-                store.valueObjectSetIsInterface(args[0], which);
+                store.valueObjectSetIsInterface(args[0], which, args[2]);
                 return store.empty;
             });                        
             

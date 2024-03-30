@@ -332,6 +332,7 @@ struct matteObject_t {
             matteTable_t * keyvalues_types;
 
             matteValue_t * attribSet;
+            matteValue_t * customDynamicBinding;
             
         } table;
         
@@ -1982,6 +1983,7 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
 
 
     v->value.id = d->storeID;
+    v->value.extended.idAux = 0;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
     
     
@@ -2062,6 +2064,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
 
 
     v->value.id = d->storeID;
+    v->value.extended.idAux = 0;
     d->function.stub = stub;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
 
@@ -2788,7 +2791,22 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
             }
 
             matteValue_t * getter = store_value_pointer_get_by_pointer(store, id);
-            return matte_vm_call(store->vm, *getter, matte_array_empty(), matte_array_empty(), NULL);
+            
+            if (matte_bytecode_stub_is_dynamic_bind(matte_value_get_bytecode_stub(store, *getter))) {
+                matteValue_t args[] = {
+                    matte_value_object_get_dynamic_binding_unsafe(store, v)
+                };
+                matteValue_t argNames[] = {
+                    store->specialString_dynamicBindToken
+                };
+                
+                matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 1);
+                matteArray_t arrName = MATTE_ARRAY_CAST(argNames, matteValue_t, 1);
+
+                return matte_vm_call(store->vm, *getter, &arr, &arrName, NULL);            
+            } else 
+            
+                return matte_vm_call(store->vm, *getter, matte_array_empty(), matte_array_empty(), NULL);
         }        
         
         
@@ -3607,7 +3625,7 @@ void matte_value_object_set_attributes(matteStore_t * store, matteValue_t v, mat
 
 
 void matte_value_object_set_is_interface(
-    matteStore_t * store, matteValue_t v, int enable
+    matteStore_t * store, matteValue_t v, int enable, matteValue_t dyn
 ) {
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(store->vm, "Cannot enable/disable interface mode for something that isn't an Object.");
@@ -3619,7 +3637,32 @@ void matte_value_object_set_is_interface(
     else
         DISABLE_STATE(m, OBJECT_STATE__HAS_INTERFACE);    
 
+    if (m->table.customDynamicBinding) {
+        object_unlink_parent_value(store, m, m->table.customDynamicBinding);
+        matte_store_recycle(store, *m->table.customDynamicBinding);       
+        matte_deallocate(m->table.customDynamicBinding);     
+        m->table.customDynamicBinding = NULL;
+    }
+    
+    if (dyn.binID) {
+        if (dyn.binID != MATTE_VALUE_TYPE_OBJECT) {
+            matte_vm_raise_error_cstring(store->vm, "Cannot use a custom dynamic binding for an interface that isn't an Object.");
+            return;
+        }
+        m->table.customDynamicBinding = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
+        matte_value_into_copy(store, m->table.customDynamicBinding, dyn);
+        object_link_parent_value(store, m, m->table.customDynamicBinding);
+    }
+    
 }
+
+
+matteValue_t matte_value_object_get_dynamic_binding_unsafe(matteStore_t * store, matteValue_t v) {
+    matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
+    if (!m->table.customDynamicBinding) return v;
+    return *m->table.customDynamicBinding;
+}
+
 
 const matteValue_t * matte_value_object_get_attributes_unsafe(matteStore_t * store, matteValue_t v) {
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3860,16 +3903,35 @@ matteValue_t matte_value_object_set(matteStore_t * store, matteValue_t v, matteV
         }
         matteValue_t * setter = store_value_pointer_get_by_pointer(store, id);
 
-        matteValue_t args[] = {
-            val
-        };
-        matteValue_t argNames[] = {
-            store->specialString_value,
-        };
-        matteArray_t argNames_array = MATTE_ARRAY_CAST(argNames, matteValue_t, 1);
+        
+        if (matte_bytecode_stub_is_dynamic_bind(matte_value_get_bytecode_stub(store, *setter))) {
+            matteValue_t args[] = {
+                matte_value_object_get_dynamic_binding_unsafe(store, v),
+                val
+            };
 
-        matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 1);
-        matte_vm_call(store->vm, *setter, &arr, &argNames_array, NULL);
+            matteValue_t argNames[] = {
+                store->specialString_dynamicBindToken,
+                store->specialString_value
+            };
+ 
+            matteArray_t argNames_array = MATTE_ARRAY_CAST(argNames, matteValue_t, 2);
+            matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 2);
+
+            matte_vm_call(store->vm, *setter, &arr, &argNames_array, NULL);        
+        } else {
+            matteValue_t args[] = {
+                val
+            };
+
+            matteValue_t argNames[] = {
+                store->specialString_value,
+            };
+            matteArray_t argNames_array = MATTE_ARRAY_CAST(argNames, matteValue_t, 1);
+
+            matteArray_t arr = MATTE_ARRAY_CAST(args, matteValue_t, 1);
+            matte_vm_call(store->vm, *setter, &arr, &argNames_array, NULL);
+        }
         return matte_store_new_value(store);
     }
 
@@ -4032,6 +4094,8 @@ const matteValue_t * matte_store_get_any_type(matteStore_t * h) {
 matteValue_t matte_store_get_dynamic_bind_token(matteStore_t * h) {
     return h->specialString_dynamicBindToken;
 }
+
+
 
 
 matteValue_t matte_value_get_type(matteStore_t * store, matteValue_t v) {

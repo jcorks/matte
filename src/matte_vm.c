@@ -183,7 +183,8 @@ void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t ref
 static matteValue_t matte_vm_vararg_call(
     matteVM_t * vm, 
     matteValue_t func, 
-    matteValue_t args
+    matteValue_t args,
+    matteValue_t dynBind
 ) {
     if (args.binID != MATTE_VALUE_TYPE_OBJECT) {
         matteString_t * err = matte_string_create_from_c_str("Vararg calls MUST provide an expression that results in an Object");
@@ -191,11 +192,23 @@ static matteValue_t matte_vm_vararg_call(
         matte_string_destroy(err);
         return matte_store_new_value(vm->store);
     }
-    
+    if (!matte_value_is_function(func)) {    
+        matteString_t * err = matte_string_create_from_c_str("Cannot use a vararg call on something that isnt a function.");
+        matte_vm_raise_error_string(vm, err);
+        matte_string_destroy(err);
+        return matte_store_new_value(vm->store);
+    }
     
     matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, func);
     matteArray_t * argVals = matte_array_create(sizeof(matteValue_t));
     matteArray_t * argNames = matte_array_create(sizeof(matteValue_t));
+    matteValue_t dynBindName = matte_store_get_dynamic_bind_token(vm->store);
+
+    if (dynBind.binID) {
+        matte_array_push(argVals, dynBind);
+        matte_array_push(argNames, dynBindName);
+    }
+
 
     uint32_t i;
     uint32_t len;
@@ -206,6 +219,11 @@ static matteValue_t matte_vm_vararg_call(
         for(i = 0; i < len; ++i) {
             matteValue_t key = matte_value_object_access_index(vm->store, keys, i);
             if (key.binID != MATTE_VALUE_TYPE_STRING) continue;
+            
+            if (key.value.id == dynBindName.value.id) {
+                continue;
+            }
+            
             matte_array_push(argNames, key);
             matteValue_t arg = matte_value_object_access(
                 vm->store, 
@@ -218,7 +236,11 @@ static matteValue_t matte_vm_vararg_call(
     } else {
         len = matte_bytecode_stub_arg_count(stub);
         for(i = 0; i < len; ++i) {
-            matteValue_t name = matte_bytecode_stub_get_arg_name(stub, i);
+            matteValue_t name = matte_bytecode_stub_get_arg_name(stub, i);            
+            if (name.value.id == dynBindName.value.id) {
+                continue;
+            }
+
             matteValue_t arg = matte_value_object_access(
                 vm->store, 
                 args, 
@@ -878,7 +900,21 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 break;
             }
 
-            matteValue_t result = matte_vm_vararg_call(vm, STACK_PEEK(1), STACK_PEEK(0));
+            matteValue_t function = STACK_PEEK(1);
+            matteValue_t result;
+
+            if (function.value.extended.idAux != 0) {
+                matteValue_t dynBind;
+                dynBind.binID = MATTE_VALUE_TYPE_OBJECT;
+                dynBind.value.id = function.value.extended.idAux;
+                result = matte_vm_vararg_call(vm, STACK_PEEK(1), STACK_PEEK(0), dynBind);
+            } else {
+                matteValue_t emp = matte_store_new_value(vm->store);
+                result = matte_vm_vararg_call(vm, STACK_PEEK(1), STACK_PEEK(0), emp);            
+            }
+
+
+
             STACK_POP_NORET(); // arg
             STACK_POP_NORET(); // fn
             STACK_PUSH(result);
@@ -900,7 +936,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             uint32_t i = 0;
             uint32_t stackSize = STACK_SIZE();
-            int isDynBind = 0;
             if (stackSize > 2) {
                 while(i < stackSize-1) {
                     matteValue_t key = STACK_PEEK(i);
@@ -910,8 +945,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     if (key.binID == MATTE_VALUE_TYPE_STRING) {
                         matte_array_push(argnames, key);
                         matte_array_push(args, value);                
-                    } else if (value.binID == CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING) {
-                        isDynBind = 1;
                     } else {
                         break;
                     }
@@ -929,6 +962,18 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }*/
 
             matteValue_t function = STACK_PEEK(i);
+            // TODO: we need to preserve the dynamic binding to guarantee its always accessible.
+            // Right now we just assume it is, and in 99% of cases it will be, but it is 
+            // trivial to come up with a case where it doesnt work.
+            if (function.value.extended.idAux != 0) {
+                matteValue_t dynBind;
+                dynBind.binID = MATTE_VALUE_TYPE_OBJECT;
+                dynBind.value.id = function.value.extended.idAux;
+                
+                matteValue_t dynName = matte_store_get_dynamic_bind_token(vm->store);
+                matte_array_push(args, dynBind);
+                matte_array_push(argnames, dynName);
+            }
 
             #ifdef MATTE_DEBUG__STORE
                 matteString_t * info = matte_string_create_from_c_str("FUNCTION CALLED @");
@@ -944,10 +989,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 STACK_POP_NORET();
                 STACK_POP_NORET(); // always a string
             }
-            if (isDynBind) {
-                STACK_POP_NORET(); // extra function.
-                STACK_POP_NORET(); // extra function.
-            }            
             matte_array_destroy(args);
             matte_array_destroy(argnames);
             STACK_POP_NORET();
@@ -1106,23 +1147,16 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             
             STACK_POP_NORET();
             STACK_POP_NORET();
-            STACK_PUSH(output);
 
             // if a dynamic binding, cache the binding
             if (matte_value_is_function(output) && key.binID == MATTE_VALUE_TYPE_STRING) {
                 matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, output);
                 if (matte_bytecode_stub_is_dynamic_bind(stub)) {                
-                    matteValue_t vname = matte_store_get_dynamic_bind_token(vm->store);
-
-                    STACK_PUSH(object);
-                    STACK_PUSH(vname);
-
-                    matteValue_t marker = {};
-                    marker.binID = CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING;
-                    STACK_PUSH(marker);
-                    STACK_PUSH(output);
+                    matteValue_t dyn = matte_value_object_get_dynamic_binding_unsafe(vm->store, object);
+                    output.value.extended.idAux = dyn.value.id;
                 }
             }        
+            STACK_PUSH(output);
 
 
             break;
@@ -1635,7 +1669,8 @@ matteVM_t * matte_vm_create(matte_t * m) {
 
     const matteString_t * interface_names[] = {
         query_name,
-        MATTE_VM_STR_CAST(vm, "enabled")    
+        MATTE_VM_STR_CAST(vm, "enabled"),
+        MATTE_VM_STR_CAST(vm, "dynamicBinding"),
     };
     
     const matteString_t * findIndex_names[] = {
@@ -1757,7 +1792,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ANY,     &temp, vm_ext_call__object__any);    
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ALL,     &temp, vm_ext_call__object__all);    
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FOREACH, &temp, vm_ext_call__object__foreach);
-    temp = MATTE_ARRAY_CAST(interface_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SET_IS_INTERFACE,     &temp, vm_ext_call__object__set_is_interface);    
+    temp = MATTE_ARRAY_CAST(interface_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SET_IS_INTERFACE,     &temp, vm_ext_call__object__set_is_interface);    
 
     
     
