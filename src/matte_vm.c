@@ -174,6 +174,24 @@ void matte_vm_find_in_stack(matteVM_t * vm, uint32_t id) {
 matteValue_t * matte_vm_stackframe_get_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID);
 void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t referrableID, matteValue_t val);
 
+typedef struct {
+    matteValue_t (*userFunction)(matteVM_t *, matteValue_t, const matteValue_t * args, void * userData);
+    void * userData;
+    uint8_t nArgs;
+} ExternalFunctionSet_t;
+
+
+
+
+matteValue_t matte_vm_call_full(
+    matteVM_t * vm, 
+    matteValue_t func, 
+    matteValue_t privateBinding,
+    const matteArray_t * args,
+    const matteArray_t * argNames,
+    const matteString_t * prettyName
+);
+
 
 
 // Function call with just one argument that is splayed to 
@@ -183,6 +201,7 @@ void matte_vm_stackframe_set_referrable(matteVM_t * vm, uint32_t i, uint32_t ref
 static matteValue_t matte_vm_vararg_call(
     matteVM_t * vm, 
     matteValue_t func, 
+    matteValue_t callingContext,
     matteValue_t args,
     matteValue_t dynBind
 ) {
@@ -253,7 +272,7 @@ static matteValue_t matte_vm_vararg_call(
         }
     }    
 
-    matteValue_t out = matte_vm_call(vm, func, argVals, argNames, NULL);
+    matteValue_t out = matte_vm_call_full(vm, func, callingContext, argVals, argNames, NULL);
     
     len = matte_array_get_size(argVals);
     for(i = 0; i < len; ++i) {
@@ -320,11 +339,6 @@ uint32_t matte_vm_get_file_id_by_name(matteVM_t * vm, const matteString_t * name
 }
 
 
-typedef struct {
-    matteValue_t (*userFunction)(matteVM_t *, matteValue_t, const matteValue_t * args, void * userData);
-    void * userData;
-    uint8_t nArgs;
-} ExternalFunctionSet_t;
 
 static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
     vm->stacksize++;
@@ -628,6 +642,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             STACK_PUSH(v);
             break;
           }
+
+          case MATTE_OPCODE_PIP: {
+            if (frame->privateBinding.binID == MATTE_VALUE_TYPE_EMPTY) {
+                matte_vm_raise_error_cstring(vm, "The private interface binding is only available for functions that are called directly from an interface.");            
+            }
+            STACK_PUSH(frame->privateBinding);
+            break;
+          }
             
           case MATTE_OPCODE_PRF: {
             uint32_t referrable = (uint32_t)inst->data;
@@ -902,16 +924,29 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             matteValue_t function = STACK_PEEK(1);
             matteValue_t result;
+            matteValue_t dynBind = {};
+            matteValue_t privateBinding = {};
 
             if (function.value.extended.idAux != 0) {
-                matteValue_t dynBind;
-                dynBind.binID = MATTE_VALUE_TYPE_OBJECT;
-                dynBind.value.id = function.value.extended.idAux;
-                result = matte_vm_vararg_call(vm, STACK_PEEK(1), STACK_PEEK(0), dynBind);
-            } else {
-                matteValue_t emp = matte_store_new_value(vm->store);
-                result = matte_vm_vararg_call(vm, STACK_PEEK(1), STACK_PEEK(0), emp);            
+                matteValue_t m = {};
+                m.binID = MATTE_VALUE_TYPE_OBJECT;
+                m.value.id = function.value.extended.idAux;
+
+                matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, function);
+                if (stub && matte_bytecode_stub_is_dynamic_bind(stub)) {                    
+                    dynBind = m;
+                }
+                
+                if (stub && matte_value_object_get_is_interface_unsafe(vm->store, m)) {
+                    privateBinding = matte_value_object_get_interface_private_binding_unsafe(vm->store, m);
+                }
+
+                
             }
+            
+            
+            
+            result = matte_vm_vararg_call(vm, STACK_PEEK(1), privateBinding, STACK_PEEK(0), dynBind);
 
 
 
@@ -962,17 +997,26 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             }*/
 
             matteValue_t function = STACK_PEEK(i);
+            matteValue_t privateBinding = {};
             // TODO: we need to preserve the dynamic binding to guarantee its always accessible.
             // Right now we just assume it is, and in 99% of cases it will be, but it is 
             // trivial to come up with a case where it doesnt work.
             if (function.value.extended.idAux != 0) {
-                matteValue_t dynBind;
-                dynBind.binID = MATTE_VALUE_TYPE_OBJECT;
-                dynBind.value.id = function.value.extended.idAux;
+                matteValue_t srcObject = {};
+                srcObject.binID = MATTE_VALUE_TYPE_OBJECT;
+                srcObject.value.id = function.value.extended.idAux;
+
+                matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, function);
+                if (stub && matte_bytecode_stub_is_dynamic_bind(stub)) {                    
+                    matteValue_t dynName = matte_store_get_dynamic_bind_token(vm->store);
+                    matte_array_push(args, srcObject);
+                    matte_array_push(argnames, dynName);
+                }
                 
-                matteValue_t dynName = matte_store_get_dynamic_bind_token(vm->store);
-                matte_array_push(args, dynBind);
-                matte_array_push(argnames, dynName);
+                
+                if (stub && matte_value_object_get_is_interface_unsafe(vm->store, srcObject)) {
+                    privateBinding = matte_value_object_get_interface_private_binding_unsafe(vm->store, srcObject);
+                }
             }
 
             #ifdef MATTE_DEBUG__STORE
@@ -983,7 +1027,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_string_destroy(info);
             #endif
             
-            matteValue_t result = matte_vm_call(vm, function, args, argnames, NULL);
+            matteValue_t result = matte_vm_call_full(vm, function, privateBinding, args, argnames, NULL);
 
             for(i = 0; i < argcount; ++i) {
                 STACK_POP_NORET();
@@ -1148,13 +1192,9 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             STACK_POP_NORET();
             STACK_POP_NORET();
 
-            // if a dynamic binding, cache the binding
-            if (matte_value_is_function(output) && key.binID == MATTE_VALUE_TYPE_STRING) {
-                matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, output);
-                if (matte_bytecode_stub_is_dynamic_bind(stub)) {                
-                    matteValue_t dyn = matte_value_object_get_dynamic_binding_unsafe(vm->store, object);
-                    output.value.extended.idAux = dyn.value.id;
-                }
+            // if a dynamic binding OR private interface accessor, cache the binding
+            if (matte_value_is_function(output) && key.binID == MATTE_VALUE_TYPE_STRING && object.binID == MATTE_VALUE_TYPE_OBJECT) {
+                output.value.extended.idAux = object.value.id;
             }        
             STACK_PUSH(output);
 
@@ -1670,7 +1710,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
     const matteString_t * interface_names[] = {
         query_name,
         MATTE_VM_STR_CAST(vm, "enabled"),
-        MATTE_VM_STR_CAST(vm, "dynamicBinding"),
+        MATTE_VM_STR_CAST(vm, "private"),
     };
     
     const matteString_t * findIndex_names[] = {
@@ -1995,11 +2035,10 @@ void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr) {
 matteStore_t * matte_vm_get_store(matteVM_t * vm) {return vm->store;}
 
 
-
-
-matteValue_t matte_vm_call(
+matteValue_t matte_vm_call_full(
     matteVM_t * vm, 
     matteValue_t func, 
+    matteValue_t privateBinding,
     const matteArray_t * args,
     const matteArray_t * argNames,
     const matteString_t * prettyName
@@ -2242,7 +2281,8 @@ matteValue_t matte_vm_call(
         
 
                 // no calling context yet
-        matteVMStackFrame_t * frame = vm_push_frame(vm);    
+        matteVMStackFrame_t * frame = vm_push_frame(vm);   
+        frame->privateBinding = privateBinding; 
        
         if (prettyName) {
             matte_string_set(frame->prettyName, prettyName);
@@ -2272,6 +2312,7 @@ matteValue_t matte_vm_call(
 
         // establishes the reference path of objects not allowed to be cleaned up
         matte_value_object_push_lock(vm->store, frame->context);        
+        matte_value_object_push_lock(vm->store, frame->privateBinding);
         matteValue_t result = matte_store_new_value(vm->store);
 
 
@@ -2307,6 +2348,7 @@ matteValue_t matte_vm_call(
         // cleanup;
         matte_store_recycle(vm->store, frame->context);
         matte_value_object_pop_lock(vm->store, result);
+        matte_value_object_pop_lock(vm->store, privateBinding);
         vm_pop_frame(vm);
 
 
@@ -2345,6 +2387,17 @@ matteValue_t matte_vm_call(
     } 
 }
 
+
+matteValue_t matte_vm_call(
+    matteVM_t * vm, 
+    matteValue_t func, 
+    const matteArray_t * args,
+    const matteArray_t * argNames,
+    const matteString_t * prettyName
+) {
+    matteValue_t callingContext = {};
+    return matte_vm_call_full(vm, func, callingContext, args, argNames, prettyName);
+}
 
 
 

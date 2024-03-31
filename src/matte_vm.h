@@ -257,6 +257,10 @@ struct matteVMStackFrame_t {
     /// Function object of the stackframe.
     /// Holds captured values.
     matteValue_t context;
+    
+    /// Special value that serves as the "_" value.
+    /// Canonically, this is reserved for the private interface binding.
+    matteValue_t privateBinding;
 
     /// Current instruction index within the stub
     uint32_t pc;

@@ -41,6 +41,12 @@ static void write_instruction__prf(matteArray_t * insts, uint16_t lineOffset, ui
     matte_array_push(insts, inst);
 }
 
+static void write_instruction__pip(matteArray_t * insts, uint16_t lineOffset) {
+    matteBytecodeStubInstruction_t inst;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_PIP;
+    matte_array_push(insts, inst);
+}
 
 
 static void write_instruction__nem(matteArray_t * insts, uint16_t lineOffset) {

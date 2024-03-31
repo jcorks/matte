@@ -416,7 +416,7 @@ static matteString_t * consume_variable_name(uint8_t ** src) {
         valid = (c > 47 && c < 58)  || // nums
                 (c > 64 && c < 91)  || // uppercase
                 (c > 96 && c < 123) || // lowercase
-                (c == '_') || (c == '$') ||  // underscore or binding token
+                (c == '_') || (c == '$') ||  // interface private token or binding token
                 (c > 127); // other things / unicode stuff
 
         if (valid) {
@@ -2378,6 +2378,14 @@ static matteArray_t * push_variable_name(
         uint32_t i;
         uint32_t len;
 
+        // special "_"
+        if (!strcmp(matte_string_get_c_str((const matteString_t*)iter->data), "_")) {
+            write_instruction__pip(inst, GET_LINE_OFFSET(block));
+            *src = iter->next;
+            return inst;                    
+        }
+
+
         len = matte_array_get_size(block->captureNames);
         for(i = 0; i < len; ++i) {
             if (matte_string_test_eq((const matteString_t*)iter->data, matte_array_at(block->captureNames, matteString_t *, i))) {
@@ -3271,6 +3279,11 @@ static matteArray_t * compile_function_call(
 
         if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("$", matte_string_get_c_str(iter->data))) {
             matte_syntax_graph_print_compile_error(g, iter, "Cannot bind as argument special dynamic binding character $.");
+            goto L_FAIL;            
+        }
+
+        if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("_", matte_string_get_c_str(iter->data))) {
+            matte_syntax_graph_print_compile_error(g, iter, "Cannot bind as argument special interface private accessor _.");
             goto L_FAIL;            
         }
 
@@ -4282,6 +4295,11 @@ static int compile_statement(
             matte_syntax_graph_print_compile_error(g, iter, "Cannot declare variable with special binding name $.");
             return -1;
         }
+        if (iter->next->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("_", matte_string_get_c_str(iter->next->data))) {
+            matte_syntax_graph_print_compile_error(g, iter, "Cannot declare variable with special interface private accessor _.");
+            return -1;
+        }
+
 
         iter = iter->next; // declaration
 

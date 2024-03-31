@@ -164,6 +164,9 @@ typedef enum {
     // pushes the empty function, a special function with no effects.
     MATTE_OPCODE_NEF,
     
+    // pushes the private interface data for the calling context if any.
+    MATTE_OPCODE_PIP,
+    
     MATTE_OPCODE_ERROR = -1
 
 } matteOpcode_t;

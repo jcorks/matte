@@ -1,29 +1,37 @@
 //// Test 125
 //
-//  LightClass (synamic bind custom + interface) test 
+//  LightClass (dynamic bind custom + interface) test 
 
 @:class = ::<= {
 
-    @:applyClass ::(class, priv, obj, args) {
+    @:applyClass ::(class, priv, obj) {
         if (class.inherits != empty) ::<= {
             foreach(class.inherits) ::(i, v) {
-                applyClass(class:v, priv, obj, args);
+                applyClass(class:v, priv, obj);
             }
-        }
-
-
-
-
-        if (class.constructor != empty) ::<= {
-            priv.constructor = class.constructor;
-            priv.constructor(*args);
-            priv.constructor = empty;
         }
         
         foreach(class.interface) ::(name, fn) {
             obj[name] = fn;
         }
     }
+    
+    @:construct ::(class, priv, obj, args) {
+        if (class.inherits != empty) ::<= {
+            foreach(class.inherits) ::(i, v) {
+                construct(class:v, priv, obj, args);
+            }
+        }
+        if (class.constructor != empty) ::<= {
+            obj->setIsInterface(enabled:false);
+            obj.constructor = class.constructor;
+            obj->setIsInterface(enabled:true, private:priv);
+            breakpoint();
+            obj.constructor(*args);
+        }
+    
+    }
+    
 
 
     return ::(name => String, statics, inherits, constructor, interface) {
@@ -47,8 +55,10 @@
         class.new = ::(*args) {
             @:obj = Object.instantiate(type);
             @:priv = {this:obj};
-            applyClass(class, priv, obj, args);        
-            obj->setIsInterface(enabled:true, dynamicBinding:priv);
+            applyClass(class, priv, obj);        
+            obj.constructor = constructor;
+            obj->setIsInterface(enabled:true, private:priv);
+            construct(class, obj, priv, args);        
             return obj;
         }
         return class;
@@ -59,13 +69,14 @@
 
 @:Shape = class(
     name : 'Shape',
-    constructor ::($, size) {
-        $.size = size;
-        $.sides = 0;
+    constructor ::(size) {
+        breakpoint();
+        _.size = size;
+        _.sides = 0;
     },
     interface : {
         numSides : {
-            get ::($) <- $.sides
+            get :: <- _.sides
         }
     }
 )
@@ -76,15 +87,15 @@
     inherits : [
         Shape
     ],
-    constructor ::($) {
-        $.sides = 4;
+    constructor :: {
+        _.sides = 4;
     },
 
     interface : {
-        area::($) <- $.size**2,
+        area:: <- _.size**2,
         length : {
-            get ::($) <-  $.size,
-            set ::($, value) <- $.size = value
+            get :: <- _.size,
+            set ::(value) <- _.size = value
         }
     }
 );

@@ -284,6 +284,17 @@ void matte_value_into_cloned_function_ref(matteStore_t *, matteValue_t * v, matt
 void matte_value_object_set_is_interface(matteStore_t *, matteValue_t v, int enabled, matteValue_t dynamicInterface);
 
 
+/// Gets whether an object is an interface.
+int matte_value_object_get_is_interface_unsafe(matteStore_t *, matteValue_t v);
+
+/// Gets an objects private interface binding
+/// If there is no private binding, empty is returned.
+matteValue_t matte_value_object_get_interface_private_binding_unsafe(
+    matteStore_t * store,
+    matteValue_t v
+);
+
+
 /// Gets a reference (no copying) of a value within an object's 
 /// numbered keyed pairs with no checking of the bounds or whether the 
 /// value is an object. This is intended for fast access and should only 

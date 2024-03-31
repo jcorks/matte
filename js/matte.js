@@ -206,7 +206,10 @@ const Matte = {
                 MATTE_OPCODE_CLV : 34,
                 
                 // Pushes the empty function.
-                MATTE_OPCODE_NEF : 35
+                MATTE_OPCODE_NEF : 35,
+                
+                // Pushes the current private binding
+                MATTE_OPCODE_PIP : 36
                          
             
             }              
@@ -678,18 +681,27 @@ const Matte = {
                     return out;
                 },
                 
-                valueObjectSetIsInterface : function(value, enabled, dynBinding) {
+                valueObjectGetIsInterfaceUnsafe : function(value) {
+                    return value.hasInterface;
+                },
+                
+                valueObjectGetInterfacePrivateBindingUnsafe : function(value) {
+                    return value.table_privateBinding;
+                },
+                
+                valueObjectSetIsInterface : function(value, enabled, privateBinding) {
                     if (valToType(value) != TYPE_OBJECT) {
                         vm.raiseErrorString('setIsInterface query requires an Object.');
                         return;
                     }
                     value.hasInterface = enabled;
-                    if (dynBinding != undefined) {
-                        if (valToType(dynBinding) != TYPE_OBJECT) {
-                            vm.raiseErrorString("Cannot use a custom dynamic binding for an interface that isn't an Object.")
+                    value.table_privateBinding = undefined;
+                    if (privateBinding != undefined) {
+                        if (valToType(privateBinding) != TYPE_OBJECT) {
+                            vm.raiseErrorString("Cannot use a private interface binding for an interface that isn't an Object.")
                             return
                         }
-                        value.table_customDynamicBinding = dynBinding;
+                        value.table_privateBinding = privateBinding;
                     }
                 },
                 
@@ -1126,15 +1138,7 @@ const Matte = {
                                 vm.raiseErrorString("Object's interface disallows reading of the member \"" + key +"\".");
                                 return createValue();
                             }
-                            if (store.valueGetBytecodeStub(getter).isDynamicBinding) {
-                            
-                                return vm.callFunction(
-                                    getter,
-                                    [store.valueObjectGetDynamicBindingUnsafe(value)],
-                                    [store_specialString_dynamicBindToken]
-                                );
-                            }
-                            return vm.callFunction(getter, [], []);
+                            return vm.callFunction(getter, [], [], value.table_privateBinding);
                             
                         }
                         
@@ -1505,14 +1509,8 @@ const Matte = {
                             vm.raiseErrorString("Object's interface disallows writing of the member \"" + key +"\".");
                             return createValue();
                         }
-                        if (store.valueGetBytecodeStub(setter).isDynamicBinding) {
-                            vm.callFunction(setter, 
-                                [v, store.valueObjectGetDynamicBindingUnsafe(value)], 
-                                [store_specialString_value, store_specialString_dynamicBindToken]
-                            );                            
-                        } else {
-                            vm.callFunction(setter, [v], [store_specialString_value]);
-                        }
+                        
+                        vm.callFunction(setter, [v], [store_specialString_value], value.table_privateBinding);
                         return createValue();
                         
                     }
@@ -1570,10 +1568,6 @@ const Matte = {
                     return value.table_attribSet;
                 },
 
-                valueObjectGetDynamicBindingUnsafe : function(value) {
-                    return value.table_customDynamicBinding == undefined ? value : value.table_customDynamicBinding;
-                },
-                
                 valueObjectRemoveKey : function(value, key) {
                     if (valToType(value) != TYPE_OBJECT) {
                         return; // no error?
@@ -2767,7 +2761,7 @@ const Matte = {
                 return result;
             },
                 
-            vm.callVarargFunction = function(func, args, dynBind) {
+            vm.callVarargFunction = function(func, callingContext, args, dynBind) {
                 if (valToType(args) != store.TYPE_OBJECT) {
                     vm.raiseErrorString("Vararg calls MUST provide an expression that results in an Object.");
                     return store.empty;
@@ -2820,10 +2814,11 @@ const Matte = {
                     }
                 }
                 
-                return vm.callFunction(func, argVals, argNames);
+                return vm.callFunction(func, argVals, argNames, callingContext);
             }
+            
                 
-            vm.callFunction = function(func, args, argNames) {
+            vm.callFunction = function(func, args, argNames, callingContext) {
                 if (vm_pendingCatchable) return store.empty;
                 if (func == store.emptyFunction) {
                     vm_pendingRestartCondition = null;
@@ -2972,6 +2967,7 @@ const Matte = {
                     }
                     const frame = vm_pushFrame();
                     frame.context = func;
+                    frame.privateBinding = callingContext;
                     frame.stub = stub;
                     referrables[0] = func;
                     frame.referrable = store.createObjectArray(referrables);
@@ -3684,6 +3680,15 @@ const Matte = {
                 frame.valueStack.push(v); 
             };
             
+            vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_PIP] = function(frame, inst) {
+                if (frame.privateBinding == undefined) {
+                    vm.raiseErrorString("The private interface binding is only available for functions that are called directly from an interface.");
+                    return;                    
+                }
+                frame.valueStack.push(frame.privateBinding);
+            };
+            
+            
             vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_PRF] = function(frame, inst) {
                 const v = vm_stackframeGetReferrable(0, Math.floor(inst.data));
                 frame.valueStack.push(v);
@@ -3845,22 +3850,29 @@ const Matte = {
                     return;
                 }          
 
-                var result;
-                
                 const func = frame.valueStack[frame.valueStack.length - 2];
+                var dynBind;
+                var privateBinding;
                     
                 if (func.idAux != undefined) {        
-                    result = vm.callVarargFunction(
-                        frame.valueStack[frame.valueStack.length - 2],
-                        frame.valueStack[frame.valueStack.length - 1],
-                        func.idAux
-                    );                
-                } else {
-                    result = vm.callVarargFunction(
-                        frame.valueStack[frame.valueStack.length - 2],
-                        frame.valueStack[frame.valueStack.length - 1]
-                    );                
+                    const stub = store.valueGetBytecodeStub(func);
+                    
+                    if (stub && stub.isDynamicBinding) {
+                        dynBind = func.idAux;
+                    }
+                    
+                    if (stub && store.valueObjectGetIsInterfaceUnsafe(func.idAux)) {
+                        privateBinding = store.valueObjectGetInterfacePrivateBindingUnsafe(func.idAux);
+                    }
                 }
+
+                const result = vm.callVarargFunction(
+                    frame.valueStack[frame.valueStack.length - 2],
+                    privateBinding,
+                    frame.valueStack[frame.valueStack.length - 1],
+                    dynBind
+                );                
+
                 
                 frame.valueStack.pop();
                 frame.valueStack.pop();
@@ -3905,14 +3917,23 @@ const Matte = {
                 */
                 
                 const func = frame.valueStack[frame.valueStack.length - 1 - i];
-                
-                if (func.idAux != undefined) {
-                    args.push(func.idAux);
-                    argNames.push(store.getDynamicBindToken());
+                var privateBinding;
+                if (func.idAux != undefined) {        
+                    const stub = store.valueGetBytecodeStub(func);
+                    
+                    if (stub && stub.isDynamicBinding) {
+                        args.push(func.idAux);
+                        argNames.push(store.getDynamicBindToken());
+                    }
+                    
+                    if (stub && store.valueObjectGetIsInterfaceUnsafe(func.idAux)) {
+                        privateBinding = store.valueObjectGetInterfacePrivateBindingUnsafe(func.idAux);
+                    }
                 }
+
                 
                 
-                const result = vm.callFunction(func, args, argNames);
+                const result = vm.callFunction(func, args, argNames, privateBinding);
                 
                 for(i = 0; i < argCount; ++i) {
                     frame.valueStack.pop();
@@ -4057,8 +4078,8 @@ const Matte = {
                 
                 if (output) {
                     const stub = store.valueGetBytecodeStub(output);
-                    if (stub && stub.isDynamicBinding && valToType(key) == store.TYPE_STRING) {
-                        output.idAux = store.valueObjectGetDynamicBindingUnsafe(object);
+                    if (stub && valToType(key) == store.TYPE_STRING && valToType(object) == store.TYPE_OBJECT) {
+                        output.idAux = object;
                     }
                 }
                 frame.valueStack.push(output);
@@ -4676,7 +4697,7 @@ const Matte = {
             });            
             
             
-            vm_addBuiltIn(vm.EXT_CALL.QUERY_SETISINTERFACE, ['base', 'enabled', 'dynamicBinding'], function(fn, args) {
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_SETISINTERFACE, ['base', 'enabled', 'private'], function(fn, args) {
                 const which = store.valueAsBoolean(args[1]);
                 if (vm_pendingCatchable) return store.empty;
                 store.valueObjectSetIsInterface(args[0], which, args[2]);
