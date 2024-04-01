@@ -479,5 +479,17 @@ static matteValue_t vm_ext_call__object__set_is_interface(matteVM_t * vm, matteV
     return matte_store_new_value(vm->store);
 }
 
+static matteValue_t vm_ext_call__object__set_is_record(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    matteValue_t a = args[0];
+    matteValue_t b = args[1];
+
+    int bb = matte_value_as_boolean(vm->store, b);
+    if (vm->pendingCatchable) return matte_store_new_value(vm->store);
+
+    matte_value_object_set_is_record(vm->store, a, bb);
+
+    return matte_store_new_value(vm->store);
+}
+
 
 

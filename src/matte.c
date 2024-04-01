@@ -141,15 +141,20 @@ static char * matte_strdup(const char * str) {
 // output function for matte instance
 #define MATTE_PRINT_LIMIT 4096
 static void matte_print(matte_t * m, const char * fmt, ...) {
+    int size;
+    {
+        va_list args;
+        va_start(args, fmt);
+        size = vsnprintf(
+            NULL,
+            0,
+            fmt,
+            args
+        );
+    }
+    if (size <= 0) return;
     va_list args;
     va_start(args, fmt);
-    int size = vsnprintf(
-        NULL,
-        0,
-        fmt,
-        args
-    );
-    if (size <= 0) return;
     char * buffer = matte_allocate(size+2);
     vsnprintf(
         buffer,

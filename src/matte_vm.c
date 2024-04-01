@@ -1833,6 +1833,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ALL,     &temp, vm_ext_call__object__all);    
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FOREACH, &temp, vm_ext_call__object__foreach);
     temp = MATTE_ARRAY_CAST(interface_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SET_IS_INTERFACE,     &temp, vm_ext_call__object__set_is_interface);    
+    temp = MATTE_ARRAY_CAST(interface_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SET_IS_RECORD,     &temp, vm_ext_call__object__set_is_record);    
 
     
     

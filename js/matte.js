@@ -73,8 +73,9 @@ const Matte = {
                 QUERY_REMOVECHAR : 44,
                 
                 QUERY_SETISINTERFACE : 45,
+                QUERY_SETISRECORD : 46,
                 
-                GETEXTERNALFUNCTION : 46
+                GETEXTERNALFUNCTION : 47
                 
             },
             
@@ -465,7 +466,8 @@ const Matte = {
                 ANY : 49,
                 ALL : 50,
                 FOREACH : 51,
-                SETISINTERFACE : 52
+                SETISINTERFACE : 52,
+                SETISRECORD : 53
             };
             
             var typecode_id_pool = 10;
@@ -486,10 +488,25 @@ const Matte = {
             };
             
             const objectPutProp = function(object, key, value) {
-                switch(valToType(key)) {
+                const typ = valToType(key);
+                const rec = object.isRecord;
+                if (rec) {
+                    if (typ != TYPE_STRING) {
+                        vm.raiseErrorString("Records can only have string keys.");
+                        return;
+                    } 
+                }
+                switch(typ) {
                   case TYPE_STRING:
                     if (object.kv_string == undefined)
                         object.kv_string = Object.create(null, {});
+                        
+                    if (rec) {
+                        if (!Object.hasOwn(object.kv_string, key)) {
+                            vm.raiseErrorString("Record has no such key '" + key + "'.");
+                            return;
+                        } 
+                    }
                     object.kv_string[key] = value;
                     break;
                     
@@ -703,6 +720,14 @@ const Matte = {
                         }
                         value.table_privateBinding = privateBinding;
                     }
+                },
+
+                valueObjectSetIsRecord : function(value, enabled) {
+                    if (valToType(value) != TYPE_OBJECT) {
+                        vm.raiseErrorString('setIsRecord query requires an Object.');
+                        return;
+                    }
+                    value.isRecord = enabled;
                 },
                 
                 createType : function(name, inherits) {
@@ -1147,7 +1172,21 @@ const Matte = {
                         if (accessor != undefined) {
                             return vm.callFunction(accessor, [key], [store_specialString_key]);
                         } else {
-                            const output = objectLookup(value, key);
+                            var output;
+                            if (value.isRecord) {
+                                if (valToType(key) != TYPE_STRING) {
+                                    vm.raiseErrorString("Records can only have string keys.");
+                                    return createValue();                                    
+                                }
+                                
+                                if (!Object.hasOwn(value.kv_string, key)) {
+                                    vm.raiseErrorString("Record has no such key '" + key + "'");
+                                }
+                                output = value.kv_string[key];
+                                
+                            } else {
+                                output = objectLookup(value, key);
+                            }
                             if (output == undefined)
                                 return createValue();
                             return output;
@@ -1195,7 +1234,7 @@ const Matte = {
                             vm.raiseErrorString("Cannot access member of type Function (Functions do not have members).");
                             return undefined;
                         }
-                        if (value.hasInterface) return undefined;
+                        if (value.hasInterface || value.isRecord) return undefined;
                         
                         const accessor = objectGetAccessOperator(value, isBracket, 1);
                         if (accessor != undefined) {
@@ -1240,13 +1279,6 @@ const Matte = {
                             return store.valueObjectValues(vm.callFunction(set, [], []));
                     }
                     const out = [];
-                    if (value.kv_number) {
-                        const len = value.kv_number.length;
-                        for(var i = 0; i < len; ++i) {
-                            out.push(store.createNumber(i));
-                        }
-                    }
-                                    
                     if (value.kv_string) {
                         const keys = Object.keys(value.kv_string);
                         const len = keys.length;
@@ -1255,28 +1287,40 @@ const Matte = {
                         }
                     }
 
-                    if (value.kv_object_keys) {
-                        const keys = Object.values(value.kv_object_keys);
-                        const len = keys.length;
-                        for(var i = 0; i < len; ++i) {
-                            out.push(keys[i]); // OK, object 
+
+                    if (!value.hasInterface && !value.isRecord) {
+                        if (value.kv_number) {
+                            const len = value.kv_number.length;
+                            for(var i = 0; i < len; ++i) {
+                                out.push(store.createNumber(i));
+                            }
                         }
-                    }
-                    
-                    if (value.kv_true) {
-                        out.push(store.createBoolean(true));
-                    }
-
-                    if (value.kv_false) {
-                        out.push(store.createBoolean(false));
-                    }
+                                        
 
 
-                    if (value.kv_types_keys) {
-                        const keys = Object.values(value.kv_types_keys);
-                        const len = keys.length;
-                        for(var i = 0; i < len; ++i) {
-                            out.push(keys[i]); // OK, type
+                        if (value.kv_object_keys) {
+                            const keys = Object.values(value.kv_object_keys);
+                            const len = keys.length;
+                            for(var i = 0; i < len; ++i) {
+                                out.push(keys[i]); // OK, object 
+                            }
+                        }
+                        
+                        if (value.kv_true) {
+                            out.push(store.createBoolean(true));
+                        }
+
+                        if (value.kv_false) {
+                            out.push(store.createBoolean(false));
+                        }
+
+
+                        if (value.kv_types_keys) {
+                            const keys = Object.values(value.kv_types_keys);
+                            const len = keys.length;
+                            for(var i = 0; i < len; ++i) {
+                                out.push(keys[i]); // OK, type
+                            }
                         }
                     }
                     return store.createObjectArray(out);                
@@ -1321,7 +1365,7 @@ const Matte = {
                         }
                     }
                     
-                    if (!value.hasInterface) {
+                    if (!value.hasInterface && !value.isRecord) {
                         if (value.kv_number) {
                             const len = value.kv_number.length;
                             for(var i = 0; i < len; ++i) {
@@ -2112,6 +2156,14 @@ const Matte = {
                     return createValue();
                 }
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETISINTERFACE);
+            };            
+
+            store_queryTable[QUERY.SETISRECORD] = function(value) {
+                if (valToType(value) != TYPE_OBJECT) {
+                    vm.raiseErrorString("setIsRecord requires base value to be an object.");
+                    return createValue();
+                }
+                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETISRECORD);
             };            
 
             store_queryTable[QUERY.ALL] = function(value) {
@@ -4704,6 +4756,12 @@ const Matte = {
                 return store.empty;
             });                        
             
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_SETISRECORD, ['base', 'enabled'], function(fn, args) {
+                const which = store.valueAsBoolean(args[1]);
+                if (vm_pendingCatchable) return store.empty;
+                store.valueObjectSetIsRecord(args[0], which);
+                return store.empty;
+            });                        
             
 
             const ensureArgString = function(args) {

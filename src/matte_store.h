@@ -284,6 +284,17 @@ void matte_value_into_cloned_function_ref(matteStore_t *, matteValue_t * v, matt
 void matte_value_object_set_is_interface(matteStore_t *, matteValue_t v, int enabled, matteValue_t dynamicInterface);
 
 
+/// Sets whether an Object value is a record.
+/// Records only have accessible string members, and these 
+/// members MUST be set before the record mode is set.
+/// The following will throw an error:
+/// - Accessing a non-string key within the record 
+/// - Accessing a string key that does not exist within the record
+void matte_value_object_set_is_record(
+    matteStore_t * store, matteValue_t v, int enable
+);
+
+
 /// Gets whether an object is an interface.
 int matte_value_object_get_is_interface_unsafe(matteStore_t *, matteValue_t v);
 
