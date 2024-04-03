@@ -1635,7 +1635,8 @@ matteVM_t * matte_vm_create(matte_t * m) {
     };
     const matteString_t * type_names[] = {
         MATTE_VM_STR_CAST(vm, "name"),
-        MATTE_VM_STR_CAST(vm, "inherits")
+        MATTE_VM_STR_CAST(vm, "inherits"),
+        MATTE_VM_STR_CAST(vm, "layout"),
     };
     const matteString_t * of = MATTE_VM_STR_CAST(vm, "of");
     const matteString_t * setAttributes_names[] = {
@@ -1801,7 +1802,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
 
 
     // OBJECTS
-    temp = MATTE_ARRAY_CAST(type_names, matteString_t *, 2);  vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__NEWTYPE,     &temp, vm_ext_call__object__newtype);    
+    temp = MATTE_ARRAY_CAST(type_names, matteString_t *, 3);  vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__NEWTYPE,     &temp, vm_ext_call__object__newtype);    
     temp = MATTE_ARRAY_CAST(&type, matteString_t *, 1);   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__INSTANTIATE,     &temp, vm_ext_call__object__instantiate);    
     temp = *emptyArr;                                   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__FREEZEGC,    &temp, vm_ext_call__object__freeze_gc);    
     temp = *emptyArr;                                   vm_add_built_in(vm, MATTE_EXT_CALL__OBJECT__THAWGC,    &temp, vm_ext_call__object__thaw_gc);    
@@ -1833,7 +1834,6 @@ matteVM_t * matte_vm_create(matte_t * m) {
     temp = MATTE_ARRAY_CAST(conditional_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ALL,     &temp, vm_ext_call__object__all);    
     temp = MATTE_ARRAY_CAST(for_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FOREACH, &temp, vm_ext_call__object__foreach);
     temp = MATTE_ARRAY_CAST(interface_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SET_IS_INTERFACE,     &temp, vm_ext_call__object__set_is_interface);    
-    temp = MATTE_ARRAY_CAST(interface_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SET_IS_RECORD,     &temp, vm_ext_call__object__set_is_record);    
 
     
     

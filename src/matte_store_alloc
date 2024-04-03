@@ -46,7 +46,7 @@ void matte_value_into_copy_(matteStore_t *, matteValue_t *, matteValue_t from);
 void matte_value_object_push_lock_(matteStore_t *, matteValue_t v);
 void matte_value_object_pop_lock_(matteStore_t *, matteValue_t v);
 
-matteValue_t matte_value_create_type_(matteStore_t *, matteValue_t name, matteValue_t inherits);
+matteValue_t matte_value_create_type_(matteStore_t *, matteValue_t name, matteValue_t inherits, matteValue_t layout);
 
 
 #ifdef MATTE_DEBUG__STORE 
@@ -79,7 +79,7 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val);
 #define matte_value_into_cloned_function_ref(__STORE__, __VAL__, __MSTUB__) matte_value_into_cloned_function_ref_(__STORE__, __VAL__, __MSTUB__); matte_store_track_in(__STORE__, *(__VAL__), __FILE__, __LINE__);
 
 
-#define matte_value_create_type(__STORE__, __MOPTS__, __MOPTS2__)  matte_store_track_in(__STORE__, matte_value_create_type_(__STORE__, __MOPTS__, __MOPTS2__), __FILE__, __LINE__);
+#define matte_value_create_type(__STORE__, __MOPTS__, __MOPTS2__, __MOPTSLYT__)  matte_store_track_in(__STORE__, matte_value_create_type_(__STORE__, __MOPTS__, __MOPTS2__, __MOPTSLYT__), __FILE__, __LINE__);
 
 
 // already inc by matte_value_into_new_function
@@ -107,7 +107,7 @@ void matte_store_recycle_(matteStore_t *, matteValue_t);
 #define matte_value_object_push_lock(__STORE__, __VAL__) matte_value_object_push_lock_(__STORE__, __VAL__)
 #define matte_value_object_pop_lock(__STORE__, __VAL__) matte_value_object_pop_lock_(__STORE__, __VAL__)
 #define matte_store_recycle(__STORE__, __VAL__) (__STORE__),(__VAL__)
-#define matte_value_create_type(__STORE__, __MOPTS__, __MOPTS2__) matte_value_create_type_(__STORE__, __MOPTS__, __MOPTS2__)
+#define matte_value_create_type(__STORE__, __MOPTS__, __MOPTS2__, __MOPTSLYT__) matte_value_create_type_(__STORE__, __MOPTS__, __MOPTS2__, __MOPTSLYT__)
 
 #endif
 

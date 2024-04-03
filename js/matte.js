@@ -73,9 +73,8 @@ const Matte = {
                 QUERY_REMOVECHAR : 44,
                 
                 QUERY_SETISINTERFACE : 45,
-                QUERY_SETISRECORD : 46,
                 
-                GETEXTERNALFUNCTION : 47
+                GETEXTERNALFUNCTION : 46
                 
             },
             
@@ -466,8 +465,7 @@ const Matte = {
                 ANY : 49,
                 ALL : 50,
                 FOREACH : 51,
-                SETISINTERFACE : 52,
-                SETISRECORD : 53
+                SETISINTERFACE : 52
             };
             
             var typecode_id_pool = 10;
@@ -489,24 +487,35 @@ const Matte = {
             
             const objectPutProp = function(object, key, value) {
                 const typ = valToType(key);
-                const rec = object.isRecord;
+                const rec = object.hasLayout;
                 if (rec) {
                     if (typ != TYPE_STRING) {
-                        vm.raiseErrorString("Records can only have string keys.");
+                        vm.raiseErrorString("Objects with layouts can only have string keys.");
                         return;
                     } 
+                        
+                    const typeObj = store_typecode2data[object.typecode];
+                    const typeObj_ref = typeObj.layout[key];
+                    if (typeObj_ref == undefined) {
+                        vm.raiseErrorString("Object has no such key '" + key+ "' in its layout.");
+                        return;
+                    } 
+                    
+                    if (store.valueIsA(value, typeObj_ref) == false) {
+                        vm.raiseErrorString(
+                            "Object member '" + key + 
+                            "' cannot be set from a " + 
+                                store.valueTypeName(store.valueGetType(value)) + 
+                            ". Any setting must be of type " + 
+                                store.valueTypeName(typeObj_ref) + '.'
+                        );
+                        return;
+                    }
                 }
                 switch(typ) {
                   case TYPE_STRING:
                     if (object.kv_string == undefined)
                         object.kv_string = Object.create(null, {});
-                        
-                    if (rec) {
-                        if (!Object.hasOwn(object.kv_string, key)) {
-                            vm.raiseErrorString("Record has no such key '" + key + "'.");
-                            return;
-                        } 
-                    }
                     object.kv_string[key] = value;
                     break;
                     
@@ -602,11 +611,76 @@ const Matte = {
                 }
                 return array;
             };
+            
+            
+            const typeArrayGetLayout = function(val, layout) {
+                var out;
+                
+                if (layout) {
+                    out = {};
+                    if (valToType(layout) != TYPE_OBJECT) {
+                        vm.raiseErrorString("'layout' attribute must be an Object when present");
+                        return;
+                    }
+                    
+                    if (layout.kv_string) {
+                        const keys = Object.keys(layout.kv_string);
+                        for(var i = 0; i < keys.length; ++i) {
+                            const typ = layout.kv_string[keys[i]];
+                            if (valToType(typ) != TYPE_TYPE) {
+                                vm.raiseErrorString("'layout' attribute \""+ keys[i]+"\" is not a Type.")
+                                return;
+                            }
+                            
+                            out[keys[i]] = typ;
+                        }
+                    }
+                }
+                
+                if (valToType(val) == TYPE_OBJECT) {
+                    const count = store.valueObjectGetNumberKeyCount(val); // should be non-number?
+                    for(var i = 0; i < count; ++i) {
+                        const v = store.valueObjectArrayAtUnsafe(val, i);
+                        if (valToType(v) == TYPE_TYPE) {
+                            const type = store_typecode2data[v.id];
+                                                        
+                            if (type.layout) {
+                                if (!out)
+                                    out = {};
+                                const keys = Object.keys(type.layout);
+                                for(var i = 0; i < keys.length; ++i) {
+                                    if (out[keys[i]] != undefined && out[keys[i]] != type.layout[keys[i]]) {
+                                        vm.raiseErrorString("'layout' attribute \"" + keys[i] + "\" has multiple entries with differing types.");
+                                        return;
+                                    }
+                                    out[keys[i]] = type.layout[keys[i]];
+                                }
+                            }
+                        }
+                    }
+                }
+                return out;
+            };
 
 
             // either returns lookup value or undefined if no such key
             const objectLookup = function(object, key) {
-                switch(valToType(key)) {
+                const typ = valToType(key); 
+                if (object.hasLayout) {
+                    if (typ != TYPE_STRING) {
+                        vm.raiseErrorString("Objects with layouts can only have string keys.");
+                        return undefined;                                    
+                    }
+                    
+                    if (store_typecode2data[object.typecode].layout[key] == undefined) {
+                        vm.raiseErrorString("Record has no such key '" + key + "'");
+                    }
+                    if (object.kv_string == undefined) 
+                        return undefined;
+                    return object.kv_string[key];
+                }
+            
+                switch(typ) {
                   case TYPE_EMPTY: return undefined;
 
                   case TYPE_STRING:
@@ -694,7 +768,9 @@ const Matte = {
                         return out;
                     }
                     out.typecode = type.id;
-
+                    if (type.layout) {
+                        out.hasLayout = true;
+                    }
                     return out;
                 },
                 
@@ -727,10 +803,10 @@ const Matte = {
                         vm.raiseErrorString('setIsRecord query requires an Object.');
                         return;
                     }
-                    value.isRecord = enabled;
+                    value.hasLayout = enabled;
                 },
                 
-                createType : function(name, inherits) {
+                createType : function(name, inherits, layout) {
                     const out = {};
                     out.binID = TYPE_TYPE;
                     if (store_typepool == 0xffffffff) {
@@ -753,6 +829,9 @@ const Matte = {
                         }                    
                         out.isa = typeArrayToIsA(inherits);
                     }
+                    
+                    out.layout = typeArrayGetLayout(inherits, layout);
+                    
                     store_typecode2data.push(out);
                     return out;
                 },
@@ -1172,21 +1251,7 @@ const Matte = {
                         if (accessor != undefined) {
                             return vm.callFunction(accessor, [key], [store_specialString_key]);
                         } else {
-                            var output;
-                            if (value.isRecord) {
-                                if (valToType(key) != TYPE_STRING) {
-                                    vm.raiseErrorString("Records can only have string keys.");
-                                    return createValue();                                    
-                                }
-                                
-                                if (!Object.hasOwn(value.kv_string, key)) {
-                                    vm.raiseErrorString("Record has no such key '" + key + "'");
-                                }
-                                output = value.kv_string[key];
-                                
-                            } else {
-                                output = objectLookup(value, key);
-                            }
+                            var output = objectLookup(value, key);
                             if (output == undefined)
                                 return createValue();
                             return output;
@@ -1234,7 +1299,7 @@ const Matte = {
                             vm.raiseErrorString("Cannot access member of type Function (Functions do not have members).");
                             return undefined;
                         }
-                        if (value.hasInterface || value.isRecord) return undefined;
+                        if (value.hasInterface) return undefined;
                         
                         const accessor = objectGetAccessOperator(value, isBracket, 1);
                         if (accessor != undefined) {
@@ -1288,7 +1353,7 @@ const Matte = {
                     }
 
 
-                    if (!value.hasInterface && !value.isRecord) {
+                    if (!value.hasInterface && !value.hasLayout) {
                         if (value.kv_number) {
                             const len = value.kv_number.length;
                             for(var i = 0; i < len; ++i) {
@@ -1365,7 +1430,7 @@ const Matte = {
                         }
                     }
                     
-                    if (!value.hasInterface && !value.isRecord) {
+                    if (!value.hasInterface && !value.hasLayout) {
                         if (value.kv_number) {
                             const len = value.kv_number.length;
                             for(var i = 0; i < len; ++i) {
@@ -2158,13 +2223,7 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETISINTERFACE);
             };            
 
-            store_queryTable[QUERY.SETISRECORD] = function(value) {
-                if (valToType(value) != TYPE_OBJECT) {
-                    vm.raiseErrorString("setIsRecord requires base value to be an object.");
-                    return createValue();
-                }
-                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_SETISRECORD);
-            };            
+    
 
             store_queryTable[QUERY.ALL] = function(value) {
                 if (valToType(value) != TYPE_OBJECT) {
@@ -4436,8 +4495,8 @@ const Matte = {
             
             
             //// Objects 
-            vm_addBuiltIn(vm.EXT_CALL.OBJECT_NEWTYPE, ["name", "inherits"], function(fn, args) {
-                return store.createType(args[0], args[1]);
+            vm_addBuiltIn(vm.EXT_CALL.OBJECT_NEWTYPE, ["name", "inherits", "layout"], function(fn, args) {
+                return store.createType(args[0], args[1], args[2]);
             });
             
             vm_addBuiltIn(vm.EXT_CALL.OBJECT_INSTANTIATE, ["type"], function(fn, args) {

@@ -75,6 +75,9 @@ typedef struct {
     // All the typecodes that this type can validly be used as in an 
     // isa comparison
     matteArray_t * isa;    
+    
+    // The static members for a custom type.
+    matteTable_t * layout;
 } MatteTypeData;
 
 typedef struct matteObject_t matteObject_t;
@@ -286,7 +289,7 @@ enum {
     // Records.... 
     // - have a static set of string-only keys that are set before setting as a record.
     // - Can only have string key read / writes
-    OBJECT_STATE__IS_RECORD = 4
+    OBJECT_STATE__HAS_LAYOUT = 4
 };
 
 #define ENABLE_STATE(__o__, __s__) ((__o__)->state |= (__s__))
@@ -491,6 +494,28 @@ static void store_free_value_pointers(matteStore_t * h) {
 }
 
 static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, matteValue_t key) {
+    if (QUERY_STATE(m, OBJECT_STATE__HAS_LAYOUT)) {
+        MatteTypeData * data = &matte_array_at(store->typecode2data, MatteTypeData, m->typecode);
+
+        if (key.binID != MATTE_VALUE_TYPE_STRING) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "%s",
+                "Objects with layouts can only have string keys."
+            );
+            matte_vm_raise_error_string(store->vm, err);
+            return NULL;                
+        } else if (!matte_table_find_by_uint(data->layout, (key.value.id))) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Object has no such key '%s' in its layout.",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
+            );
+            matte_vm_raise_error_string(store->vm, err);
+            return NULL;                
+        }
+    }
+
+
+
     switch(key.binID) {
       case MATTE_VALUE_TYPE_EMPTY: return NULL;
       case MATTE_VALUE_TYPE_STRING: {
@@ -684,14 +709,42 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
     matte_value_into_copy(store, &out, val);
 
 
-    if (QUERY_STATE(m, OBJECT_STATE__IS_RECORD)) {
+    if (QUERY_STATE(m, OBJECT_STATE__HAS_LAYOUT)) {
         if (key.binID != MATTE_VALUE_TYPE_STRING) {
             matteString_t * err = matte_string_create_from_c_str(
                 "%s",
-                "Records can only have string keys."
+                "Objects with layouts can only have string keys."
             );
             matte_vm_raise_error_string(store->vm, err);
             return NULL;                
+        }
+        
+        uint32_t typecode = (uint32_t)(uintptr_t)matte_table_find_by_uint(
+            matte_array_at(store->typecode2data, MatteTypeData, m->typecode).layout,
+            key.value.id 
+        );
+        
+        if (typecode == 0) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Object has no such key '%s' in its layout.",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
+            );
+            matte_vm_raise_error_string(store->vm, err);
+            return NULL;    
+        }
+        
+        matteValue_t typeVal = {};
+        typeVal.binID = MATTE_VALUE_TYPE_TYPE;
+        typeVal.value.id = typecode;
+        if (!matte_value_isa(store, val, typeVal)) {
+            matteString_t * err = matte_string_create_from_c_str(
+                "Object member '%s' cannot be set from a %s. Any setting must be of type %s.",
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key)),
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, val)))),
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, typeVal))) 
+            );
+            matte_vm_raise_error_string(store->vm, err);
+            return NULL;            
         }
     }
 
@@ -717,19 +770,6 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             *value = out;
             return value;
         } else {
-            if (QUERY_STATE(m, OBJECT_STATE__IS_RECORD)) {
-                matteString_t * err = matte_string_create_from_c_str(
-                    "Record has no such key '%s'",
-                    matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
-                );
-                matte_vm_raise_error_string(store->vm, err);
-                if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
-                    object_unlink_parent_value(store, m, &val);
-                }                
-                return NULL;                
-            }
-
-
             uint32_t id = store_new_value_pointer(store);
             matteValue_t * ref = store_value_pointer_get_by_pointer(store, (void*)(uintptr_t)id);
             *ref = out;
@@ -983,14 +1023,14 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->type_string_methods = matte_table_create_hash_pointer();
 
     matteValue_t dummy = {};
-    out->type_empty = matte_value_create_type(out, dummy, dummy);
-    out->type_boolean = matte_value_create_type(out, dummy, dummy);
-    out->type_number = matte_value_create_type(out, dummy, dummy);
-    out->type_string = matte_value_create_type(out, dummy, dummy);
-    out->type_object = matte_value_create_type(out, dummy, dummy);
-    out->type_function = matte_value_create_type(out, dummy, dummy);
-    out->type_type = matte_value_create_type(out, dummy, dummy);
-    out->type_any = matte_value_create_type(out, dummy, dummy);
+    out->type_empty = matte_value_create_type(out, dummy, dummy, dummy);
+    out->type_boolean = matte_value_create_type(out, dummy, dummy, dummy);
+    out->type_number = matte_value_create_type(out, dummy, dummy, dummy);
+    out->type_string = matte_value_create_type(out, dummy, dummy, dummy);
+    out->type_object = matte_value_create_type(out, dummy, dummy, dummy);
+    out->type_function = matte_value_create_type(out, dummy, dummy, dummy);
+    out->type_type = matte_value_create_type(out, dummy, dummy, dummy);
+    out->type_any = matte_value_create_type(out, dummy, dummy, dummy);
 
     out->specialString_empty.value.id = matte_string_store_ref_cstring(out->stringStore, "empty");
     out->specialString_nothing.value.id = matte_string_store_ref_cstring(out->stringStore, "");
@@ -1178,7 +1218,110 @@ static matteArray_t * type_array_to_isa(matteStore_t * store, matteValue_t val) 
     return array;
 }
 
-matteValue_t matte_value_create_type_(matteStore_t * store, matteValue_t name, matteValue_t inherits) {
+static matteTable_t * type_array_get_layout(matteStore_t * store, matteValue_t val, matteValue_t layout) {
+    matteTable_t * layoutOut = NULL;
+    if (layout.binID != MATTE_VALUE_TYPE_EMPTY) {
+        if (layout.binID != MATTE_VALUE_TYPE_OBJECT) {
+            matte_vm_raise_error_cstring(store->vm, "'layout' attribute must be an Object when present");
+            return NULL;
+        }
+        layoutOut = matte_table_create_hash_pointer();
+
+        matteObject_t * m = matte_store_bin_fetch_table(store->bin, layout.value.id);
+        if (m->table.keyvalues_string) {
+            matteTableIter_t * iter = matte_table_iter_create();        
+            for(matte_table_iter_start(iter, m->table.keyvalues_string);
+                matte_table_iter_is_end(iter) == 0;
+                matte_table_iter_proceed(iter)
+            ) {
+                matteValue_t value = *store_value_pointer_get_by_pointer(store, matte_table_iter_get_value(iter));
+                uint32_t key = matte_table_iter_get_key_uint(iter);                
+                
+                if (value.binID != MATTE_VALUE_TYPE_TYPE) {                    
+                    matteString_t * err = matte_string_create_from_c_str(
+                        "'layout' attribute \"%s\" is not a Type.",
+                        matte_string_get_c_str(matte_string_store_find(store->stringStore, key))
+                    );
+                    matte_vm_raise_error_string(store->vm, err);
+                    matte_string_destroy(err);
+                    
+                    matte_table_iter_destroy(iter);
+                    matte_table_destroy(layoutOut);
+                    return NULL;
+                }
+                
+                uint32_t typecode = value.value.id;
+                matte_table_insert_by_uint(
+                    layoutOut,
+                    key,
+                    (void*)(uintptr_t)typecode
+                );
+            }
+            matte_table_iter_destroy(iter);            
+        }
+    }
+
+    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
+        uint32_t count = matte_value_object_get_key_count(store, val);
+        uint32_t i;
+        matteArray_t * array = matte_array_create(sizeof(uint32_t));
+
+        matteTableIter_t * iter = matte_table_iter_create();        
+
+        for(i = 0; i < count; ++i) {
+            matteValue_t * v = matte_value_object_array_at_unsafe(store, val, i);
+            if (v->binID == MATTE_VALUE_TYPE_TYPE) {
+                MatteTypeData d = matte_array_at(store->typecode2data, MatteTypeData, v->value.id);
+                
+
+                if (d.layout) {
+                    if (layoutOut == NULL)
+                        layoutOut = matte_table_create_hash_pointer();
+                    
+                    for(matte_table_iter_start(iter, d.layout);
+                        matte_table_iter_is_end(iter) == 0;
+                        matte_table_iter_proceed(iter)
+                    ) {
+                        
+                        uint32_t key = matte_table_iter_get_key_uint(iter);                
+                        uint32_t typecode = (uint32_t)(uintptr_t) matte_table_iter_get_value(iter);
+                        uint32_t existing = (uint32_t)(uintptr_t)matte_table_find_by_uint(layoutOut, key);
+                        
+                        if (existing != 0 && existing != typecode) {
+                            matteString_t * err = matte_string_create_from_c_str(
+                                "'layout' attribute \"%s\" has multiple entries with differing types.",
+                                matte_string_get_c_str(matte_string_store_find(store->stringStore, key))
+                            );
+                            matte_vm_raise_error_string(store->vm, err);
+                            matte_string_destroy(err);
+
+                            matte_table_iter_destroy(iter);
+                            matte_table_destroy(layoutOut);
+                            return NULL;
+                        }
+                        
+                        matte_table_insert_by_uint(
+                            layoutOut,
+                            key,
+                            (void*)(uintptr_t)typecode
+                        );
+                        
+                    }
+                }
+            }
+        }
+        
+        matte_table_iter_destroy(iter);
+    }
+    return layoutOut;
+}
+
+matteValue_t matte_value_create_type_(
+    matteStore_t * store, 
+    matteValue_t name, 
+    matteValue_t inherits,
+    matteValue_t layout
+) {
     matteValue_t v = {};
     v.binID = MATTE_VALUE_TYPE_TYPE;
     if (store->typepool == 0xffffffff) {
@@ -1214,7 +1357,8 @@ matteValue_t matte_value_create_type_(matteStore_t * store, matteValue_t name, m
         data.isa = type_array_to_isa(store, val);
         matte_store_recycle(store, val);
     } 
-                
+    
+    data.layout = type_array_get_layout(store, val, layout);
     matte_array_push(store->typecode2data, data);
     return v;
 }
@@ -1784,15 +1928,6 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__SET_IS_INTERFACE);
       }
 
-      case MATTE_QUERY__SET_IS_RECORD: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
-            matteString_t * str = matte_string_create_from_c_str("setIsRecord requires base value to be an object.");
-            matte_vm_raise_error_string(store->vm, str);
-            matte_string_destroy(str);
-            return out;
-        }
-        return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__SET_IS_RECORD);
-      }
 
 
 
@@ -1842,6 +1977,9 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
         d->typecode = store->type_object.value.id;
     } else {
         d->typecode = typeobj.value.id;
+        if (matte_array_at(store->typecode2data, MatteTypeData, typeobj.value.id).layout) {
+            ENABLE_STATE(d, OBJECT_STATE__HAS_LAYOUT);            
+        }
     }
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
 
@@ -2867,23 +3005,6 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
         } else {
             matteValue_t vv = matte_store_new_value(store);
             matteValue_t * vvp = object_lookup(store, m, key);
-            if (QUERY_STATE(m, OBJECT_STATE__IS_RECORD)) {
-                if (key.binID != MATTE_VALUE_TYPE_STRING) {
-                    matteString_t * err = matte_string_create_from_c_str(
-                        "%s",
-                        "Records can only have string keys."
-                    );
-                    matte_vm_raise_error_string(store->vm, err);
-                    return matte_store_new_value(store);                
-                } else if (vvp == NULL) {
-                    matteString_t * err = matte_string_create_from_c_str(
-                        "Record has no such key '%s'.",
-                        matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
-                    );
-                    matte_vm_raise_error_string(store->vm, err);
-                    return matte_store_new_value(store);                
-                }
-            }
             if (vvp) {
                 matte_value_into_copy(store, &vv, *vvp);
             }
@@ -2969,7 +3090,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
 
         
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-        if (QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE) || QUERY_STATE(m, OBJECT_STATE__IS_RECORD)) return NULL;
+        if (QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE)) return NULL;
         matteValue_t accessor = object_get_access_operator(store, m, isBracketAccess, 1);
         if (accessor.binID) {
             return NULL;
@@ -3090,7 +3211,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
     uint32_t i;
     uint32_t len;
     if (!QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE) &&
-        !QUERY_STATE(m, OBJECT_STATE__IS_RECORD)) {
+        !QUERY_STATE(m, OBJECT_STATE__HAS_LAYOUT)) {
     
 
         // first number 
@@ -3244,7 +3365,7 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
     uint32_t len;
 
     if (!QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE) &&
-        !QUERY_STATE(m, OBJECT_STATE__IS_RECORD)) {
+        !QUERY_STATE(m, OBJECT_STATE__HAS_LAYOUT)) {
         len = m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
 
         if (len) {
@@ -3530,7 +3651,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
         }
     }
     if (!QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE) &&
-        !QUERY_STATE(m, OBJECT_STATE__IS_RECORD)) {
+        !QUERY_STATE(m, OBJECT_STATE__HAS_LAYOUT)) {
 
         len = m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
         if (len) {
@@ -3744,20 +3865,6 @@ void matte_value_object_set_is_interface(
 }
 
 
-void matte_value_object_set_is_record(
-    matteStore_t * store, matteValue_t v, int enable
-) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
-        matte_vm_raise_error_cstring(store->vm, "Cannot enable/disable interface mode for something that isn't an Object.");
-        return;
-    }
-    matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-    if (enable)
-        ENABLE_STATE(m, OBJECT_STATE__IS_RECORD);    
-    else
-        DISABLE_STATE(m, OBJECT_STATE__IS_RECORD);    
-    
-}
 
 
 

@@ -228,7 +228,7 @@ void matte_value_into_new_typed_function_ref(
 
 /// Creates a new base type. Note that this creates an entirely unique Type.
 /// If you wish to clone a value, simply copy a matteValue_t referring to a type.
-matteValue_t matte_value_create_type(matteStore_t *, matteValue_t name, matteValue_t inherits);
+matteValue_t matte_value_create_type(matteStore_t *, matteValue_t name, matteValue_t inherits, matteValue_t layout);
 
 
 /// Safely changes the value into a copy of an existing value.
@@ -282,17 +282,6 @@ void matte_value_into_cloned_function_ref(matteStore_t *, matteValue_t * v, matt
 /// object's members (including setters + getters) in the interface's stead, allowing 
 /// for a private datastore for the interface.
 void matte_value_object_set_is_interface(matteStore_t *, matteValue_t v, int enabled, matteValue_t dynamicInterface);
-
-
-/// Sets whether an Object value is a record.
-/// Records only have accessible string members, and these 
-/// members MUST be set before the record mode is set.
-/// The following will throw an error:
-/// - Accessing a non-string key within the record 
-/// - Accessing a string key that does not exist within the record
-void matte_value_object_set_is_record(
-    matteStore_t * store, matteValue_t v, int enable
-);
 
 
 /// Gets whether an object is an interface.
