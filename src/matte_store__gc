@@ -282,22 +282,26 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                 m->table.keyvalues_number = NULL;
             }
 
-            if (m->table.keyvalues_string && !matte_table_is_empty(m->table.keyvalues_string)) {
-                for(matte_table_iter_start(iter, m->table.keyvalues_string);
-                    matte_table_iter_is_end(iter) == 0;
-                    matte_table_iter_proceed(iter)
-                ) {
-                    void * id = matte_table_iter_get_value(iter);
-                    matte_string_store_unref(h->stringStore, (uint32_t)(uintptr_t)matte_table_iter_get_key(iter));
-                    matteValue_t * v = store_value_pointer_get_by_pointer(h, id);
+            if (m->table.keyvalues_string && matte_u32mvt_get_size(m->table.keyvalues_string)) {
+                matteArray_t * vals = matte_array_create(sizeof(matteValue_t));
+                matteArray_t * keys = matte_array_create(sizeof(uint32_t));
+            
+                matte_u32mvt_get_all_keys(m->table.keyvalues_string, keys);
+                matte_u32mvt_get_all_values(m->table.keyvalues_string, vals);
+            
+                uint32_t i;
+                uint32_t len = matte_array_get_size(vals);
+                for(i = 0; i < len; ++i) {
+                    matteValue_t v = matte_array_at(vals, matteValue_t, i);
+                    matte_string_store_unref(h->stringStore, matte_array_at(keys, uint32_t, i));
                     //matte_store_recycle(h, *v);
-                    object_unlink_parent_value(h, m, v);                
-
-                    store_recycle_value_pointer(h, (uint32_t)(uintptr_t)id);
+                    object_unlink_parent_value(h, m, &v);                
 
                 }
-                matte_table_destroy(m->table.keyvalues_string);
+                matte_u32mvt_destroy(m->table.keyvalues_string);
                 m->table.keyvalues_string = NULL;
+                matte_array_destroy(vals);
+                matte_array_destroy(keys);
             }
             
             if (m->table.keyvalues_types && !matte_table_is_empty(m->table.keyvalues_types)) {
@@ -460,7 +464,9 @@ void matte_store_garbage_collect(matteStore_t * h) {
 
 
     double ticks = matte_os_get_ticks();
+    //#ifndef MATTE_DEBUG__STORE
     if (!h->shutdown && (ticks - h->ticksGC < BUSY_POSSUM__SLEEPY_TIME_MS)) return;
+    //#endif
     h->gcLocked = 1;
     h->ticksGC = ticks;
   L_BUSY_POSSUM_CYCLE:
@@ -496,8 +502,11 @@ void matte_store_garbage_collect(matteStore_t * h) {
         }
     } else {
         ticks = matte_os_get_ticks();
+        //#ifndef MATTE_DEBUG__STORE
         if (ticks - h->ticksGC < BUSY_POSSUM__AWAKE_TIME_MS)
             goto L_BUSY_POSSUM_CYCLE;
+        //#endif
+
     }
 
 
