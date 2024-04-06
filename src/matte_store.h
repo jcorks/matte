@@ -526,6 +526,7 @@ const matteValue_t * matte_store_get_object_type(matteStore_t *);
 const matteValue_t * matte_store_get_function_type(matteStore_t *);
 const matteValue_t * matte_store_get_type_type(matteStore_t *);
 const matteValue_t * matte_store_get_any_type(matteStore_t *);
+const matteValue_t * matte_store_get_nullable_type(matteStore_t *);
 
 
 

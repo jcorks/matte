@@ -358,8 +358,7 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         }
         m->children = NULL;
         m->rootState = 0;
-        m->prevRoot = NULL;
-        m->nextRoot = NULL;
+        m->root;
         
     }
     #ifdef MATTE_DEBUG__STORE
@@ -454,9 +453,9 @@ static void busy_possum_restart_cycle(matteStore_t * h) {
         assert(h->tricolor[OBJECT_TRICOLOR__BLACK] == NULL);
     #endif
     // mark all that touch roots as grey
-    matteObject_t * root = h->roots;
+    matteRootNode_t * root = h->roots;
     while(root) {
-        matte_array_push(h->pendingRoots, root);
+        matte_array_push(h->pendingRoots, root->obj);
         root = root->nextRoot;
     }
 }

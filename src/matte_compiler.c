@@ -1006,6 +1006,14 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "Function");
         break;
       }
+      case MATTE_TOKEN_EXTERNAL_TYPEANY: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "Any");
+        break;
+      }
+      case MATTE_TOKEN_EXTERNAL_TYPENULLABLE: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "Nullable");
+        break;
+      }
 
 
 
@@ -2858,6 +2866,16 @@ static matteArray_t * compile_base_value(
       } 
       case MATTE_TOKEN_EXTERNAL_TYPETYPE: {
         write_instruction__pto(inst, GET_LINE_OFFSET(block), 6);
+        *src = iter->next;
+        return inst;
+      } 
+      case MATTE_TOKEN_EXTERNAL_TYPEANY: {
+        write_instruction__pto(inst, GET_LINE_OFFSET(block), 7);
+        *src = iter->next;
+        return inst;
+      } 
+      case MATTE_TOKEN_EXTERNAL_TYPENULLABLE: {
+        write_instruction__pto(inst, GET_LINE_OFFSET(block), 8);
         *src = iter->next;
         return inst;
       } 

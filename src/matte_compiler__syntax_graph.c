@@ -175,6 +175,8 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_TYPEOBJECT, "Object Type object",
         MATTE_TOKEN_EXTERNAL_TYPETYPE, "Type Type object",
         MATTE_TOKEN_EXTERNAL_TYPEFUNCTION, "Function Type object",
+        MATTE_TOKEN_EXTERNAL_TYPEANY, "Any Type object",
+        MATTE_TOKEN_EXTERNAL_TYPENULLABLE, "Nullable Type object",
 
 
         MATTE_TOKEN_EXTERNAL_PRINT, "Print built-in",
@@ -657,6 +659,8 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_TYPESTRING,
             MATTE_TOKEN_EXTERNAL_TYPEOBJECT,
             MATTE_TOKEN_EXTERNAL_TYPETYPE,
+            MATTE_TOKEN_EXTERNAL_TYPEANY,
+            MATTE_TOKEN_EXTERNAL_TYPENULLABLE,
             MATTE_TOKEN_EXTERNAL_TYPEFUNCTION,
             MATTE_TOKEN_EXTERNAL_PRINT,
             MATTE_TOKEN_EXTERNAL_SEND,

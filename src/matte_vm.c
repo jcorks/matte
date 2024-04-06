@@ -909,6 +909,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
               case 5: v = *matte_store_get_function_type(vm->store); break;           
               case 6: v = *matte_store_get_type_type(vm->store); break;           
               case 7: v = *matte_store_get_any_type(vm->store); break;           
+              case 8: v = *matte_store_get_nullable_type(vm->store); break;           
                 
             }
             STACK_PUSH(v);
@@ -1130,12 +1131,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             } else {
                 matteValue_t * ref = matte_value_object_access_direct(vm->store, object, key, isBracket);
                 matteValue_t refH = {};
-                int isDirect = 1;
-                if (!ref) {
-                    isDirect = 0;
-                    refH = matte_value_object_access(vm->store, object, key, isBracket);
-                    ref = &refH;
-                }
+                refH = matte_value_object_access(vm->store, object, key, isBracket);
+                ref = &refH;
                 matteValue_t out = matte_store_new_value(vm->store);
                 switch(opr) {                    
                   case MATTE_OPERATOR_ASSIGNMENT_ADD: out = vm_operator__assign_add(vm, ref, val); break;
@@ -1156,15 +1153,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 // Slower path for things like accessors
                 // Indirect access means the ref being worked with is essentially a copy, so 
                 // we need to set the object value back after the operator has been applied.
-                if (!isDirect) {
-                    matte_value_object_set(
-                        vm->store,
-                        object,
-                        key, 
-                        refH,
-                        isBracket
-                    );
-                }
+                matte_value_object_set(
+                    vm->store,
+                    object,
+                    key, 
+                    refH,
+                    isBracket
+                );
                 if (refH.binID) { 
                     matte_store_recycle(vm->store, refH); 
                 }

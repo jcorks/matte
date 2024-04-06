@@ -195,6 +195,7 @@ struct matteStore_t {
     matteValue_t type_function;
     matteValue_t type_type;
     matteValue_t type_any;
+    matteValue_t type_nullable;
     
     
     matteTable_t * type_number_methods;
@@ -241,6 +242,8 @@ struct matteStore_t {
     matteValue_t specialString_type_object;
     matteValue_t specialString_type_function;
     matteValue_t specialString_type_type;
+    matteValue_t specialString_type_any;
+    matteValue_t specialString_type_nullable;
     
     matteValue_t specialString_get;
     matteValue_t specialString_set;
@@ -768,8 +771,8 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
                 object_unlink_parent_value(store, m, value);
             }
             matte_store_recycle(store, *value);
-            *value = out;
-            return value;
+            matte_u32mvt_insert(m->table.keyvalues_string, key.value.id, out);
+            return matte_u32mvt_find(m->table.keyvalues_string, key.value.id);
         } else {
             
             matte_string_store_ref_id(store->stringStore, key.value.id);
@@ -844,8 +847,8 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
                 object_unlink_parent_value(store, m, value);
             }
             matte_store_recycle(store, *value);
-            *value = out;
-            return value;
+            matte_u32mvt_insert(m->table.keyvalues_object, key.value.id, out);
+            return matte_u32mvt_find(m->table.keyvalues_object, key.value.id);
         } else {
             object_link_parent_value(store, m, &key);
             return matte_u32mvt_insert(m->table.keyvalues_object, key.value.id, out);
@@ -860,8 +863,8 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
                 object_unlink_parent_value(store, m, value);
             }
             matte_store_recycle(store, *value);
-            *value = out;
-            return value;
+            matte_u32mvt_insert(m->table.keyvalues_types, key.value.id, out);
+            return matte_u32mvt_find(m->table.keyvalues_types, key.value.id);
         } else {
             return matte_u32mvt_insert(m->table.keyvalues_types, key.value.id, out);
         }
@@ -1020,6 +1023,7 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->type_function = matte_value_create_type(out, dummy, dummy, dummy);
     out->type_type = matte_value_create_type(out, dummy, dummy, dummy);
     out->type_any = matte_value_create_type(out, dummy, dummy, dummy);
+    out->type_nullable = matte_value_create_type(out, dummy, dummy, dummy);
 
     out->specialString_empty.value.id = matte_string_store_ref_cstring(out->stringStore, "empty");
     out->specialString_nothing.value.id = matte_string_store_ref_cstring(out->stringStore, "");
@@ -1034,6 +1038,8 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->specialString_type_object.value.id = matte_string_store_ref_cstring(out->stringStore, "Object");
     out->specialString_type_type.value.id = matte_string_store_ref_cstring(out->stringStore, "Type");
     out->specialString_type_function.value.id = matte_string_store_ref_cstring(out->stringStore, "Function");
+    out->specialString_type_any.value.id = matte_string_store_ref_cstring(out->stringStore, "Any");
+    out->specialString_type_nullable.value.id = matte_string_store_ref_cstring(out->stringStore, "Nullable");
 
     out->specialString_empty.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_nothing.binID = MATTE_VALUE_TYPE_STRING;
@@ -1050,6 +1056,8 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->specialString_type_object.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_type_function.binID = MATTE_VALUE_TYPE_STRING;
     out->specialString_type_type.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_any.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_nullable.binID = MATTE_VALUE_TYPE_STRING;
 
 
     out->specialString_set.value.id = matte_string_store_ref_cstring(out->stringStore, "set");
@@ -4252,12 +4260,16 @@ int matte_value_isa(matteStore_t * store, matteValue_t v, matteValue_t typeobj) 
     }
     if (typeobj.value.id == store->type_any.value.id) return 1;
     if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
-        return matte_value_get_type(store, v).value.id == typeobj.value.id;
+        uint32_t typ = matte_value_get_type(store, v).value.id;
+        if (typeobj.value.id == store->type_nullable.value.id && v.binID == MATTE_VALUE_TYPE_EMPTY) return 1;  
+        return typ == typeobj.value.id;
     } else {
+        if (typeobj.value.id == store->type_nullable.value.id) return 1;  
         if (IS_FUNCTION_ID(v.value.id))
             return store->type_function.value.id == typeobj.value.id;
             
         if (typeobj.value.id == store->type_object.value.id) return 1;
+
         matteValue_t typep = matte_value_get_type(store, v);
         if (typep.value.id == typeobj.value.id) return 1;
 
@@ -4286,6 +4298,8 @@ matteValue_t matte_value_type_name(matteStore_t * store, matteValue_t v) {
       case 5:     return store->specialString_type_object;
       case 6:     return store->specialString_type_function;
       case 7:     return store->specialString_type_type;
+      case 8:     return store->specialString_type_any;
+      case 9:     return store->specialString_type_nullable;
       default: { 
         if (v.value.id >= matte_array_get_size(store->typecode2data)) {
             matte_vm_raise_error_cstring(store->vm, "VM error: no such type exists...");                    
@@ -4321,6 +4335,9 @@ const matteValue_t * matte_store_get_type_type(matteStore_t * h) {
 }
 const matteValue_t * matte_store_get_any_type(matteStore_t * h) {
     return &h->type_any;
+}
+const matteValue_t * matte_store_get_nullable_type(matteStore_t * h) {
+    return &h->type_nullable;
 }
 
 matteValue_t matte_store_get_dynamic_bind_token(matteStore_t * h) {
