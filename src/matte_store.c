@@ -1098,11 +1098,75 @@ int matte_value_is_empty(matteStore_t * store, matteValue_t v) {
 
 
 // Sets the type to a number with the given value
+
+
+
+/*
+
+// quick thing i wrote up to get the double layout and make sure 
+// stuff was working. feel free to use.
+void print_double(double d) {
+    uint64_t * v = (uint64_t *)&d;
+    
+    #define SIGN 63
+    #define EXPONENT_LENGTH 11
+    #define FRACTION_LENGTH 52
+    #define GET_NEXT_BIT() (iter--,((*v) & (one<<(iter+one))) != zero)
+    
+    uint64_t iter = SIGN;
+    uint64_t one = 1;
+    uint64_t zero = 0;
+        
+    printf("%d - ", GET_NEXT_BIT());
+    
+    // exponent
+    int i;
+    for(i = 0; i < EXPONENT_LENGTH; ++i) {
+        printf("%d", GET_NEXT_BIT());
+    }
+
+    // fraction
+    printf(" - ");
+    for(i = 0; i < FRACTION_LENGTH; ++i) {
+        printf("%d", GET_NEXT_BIT());
+    }
+    printf("\n");    
+}
+*/
+
+
+
+
+/*
+    Notes on the number implementation 
+    
+    To make values take up less space, the least significant 
+    bit of the fraction of the double is reserved for whether or 
+    not the value is a Number (as matteValue_t's are the size of a double)
+    
+    This is also the reason for the values of the enum MATTE_VALUE_TYPE_* 
+    being non-linear while preserving that a "clear" value of matteValue_t 
+    corresponds to the empty value.
+
+
+*/
+
 void matte_value_into_number_(matteStore_t * store, matteValue_t * v, double val) {
     matte_store_recycle(store, *v);
-    v->binIDreserved = MATTE_VALUE_TYPE_NUMBER;
-    v->value.numberReserved = val;
+    uint64_t * d = (uint64_t*)&val;
+    uint64_t one = 1;
+    *d = ((*d >> one) << one) + (one);
+    v->data = *d;
 }
+
+double matte_value_get_number(matteValue_t v) {
+    uint64_t one = 1;
+    uint64_t d = (v.data >> one) << one;    
+    double * dd = (double*)&d;
+    return *dd;
+}   
+
+
 
 
 static void isa_add(matteStore_t * store, matteArray_t * arr, matteValue_t * v) {
@@ -3468,11 +3532,9 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
 
         len = m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
         if (len) {
-            matte_value_into_number(store, &args[0], 0);
-            double * quickI = &args[0].value.numberReserved;
             for(i = 0; i < len; ++i) {
                 args[1] = matte_array_at(m->table.keyvalues_number, matteValue_t, i);
-                *quickI = i;
+                matte_value_into_number(store, &args[0], i);
                 matte_value_object_push_lock(store, args[1]);
                 matte_array_push(keys, args[0]);
                 matte_array_push(values, args[1]);

@@ -68,12 +68,6 @@ typedef enum {
 } matteValue_Type_t;
 
 
-typedef enum {
-    MATTE_VALUE_EXTENDED_FLAG_NONE,
-    // When the id == 0 and this flag is active, 
-    // the id points to the empty function.
-    MATTE_VALUE_EXTENDED_FLAG_EMPTY_FUNCTION = 1,
-} matteValue_ExtendedFlag_t;
 
 
 /// Every operation that works with Matte values on the C level 
@@ -83,18 +77,21 @@ typedef enum {
 /// to copy matteValue_t by value in C and otherwise do not. Otherwise, the value must be copied 
 /// (matte_value_into_copy) from existing source or used as-is.
 ///
-typedef struct {
-    /// The type of the value.
+typedef union {
+    // holds the raw data for the value.
+    uint64_t data;
+
+    // for non number values, this is the type ID (MATTE_VALUE_TYPE)
     uint32_t binIDreserved;
     
-    /// Collection of data that holds the value's data.
-    union {
-        /// For booleans, this is either 0 or 1. Others are not used.
-        int boolean;
-        /// For numbers, this is the actual numeric value. Others are not used.
-        double numberReserved;
-
-        uint32_t id;
+    // for all types except Number, the value is split between a 
+    // binID and an identifier key.
+    struct {
+        uint32_t binIDreserved;
+        union { 
+            uint32_t id;
+            uint32_t boolean;
+        };
     } value;
 } matteValue_t;
 
@@ -104,7 +101,6 @@ typedef struct {
 
 #define matte_value_type(__V__) ((__V__).binIDreserved & 1 ? MATTE_VALUE_TYPE_NUMBER : ((__V__).binIDreserved))
 
-#define matte_value_get_number(__V__) ((__V__).value.numberReserved)
 
 /// (macro) Function for returning whether the value is a function.
 #define matte_value_is_function(__V__) ((__V__).binIDreserved == MATTE_VALUE_TYPE_OBJECT && ((__V__).value.id/2)*2 == (__V__.value.id))
@@ -282,6 +278,11 @@ void matte_value_object_set_is_interface(matteStore_t *, matteValue_t v, int ena
 
 /// Gets whether an object is an interface.
 int matte_value_object_get_is_interface_unsafe(matteStore_t *, matteValue_t v);
+
+/// Values that are considered numbers, this returns the number representation.
+/// The results are undefined if the value is not MATTE_VALUE_TYPE_NUMBER.
+double matte_value_get_number(matteValue_t v);
+
 
 /// Gets an objects private interface binding
 /// If there is no private binding, empty is returned.

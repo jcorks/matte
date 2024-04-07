@@ -297,7 +297,9 @@ Values of the \textit{Number} type represent all possible real number based repr
 Matte. This includes integers, decimals, etc. Matte allows, and expects, that \textit{Number}s will not 
 necessarily be accurate when non-whole numbers are used. It is also expected that there may 
 be an upper limit on the accuracy and containment of whole numbers as well. However, Matte is 
-specified to have at least the accuracy of an IEEE 754 double-precision floating-point number.
+specified to have at least the accuracy of an IEEE 754 single-precision floating-point number.
+In practice, this minimum is expected to be exceeded in actual implementations, as single-precision 
+is not usually considered appropriate for all the operations possible in a general-purpose language.
 \\\\
 Numbers are given a variety of standard operators (\autoref{Operators}) and queries (\autoref{Queries}) to facilitate 
 essential arithmetic and other useful mathematic operations.
