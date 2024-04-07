@@ -146,6 +146,12 @@ struct matteVM_t {
 
 
 typedef struct {
+    matteValue_t value;
+    uint32_t aux;
+} matteValue_Extended_t;
+
+
+typedef struct {
     void (*fn)(matteVM_t *, void *);
     void * data;
 } MatteCleanupFunctionSet;
@@ -160,8 +166,8 @@ void matte_vm_find_in_stack(matteVM_t * vm, uint32_t id) {
         
         uint32_t n = 0;
         for(n = 0; n < matte_array_get_size(frame->valueStack); ++n) {
-            matteValue_t v = matte_array_at(frame->valueStack, matteValue_t, n);
-            if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+            matteValue_t v = matte_array_at(frame->valueStack, matteValue_Extended_t, n).value;
+            if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
                 printf("@ stackframe %d, valuestack %d\n", i, n);
             }
         }
@@ -205,7 +211,7 @@ static matteValue_t matte_vm_vararg_call(
     matteValue_t args,
     matteValue_t dynBind
 ) {
-    if (args.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(args) != MATTE_VALUE_TYPE_OBJECT) {
         matteString_t * err = matte_string_create_from_c_str("Vararg calls MUST provide an expression that results in an Object");
         matte_vm_raise_error_string(vm, err);
         matte_string_destroy(err);
@@ -223,7 +229,7 @@ static matteValue_t matte_vm_vararg_call(
     matteArray_t * argNames = matte_array_create(sizeof(matteValue_t));
     matteValue_t dynBindName = matte_store_get_dynamic_bind_token(vm->store);
 
-    if (dynBind.binID) {
+    if (matte_value_type(dynBind)) {
         matte_array_push(argVals, dynBind);
         matte_array_push(argNames, dynBindName);
     }
@@ -237,7 +243,7 @@ static matteValue_t matte_vm_vararg_call(
         uint32_t len = matte_value_object_get_number_key_count(vm->store, keys);
         for(i = 0; i < len; ++i) {
             matteValue_t key = matte_value_object_access_index(vm->store, keys, i);
-            if (key.binID != MATTE_VALUE_TYPE_STRING) continue;
+            if (matte_value_type(key) != MATTE_VALUE_TYPE_STRING) continue;
             
             if (key.value.id == dynBindName.value.id) {
                 continue;
@@ -352,7 +358,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
             frame->prettyName = matte_string_create();
             frame->context = matte_store_new_value(vm->store); // will contain captures
             frame->stub = NULL;
-            frame->valueStack = matte_array_create(sizeof(matteValue_t));
+            frame->valueStack = matte_array_create(sizeof(matteValue_Extended_t));
 
             matte_array_push(vm->callstack, frame);
         }
@@ -398,7 +404,7 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
         return matte_store_new_value(vm->store);
     }
 
-    if (respObject.binID != MATTE_VALUE_TYPE_EMPTY && respObject.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(respObject) != MATTE_VALUE_TYPE_EMPTY && matte_value_type(respObject) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response expression is an object."));
         return matte_store_new_value(vm->store);    
     }
@@ -410,9 +416,9 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
     matteValue_t onErrorVal = {};
     matteValue_t onSendVal = {};
     
-    if (respObject.binID != MATTE_VALUE_TYPE_EMPTY) {
+    if (matte_value_type(respObject) != MATTE_VALUE_TYPE_EMPTY) {
         onSend  = matte_value_object_access_direct(vm->store, respObject, vm->specialString_onsend, 0);
-        if (onSend && onSend->binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->store, *onSend)) {
+        if (onSend && matte_value_type(*onSend) != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->store, *onSend)) {
             matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onSend' attribute be a Function."));
             matte_value_object_pop_lock(vm->store, respObject);
             return matte_store_new_value(vm->store);    
@@ -421,7 +427,7 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
             onSendVal = *onSend;
         }
         onError = matte_value_object_access_direct(vm->store, respObject, vm->specialString_onerror, 0);
-        if (onError && onError->binID != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->store, *onError)) {
+        if (onError && matte_value_type(*onError) != MATTE_VALUE_TYPE_EMPTY && !matte_value_is_callable(vm->store, *onError)) {
             matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "Listen requires that the response object's 'onError' attribute be a Function."));
             matte_value_object_pop_lock(vm->store, respObject);
             return matte_store_new_value(vm->store);    
@@ -437,7 +443,7 @@ static matteValue_t vm_listen(matteVM_t * vm, matteValue_t v, matteValue_t respO
 
         matte_store_recycle(vm->store, out);            
         matteValue_t catchable = vm->catchable;
-        vm->catchable.binID = 0;
+        vm->catchable.binIDreserved = 0;
         vm->pendingCatchable = 0;
 
 
@@ -580,10 +586,14 @@ static const char * opcode_to_str(int oc) {
 */
 
 #define STACK_SIZE() matte_array_get_size(frame->valueStack)
-#define STACK_POP() matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
-#define STACK_POP_NORET() matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1)); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
-#define STACK_PEEK(__n__) (matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1-(__n__)))
-#define STACK_PUSH(__v__) matte_array_push(frame->valueStack, __v__);
+#define STACK_POP() matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1).value; matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_POP_NORET() matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1).value); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
+#define STACK_PEEK(__n__) (matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1-(__n__))).value
+#define STACK_PUSH(__v__) ve_.value = __v__; matte_array_push(frame->valueStack, ve_);
+
+#define STACK_PEEK_EXTENDED(__n__) (matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1-(__n__)))
+#define STACK_PUSH_EXTENDED(__VE__) (matte_array_push(frame->valueStack, __VE__));
+
 
 
 
@@ -606,6 +616,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     const matteBytecodeStubInstruction_t * inst;
     uint32_t instCount;
     uint32_t sfscount = 0;
+    matteValue_Extended_t ve_ = {};
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
 
   RELOOP:
@@ -617,7 +628,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
         // TODO: optimize out
         #ifdef MATTE_DEBUG__VM
             if (matte_array_get_size(frame->valueStack))
-                matte_value_print(vm->store, matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1));
+                matte_value_print(vm->store, matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1).value);
             printf("from %s, line %d, CALLSTACK%6d PC%6d, OPCODE %s, Stacklen: %10d\n", str ? matte_string_get_c_str(str) : "???", VM_EXECUTABLE_LOOP_CURRENT_LINE, vm->stacksize, frame->pc, opcode_to_str(inst->info.opcode), matte_array_get_size(frame->valueStack));
             fflush(stdout);
         #endif
@@ -644,7 +655,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
 
           case MATTE_OPCODE_PIP: {
-            if (frame->privateBinding.binID == MATTE_VALUE_TYPE_EMPTY) {
+            if (matte_value_type(frame->privateBinding) == MATTE_VALUE_TYPE_EMPTY) {
                 matte_vm_raise_error_cstring(vm, "The private interface binding is only available for functions that are called directly from an interface.");            
             }
             STACK_PUSH(frame->privateBinding);
@@ -668,11 +679,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           case MATTE_OPCODE_PNR: {
             uint32_t referrableStrID = (double) inst->data;
             matteValue_t v = matte_bytecode_stub_get_string(frame->stub, referrableStrID);
-            if (!v.binID) {
+            if (!matte_value_type(v)) {
                 matte_vm_raise_error_cstring(vm, "VM Error: No such bytecode stub string.");
             } else {
                 matteVMStackFrame_t f = matte_vm_get_stackframe(vm, vm->namedRefIndex+1);
-                if (f.context.binID) {
+                if (matte_value_type(f.context)) {
                     matteValue_t v0 = matte_value_frame_get_named_referrable(vm->store, 
                         &f, 
                         v
@@ -691,8 +702,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
           case MATTE_OPCODE_NNM: {
             matteValue_t v = {};
-            v.binID = MATTE_VALUE_TYPE_NUMBER;
-            v.value.number = (inst->data);
+            matte_value_into_number(vm->store, &v, inst->data);
             STACK_PUSH(v);
 
             break;
@@ -709,7 +719,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             // NO XFER
             matteValue_t v = matte_bytecode_stub_get_string(frame->stub, stringID);
-            if (!v.binID) {
+            if (!matte_value_type(v)) {
                 matte_vm_raise_error_cstring(vm, "NST opcode refers to non-existent string (corrupt bytecode?)");
                 break;
             }
@@ -923,17 +933,17 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 break;
             }
 
-            matteValue_t function = STACK_PEEK(1);
+            matteValue_Extended_t function = STACK_PEEK_EXTENDED(1);
             matteValue_t result;
             matteValue_t dynBind = {};
             matteValue_t privateBinding = {};
 
-            if (function.value.extended.idAux != 0) {
+            if (function.aux != 0) {
                 matteValue_t m = {};
-                m.binID = MATTE_VALUE_TYPE_OBJECT;
-                m.value.id = function.value.extended.idAux;
+                m.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
+                m.value.id = function.aux;
 
-                matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, function);
+                matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, function.value);
                 if (stub && matte_bytecode_stub_is_dynamic_bind(stub)) {                    
                     dynBind = m;
                 }
@@ -978,7 +988,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     matteValue_t value = STACK_PEEK(i+1);
                 
                 
-                    if (key.binID == MATTE_VALUE_TYPE_STRING) {
+                    if (matte_value_type(key) == MATTE_VALUE_TYPE_STRING) {
                         matte_array_push(argnames, key);
                         matte_array_push(args, value);                
                     } else {
@@ -997,17 +1007,17 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 break;
             }*/
 
-            matteValue_t function = STACK_PEEK(i);
+            matteValue_Extended_t function = STACK_PEEK_EXTENDED(i);
             matteValue_t privateBinding = {};
             // TODO: we need to preserve the dynamic binding to guarantee its always accessible.
             // Right now we just assume it is, and in 99% of cases it will be, but it is 
             // trivial to come up with a case where it doesnt work.
-            if (function.value.extended.idAux != 0) {
+            if (function.aux != 0) {
                 matteValue_t srcObject = {};
-                srcObject.binID = MATTE_VALUE_TYPE_OBJECT;
-                srcObject.value.id = function.value.extended.idAux;
+                srcObject.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
+                srcObject.value.id = function.aux;
 
-                matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, function);
+                matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, function.value);
                 if (stub && matte_bytecode_stub_is_dynamic_bind(stub)) {                    
                     matteValue_t dynName = matte_store_get_dynamic_bind_token(vm->store);
                     matte_array_push(args, srcObject);
@@ -1024,11 +1034,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteString_t * info = matte_string_create_from_c_str("FUNCTION CALLED @");
                 if (matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)))
                     matte_string_concat(info, matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub)));
-                matte_store_track_neutral(vm->store, function, matte_string_get_c_str(info), VM_EXECUTABLE_LOOP_CURRENT_LINE);
+                matte_store_track_neutral(vm->store, function.value, matte_string_get_c_str(info), VM_EXECUTABLE_LOOP_CURRENT_LINE);
                 matte_string_destroy(info);
             #endif
             
-            matteValue_t result = matte_vm_call_full(vm, function, privateBinding, args, argnames, NULL);
+            matteValue_t result = matte_vm_call_full(vm, function.value, privateBinding, args, argnames, NULL);
 
             for(i = 0; i < argcount; ++i) {
                 STACK_POP_NORET();
@@ -1160,7 +1170,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                     refH,
                     isBracket
                 );
-                if (refH.binID) { 
+                if (matte_value_type(refH)) { 
                     matte_store_recycle(vm->store, refH); 
                 }
                 STACK_POP_NORET();
@@ -1187,11 +1197,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             STACK_POP_NORET();
             STACK_POP_NORET();
 
+            matteValue_Extended_t ve = {};
+            ve.value = output;
+
             // if a dynamic binding OR private interface accessor, cache the binding
-            if (matte_value_is_function(output) && key.binID == MATTE_VALUE_TYPE_STRING && object.binID == MATTE_VALUE_TYPE_OBJECT) {
-                output.value.extended.idAux = object.value.id;
+            if (matte_value_is_function(output) && matte_value_type(key) == MATTE_VALUE_TYPE_STRING && matte_value_type(object) == MATTE_VALUE_TYPE_OBJECT) {
+                ve.aux = object.value.id;
             }        
-            STACK_PUSH(output);
+            STACK_PUSH_EXTENDED(ve);
 
 
             break;
@@ -1265,7 +1278,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 return matte_store_new_value(vm->store);
             }
 
-            if (a.binID != MATTE_VALUE_TYPE_OBJECT) {
+            if (matte_value_type(a) != MATTE_VALUE_TYPE_OBJECT) {
                 matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'foreach' requires an object."));
                 STACK_POP_NORET();          
                 STACK_POP_NORET();                    
@@ -1474,11 +1487,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     // top of stack is output
     if (matte_array_get_size(frame->valueStack)) {
         
-        output = matte_array_at(frame->valueStack, matteValue_t, matte_array_get_size(frame->valueStack)-1);
+        output = matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1).value;
         uint32_t i;
         uint32_t len = matte_array_get_size(frame->valueStack);
         for(i = 0; i < len-1; ++i) { 
-            matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_t, i));
+            matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_Extended_t, i).value);
         }
         matte_array_set_size(frame->valueStack, 0);
 
@@ -1904,7 +1917,7 @@ void matte_vm_destroy(matteVM_t * vm) {
     if (vm->pendingCatchable) {
         matte_value_object_pop_lock(vm->store, vm->catchable);
         matte_store_recycle(vm->store, vm->catchable);
-        vm->catchable.binID = 0;
+        vm->catchable.binIDreserved = 0;
     }
     
 
@@ -2061,7 +2074,7 @@ matteValue_t matte_vm_call_full(
     }
 
     // special case: type object as a function
-    if (func.binID == MATTE_VALUE_TYPE_TYPE) {                
+    if (matte_value_type(func) == MATTE_VALUE_TYPE_TYPE) {                
         if (matte_array_get_size(args)) {
             if (matte_array_at(argNames, matteValue_t, 0).value.id != vm->specialString_from.value.id) {
                 matte_vm_raise_error_cstring(vm, "Type conversion failed: unbound parameter to function ('from')");            
@@ -2110,9 +2123,9 @@ matteValue_t matte_vm_call_full(
                     matteValue_t v = matte_array_at(args, matteValue_t, i);
                     matte_array_at(argsReal, matteValue_t, n) = v;
                     // sicne this function doesn't use a referrable, we need to set roots manually.
-                    if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+                    if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
                         matte_value_object_push_lock(vm->store, v);
-                    } else if (v.binID == MATTE_VALUE_TYPE_STRING) {
+                    } else if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
                         matteValue_t vv = matte_store_new_value(vm->store);
                         matte_value_into_copy(vm->store, &vv, v);
                         matte_array_at(argsReal, matteValue_t, n) = vv;                    
@@ -2168,7 +2181,7 @@ matteValue_t matte_vm_call_full(
 
         len = matte_array_get_size(argsReal);
         for(i = 0; i < len; ++i) {
-            int bid = matte_array_at(argsReal, matteValue_t, i).binID;
+            int bid = matte_value_type(matte_array_at(argsReal, matteValue_t, i));
             if (bid == MATTE_VALUE_TYPE_OBJECT) {
                 matte_value_object_pop_lock(vm->store, matte_array_at(argsReal, matteValue_t, i));
             }
@@ -2316,7 +2329,7 @@ matteValue_t matte_vm_call_full(
         if (prevFrame) {
             len = matte_array_get_size(prevFrame->valueStack);
             for(i = 0; i < len; ++i) {
-                matte_value_object_push_lock(vm->store, matte_array_at(prevFrame->valueStack, matteValue_t, i));        
+                matte_value_object_push_lock(vm->store, matte_array_at(prevFrame->valueStack, matteValue_Extended_t, i).value);        
             }
         }
 
@@ -2335,7 +2348,7 @@ matteValue_t matte_vm_call_full(
         if (prevFrame) {
             len = matte_array_get_size(prevFrame->valueStack);
             for(i = 0; i < len; ++i) {
-                matte_value_object_pop_lock(vm->store, matte_array_at(prevFrame->valueStack, matteValue_t, i));        
+                matte_value_object_pop_lock(vm->store, matte_array_at(prevFrame->valueStack, matteValue_Extended_t, i).value);        
             }
         };
         
@@ -2374,7 +2387,7 @@ matteValue_t matte_vm_call_full(
                     matte_store_recycle(vm->store, v);     
             }     
             matte_value_object_pop_lock(vm->store, vm->catchable);
-            vm->catchable.binID = 0;
+            vm->catchable.binIDreserved = 0;
             vm->pendingCatchable = 0;
             vm->pendingCatchableIsError = 0;
             return matte_store_new_value(vm->store);
@@ -2491,7 +2504,7 @@ matteValue_t matte_vm_import(
             );                
         }     
         matte_value_object_pop_lock(vm->store, vm->catchable);
-        vm->catchable.binID = 0;
+        vm->catchable.binIDreserved = 0;
         vm->pendingCatchable = 0;
         vm->pendingCatchableIsError = 0;
         return matte_store_new_value(vm->store);
@@ -2538,7 +2551,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
     matteValue_t catchable = vm->catchable;
     int pendingCatchable = vm->pendingCatchable;
     int pendingCatchableIsError = vm->pendingCatchableIsError;
-    vm->catchable.binID = 0;
+    vm->catchable.binIDreserved = 0;
     vm->pendingCatchable = 0;
     vm->pendingCatchableIsError = 0;
  
@@ -2615,7 +2628,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
     
     matteValue_t * arr = (matteValue_t*)matte_allocate(sizeof(matteValue_t) * len);
     matteString_t * str;
-    if (detail.binID == MATTE_VALUE_TYPE_STRING) {
+    if (matte_value_type(detail) == MATTE_VALUE_TYPE_STRING) {
         str = matte_string_create_from_c_str("%s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, detail)));        
     } else {
         str = matte_string_create_from_c_str("<no string data available>\n");    

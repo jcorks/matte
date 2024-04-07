@@ -46,21 +46,25 @@ typedef struct matteVMStackFrame_t matteVMStackFrame_t;
 typedef enum {
     /// The empty type is used for the empty value. All empty values are of the empty type.
     MATTE_VALUE_TYPE_EMPTY,
-    /// Booleans can hold either true or false.
-    MATTE_VALUE_TYPE_BOOLEAN,
+
     /// Numbers represent all number types. This is guaranteed to be at least 
     /// the size of a double. In this implementation it is equal to a double.
-    MATTE_VALUE_TYPE_NUMBER,
+    /// this is the only value with the first bit active.
+    MATTE_VALUE_TYPE_NUMBER = 1,
+
+
+    /// Booleans can hold either true or false.
+    MATTE_VALUE_TYPE_BOOLEAN = 2,
     /// A string of characters.
-    MATTE_VALUE_TYPE_STRING,
+    MATTE_VALUE_TYPE_STRING = 4,
     /// An associative table with enhanced features for array operation as well as functions.
     /// A potentially confusing aspect is that on the implementation level, functions and objects 
     /// are treated are called "Objects", but in the Matte level they are distinct types.
     /// This collective mentioning mostly refers to the matteValue_Type_t, as in most other cases 
     /// Objects and Functions are treated differently, such as matte_store_ functions.
-    MATTE_VALUE_TYPE_OBJECT,
+    MATTE_VALUE_TYPE_OBJECT = 6,
     /// A value representing a type.
-    MATTE_VALUE_TYPE_TYPE
+    MATTE_VALUE_TYPE_TYPE = 8
 } matteValue_Type_t;
 
 
@@ -79,39 +83,31 @@ typedef enum {
 /// to copy matteValue_t by value in C and otherwise do not. Otherwise, the value must be copied 
 /// (matte_value_into_copy) from existing source or used as-is.
 ///
-typedef struct  {
+typedef struct {
     /// The type of the value.
-    uint32_t binID;
+    uint32_t binIDreserved;
     
     /// Collection of data that holds the value's data.
     union {
         /// For booleans, this is either 0 or 1. Others are not used.
         int boolean;
         /// For numbers, this is the actual numeric value. Others are not used.
-        double number;
-        /// For string, type, and Object, this is an ID uniquely identifying the value among its type.
-        uint32_t id; 
-        /// For when auxiliary data is needed in addition to an id 
-        struct {
-            uint32_t id;
-            // For devs: MAKE SURE that if you modify the VM to use auxiliary IDs that the 
-            // created objects clean their aux ID on creation! The only ones that are cleaned right 
-            // now are Functions, as they are used for dynamic binding.
-            uint32_t idAux;
-        } extended;
+        double numberReserved;
+
+        uint32_t id;
     } value;
 } matteValue_t;
 
 /// macro for quickly determining if a funciton is the empty function.
-#define matte_value_is_empty_function(__V__) ((__V__).binID == MATTE_VALUE_TYPE_OBJECT && (__V__).value.id == 2)
+#define matte_value_is_empty_function(__V__) ((__V__).binIDreserved == MATTE_VALUE_TYPE_OBJECT && (__V__).value.id == 2)
 
-/// macro for getting the type of a matteValue_t
-#define matte_value_type(__V__) ((__V__).binID)
+
+#define matte_value_type(__V__) ((__V__).binIDreserved & 1 ? MATTE_VALUE_TYPE_NUMBER : ((__V__).binIDreserved))
+
+#define matte_value_get_number(__V__) ((__V__).value.numberReserved)
 
 /// (macro) Function for returning whether the value is a function.
-#define matte_value_is_function(__V__) ((__V__).binID == MATTE_VALUE_TYPE_OBJECT && ((__V__).value.id/2)*2 == (__V__.value.id))
-
-
+#define matte_value_is_function(__V__) ((__V__).binIDreserved == MATTE_VALUE_TYPE_OBJECT && ((__V__).value.id/2)*2 == (__V__.value.id))
 
 
 /// Matte Store 
@@ -309,6 +305,9 @@ const matteString_t * matte_value_string_get_string_unsafe(matteStore_t *, matte
 /// Sets the size of the array, internally resizing if needed.
 /// This works without checking whether the object is an Object.
 void matte_value_object_array_set_size_unsafe(matteStore_t *, matteValue_t v, uint32_t index);
+
+/// 
+double matte_value_get_double_unsafe(matteValue_t number);
 
 /// Given a function object, gets the in-scope referrable identified
 /// by the given name. If none can be found, an error is raised and 

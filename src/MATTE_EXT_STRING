@@ -29,7 +29,7 @@ DEALINGS IN THE SOFTWARE.
 */
 //
 static int ensure_arg_string(matteVM_t * vm, const matteValue_t * args) {
-    if (args[0].binID != MATTE_VALUE_TYPE_STRING) {
+    if (matte_value_type(args[0]) != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_cstring(vm, "Built-in String function expects a value of type String to work with.");
         return 0;                
     }
@@ -53,7 +53,7 @@ static matteValue_t vm_ext_call__string__search(matteVM_t * vm, matteValue_t fn,
     const matteString_t * str = matte_value_string_get_string_unsafe(store, args[0]);
     
     matteValue_t newlV = matte_value_as_string(store, args[1]);
-    if (newlV.binID != MATTE_VALUE_TYPE_STRING) { // already error
+    if (matte_value_type(newlV) != MATTE_VALUE_TYPE_STRING) { // already error
         return matte_store_new_value(store);
     }
     const matteString_t * other = matte_value_string_get_string_unsafe(store, newlV);
@@ -91,7 +91,7 @@ static matteValue_t vm_ext_call__string__search_all(matteVM_t * vm, matteValue_t
     const matteString_t * str = matte_value_string_get_string_unsafe(store, args[0]);
     
     matteValue_t newlV = matte_value_as_string(store, args[1]);
-    if (newlV.binID != MATTE_VALUE_TYPE_STRING) { // already error
+    if (matte_value_type(newlV) != MATTE_VALUE_TYPE_STRING) { // already error
         return matte_store_new_value(store);
     }
     const matteString_t * other = matte_value_string_get_string_unsafe(store, newlV);
@@ -133,7 +133,7 @@ static matteValue_t vm_ext_call__string__contains(matteVM_t * vm, matteValue_t f
     const matteString_t * str = matte_value_string_get_string_unsafe(store, args[0]);
 
     matteValue_t newlV = matte_value_as_string(store, args[1]);
-    if (newlV.binID != MATTE_VALUE_TYPE_STRING) { // already error
+    if (matte_value_type(newlV) != MATTE_VALUE_TYPE_STRING) { // already error
         return matte_store_new_value(store);
     }
     const matteString_t * other = matte_value_string_get_string_unsafe(store, newlV);
@@ -155,7 +155,7 @@ static matteValue_t vm_ext_call__string__format(matteVM_t * vm, matteValue_t fn,
 
     matteStore_t * store = matte_vm_get_store(vm);
 
-    if (args[1].binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(args[1]) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(vm, "'items' array input must be an object.");
         return matte_store_new_value(store);
     }
@@ -179,7 +179,7 @@ static matteValue_t vm_ext_call__string__format(matteVM_t * vm, matteValue_t fn,
                 i
             )
         );
-        if (str.binID != MATTE_VALUE_TYPE_STRING || vm->pendingCatchable) {
+        if (matte_value_type(str) != MATTE_VALUE_TYPE_STRING || vm->pendingCatchable) {
             matte_array_destroy(vals);
             return matte_store_new_value(store);
         }
@@ -268,7 +268,7 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
 
     matteArray_t * keys = matte_array_create(sizeof(matteString_t*));    
     // keys are always preferred
-    if (args[3].binID != MATTE_VALUE_TYPE_EMPTY) {
+    if (matte_value_type(args[3]) != MATTE_VALUE_TYPE_EMPTY) {
         uint32_t len = matte_value_object_get_number_key_count(store, args[3]);
         uint32_t i;
         
@@ -293,7 +293,7 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
     // else, single key
     } else {
         matteValue_t newlV = matte_value_as_string(store, args[1]);
-        if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(newlV) != MATTE_VALUE_TYPE_STRING) {
             matte_array_destroy(keys);
             return matte_store_new_value(store);
         }
@@ -304,7 +304,7 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
     
     matteString_t * str = matte_string_clone(matte_value_string_get_string_unsafe(store, args[0]));
     matteValue_t newlV = matte_value_as_string(store, args[2]);
-    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+    if (matte_value_type(newlV) != MATTE_VALUE_TYPE_STRING) {
         matte_array_destroy(keys);
         return matte_store_new_value(store);
     }
@@ -363,7 +363,7 @@ static matteValue_t vm_ext_call__string__count(matteVM_t * vm, matteValue_t fn, 
     const matteString_t * str = matte_value_string_get_string_unsafe(store, args[0]);
 
     matteValue_t newlV = matte_value_as_string(vm->store, args[1]);
-    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+    if (matte_value_type(newlV) != MATTE_VALUE_TYPE_STRING) {
         return matte_store_new_value(store);
     }
     const matteString_t * other = matte_value_string_get_string_unsafe(store, newlV);
@@ -456,7 +456,7 @@ static matteValue_t vm_ext_call__string__setcharat(matteVM_t * vm, matteValue_t 
 
     uint32_t key = matte_value_as_number(vm->store, args[1]);
     matteValue_t rs = matte_value_as_string(vm->store, args[2]);
-    if (rs.binID != MATTE_VALUE_TYPE_STRING) {
+    if (matte_value_type(rs) != MATTE_VALUE_TYPE_STRING) {
         return matte_store_new_value(vm->store);
     }
     const matteString_t * r = matte_value_string_get_string_unsafe(vm->store, rs);
@@ -483,7 +483,7 @@ static matteValue_t vm_ext_call__string__setcharat(matteVM_t * vm, matteValue_t 
 
 static matteValue_t vm_ext_call__string__combine(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
 
-    if (args[0].binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(args[0]) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(vm, "Expected Object as parameter for string combination. (The object should contain string values to combine).");
         return matte_store_new_value(vm->store);        
     }
@@ -543,7 +543,7 @@ static matteValue_t vm_ext_call__string__split(matteVM_t * vm, matteValue_t fn, 
     matteStore_t * store = matte_vm_get_store(vm);
 
     matteValue_t newlV = matte_value_as_string(vm->store, args[1]);
-    if (newlV.binID != MATTE_VALUE_TYPE_STRING) {
+    if (matte_value_type(newlV) != MATTE_VALUE_TYPE_STRING) {
         return matte_store_new_value(store);
     }
     const matteString_t * other = matte_value_string_get_string_unsafe(store, newlV);

@@ -196,7 +196,7 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
             assert(m->color == OBJECT_TRICOLOR__WHITE);
             {
                 matteValue_t vl;
-                vl.binID = MATTE_VALUE_TYPE_OBJECT;
+                vl.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
                 vl.value.id = m->storeID;
                 matte_store_track_done(h, vl);
             }
@@ -229,7 +229,7 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
             subl = m->function.referrablesCount;
             for(n = 0; n < subl; ++n) {
                 matteValue_t child = m->function.referrables[n];
-                if (child.binID == MATTE_VALUE_TYPE_OBJECT) {
+                if (matte_value_type(child) == MATTE_VALUE_TYPE_OBJECT) {
                     object_unlink_parent_value(h, m, &child);
                 }
                 matte_store_recycle(h, child);
@@ -250,7 +250,7 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         } else {
 
             if (m->table.attribSet) {
-                if (m->table.attribSet->binID) {
+                if (matte_value_type(*m->table.attribSet)) {
                     //matte_store_recycle(h, m->table.attribSet);
                     object_unlink_parent_value(h, m, m->table.attribSet);
                 }
@@ -280,7 +280,7 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                     matteValue_t v = matte_array_at(valIter, matteValue_t, i);
                     matteValue_t k = matte_array_at(keyIter, matteValue_t, i);
 
-                    if (k.binID == MATTE_VALUE_TYPE_STRING)
+                    if (matte_value_type(k) == MATTE_VALUE_TYPE_STRING)
                         matte_string_store_unref(h->stringStore, k.value.id);
 
                     object_unlink_parent_value(h, m, &k);  

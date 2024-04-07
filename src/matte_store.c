@@ -486,7 +486,7 @@ static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, mat
     if (QUERY_STATE(m, OBJECT_STATE__HAS_LAYOUT)) {
         MatteTypeData * data = &matte_array_at(store->typecode2data, MatteTypeData, m->typecode);
 
-        if (key.binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(key) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * err = matte_string_create_from_c_str(
                 "%s",
                 "Objects with layouts can only have string keys."
@@ -505,15 +505,16 @@ static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, mat
 
 
 
-    switch(key.binID) {
+    switch(matte_value_type(key)) {
       case MATTE_VALUE_TYPE_EMPTY: return NULL;
 
       
       // array lookup
       case MATTE_VALUE_TYPE_NUMBER: {
-        if (key.value.number < 0) return NULL;
+        double valNum = matte_value_get_number(key);
+        if (valNum < 0) return NULL;
         if (!m->table.keyvalues_number) return NULL;
-        uint32_t index = (uint32_t)key.value.number;
+        uint32_t index = (uint32_t)valNum;
         if (index < matte_array_get_size(m->table.keyvalues_number)) {
             return &matte_array_at(m->table.keyvalues_number, matteValue_t, index);
         } else {
@@ -540,7 +541,7 @@ static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, mat
 static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteObject_t * child) {
     #ifdef MATTE_DEBUG__STORE
         matteValue_t v;
-        v.binID = MATTE_VALUE_TYPE_OBJECT;
+        v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
         v.value.id = parent->storeID;
         matte_array_push(child->parents, v);
     #endif
@@ -661,7 +662,7 @@ static void object_link_parent_value_(matteStore_t * store, matteObject_t * pare
 }
 
 static void object_unlink_parent_value_(matteStore_t * store, matteObject_t * parent, const matteValue_t * child) {
-    if (child->binID != MATTE_VALUE_TYPE_OBJECT) return;
+    if (matte_value_type(*child) != MATTE_VALUE_TYPE_OBJECT) return;
     object_unlink_parent(store, parent, matte_store_bin_fetch(store->bin, child->value.id));
 }
 
@@ -681,7 +682,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
 
 
     if (QUERY_STATE(m, OBJECT_STATE__HAS_LAYOUT)) {
-        if (key.binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(key) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * err = matte_string_create_from_c_str(
                 "%s",
                 "Objects with layouts can only have string keys."
@@ -707,7 +708,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
         }
         
         matteValue_t typeVal = {};
-        typeVal.binID = MATTE_VALUE_TYPE_TYPE;
+        typeVal.binIDreserved = MATTE_VALUE_TYPE_TYPE;
         typeVal.value.id = typecode;
         if (!matte_value_isa(store, val, typeVal)) {
             matteString_t * err = matte_string_create_from_c_str(
@@ -723,20 +724,20 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
     }
 
 
-    if (key.binID == MATTE_VALUE_TYPE_EMPTY) return NULL;
+    if (matte_value_type(key) == MATTE_VALUE_TYPE_EMPTY) return NULL;
 
 
     // track reference
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
+    if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(store, m, &val);
     }
 
-    switch(key.binID) {
+    switch(matte_value_type(key)) {
       case MATTE_VALUE_TYPE_STRING: {
         if (!m->table.keyvalues_id) m->table.keyvalues_id = matte_mvt2_create();
         matteValue_t * value = matte_mvt2_find(m->table.keyvalues_id, key);
         if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
+            if (matte_value_type(*value) == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, value);
             }
             matte_store_recycle(store, *value);
@@ -751,13 +752,14 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
       
       // array lookup
       case MATTE_VALUE_TYPE_NUMBER: {
-        if (key.value.number < 0) {
+        double valNum = matte_value_get_number(key);
+        if (valNum < 0) {
             matte_vm_raise_error_cstring(store->vm, "Objects cannot have Number keys that are negative. Try using a string instead.");
             matte_store_recycle(store, out);
             return NULL;
         }
         if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));
-        uint32_t index = (uint32_t)key.value.number;
+        uint32_t index = (uint32_t)valNum;
         if (index >= matte_array_get_size(m->table.keyvalues_number)) {
             uint32_t currentLen = matte_array_get_size(m->table.keyvalues_number);
             matte_array_set_size(m->table.keyvalues_number, index+1);
@@ -769,7 +771,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
         }
 
         matteValue_t * newV = &matte_array_at(m->table.keyvalues_number, matteValue_t, index);
-        if (newV->binID == MATTE_VALUE_TYPE_OBJECT) {
+        if (matte_value_type(*newV) == MATTE_VALUE_TYPE_OBJECT) {
             object_unlink_parent_value(store, m, newV);
         }
 
@@ -784,7 +786,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
         if (!m->table.keyvalues_id) m->table.keyvalues_id = matte_mvt2_create();        
         matteValue_t * value = matte_mvt2_find(m->table.keyvalues_id, key);        
         if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
+            if (matte_value_type(*value) == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, value);
             }
             matte_store_recycle(store, *value);
@@ -802,12 +804,12 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
 // returns a type conversion operator if it exists
 static matteValue_t object_get_conv_operator(matteStore_t * store, matteObject_t * m, uint32_t type) {
     matteValue_t out = matte_store_new_value(store);
-    if (m->table.attribSet == NULL || m->table.attribSet->binID == 0) return out;
+    if (m->table.attribSet == NULL || matte_value_type(*m->table.attribSet) == 0) return out;
     matteValue_t * operator_ = m->table.attribSet;
 
     matteValue_t key;
     store = store;
-    key.binID = MATTE_VALUE_TYPE_TYPE;
+    key.binIDreserved = MATTE_VALUE_TYPE_TYPE;
     key.value.id = type;
     // OK: empty doesnt allocate anything
     out = matte_value_object_access(store, *operator_, key, 0);
@@ -818,13 +820,13 @@ static matteValue_t object_get_conv_operator(matteStore_t * store, matteObject_t
 // read if either 0 (write) or 1(read)
 static matteValue_t object_get_access_operator(matteStore_t * store, matteObject_t * m, int isBracket, int read) {
     matteValue_t out = matte_store_new_value(store);
-    if (m->table.attribSet == NULL || m->table.attribSet->binID == 0) return out;
+    if (m->table.attribSet == NULL || matte_value_type(*m->table.attribSet) == 0) return out;
 
 
     
     matteValue_t set = matte_value_object_access(store, *m->table.attribSet, isBracket ? store->specialString_bracketAccess : store->specialString_dotAccess, 0);
-    if (set.binID) {
-        if (set.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(set)) {
+        if (matte_value_type(set) != MATTE_VALUE_TYPE_OBJECT) {
             matte_vm_raise_error_cstring(store->vm, "operator['[]'] and operator['.'] property must be an Object if it is set.");
         } else {
             out = matte_value_object_access(store, set, read ? store->specialString_get : store->specialString_set, 0);
@@ -957,49 +959,49 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->specialString_type_any.value.id = matte_string_store_ref_cstring(out->stringStore, "Any");
     out->specialString_type_nullable.value.id = matte_string_store_ref_cstring(out->stringStore, "Nullable");
 
-    out->specialString_empty.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_nothing.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_true.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_false.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_dynamicBindToken.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_empty.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_nothing.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_true.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_false.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_dynamicBindToken.binIDreserved = MATTE_VALUE_TYPE_STRING;
 
 
 
-    out->specialString_type_boolean.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_type_empty.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_type_number.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_type_string.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_type_object.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_type_function.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_type_type.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_type_any.binID = MATTE_VALUE_TYPE_STRING;
-    out->specialString_type_nullable.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_boolean.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_empty.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_number.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_string.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_object.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_function.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_type.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_any.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    out->specialString_type_nullable.binIDreserved = MATTE_VALUE_TYPE_STRING;
 
 
     out->specialString_set.value.id = matte_string_store_ref_cstring(out->stringStore, "set");
-    out->specialString_set.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_set.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_get.value.id = matte_string_store_ref_cstring(out->stringStore, "get");
-    out->specialString_get.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_get.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_bracketAccess.value.id = matte_string_store_ref_cstring(out->stringStore, "[]");
-    out->specialString_bracketAccess.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_bracketAccess.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_dotAccess.value.id = matte_string_store_ref_cstring(out->stringStore, ".");
-    out->specialString_dotAccess.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_dotAccess.binIDreserved = MATTE_VALUE_TYPE_STRING;
 
 
     out->specialString_foreach.value.id = matte_string_store_ref_cstring(out->stringStore, "foreach");
-    out->specialString_foreach.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_foreach.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_keys.value.id = matte_string_store_ref_cstring(out->stringStore, "keys");
-    out->specialString_keys.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_keys.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_values.value.id = matte_string_store_ref_cstring(out->stringStore, "values");
-    out->specialString_values.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_values.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_name.value.id = matte_string_store_ref_cstring(out->stringStore, "name");
-    out->specialString_name.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_name.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_inherits.value.id = matte_string_store_ref_cstring(out->stringStore, "inherits");
-    out->specialString_inherits.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_inherits.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_key.value.id = matte_string_store_ref_cstring(out->stringStore, "key");
-    out->specialString_key.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_key.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_value.value.id = matte_string_store_ref_cstring(out->stringStore, "value");
-    out->specialString_value.binID = MATTE_VALUE_TYPE_STRING;
+    out->specialString_value.binIDreserved = MATTE_VALUE_TYPE_STRING;
     
     add_table_refs(out->type_number_methods, out->stringStore, BUILTIN_NUMBER__NAMES, BUILTIN_NUMBER__IDS);
     add_table_refs(out->type_object_methods, out->stringStore, BUILTIN_OBJECT__NAMES, BUILTIN_OBJECT__IDS);
@@ -1073,34 +1075,33 @@ void matte_store_destroy(matteStore_t * h) {
 
 matteValue_t matte_store_new_value_(matteStore_t * h) {
     matteValue_t out;
-    out.binID = 0;
+    out.binIDreserved = 0;
     return out;
 }
 
 matteValue_t matte_store_empty_function(matteStore_t * h) {
     matteValue_t out;
-    out.binID = MATTE_VALUE_TYPE_OBJECT;
+    out.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
     out.value.id = 2;
-    out.value.extended.idAux = 0;
     return out;
 }
 
 
 void matte_value_into_empty_(matteStore_t * store, matteValue_t * v) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_EMPTY;
+    v->binIDreserved = MATTE_VALUE_TYPE_EMPTY;
 }
 
 int matte_value_is_empty(matteStore_t * store, matteValue_t v) {
-    return v.binID == 0;
+    return matte_value_type(v) == 0;
 }
 
 
 // Sets the type to a number with the given value
 void matte_value_into_number_(matteStore_t * store, matteValue_t * v, double val) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_NUMBER;
-    v->value.number = val;
+    v->binIDreserved = MATTE_VALUE_TYPE_NUMBER;
+    v->value.numberReserved = val;
 }
 
 
@@ -1129,7 +1130,7 @@ static matteArray_t * type_array_to_isa(matteStore_t * store, matteValue_t val) 
 
     for(i = 0; i < count; ++i) {
         matteValue_t * v = matte_value_object_array_at_unsafe(store, val, i);
-        if (v->binID != MATTE_VALUE_TYPE_TYPE) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_TYPE) {
             matte_vm_raise_error_cstring(store->vm, "'inherits' attribute must have Type values only.");
             return array;
         }
@@ -1140,8 +1141,8 @@ static matteArray_t * type_array_to_isa(matteStore_t * store, matteValue_t val) 
 
 static matteTable_t * type_array_get_layout(matteStore_t * store, matteValue_t val, matteValue_t layout) {
     matteTable_t * layoutOut = NULL;
-    if (layout.binID != MATTE_VALUE_TYPE_EMPTY) {
-        if (layout.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(layout) != MATTE_VALUE_TYPE_EMPTY) {
+        if (matte_value_type(layout) != MATTE_VALUE_TYPE_OBJECT) {
             matte_vm_raise_error_cstring(store->vm, "'layout' attribute must be an Object when present");
             return NULL;
         }
@@ -1163,10 +1164,10 @@ static matteTable_t * type_array_get_layout(matteStore_t * store, matteValue_t v
 
             for(i = 0; i < len; ++i) {
                 matteValue_t key = matte_array_at(keys, matteValue_t, i);
-                if (key.binID != MATTE_VALUE_TYPE_STRING) continue;
+                if (matte_value_type(key) != MATTE_VALUE_TYPE_STRING) continue;
                 matteValue_t value = matte_array_at(values, matteValue_t, i);
                 
-                if (value.binID != MATTE_VALUE_TYPE_TYPE) {                    
+                if (matte_value_type(value) != MATTE_VALUE_TYPE_TYPE) {                    
                     matteString_t * err = matte_string_create_from_c_str(
                         "'layout' attribute \"%s\" is not a Type.",
                         matte_string_get_c_str(matte_string_store_find(store->stringStore, key.value.id))
@@ -1192,7 +1193,7 @@ static matteTable_t * type_array_get_layout(matteStore_t * store, matteValue_t v
         }
     }
 
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {
         uint32_t count = matte_value_object_get_key_count(store, val);
         uint32_t i;
         matteArray_t * array = matte_array_create(sizeof(uint32_t));
@@ -1201,7 +1202,7 @@ static matteTable_t * type_array_get_layout(matteStore_t * store, matteValue_t v
 
         for(i = 0; i < count; ++i) {
             matteValue_t * v = matte_value_object_array_at_unsafe(store, val, i);
-            if (v->binID == MATTE_VALUE_TYPE_TYPE) {
+            if (matte_value_type(*v) == MATTE_VALUE_TYPE_TYPE) {
                 MatteTypeData d = matte_array_at(store->typecode2data, MatteTypeData, v->value.id);
                 
 
@@ -1254,7 +1255,7 @@ matteValue_t matte_value_create_type_(
     matteValue_t layout
 ) {
     matteValue_t v = {};
-    v.binID = MATTE_VALUE_TYPE_TYPE;
+    v.binIDreserved = MATTE_VALUE_TYPE_TYPE;
     if (store->typepool == 0xffffffff) {
         v.value.id = 0;
         matte_vm_raise_error_cstring(store->vm, "Type count limit reached. No more types can be created.");
@@ -1265,23 +1266,23 @@ matteValue_t matte_value_create_type_(
     data.name = store->specialString_empty;
 
     matteValue_t val = name;
-    if (val.binID) {
+    if (matte_value_type(val)) {
         data.name = matte_value_as_string(store, val);
         matte_store_recycle(store, val);
     } else {
         matteString_t * str = matte_string_create_from_c_str("<anonymous type %d>", v.value.id);
         data.name.value.id = matte_string_store_ref(store->stringStore, str);
-        data.name.binID = MATTE_VALUE_TYPE_STRING;
+        data.name.binIDreserved = MATTE_VALUE_TYPE_STRING;
         matte_string_destroy(str);        
     }
 
 
     val = inherits;
-    if (val.binID) {
-        if (val.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(val)) {
+        if (matte_value_type(val) != MATTE_VALUE_TYPE_OBJECT) {
             matte_vm_raise_error_cstring(store->vm, "'inherits' attribute must be an object.");
             matte_store_recycle(store, val);
-            v.binID = 0;
+            v.binIDreserved = 0;
             return v;
         }            
         
@@ -1298,13 +1299,13 @@ matteValue_t matte_value_create_type_(
 // Sets the type to a number with the given value
 void matte_value_into_boolean_(matteStore_t * store, matteValue_t * v, int val) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_BOOLEAN;
+    v->binIDreserved = MATTE_VALUE_TYPE_BOOLEAN;
     v->value.boolean = val;
 }
 
 void matte_value_into_string_(matteStore_t * store, matteValue_t * v, const matteString_t * str) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_STRING;
+    v->binIDreserved = MATTE_VALUE_TYPE_STRING;
     v->value.id = matte_string_store_ref(store->stringStore, str);
 }
 matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuery_t query) {
@@ -1315,7 +1316,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
 
 
       case MATTE_QUERY__COS: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("cos requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1325,7 +1326,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return out;
 
       case MATTE_QUERY__SIN: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("sin requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1336,7 +1337,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       
 
       case MATTE_QUERY__TAN: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("tan requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1348,7 +1349,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       
       
       case MATTE_QUERY__ACOS:
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("acos requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1359,7 +1360,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       
 
       case MATTE_QUERY__ASIN: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("asin requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1370,7 +1371,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       
 
       case MATTE_QUERY__ATAN:
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("atan requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1384,7 +1385,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__ATAN2);
       
       case MATTE_QUERY__SQRT: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("sqrt requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1394,7 +1395,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return out;
 
       case MATTE_QUERY__ABS: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("abs requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1406,7 +1407,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
 
 
       case MATTE_QUERY__ISNAN: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("isNaN requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1417,7 +1418,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       
       
       case MATTE_QUERY__FLOOR: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("floor requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1428,7 +1429,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
 
 
       case MATTE_QUERY__CEIL: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("ceil requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1438,7 +1439,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return out;
 
       case MATTE_QUERY__ROUND: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("round requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1448,7 +1449,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return out;
 
       case MATTE_QUERY__RADIANS: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("radian conversion requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1458,7 +1459,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return out;
 
       case MATTE_QUERY__DEGREES: 
-        if (v->binID != MATTE_VALUE_TYPE_NUMBER) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_NUMBER) {
             matteString_t * str = matte_string_create_from_c_str("degree conversion requires base value to be a number.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1476,7 +1477,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
 
 
       case MATTE_QUERY__REMOVECHAR: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("removeChar requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1485,7 +1486,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__REMOVECHAR);
       }
       case MATTE_QUERY__SUBSTR: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("substr requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1494,7 +1495,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__SUBSTR);
       }
       case MATTE_QUERY__SPLIT: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("split requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1503,7 +1504,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__SPLIT);
       }
       case MATTE_QUERY__SCAN: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("scan requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1512,7 +1513,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__SCAN);
       }
       case MATTE_QUERY__LENGTH: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("length requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1524,7 +1525,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return len;     
       }
       case MATTE_QUERY__SEARCH: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("search requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1533,7 +1534,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__SEARCH);
       }
       case MATTE_QUERY__SEARCH_ALL: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("searchAll requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1542,7 +1543,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__SEARCH_ALL);
       }
       case MATTE_QUERY__CONTAINS: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("contains requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1551,7 +1552,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__CONTAINS);
       }
       case MATTE_QUERY__REPLACE: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("replace requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1560,7 +1561,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__REPLACE);
       }
       case MATTE_QUERY__FORMAT: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("format requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1569,7 +1570,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__FORMAT);
       }
       case MATTE_QUERY__COUNT: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("count requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1578,7 +1579,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__COUNT);
       }
       case MATTE_QUERY__CHARCODEAT: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("charCodeAt requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1587,7 +1588,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__CHARCODEAT);
       }
       case MATTE_QUERY__CHARAT: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("charAt requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1596,7 +1597,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__CHARAT);
       }
       case MATTE_QUERY__SETCHARCODEAT: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("setCharCodeAt requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1605,7 +1606,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__SETCHARCODEAT);
       }
       case MATTE_QUERY__SETCHARAT: {
-        if (v->binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("setCharAt requires base value to be a string.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1622,7 +1623,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
 
 
       case MATTE_QUERY__KEYCOUNT: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("keycount requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1633,7 +1634,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__SIZE: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("size requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1644,7 +1645,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__SETSIZE: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("setSize requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1654,7 +1655,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__KEYS: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("keys requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1664,7 +1665,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__VALUES: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("values requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1674,7 +1675,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__PUSH: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("push requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1684,7 +1685,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__POP: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("pop requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1704,7 +1705,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
       
       case MATTE_QUERY__INSERT: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("insert requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1714,7 +1715,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__REMOVE: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("remove requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1724,7 +1725,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__SETATTRIBUTES: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("setAttributes requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1734,7 +1735,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__ATTRIBUTES: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("attributes requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1750,7 +1751,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
       
       case MATTE_QUERY__SORT: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("sort requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1760,7 +1761,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
       
       case MATTE_QUERY__SUBSET: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("subset requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1770,7 +1771,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__FILTER: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("filter requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1780,7 +1781,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__FINDINDEX: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("findIndex requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1790,7 +1791,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__ISA: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("isA requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1800,7 +1801,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__MAP: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("map requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1810,7 +1811,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
       
       case MATTE_QUERY__ANY: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("any requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1820,7 +1821,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
       
       case MATTE_QUERY__FOREACH: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("foreach requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1830,7 +1831,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }      
       
       case MATTE_QUERY__ALL: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("all requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1840,7 +1841,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
       
       case MATTE_QUERY__REDUCE: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("reduce requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1850,7 +1851,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
       }
 
       case MATTE_QUERY__SET_IS_INTERFACE: {
-        if (v->binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
             matteString_t * str = matte_string_create_from_c_str("setIsInterface requires base value to be an object.");
             matte_vm_raise_error_string(store->vm, str);
             matte_string_destroy(str);
@@ -1875,7 +1876,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
 
 void matte_value_into_new_object_ref_(matteStore_t * store, matteValue_t * v) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_OBJECT;
+    v->binIDreserved = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
         assert(d->prevColor == d->nextColor && d->prevColor == 0);
@@ -1893,7 +1894,7 @@ void matte_value_into_new_object_ref_(matteStore_t * store, matteValue_t * v) {
 
 void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t * v, matteValue_t typeobj) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_OBJECT;
+    v->binIDreserved = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
         assert(d->prevColor == d->nextColor && d->prevColor == 0);
@@ -1901,7 +1902,7 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
     d->color = OBJECT_TRICOLOR__WHITE;  
     matte_store_garbage_collect__add_to_color(store, d);  
     v->value.id = d->storeID;
-    if (typeobj.binID != MATTE_VALUE_TYPE_TYPE) {        
+    if (matte_value_type(typeobj) != MATTE_VALUE_TYPE_TYPE) {        
         matteString_t * str = matte_string_create_from_c_str("Cannot instantiate object without a Type. (given value is of type %s)", matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, typeobj))));
         matte_vm_raise_error_string(store->vm, str);
         matte_string_destroy(str);
@@ -1919,7 +1920,7 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
 
 void matte_value_into_new_object_literal_ref_(matteStore_t * store, matteValue_t * v, const matteArray_t * arr) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_OBJECT;
+    v->binIDreserved = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
         assert(d->prevColor == d->nextColor && d->prevColor == 0);
@@ -1948,7 +1949,7 @@ void matte_value_into_new_object_literal_ref_(matteStore_t * store, matteValue_t
 
 void matte_value_into_new_object_array_ref_(matteStore_t * store, matteValue_t * v, const matteArray_t * args) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_OBJECT;
+    v->binIDreserved = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
         assert(d->prevColor == d->nextColor && d->prevColor == 0);
@@ -1969,7 +1970,7 @@ void matte_value_into_new_object_array_ref_(matteStore_t * store, matteValue_t *
         matteValue_t val = matte_store_new_value(store);
         matte_value_into_copy(store, &val, matte_array_at(args, matteValue_t, i));
         matte_array_at(d->table.keyvalues_number, matteValue_t, i) = val;
-        if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
+        if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {
             object_link_parent_value(store, d, &val);
         }
     }
@@ -2045,7 +2046,7 @@ void matte_value_into_new_typed_function_ref_(matteStore_t * store, matteValue_t
     uint32_t len = matte_array_get_size(args);
     // first check to see if the types are actually types.
     for(i = 0; i < len; ++i) {
-        if (matte_array_at(args, matteValue_t, i).binID != MATTE_VALUE_TYPE_TYPE) {
+        if (matte_value_type(matte_array_at(args, matteValue_t, i)) != MATTE_VALUE_TYPE_TYPE) {
             matteString_t * str;
             if (i == len-1) {
                 str = matte_string_create_from_c_str("Function constructor with type specifiers requires those specifications to be Types. The return value specifier is not a Type.");
@@ -2085,7 +2086,7 @@ void matte_value_object_function_activate_closure(matteStore_t * store, matteVal
         matteValue_t vSrc = matte_array_at(refs, matteValue_t, i);
         matteValue_t vv = matte_store_new_value(store);
         matte_value_into_copy(store, &vv, vSrc);
-        if (vv.binID == MATTE_VALUE_TYPE_OBJECT) {
+        if (matte_value_type(vv) == MATTE_VALUE_TYPE_OBJECT) {
             object_link_parent_value(store, m, &vv);
         }
         m->function.referrables[i] = vv;
@@ -2095,7 +2096,7 @@ void matte_value_object_function_activate_closure(matteStore_t * store, matteVal
 
 void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * v, matteValue_t source) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_OBJECT;
+    v->binIDreserved = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_function(store->bin);
     #ifdef MATTE_DEBUG__STORE
         assert(d->prevColor == d->nextColor && d->prevColor == 0);
@@ -2105,7 +2106,6 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
 
 
     v->value.id = d->storeID;
-    v->value.extended.idAux = 0;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
     
     
@@ -2152,13 +2152,13 @@ void matte_value_object_function_set_closure_value_unsafe(matteStore_t * store, 
     matteValue_t vNew = matte_store_new_value(store);
     matte_value_into_copy(store, &vNew, val);
 
-    if (vOld.binID == MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(vOld) == MATTE_VALUE_TYPE_OBJECT) {
         object_unlink_parent_value(store, m, &vOld);
     }
     
     matte_store_recycle(store, vOld);
     
-    if (vNew.binID == MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(vNew) == MATTE_VALUE_TYPE_OBJECT) {
         object_link_parent_value(store, m, &vNew);
     }
     m->function.referrables[index] = vNew;
@@ -2176,7 +2176,7 @@ matteValue_t * matte_value_object_function_get_closure_value_unsafe(matteStore_t
 
 static void matte_value_into_new_function_ref_real(matteStore_t * store, matteValue_t * v, matteBytecodeStub_t * stub, int external) {
     matte_store_recycle(store, *v);
-    v->binID = MATTE_VALUE_TYPE_OBJECT;
+    v->binIDreserved = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_function(store->bin);
     #ifdef MATTE_DEBUG__STORE
         assert(d->prevColor == d->nextColor && d->prevColor == 0);
@@ -2186,7 +2186,6 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
 
 
     v->value.id = d->storeID;
-    v->value.extended.idAux = 0;
     d->function.stub = stub;
     DISABLE_STATE(d, OBJECT_STATE__RECYCLED);
 
@@ -2294,7 +2293,7 @@ void matte_value_object_array_set_size_unsafe(matteStore_t * store, matteValue_t
     } else {
         for(i = size; i < oldSize; ++i) {
             matteValue_t v = matte_array_at(arr, matteValue_t, i);
-            if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+            if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, d, &v);                
             }
             matte_store_recycle(store, v);
@@ -2306,14 +2305,14 @@ void matte_value_object_array_set_size_unsafe(matteStore_t * store, matteValue_t
 
 const matteString_t * matte_value_string_get_string_unsafe(matteStore_t * store, matteValue_t v) {
     #ifdef MATTE_DEBUG 
-    assert(v.binID == MATTE_VALUE_TYPE_STRING);
+    assert(matte_value_type(v) == MATTE_VALUE_TYPE_STRING);
     #endif
     return matte_string_store_find(store->stringStore, v.value.id);
 }
 
 
 matteBytecodeStub_t * matte_value_get_bytecode_stub(matteStore_t * store, matteValue_t v) {
-    if (v.binID == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
         matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
         return m->function.stub;
     }
@@ -2321,7 +2320,7 @@ matteBytecodeStub_t * matte_value_get_bytecode_stub(matteStore_t * store, matteV
 }
 
 matteValue_t * matte_value_get_captured_value(matteStore_t * store, matteValue_t v, uint32_t index) {
-    if (v.binID == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
         matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
         if (index >= m->function.capturesCount) return NULL;
         CapturedReferrable_t referrable = m->function.captures[index];
@@ -2334,7 +2333,7 @@ matteValue_t * matte_value_get_captured_value(matteStore_t * store, matteValue_t
 }
 
 void matte_value_set_captured_value(matteStore_t * store, matteValue_t v, uint32_t index, matteValue_t val) {
-    if (v.binID == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
         matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
         if (index >= m->function.capturesCount) return;
 
@@ -2345,12 +2344,12 @@ void matte_value_set_captured_value(matteStore_t * store, matteValue_t v, uint32
         matteValue_t vNew = matte_store_new_value(store);
         matte_value_into_copy(store, &vNew, val);
 
-        if (vOld.binID == MATTE_VALUE_TYPE_OBJECT) {
+        if (matte_value_type(vOld) == MATTE_VALUE_TYPE_OBJECT) {
             object_unlink_parent_value(store, functionSrc, &vOld);
         }        
         matte_store_recycle(store, vOld);
         
-        if (vNew.binID == MATTE_VALUE_TYPE_OBJECT) {
+        if (matte_value_type(vNew) == MATTE_VALUE_TYPE_OBJECT) {
             object_link_parent_value(store, functionSrc, &vNew);
         }    
 
@@ -2363,7 +2362,7 @@ void matte_value_set_captured_value(matteStore_t * store, matteValue_t v, uint32
 
 
 static void print_object_children__print_value(const char * role, matteValue_t v) {
-    if (v.binID == MATTE_VALUE_TYPE_OBJECT)
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT)
         printf(" - %s: %d\n", role, v.value.id);
     else 
         printf(" - %s: [plain value] \n", role, v.value.id);
@@ -2380,12 +2379,12 @@ static void print_object_children(matteStore_t * h, matteObject_t * o) {
         // should be unlinked already because of above
         for(n = 0; n < subl; ++n) {
             matteValue_t dummy = {};
-            dummy.binID = MATTE_VALUE_TYPE_OBJECT;
+            dummy.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
             dummy.value.id = o->storeID;
             print_object_children__print_value("function capture", *matte_value_get_captured_value(h, dummy, n));
         }
     } else {
-        if (o->table.attribSet && o->table.attribSet->binID) {
+        if (o->table.attribSet && matte_value_type(*o->table.attribSet)) {
             print_object_children__print_value("attrib set", *o->table.attribSet);
         }
 
@@ -2410,7 +2409,7 @@ static void print_object_children(matteStore_t * h, matteObject_t * o) {
             for(i = 0; i < len; ++i) {
                 matteValue_t id = matte_array_at(keys, matteValue_t, i);
                 matteValue_t value = matte_array_at(values, matteValue_t, i);
-                switch (id.binID) {
+                switch (matte_value_type(id)) {
                   case MATTE_VALUE_TYPE_STRING:
                     matteString_t * role = matte_string_create_from_c_str("key [string %d -> %s]", 
                         (int)id.value.id,
@@ -2441,7 +2440,7 @@ static void print_object_children(matteStore_t * h, matteObject_t * o) {
 
 void matte_value_print(matteStore_t * store, matteValue_t v) {
     printf(    "Matte STORE Object:\n");
-    switch(v.binID) {
+    switch(matte_value_type(v)) {
       case MATTE_VALUE_TYPE_EMPTY: 
         printf("  Store Type: EMPTY\n");
         break;
@@ -2525,7 +2524,7 @@ void matte_value_print(matteStore_t * store, matteValue_t v) {
 
 void matte_value_print_from_id(matteStore_t * store, uint32_t bin, uint32_t v) {
     matteValue_t val;
-    val.binID = bin;
+    val.binIDreserved = bin;
     val.value.id = v;
 
     matte_value_print(store, val);
@@ -2533,7 +2532,7 @@ void matte_value_print_from_id(matteStore_t * store, uint32_t bin, uint32_t v) {
 #endif
 
 void matte_value_object_set_native_finalizer(matteStore_t * store, matteValue_t v, void (*fb)(void * objectUserdata, void * functionUserdata), void * functionUserdata) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT || v.value.id%2 == 0) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || v.value.id%2 == 0) {
         matte_vm_raise_error_cstring(store->vm, "Tried to set native finalizer on a non-object value.");
         return;
     }
@@ -2545,7 +2544,7 @@ void matte_value_object_set_native_finalizer(matteStore_t * store, matteValue_t 
 
 
 void matte_value_object_set_userdata(matteStore_t * store, matteValue_t v, void * userData) {
-    if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
         if (!m->table.ext) m->table.ext = (matteObjectExternalData_t*)matte_allocate(sizeof(matteObjectExternalData_t));
         m->table.ext->userdata = userData;
@@ -2553,7 +2552,7 @@ void matte_value_object_set_userdata(matteStore_t * store, matteValue_t v, void 
 }
 
 void * matte_value_object_get_userdata(matteStore_t * store, matteValue_t v) {
-    if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
         if (!m->table.ext) return NULL;
         return m->table.ext->userdata;
@@ -2564,7 +2563,7 @@ void * matte_value_object_get_userdata(matteStore_t * store, matteValue_t v) {
 
 
 double matte_value_as_number(matteStore_t * store, matteValue_t v) {
-    switch(v.binID) {
+    switch(matte_value_type(v)) {
       case MATTE_VALUE_TYPE_EMPTY: 
         matte_vm_raise_error_cstring(store->vm, "Cannot convert empty into a number.");
         return 0;
@@ -2573,7 +2572,7 @@ double matte_value_as_number(matteStore_t * store, matteValue_t v) {
         return 0;
 
       case MATTE_VALUE_TYPE_NUMBER: {
-        return v.value.number;
+        return matte_value_get_number(v);
       }
       case MATTE_VALUE_TYPE_BOOLEAN: {
         return v.value.boolean;
@@ -2590,7 +2589,7 @@ double matte_value_as_number(matteStore_t * store, matteValue_t v) {
         }
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
         matteValue_t operator_ = object_get_conv_operator(store, m, store->type_number.value.id);
-        if (operator_.binID) {            
+        if (matte_value_type(operator_)) {            
             double num = matte_value_as_number(store, matte_vm_call(store->vm, operator_, matte_array_empty(), matte_array_empty(), NULL));
             matte_store_recycle(store, operator_);
             return num;
@@ -2603,7 +2602,7 @@ double matte_value_as_number(matteStore_t * store, matteValue_t v) {
 }
 
 matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
-    switch(v.binID) {
+    switch(matte_value_type(v)) {
       case MATTE_VALUE_TYPE_EMPTY: 
         //matte_vm_raise_error_cstring(store->vm, "Cannot convert empty into a string.");
         ///return 0;
@@ -2616,13 +2615,14 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
       // slow.. make fast please!
       case MATTE_VALUE_TYPE_NUMBER: {        
         matteString_t * str;
-        if (fabs(v.value.number - (int64_t)v.value.number) < DBL_EPSILON) {
-            str = matte_string_create_from_c_str("%" PRId64 "", (int64_t)v.value.number);                
+        double val = matte_value_get_number(v);
+        if (fabs(val - (int64_t)val) < DBL_EPSILON) {
+            str = matte_string_create_from_c_str("%" PRId64 "", (int64_t)val);                
         } else {
-            str = matte_string_create_from_c_str("%.15g", v.value.number);        
+            str = matte_string_create_from_c_str("%.15g", val);        
         }
         matteValue_t out;
-        out.binID = MATTE_VALUE_TYPE_STRING;
+        out.binIDreserved = MATTE_VALUE_TYPE_STRING;
         out.value.id = matte_string_store_ref(store->stringStore, str);
         matte_string_destroy(str);        
         return out;        
@@ -2645,7 +2645,7 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
         }
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
         matteValue_t operator_ = object_get_conv_operator(store, m, store->type_string.value.id);
-        if (operator_.binID) {
+        if (matte_value_type(operator_)) {
             matteValue_t result = matte_vm_call(store->vm, operator_, matte_array_empty(), matte_array_empty(), NULL);
             matte_store_recycle(store, operator_);
             matteValue_t f = matte_value_as_string(store, result);
@@ -2664,7 +2664,7 @@ matteValue_t matte_value_to_type(matteStore_t * store, matteValue_t v, matteValu
     matteValue_t out = matte_store_new_value(store);
     switch(t.value.id) {
       case 1: { // empty
-        if (v.binID != MATTE_VALUE_TYPE_EMPTY) {
+        if (matte_value_type(v) != MATTE_VALUE_TYPE_EMPTY) {
             matte_vm_raise_error_cstring(store->vm, "It is an error to convert any non-empty value to the Empty type.");
         } else {
             matte_value_into_copy(store, &out, v);
@@ -2674,7 +2674,7 @@ matteValue_t matte_value_to_type(matteStore_t * store, matteValue_t v, matteValu
       }
 
       case 7: {
-        if (v.binID != MATTE_VALUE_TYPE_TYPE) {
+        if (matte_value_type(v) != MATTE_VALUE_TYPE_TYPE) {
             matte_vm_raise_error_cstring(store->vm, "It is an error to convert any non-Type value to a Type.");
         } else {
             matte_value_into_copy(store, &out, v);
@@ -2701,7 +2701,7 @@ matteValue_t matte_value_to_type(matteStore_t * store, matteValue_t v, matteValu
 
 
       case 5: {
-        if (v.binID == MATTE_VALUE_TYPE_OBJECT && !IS_FUNCTION_ID(v.value.id)) {
+        if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT && !IS_FUNCTION_ID(v.value.id)) {
             matte_value_into_copy(store, &out, v);
             break;
         } else {
@@ -2711,7 +2711,7 @@ matteValue_t matte_value_to_type(matteStore_t * store, matteValue_t v, matteValu
       }
       
       case 6: {
-        if (v.binID == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
+        if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
             matte_value_into_copy(store, &out, v);
             break;
         } else {
@@ -2729,13 +2729,13 @@ matteValue_t matte_value_to_type(matteStore_t * store, matteValue_t v, matteValu
 }
 
 int matte_value_as_boolean(matteStore_t * store, matteValue_t v) {
-    switch(v.binID) {
+    switch(matte_value_type(v)) {
       case MATTE_VALUE_TYPE_EMPTY: return 0;
       case MATTE_VALUE_TYPE_TYPE: {
         return 1;
       }
       case MATTE_VALUE_TYPE_NUMBER: {
-        return v.value.number != 0.0;
+        return matte_value_get_number(v) != 0.0;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: {
         return v.value.boolean;
@@ -2750,7 +2750,7 @@ int matte_value_as_boolean(matteStore_t * store, matteValue_t v) {
             
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
         matteValue_t operator_ = object_get_conv_operator(store, m, store->type_boolean.value.id);
-        if (operator_.binID) {
+        if (matte_value_type(operator_)) {
             matteValue_t r = matte_vm_call(store->vm, operator_, matte_array_empty(), matte_array_empty(), NULL);
             int out = matte_value_as_boolean(store, r);
             matte_store_recycle(store, operator_);
@@ -2767,8 +2767,8 @@ int matte_value_as_boolean(matteStore_t * store, matteValue_t v) {
 
 // returns whether the value is callable.
 int matte_value_is_callable(matteStore_t * store, matteValue_t v) {
-    if (v.binID == MATTE_VALUE_TYPE_TYPE) return 1;
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return 0;
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_TYPE) return 1;
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) return 0;
     if (!IS_FUNCTION_ID(v.value.id)) return 0;
     matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
     return 1 + (m->function.types != NULL); 
@@ -2824,7 +2824,7 @@ void matte_value_object_function_post_typecheck_unsafe(matteStore_t * store, mat
 // If the value points to an object, returns the value associated with the 
 // key. This will invoke the accessor if present.
 matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, matteValue_t key, int isBracketAccess) {
-    switch(v.binID) {
+    switch(matte_value_type(v)) {
       case MATTE_VALUE_TYPE_TYPE: {// built-in functions
         matteValue_t * b = matte_value_object_access_direct(store, v, key, isBracketAccess);
         if (b) {
@@ -2852,8 +2852,8 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
             accessor = object_get_access_operator(store, m, isBracketAccess, 1);
         
                 
-        if (hasInterface && accessor.binID == 0) {
-            if (key.binID != MATTE_VALUE_TYPE_STRING) {
+        if (hasInterface && matte_value_type(accessor) == 0) {
+            if (matte_value_type(key) != MATTE_VALUE_TYPE_STRING) {
                 matte_vm_raise_error_cstring(store->vm, "Objects with interfaces only have string-keyed members.");
                 return matte_store_new_value(store);          
             }
@@ -2873,7 +2873,7 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
                 matte_string_destroy(err);
                 return matte_store_new_value(store);               
             }
-            if (value->binID != MATTE_VALUE_TYPE_OBJECT) {
+            if (matte_value_type(*value) != MATTE_VALUE_TYPE_OBJECT) {
                 matteString_t * err = matte_string_create_from_c_str(
                     "Object's interface member \"%s\" is neither a Function nor an Object. Interface is malformed.",
                     matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
@@ -2915,7 +2915,7 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
         
         
         
-        if (accessor.binID) {
+        if (matte_value_type(accessor)) {
             matteValue_t args[1] = {
                 key
             };
@@ -2954,7 +2954,7 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
 // If the value points to an object, returns the value associated with the 
 // key. This will invoke the accessor if present.
 matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue_t v, matteValue_t key, int isBracketAccess) {
-    switch(v.binID) {
+    switch(matte_value_type(v)) {
       case MATTE_VALUE_TYPE_TYPE: {
         if (isBracketAccess) {
             matteString_t * err = matte_string_create_from_c_str(
@@ -2963,7 +2963,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
             matte_vm_raise_error_string(store->vm, err);
             return NULL;
         }
-        if (key.binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(key) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * err = matte_string_create_from_c_str(
                 "Types can only yield access to built-in functions through the string keys."
             );
@@ -3015,7 +3015,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
         if (QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE)) return NULL;
         matteValue_t accessor = object_get_access_operator(store, m, isBracketAccess, 1);
-        if (accessor.binID) {
+        if (matte_value_type(accessor)) {
             return NULL;
         } else {
             return object_lookup(store, m, key);
@@ -3058,7 +3058,7 @@ matteValue_t matte_value_object_access_index(matteStore_t * store, matteValue_t 
 
 
 void matte_value_object_push_lock_(matteStore_t * store, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) return;
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
     if (m->rootState == 0) {
         push_root_node(store, &store->roots, m);
@@ -3075,7 +3075,7 @@ void matte_value_object_push_lock_(matteStore_t * store, matteValue_t v) {
 }
 
 void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) return;
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
     if (m->rootState) {
         m->rootState--;
@@ -3097,16 +3097,16 @@ void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
 
 
 matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
         matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only get keys from something that's an Object."));        
         return matte_store_new_value(store);
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
 
-    if (m->table.attribSet && m->table.attribSet->binID) {
+    if (m->table.attribSet && matte_value_type(*m->table.attribSet)) {
         matteValue_t set = matte_value_object_access(store, *m->table.attribSet, store->specialString_keys, 0);
 
-        if (set.binID) {
+        if (matte_value_type(set)) {
             v = matte_vm_call(store->vm, set, matte_array_empty(), matte_array_empty(), NULL);
             return matte_value_object_values(store, v);
         }    
@@ -3125,11 +3125,11 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
         matteValue_t * iter = (matteValue_t*)matte_array_get_data(keyed);
         for(i = 0; i < len; ++i, iter++) {
             matteValue_t key = (*iter);
-            if (key.binID == MATTE_VALUE_TYPE_STRING)
+            if (matte_value_type(key) == MATTE_VALUE_TYPE_STRING)
                 matte_string_store_ref_id(store->stringStore, key.value.id);
 
             #ifdef MATTE_DEBUG__STORE
-                if (key.binID == MATTE_VALUE_TYPE_OBJECT)
+                if (matte_value_type(key) == MATTE_VALUE_TYPE_OBJECT)
                     matte_store_track_in(store, key, "object.keys()", 0);
             #endif
 
@@ -3168,19 +3168,19 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
 }
 
 matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
         matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only get keys from something that's an Object."));        
         return matte_store_new_value(store);
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-    if (m->table.attribSet && m->table.attribSet->binID) {
+    if (m->table.attribSet && matte_value_type(*m->table.attribSet)) {
         matteValue_t set = matte_value_object_access(store, *m->table.attribSet, store->specialString_values, 0);
 
-        if (set.binID) {
+        if (matte_value_type(set)) {
             v = matte_vm_call(store->vm, set, matte_array_empty(), matte_array_empty(), NULL);
             m = matte_store_bin_fetch_table(store->bin, v.value.id);
 
-            if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+            if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
                 matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "values attribute MUST return an object."));
                 return matte_store_new_value(store);
             } else {
@@ -3270,7 +3270,7 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
 
 // Returns the number of number keys within the object, ignoring keys of other types.
 uint32_t matte_value_object_get_number_key_count(matteStore_t * store, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
         return 0;
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3279,7 +3279,7 @@ uint32_t matte_value_object_get_number_key_count(matteStore_t * store, matteValu
 
 
 uint32_t matte_value_object_get_key_count(matteStore_t * store, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
         return 0;
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3298,20 +3298,20 @@ void matte_value_object_remove_key_string(matteStore_t * store, matteValue_t v, 
 }
 
 void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteValue_t key) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) return;
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) return;
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-    switch(key.binID) {
+    switch(matte_value_type(key)) {
       case MATTE_VALUE_TYPE_EMPTY: return;
 
       // array lookup
       case MATTE_VALUE_TYPE_NUMBER: {
-        uint32_t index = (uint32_t) key.value.number;
+        uint32_t index = (uint32_t) matte_value_get_number(key);
         if (!m->table.keyvalues_number) return;
         if (index >= matte_array_get_size(m->table.keyvalues_number)) {
             return;
         }
         matteValue_t * value = &matte_array_at(m->table.keyvalues_number, matteValue_t, index);
-        if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
+        if (matte_value_type(*value) == MATTE_VALUE_TYPE_OBJECT) {
             object_unlink_parent_value(store, m, value);                
         }
 
@@ -3325,7 +3325,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
         if (!m->table.keyvalues_id) return;
         matteValue_t * value = matte_mvt2_find(m->table.keyvalues_id, key);
         if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
+            if (matte_value_type(*value) == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, value);                
             }
             matte_mvt2_remove(m->table.keyvalues_id, key);
@@ -3341,11 +3341,11 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
         if (!m->table.keyvalues_id) return;
         matteValue_t * value = matte_mvt2_find(m->table.keyvalues_id, key);
         if (value) {
-            if (value->binID == MATTE_VALUE_TYPE_OBJECT) {
+            if (matte_value_type(*value) == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, value);                
             }
             
-            if (key.binID == MATTE_VALUE_TYPE_OBJECT) {
+            if (matte_value_type(key) == MATTE_VALUE_TYPE_OBJECT) {
                 object_unlink_parent_value(store, m, &key);            
             }
             matte_mvt2_remove(m->table.keyvalues_id, key);
@@ -3368,12 +3368,13 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
     matteObject_t * m = (matteObject_t*)matte_store_bin_fetch_table(store->bin, v.value.id);
 
     // foreach operator
-    if (m->table.attribSet && m->table.attribSet->binID) {
+    if (m->table.attribSet && matte_value_type(*m->table.attribSet)) {
         matteValue_t set = matte_value_object_access(store, *m->table.attribSet, store->specialString_foreach, 0);
 
-        if (set.binID) {
+        if (matte_value_type(set)) {
             v = matte_vm_call(store->vm, set, matte_array_empty(), matte_array_empty(), NULL);
-            if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+            m = (matteObject_t*)matte_store_bin_fetch_table(store->bin, v.value.id);
+            if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
                 matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "foreach attribute MUST return an object."));
                 return;
             } else {
@@ -3439,6 +3440,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
                     }
 
                     args[1] = matte_vm_call(store->vm, *getter, matte_array_empty(), matte_array_empty(), NULL);
+                    m = (matteObject_t*)matte_store_bin_fetch_table(store->bin, v.value.id);
                 }
                 
                 matte_value_object_push_lock(store, args[1]);
@@ -3458,7 +3460,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
                 matte_array_push(values, args[1]);
             }
         }
-        args[0].binID = 0;
+        args[0].binIDreserved = 0;
         
     }
     if (!QUERY_STATE(m, OBJECT_STATE__HAS_INTERFACE) &&
@@ -3467,8 +3469,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
         len = m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
         if (len) {
             matte_value_into_number(store, &args[0], 0);
-            double * quickI = &args[0].value.number;
-
+            double * quickI = &args[0].value.numberReserved;
             for(i = 0; i < len; ++i) {
                 args[1] = matte_array_at(m->table.keyvalues_number, matteValue_t, i);
                 *quickI = i;
@@ -3476,7 +3477,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
                 matte_array_push(keys, args[0]);
                 matte_array_push(values, args[1]);
             }
-            args[0].binID = 0;
+            args[0].binIDreserved = 0;
         }
     }
     
@@ -3508,7 +3509,7 @@ matteValue_t matte_value_subset(matteStore_t * store, matteValue_t v, uint32_t f
     matteValue_t out = matte_store_new_value(store);
     if (from > to) return out;
 
-    switch(v.binID) {
+    switch(matte_value_type(v)) {
       case MATTE_VALUE_TYPE_OBJECT: {
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
 
@@ -3548,12 +3549,12 @@ matteValue_t matte_value_subset(matteStore_t * store, matteValue_t v, uint32_t f
 
 
 void matte_value_object_set_attributes(matteStore_t * store, matteValue_t v, matteValue_t opObject) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(store->vm, "Cannot assign attributes set to something that isnt an object.");
         return;
     }
     
-    if (opObject.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(opObject) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(store->vm, "Cannot assign attributes set that isn't an object.");
         return;
     }
@@ -3564,7 +3565,7 @@ void matte_value_object_set_attributes(matteStore_t * store, matteValue_t v, mat
     }
     
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-    if (m->table.attribSet && m->table.attribSet->binID) {
+    if (m->table.attribSet && matte_value_type(*m->table.attribSet)) {
         object_unlink_parent_value(store, m, m->table.attribSet);
         matte_store_recycle(store, *m->table.attribSet);
     }
@@ -3597,7 +3598,7 @@ matteValue_t matte_value_object_get_interface_private_binding_unsafe(
 void matte_value_object_set_is_interface(
     matteStore_t * store, matteValue_t v, int enable, matteValue_t dyn
 ) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(store->vm, "Cannot enable/disable interface mode for something that isn't an Object.");
         return;
     }
@@ -3614,8 +3615,8 @@ void matte_value_object_set_is_interface(
         m->table.privateBinding = NULL;
     }
     
-    if (dyn.binID) {
-        if (dyn.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(dyn)) {
+        if (matte_value_type(dyn) != MATTE_VALUE_TYPE_OBJECT) {
             matte_vm_raise_error_cstring(store->vm, "Cannot use a custom dynamic binding for an interface that isn't an Object.");
             return;
         }
@@ -3632,7 +3633,7 @@ void matte_value_object_set_is_interface(
 
 const matteValue_t * matte_value_object_get_attributes_unsafe(matteStore_t * store, matteValue_t v) {
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-    if (m->table.attribSet && m->table.attribSet->binID) return m->table.attribSet;
+    if (m->table.attribSet && matte_value_type(*m->table.attribSet)) return m->table.attribSet;
     return NULL;
 }
 
@@ -3681,8 +3682,8 @@ void matte_value_object_sort_unsafe(matteStore_t * store, matteValue_t v, matteV
     matte_value_object_push_lock(store, less);
 
     matteValue_t names[2];
-    names[0].binID = MATTE_VALUE_TYPE_STRING;
-    names[1].binID = MATTE_VALUE_TYPE_STRING;
+    names[0].binIDreserved = MATTE_VALUE_TYPE_STRING;
+    names[1].binIDreserved = MATTE_VALUE_TYPE_STRING;
     names[0].value.id = matte_string_store_ref_cstring(store->stringStore, "a");
     names[1].value.id = matte_string_store_ref_cstring(store->stringStore, "b");
     params.names = MATTE_ARRAY_CAST(names, matteValue_t, 2);
@@ -3715,13 +3716,13 @@ void matte_value_object_insert(
     uint32_t index, 
     matteValue_t val
 ) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
         return;
     }
 
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
 
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
+    if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(store, m, &val);
     }
     if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));//(matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
@@ -3738,13 +3739,13 @@ void matte_value_object_push(
     matteValue_t v, 
     matteValue_t val
 ) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
         return;
     }
 
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
 
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {    
+    if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {    
         object_link_parent_value(store, m, &val);
     }
     
@@ -3758,7 +3759,7 @@ void matte_value_object_push(
 }
 
 void matte_value_object_set_table(matteStore_t * store, matteValue_t v, matteValue_t srcTable) {
-    if (srcTable.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(srcTable) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(store->vm, "Cannot use object set assignment syntax something that isnt an object.");
         return;
     }
@@ -3791,11 +3792,11 @@ matteValue_t matte_value_object_set_key_string(matteStore_t * store, matteValue_
 
 
 matteValue_t matte_value_object_set(matteStore_t * store, matteValue_t v, matteValue_t key, matteValue_t value, int isBracket) {
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(store->vm, "Cannot set property on something that isnt an object.");
         return matte_store_new_value(store);
     }
-    if (key.binID == 0) {
+    if (matte_value_type(key) == 0) {
         matte_vm_raise_error_cstring(store->vm, "Cannot set property with an empty key");
         return matte_store_new_value(store);
     }
@@ -3807,10 +3808,10 @@ matteValue_t matte_value_object_set(matteStore_t * store, matteValue_t v, matteV
     if (hasInterface == 0 || (hasInterface && isBracket))
         assigner = object_get_access_operator(store, m, isBracket, 0);
     
-    if (hasInterface && assigner.binID == 0) {
+    if (hasInterface && matte_value_type(assigner) == 0) {
         matteValue_t val = value;
 
-        if (key.binID != MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(key) != MATTE_VALUE_TYPE_STRING) {
             matte_vm_raise_error_cstring(store->vm, "Objects with interfaces only have string-keyed members.");
             return matte_store_new_value(store);
         }
@@ -3831,7 +3832,7 @@ matteValue_t matte_value_object_set(matteStore_t * store, matteValue_t v, matteV
             return matte_store_new_value(store);
         }
         
-        if (value->binID != MATTE_VALUE_TYPE_OBJECT) {
+        if (matte_value_type(*value) != MATTE_VALUE_TYPE_OBJECT) {
             matteString_t * err = matte_string_create_from_c_str(
                 "Object's interface member \"%s\" is neither a Function nor an Object. Interface is malformed.",
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
@@ -3890,7 +3891,7 @@ matteValue_t matte_value_object_set(matteStore_t * store, matteValue_t v, matteV
         return matte_store_new_value(store);
     }
 
-    if (assigner.binID) {
+    if (matte_value_type(assigner)) {
         matteValue_t args[2] = {
             key, value
         };
@@ -3920,10 +3921,10 @@ void matte_value_object_set_index_unsafe(matteStore_t * store, matteValue_t v, u
     matte_value_into_copy(store, &out, val);
 
     // track reference
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {
         object_link_parent_value(store, m, &val);
     }
-    if (newV->binID == MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(*newV) == MATTE_VALUE_TYPE_OBJECT) {
         object_unlink_parent_value(store, m, newV);
     }
 
@@ -3938,7 +3939,7 @@ void matte_value_into_copy_(matteStore_t * store, matteValue_t * to, matteValue_
 
         
 
-    switch(from.binID) {
+    switch(matte_value_type(from)) {
       case MATTE_VALUE_TYPE_EMPTY:
       case MATTE_VALUE_TYPE_NUMBER: 
       case MATTE_VALUE_TYPE_TYPE: 
@@ -3951,7 +3952,7 @@ void matte_value_into_copy_(matteStore_t * store, matteValue_t * to, matteValue_
         return;
 
       case MATTE_VALUE_TYPE_OBJECT: {
-        if (to->binID    == from.binID &&
+        if (to->binIDreserved == from.binIDreserved && 
             to->value.id == from.value.id
             ) return;
 
@@ -3963,20 +3964,20 @@ void matte_value_into_copy_(matteStore_t * store, matteValue_t * to, matteValue_
 }
 
 uint32_t matte_value_type_get_typecode(matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_TYPE) return 0;
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_TYPE) return 0;
     return v.value.id;
 }
 
 
 int matte_value_isa(matteStore_t * store, matteValue_t v, matteValue_t typeobj) {
-    if (typeobj.binID != MATTE_VALUE_TYPE_TYPE) {
+    if (matte_value_type(typeobj) != MATTE_VALUE_TYPE_TYPE) {
         matte_vm_raise_error_cstring(store->vm, "VM error: cannot query isa() with a non Type value.");
         return 0;
     }
     if (typeobj.value.id == store->type_any.value.id) return 1;
-    if (v.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
         uint32_t typ = matte_value_get_type(store, v).value.id;
-        if (typeobj.value.id == store->type_nullable.value.id && v.binID == MATTE_VALUE_TYPE_EMPTY) return 1;  
+        if (typeobj.value.id == store->type_nullable.value.id && matte_value_type(v) == MATTE_VALUE_TYPE_EMPTY) return 1;  
         return typ == typeobj.value.id;
     } else {
         if (typeobj.value.id == store->type_nullable.value.id) return 1;  
@@ -4001,7 +4002,7 @@ int matte_value_isa(matteStore_t * store, matteValue_t v, matteValue_t typeobj) 
 }
 
 matteValue_t matte_value_type_name(matteStore_t * store, matteValue_t v) {
-    if (v.binID != MATTE_VALUE_TYPE_TYPE) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_TYPE) {
         matte_vm_raise_error_cstring(store->vm, "VM error: cannot get type name of non Type value.");
         return store->specialString_empty;
     }
@@ -4063,7 +4064,7 @@ matteValue_t matte_store_get_dynamic_bind_token(matteStore_t * h) {
 
 
 matteValue_t matte_value_get_type(matteStore_t * store, matteValue_t v) {
-    switch(v.binID) {
+    switch(matte_value_type(v)) {
       case MATTE_VALUE_TYPE_EMPTY:   return store->type_empty;
       case MATTE_VALUE_TYPE_BOOLEAN: return store->type_boolean;
       case MATTE_VALUE_TYPE_NUMBER: return store->type_number;
@@ -4074,7 +4075,7 @@ matteValue_t matte_value_get_type(matteStore_t * store, matteValue_t v) {
             return store->type_function;
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
         matteValue_t out;
-        out.binID = MATTE_VALUE_TYPE_TYPE;
+        out.binIDreserved = MATTE_VALUE_TYPE_TYPE;
         out.value.id = m->typecode;
         return out;
       }
@@ -4097,10 +4098,10 @@ void matte_store_recycle_(
     int line_
 #endif    
 ) {
-    if (v.binID == MATTE_VALUE_TYPE_STRING) {
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
         matte_string_store_unref(store->stringStore, v.value.id);
     }
-    /*if (v.binID == MATTE_VALUE_TYPE_OBJECT) {
+    /*if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
         if (!m) return;
         if (!QUERY_STATE(m, OBJECT_STATE__IS_ETERNAL)) {
@@ -4570,9 +4571,9 @@ matteValue_t matte_store_track_in(matteStore_t * store, matteValue_t val, const 
     if (!store_track_info) {
         matte_store_track_initialize();
     }
-    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return val;    
+    if (!matte_value_type(val) || (matte_value_type(val) != MATTE_VALUE_TYPE_OBJECT)) return val;    
     matteObject_t * o = matte_store_bin_fetch(store->bin, val.value.id);
-    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[val.binID], val.value.id);
+    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
 
 
     // reference is complete. REMOVE!!!
@@ -4582,7 +4583,7 @@ matteValue_t matte_store_track_in(matteStore_t * store, matteValue_t val, const 
         inst->historyFiles = matte_array_create(sizeof(matteString_t *));
         inst->historyLines = matte_array_create(sizeof(int));
         inst->historyIncr  = matte_array_create(sizeof(int));
-        matte_table_insert_by_uint(store_track_info->values[val.binID], val.value.id, inst);
+        matte_table_insert_by_uint(store_track_info->values[matte_value_type(val)], val.value.id, inst);
         store_track_info->unresolved++;
         inst->refid = val;
     } 
@@ -4600,10 +4601,10 @@ void matte_store_track_neutral(matteStore_t * store, matteValue_t val, const cha
     if (!store_track_info) {
         matte_store_track_initialize();
     }
-    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    if (!matte_value_type(val) ||!(matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT)) return;
     matteObject_t * o = matte_store_bin_fetch(store->bin, val.value.id);
 
-    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[val.binID], val.value.id);
+    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
 
 
     matteString_t * fdup = matte_string_create_from_c_str("%s", file);
@@ -4620,10 +4621,10 @@ void matte_store_track_out(matteStore_t * store, matteValue_t val, const char * 
     if (!store_track_info) {
         matte_store_track_initialize();
     }
-    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    if (!matte_value_type(val) ||!(matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT)) return;
     matteObject_t * o = matte_store_bin_fetch(store->bin, val.value.id);
 
-    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[val.binID], val.value.id);
+    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
         
     if (!inst) {
         return;
@@ -4638,10 +4639,10 @@ void matte_store_track_out(matteStore_t * store, matteValue_t val, const char * 
     /*
     if (inst->refCount == 0) {
         printf("---REFCOUNT NEGATIVE DETECTED---\n");
-        if (inst->refid.binID == MATTE_VALUE_TYPE_OBJECT || inst->refid.binID == MATTE_VALUE_TYPE_FUNCTION)
+        if (inst->matte_value_type(refid) == MATTE_VALUE_TYPE_OBJECT || inst->matte_value_type(refid) == MATTE_VALUE_TYPE_FUNCTION)
             matte_value_print(store, inst->refid);
         else 
-            printf("Value: {%d, %d}\n", inst->refid.binID, inst->refid.value.id);
+            printf("Value: {%d, %d}\n", inst->matte_value_type(refid), inst->refid.value.id);
 
 
         uint32_t i;
@@ -4669,10 +4670,10 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val) {
     if (!store_track_info) {
         matte_store_track_initialize();
     }
-    if (!val.binID ||!(val.binID == MATTE_VALUE_TYPE_OBJECT)) return;
+    if (!matte_value_type(val) ||!(matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT)) return;
     matteObject_t * o = matte_store_bin_fetch(store->bin, val.value.id);
 
-    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[val.binID], val.value.id);
+    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
     if (!inst) {
         assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to distroy it.");
     }
@@ -4693,7 +4694,7 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val) {
         matte_string_destroy(matte_array_at(inst->historyFiles, matteString_t *, i));
     }
     matte_array_destroy(inst->historyFiles);
-    matte_table_remove_by_uint(store_track_info->values[val.binID], val.value.id);
+    matte_table_remove_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
     matte_deallocate(inst);
     inst = NULL;
 

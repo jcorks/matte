@@ -113,13 +113,13 @@ typedef struct {
 static int encode_value(JSONEncodeData * data, matteValue_t val) {
     matteStore_t * store = data->store;
     matteArray_t * buffer = data->buffer;
-    switch(val.binID) {
+    switch(matte_value_type(val)) {
       case MATTE_VALUE_TYPE_BOOLEAN: 
         push_cstr_buffer(buffer, matte_value_as_boolean(store, val) == 1 ? "true" : "false");
         break;        
     
       case MATTE_VALUE_TYPE_NUMBER: 
-        push_double_buffer(buffer, val.value.number);
+        push_double_buffer(buffer, matte_value_get_number(val));
         break;
 
       case MATTE_VALUE_TYPE_STRING: {
@@ -160,7 +160,7 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
                 matte_string_concat_printf(data->lastNamedRef, "[array index %d]", i);
 
 
-                if (subval->binID == MATTE_VALUE_TYPE_OBJECT && matte_table_find_by_uint(data->recur, subval->value.id)) {
+                if (matte_value_type(*subval) == MATTE_VALUE_TYPE_OBJECT && matte_table_find_by_uint(data->recur, subval->value.id)) {
                     matteString_t * err = matte_string_create_from_c_str(
                         "JSON encoding error: circular dependency detected in %d index while trying to encode member \"%s\".",
                         (int) i,
@@ -183,7 +183,7 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
             
             for(i = 0; i < len; ++i) {
                 matteValue_t * key = matte_value_object_array_at_unsafe(store, keys, i);
-                if (key->binID != MATTE_VALUE_TYPE_STRING) continue;
+                if (matte_value_type(*key) != MATTE_VALUE_TYPE_STRING) continue;
 
                 if (i != 0)
                     push_char_buffer(buffer, ',');
@@ -201,7 +201,7 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
                 matte_string_truncate(data->lastNamedRef, 0);
                 matte_string_concat(data->lastNamedRef, matte_value_string_get_string_unsafe(store, *key));
                 
-                if (keyval.binID == MATTE_VALUE_TYPE_OBJECT && matte_table_find_by_uint(data->recur, keyval.value.id)) {
+                if (matte_value_type(keyval) == MATTE_VALUE_TYPE_OBJECT && matte_table_find_by_uint(data->recur, keyval.value.id)) {
                     matteString_t * err = matte_string_create_from_c_str(
                         "JSON encoding error: circular dependency detected; member \"%s\" was already encoded.",
                         (int) i,

@@ -157,9 +157,9 @@ static void matte_thread_error(
 ) {
     matteStore_t * store = matte_vm_get_store(vm);
     MatteAsyncStartData * startData = (MatteAsyncStartData*)d;
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {
         matteValue_t s = matte_value_object_access_string(store, val, MATTE_VM_STR_CAST(vm, "summary"));
-        if (s.binID) {
+        if (matte_value_type(s)) {
             MatteAsyncStartData * startData = (MatteAsyncStartData*)d;
             *startData->errorStringRef = matte_string_create_from_c_str(
                 "Unhandled error: \n%s\n", 
@@ -288,7 +288,7 @@ static void * matte_thread(void * userData) {
 
     matteValue_t vStr = matte_value_as_string(store, v);
 
-    if (v.binID == MATTE_VALUE_TYPE_STRING) {
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
         *startData->resultRef = matte_string_clone(matte_value_string_get_string_unsafe(store, v));
         matte_store_recycle(store, v);        
     } else {

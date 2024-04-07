@@ -29,7 +29,7 @@ DEALINGS IN THE SOFTWARE.
 */
 //
 static int ensure_arg_object(matteVM_t * vm, const matteValue_t * args) {
-    if (args[0].binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(args[0]) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(vm, "Built-in Object function expects a value of type Object to work with.");
         return 0;                
     }
@@ -100,13 +100,13 @@ static matteValue_t vm_ext_call__object__insert(matteVM_t * vm, matteValue_t fn,
 
 static matteValue_t vm_ext_call__object__remove(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_object(vm, args)) return matte_store_new_value(vm->store);
-    if (args[1].binID) {
+    if (matte_value_type(args[1])) {
         matte_value_object_remove_key(vm->store, 
             args[0],
             args[1]
         );
-    } else if (args[2].binID) {
-        if (args[2].binID != MATTE_VALUE_TYPE_OBJECT) {
+    } else if (matte_value_type(args[2])) {
+        if (matte_value_type(args[2]) != MATTE_VALUE_TYPE_OBJECT) {
             matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'keys' for remove query requires argument to be an Object."));
             return matte_store_new_value(vm->store);            
         }
@@ -128,7 +128,7 @@ static matteValue_t vm_ext_call__object__set_attributes(matteVM_t * vm, matteVal
     if (!ensure_arg_object(vm, args)) return matte_store_new_value(vm->store);
 
     matteValue_t b = args[1];
-    if (b.binID != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(b) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'setAttributes' requires an Object to be the 'attributes'"));
         return matte_store_new_value(vm->store);
     }
@@ -214,8 +214,8 @@ static matteValue_t vm_ext_call__object__filter(matteVM_t * vm, matteValue_t fn,
 
 static matteValue_t vm_ext_call__object__findindex(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_object(vm, args)) return matte_store_new_value(vm->store);
-    if (args[1].binID != MATTE_VALUE_TYPE_EMPTY &&
-        args[2].binID != MATTE_VALUE_TYPE_EMPTY) {
+    if (matte_value_type(args[1]) != MATTE_VALUE_TYPE_EMPTY &&
+        matte_value_type(args[2]) != MATTE_VALUE_TYPE_EMPTY) {
         matte_vm_raise_error_cstring(vm, "findIndex() cannot have both 'value' and 'query' specified.");        
         return matte_store_new_value(vm->store);                   
     }
@@ -232,7 +232,7 @@ static matteValue_t vm_ext_call__object__findindex(matteVM_t * vm, matteValue_t 
     uint32_t len = matte_value_object_get_number_key_count(vm->store, args[0]);
     uint32_t i;
     
-    if (args[2].binID) {
+    if (matte_value_type(args[2])) {
         if (!matte_value_is_callable(vm->store, args[2])) {
             matte_vm_raise_error_cstring(vm, "When specified, the query parameter for findIndex() must be callable.");        
         } else {

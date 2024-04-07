@@ -85,8 +85,8 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val);
 // already inc by matte_value_into_new_function
 #define matte_value_into_new_typed_function_ref(__STORE__, __VAL__, __MSTUB__, __MARR0__) matte_value_into_new_typed_function_ref_(__STORE__, __VAL__, __MSTUB__, __MARR0__); matte_store_track_neutral(__STORE__, *(__VAL__), __FILE__, __LINE__);
 #define matte_value_into_copy(__STORE__, __VAL__, __OTHER__) matte_value_into_copy_(__STORE__, __VAL__, __OTHER__);matte_store_track_neutral(__STORE__, *(__VAL__), __FILE__, __LINE__);
-#define matte_value_object_push_lock(__STORE__, __VAL__) matte_value_object_push_lock_(__STORE__, __VAL__); if ((__VAL__).binID == MATTE_VALUE_TYPE_OBJECT) matte_store_track_in_lock(__STORE__, (__VAL__), __FILE__, __LINE__);
-#define matte_value_object_pop_lock(__STORE__, __VAL__) matte_value_object_pop_lock_(__STORE__, __VAL__); if ((__VAL__).binID == MATTE_VALUE_TYPE_OBJECT) matte_store_track_out_lock(__STORE__, (__VAL__), __FILE__, __LINE__);
+#define matte_value_object_push_lock(__STORE__, __VAL__) matte_value_object_push_lock_(__STORE__, __VAL__); if (matte_value_type(__VAL__) == MATTE_VALUE_TYPE_OBJECT) matte_store_track_in_lock(__STORE__, (__VAL__), __FILE__, __LINE__);
+#define matte_value_object_pop_lock(__STORE__, __VAL__) matte_value_object_pop_lock_(__STORE__, __VAL__); if (matte_value_type(__VAL__) == MATTE_VALUE_TYPE_OBJECT) matte_store_track_out_lock(__STORE__, (__VAL__), __FILE__, __LINE__);
 #define matte_store_recycle(__STORE__, __VAL__) matte_store_recycle_(__STORE__, __VAL__, __FILE__, __LINE__); 
 #else 
 void matte_store_recycle_(matteStore_t *, matteValue_t);

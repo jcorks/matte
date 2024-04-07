@@ -51,7 +51,7 @@ static int vm_ext_call__for_restart_condition__up(
     void * data
 ) {
     ForLoopData * d = (ForLoopData*)data;
-    if (res.binID != 0) {
+    if (matte_value_type(res) != 0) {
         d->i = matte_value_as_number(vm->store, res);
     } else {
         d->i += d->offset;
@@ -73,7 +73,7 @@ static int vm_ext_call__for_restart_condition__down(
     void * data
 ) {
     ForLoopData * d = (ForLoopData*)data;
-    if (res.binID != 0) {
+    if (matte_value_type(res) != 0) {
         d->i = matte_value_as_number(vm->store, res);
     } else {
         d->i += d->offset;
@@ -209,9 +209,9 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
     
     const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
     const matteString_t * alias = NULL;
-    int preloadOnly = preload.binID == MATTE_VALUE_TYPE_EMPTY || matte_value_as_boolean(vm->store, preload) == 0;
+    int preloadOnly = matte_value_type(preload) == MATTE_VALUE_TYPE_EMPTY || matte_value_as_boolean(vm->store, preload) == 0;
     
-    if (as.binID == MATTE_VALUE_TYPE_STRING)
+    if (matte_value_type(as) == MATTE_VALUE_TYPE_STRING)
         alias = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, as));
     
 

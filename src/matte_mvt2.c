@@ -53,7 +53,7 @@ DEALINGS IN THE SOFTWARE.
 // holds an individual key-value pair
 typedef struct matteMVT2Entry_t matteMVT2Entry_t;
 struct matteMVT2Entry_t {
-    uint32_t indexPacked;
+    matteValue_t value;
     uint32_t key;
     uint32_t binID;
 };
@@ -66,12 +66,6 @@ struct matteMVT2Bucket_t {
     uint32_t alloc;
 };
 
-
-static matteArray_t * mainReserve_dead = NULL;
-static matteArray_t * mainReserve = NULL;
-
-static matteArray_t * mainReserve_ID = NULL;
-static matteArray_t * mainReserve_ID_dead = NULL;
 
 
 
@@ -89,7 +83,7 @@ struct matteMVT2_t {
 };
 
 
-static void bucket_add(matteMVT2Bucket_t * bucket, matteMVT2Entry_t entry) {
+static matteMVT2Entry_t * bucket_add(matteMVT2Bucket_t * bucket, matteMVT2Entry_t entry) {
     // for now...
     if (bucket->size + 1 > bucket->alloc) {
         uint32_t oldSize = bucket->alloc;
@@ -107,6 +101,7 @@ static void bucket_add(matteMVT2Bucket_t * bucket, matteMVT2Entry_t entry) {
     
     matteMVT2Entry_t * entryNew = &bucket->entries[bucket->size++];
     *entryNew = entry;
+    return entryNew;
 }
 
 static void bucket_remove(matteMVT2Bucket_t * bucket, uint32_t i) {
@@ -170,118 +165,9 @@ int matte_mvt2_get_size(const matteMVT2_t * MVT2) {
     return MVT2->size;
 }   
 
-#define PACKED_TYPE(__IP__)  ((__IP__) & 7)
-#define PACKED_INDEX(__IP__) ((__IP__) >> 3)
-
-static void remove_reserve(uint32_t indexPacked) {
-    uint32_t index;
-    switch(PACKED_TYPE(indexPacked)) {
-      case 0:
-      case 1:
-        return;
-        
-      case 2:
-        index = PACKED_INDEX(indexPacked);
-        matte_array_push(mainReserve_dead, index);
-        return;
-      case 3:
-        index = PACKED_INDEX(indexPacked);
-        matte_array_push(mainReserve_ID_dead, index);
-        return;        
-    }
-}
-
-static matteValue_t valEmpty = {};
-static matteValue_t valTrue  = {};
-static matteValue_t valFalse = {};
-static matteValue_t valNumber = {};
-static matteValue_t valOther = {};
-
-
-static matteValue_t * get_reserve(uint32_t indexPacked) {
-    switch(PACKED_TYPE(indexPacked)) {
-      case 0: 
-        return &valEmpty;
-      case 1: 
-        if (PACKED_INDEX(indexPacked) & 1)
-            return &valTrue;
-        else 
-            return &valFalse; 
-      case 2:
-        
-        valNumber.value.number = matte_array_at(mainReserve, double, PACKED_INDEX(indexPacked));
-        return &valNumber;
-        
-      default:
-        valOther.binID = PACKED_TYPE(indexPacked);
-        valOther.value.id = matte_array_at(mainReserve_ID, uint32_t, PACKED_INDEX(indexPacked));
-        return &valOther;        
-    }
-}
-
-static uint32_t add_reserve(matteValue_t * v) {
-    uint32_t ind;
-    uint32_t indReal;
-    matteArray_t * reserve;
-    matteArray_t * reserve_dead;
-    switch(v->binID) {
-      case 0: return 0;
-      case 1: 
-        if (v->value.boolean)
-            return 9; //  1001;
-        else 
-            return 1; //  0001; 
-      case 2:
-
-        reserve      = mainReserve;
-        reserve_dead = mainReserve_dead;
-
-        if (matte_array_get_size(reserve_dead)) {
-            ind = matte_array_at(reserve_dead, uint32_t, reserve_dead->size-1);
-            reserve_dead->size -= 1;
-            matte_array_at(reserve, double, ind) = v->value.number;
-        } else {
-            ind = matte_array_get_size(reserve);
-            matte_array_push(reserve, v->value.number);
-        }
-        return (ind << 3) + v->binID;
-      
-      default:
-        reserve      = mainReserve_ID;
-        reserve_dead = mainReserve_ID_dead;
-
-        if (matte_array_get_size(reserve_dead)) {
-            ind = matte_array_at(reserve_dead, uint32_t, reserve_dead->size-1);
-            reserve_dead->size -= 1;
-            matte_array_at(reserve, uint32_t, ind) = v->value.id;
-        } else {
-            ind = matte_array_get_size(reserve);
-            matte_array_push(reserve, v->value.id);
-        }
-        return (ind << 3) + v->binID;
-    }
-
-}
-
 
 matteMVT2_t * matte_mvt2_create() {
     matteMVT2_t * t = matte_allocate(sizeof(matteMVT2_t));    
-    if (mainReserve == NULL) {
-        mainReserve = matte_array_create(sizeof(double));
-        mainReserve_dead = matte_array_create(sizeof(uint32_t));
-
-        mainReserve_ID = matte_array_create(sizeof(uint32_t));
-        mainReserve_ID_dead = matte_array_create(sizeof(uint32_t));
-
-        valTrue.binID = 1;
-        valTrue.value.boolean = 1;
-
-        valFalse.binID = 1;
-        valFalse.value.boolean = 0;
-
-        valNumber.binID = 2;
-    }
-
     t->buckets = (matteMVT2Bucket_t*)matte_allocate(sizeof(matteMVT2Bucket_t) * MVT2_bucket_start_size);
     t->nBuckets = MVT2_bucket_start_size;
     t->size = 0;
@@ -317,26 +203,24 @@ matteValue_t * matte_mvt2_insert(matteMVT2_t * t, matteValue_t key, matteValue_t
     // look for preexisting entry
     for(i = 0; i < bucketLen; ++i) {
         matteMVT2Entry_t * next = src->entries+i;
-        if (next->key == key.value.id && next->binID == key.binID) {
-            remove_reserve(next->indexPacked);
-            next->indexPacked = add_reserve(&v);
-            return get_reserve(next->indexPacked);
+        if (next->key == key.value.id && next->binID == key.binIDreserved) {
+            next->value = v;
+            return &next->value;
         }
     }    
 
     // add to chain at the end
     matteMVT2Entry_t entry = {};
     entry.key = key.value.id;
-    entry.binID = key.binID;
-    entry.indexPacked = add_reserve(&v);
+    entry.binID = key.binIDreserved;
+    entry.value = v;
 
 
     if (src->size == MVT2_bucket_fill_amount)
         t->bucketsFilled ++;
 
     t->size++;
-    bucket_add(src, entry);
-    return get_reserve(entry.indexPacked);
+    return &bucket_add(src, entry)->value;
 }
 
 
@@ -352,8 +236,8 @@ matteValue_t * matte_mvt2_find(const matteMVT2_t * t, matteValue_t key) {
     uint32_t i;
     for(i = 0; i < bucket->size; ++i) {
         next = bucket->entries+i;
-        if (next->key == key.value.id && next->binID == key.binID) {
-            return get_reserve(next->indexPacked);
+        if (next->key == key.value.id && next->binID == key.binIDreserved) {
+            return &next->value;
         }
     }    
     return NULL;
@@ -369,8 +253,7 @@ void matte_mvt2_remove(matteMVT2_t * t, matteValue_t key) {
     uint32_t i;
     for(i = 0; i < bucket->size; ++i) {
         next = bucket->entries+i;
-        if (next->key == key.value.id && next->binID == key.binID) {
-            remove_reserve(next->indexPacked);
+        if (next->key == key.value.id && next->binID == key.binIDreserved) {
             bucket_remove(bucket, i);
             t->size--;
             return;
@@ -392,9 +275,6 @@ void matte_mvt2_clear(matteMVT2_t * t) {
     uint32_t n;
     for(; i < t->nBuckets; ++i) {
         src = t->buckets+i;
-        for(n = 0; n < src->size; ++n) {
-            remove_reserve(src->entries[n].indexPacked);
-        }   
         matte_deallocate(src->entries);
         src->entries = NULL;
         src->size = 0;
@@ -417,7 +297,7 @@ void matte_mvt2_get_all_keys(const matteMVT2_t * t, matteArray_t * arr) {
             next = bucket->entries+n;
             
             matteValue_t key = {};
-            key.binID = next->binID;
+            key.binIDreserved = next->binID;
             key.value.id = next->key;
             matte_array_push(arr, key);
         }
@@ -457,7 +337,7 @@ void matte_mvt2_get_all_values(const matteMVT2_t * t, matteArray_t * arr) {
         bucket = t->buckets+i;
         for(n = 0; n < bucket->size; ++n) {
             next = bucket->entries+n;
-            matteValue_t v = *get_reserve(next->indexPacked);
+            matteValue_t v = next->value;
             matte_array_push(arr, v);
         }
     }

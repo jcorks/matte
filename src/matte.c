@@ -457,9 +457,9 @@ static void default_unhandled_error(
     void * d
 ) {
     matte_t * m = (matte_t*)d;
-    if (val.binID == MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {
         matteValue_t s = matte_value_object_access_string(matte_vm_get_store(vm), val, MATTE_VM_STR_CAST(vm, "summary"));
-        if (s.binID && s.binID == MATTE_VALUE_TYPE_STRING) {
+        if (matte_value_type(s) && matte_value_type(s) == MATTE_VALUE_TYPE_STRING) {
             matte_print(m, 
                 "Unhandled error: %s", 
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(matte_vm_get_store(vm), s))
