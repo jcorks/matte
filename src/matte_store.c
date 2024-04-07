@@ -130,6 +130,8 @@ static void * matte_pool_fetch(matteObjectPool_t *);
 static void matte_pool_recycle(matteObjectPool_t *, void *);
 
 
+static matteObject_t * create_table(matteStoreBin_t * store);
+static matteObject_t * create_function(matteStoreBin_t * store);
 
 
 #define IS_FUNCTION_ID(__ID__) (((__ID__)/2)*2 == (__ID__))
@@ -178,7 +180,7 @@ struct matteStore_t {
     // 0 -> white 
     // 1 -> grey 
     // 2 -> black
-    matteObject_t * tricolor[3];
+    uint32_t tricolor[3];
     
     uint16_t gcLocked;
     int pathCheckedPool;
@@ -264,7 +266,7 @@ struct matteStore_t {
     matteTableIter_t * freeIter;
     
     matteArray_t * toRemove;
-    matteObject_t * roots;
+    uint32_t roots;
     
     
     double ticksGC;
@@ -333,11 +335,11 @@ struct matteObject_t {
     uint16_t rootState;
     uint8_t  state;
     uint8_t  color;
-    matteObject_t * prevRoot;
-    matteObject_t * nextRoot;
+    uint32_t prevRoot;
+    uint32_t nextRoot;
 
-    matteObject_t * prevColor;
-    matteObject_t * nextColor;
+    uint32_t prevColor;
+    uint32_t nextColor;
 
     matteObjectExternalData_t * ext; 
     
@@ -372,7 +374,7 @@ struct matteObject_t {
             // for function objects, a reference to the original 
             // creation context is kept. This is because referrables 
             // can track back to original creation contexts.
-            matteObject_t * origin;
+            uint32_t origin;
 
             uint32_t capturesCount;
             uint32_t referrablesCount;
@@ -415,9 +417,9 @@ struct matteObject_t {
 
 ///////////////////////////////////////
 
-
+/*
 static void print_list(matteStore_t * h) {
-    matteObject_t * r = h->roots;
+    matteObject_t * r = matte_store_bin_fetch(h->bin, h->roots);
     uint32_t count = 0;
     while(r) {
 
@@ -431,40 +433,39 @@ static void print_list(matteStore_t * h) {
     //printf("|\n");
     printf("!!!!!!!!!!%d\n", count);
 }
+*/
 
-static void push_root_node(matteStore_t * h, matteObject_t ** root, matteObject_t * m) {
-    m->nextRoot = NULL;
-    m->prevRoot = NULL;
+static void push_root_node(matteStore_t * h, uint32_t * root, matteObject_t * m) {
+    m->nextRoot = 0;
+    m->prevRoot = 0;
     if (!*root)
-        *root = m;
+        *root = m->storeID;
     else {
         m->nextRoot = *root;
-        (*root)->prevRoot = m;
-        *root = m;
+        matte_store_bin_fetch(h->bin, *root)->prevRoot = m->storeID;
+        *root = m->storeID;
     }
 
 }
 
-static void remove_root_node(matteStore_t * h, matteObject_t ** root, matteObject_t * m) {
+static void remove_root_node(matteStore_t * h, uint32_t * root, matteObject_t * m) {
     //print_list(h);
-    if (*root == m) { // no prev
+    if (*root == m->storeID) { // no prev
         *root = m->nextRoot;
         if (*root)
-            (*root)->prevRoot = NULL;
+            matte_store_bin_fetch(h->bin, (*root))->prevRoot = 0;
     } else {
         if (m->prevRoot) {
-            m->prevRoot->nextRoot = m->nextRoot;
+            matte_store_bin_fetch(h->bin, m->prevRoot)->nextRoot = m->nextRoot;
         }
         
         if (m->nextRoot) {
-            m->nextRoot->prevRoot = m->prevRoot;
+            matte_store_bin_fetch(h->bin, m->nextRoot)->prevRoot = m->prevRoot;
         }
     }
     //print_list(h);
-    m->nextRoot = NULL;
-    m->prevRoot = NULL;
-
-
+    m->nextRoot = 0;
+    m->prevRoot = 0;
 }
 
 
@@ -721,6 +722,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
                 "Objects with layouts can only have string keys."
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return NULL;                
         }
         
@@ -735,6 +737,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return NULL;    
         }
         
@@ -749,6 +752,7 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, typeVal))) 
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return NULL;            
         }
     }
@@ -999,12 +1003,11 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->freeIter = matte_table_iter_create();
     //out->verifiedRoot = matte_table_create_hash_pointer();
     out->stringStore = matte_string_store_create();
-    out->toRemove = matte_array_create(sizeof(matteObject_t*));
+    out->toRemove = matte_array_create(sizeof(uint32_t));
     out->external = matte_array_create(sizeof(matteValue_t));
     out->kvIter_v = matte_array_create(sizeof(matteValue_t));
     out->kvIter_k = matte_array_create(sizeof(uint32_t));
-    out->mgIter = matte_array_create(sizeof(void*));
-    out->pendingRoots = matte_array_create(sizeof(void*));
+    out->pendingRoots = matte_array_create(sizeof(uint32_t));
 
     MatteTypeData dummyD = {};
     matte_array_push(out->typecode2data, dummyD);
@@ -1106,7 +1109,7 @@ void matte_store_destroy(matteStore_t * h) {
         matte_value_object_pop_lock(h, val);
     }
 
-    matteObject_t * m = matte_store_bin_fetch_function(h->bin, 0);
+    matteObject_t * m = matte_store_bin_fetch_function(h->bin, 2);
     matte_deallocate(m->function.stub);
 
     matte_value_object_pop_lock(h, matte_store_empty_function(h));
@@ -1131,6 +1134,10 @@ void matte_store_destroy(matteStore_t * h) {
         if (d.isa) {
             matte_array_destroy(d.isa);
         }
+        
+        if (d.layout) {
+            matte_table_destroy(d.layout);
+        }
     }
     matte_array_destroy(h->typecode2data);
     matte_array_destroy(h->routePather);
@@ -1144,6 +1151,10 @@ void matte_store_destroy(matteStore_t * h) {
     matte_array_destroy(h->toRemove);
     matte_array_destroy(h->pendingRoots);
     matte_table_iter_destroy(h->freeIter);
+
+    matte_array_destroy(h->kvIter_v);
+    matte_array_destroy(h->kvIter_k);
+
     matte_deallocate(h);
 }
 
@@ -1157,7 +1168,7 @@ matteValue_t matte_store_new_value_(matteStore_t * h) {
 matteValue_t matte_store_empty_function(matteStore_t * h) {
     matteValue_t out;
     out.binID = MATTE_VALUE_TYPE_OBJECT;
-    out.value.id = 0;
+    out.value.id = 2;
     out.value.extended.idAux = 0;
     return out;
 }
@@ -1954,7 +1965,7 @@ void matte_value_into_new_object_ref_(matteStore_t * store, matteValue_t * v) {
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == 0);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     matte_store_garbage_collect__add_to_color(store, d);  
@@ -1972,7 +1983,7 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == 0);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     matte_store_garbage_collect__add_to_color(store, d);  
@@ -1998,7 +2009,7 @@ void matte_value_into_new_object_literal_ref_(matteStore_t * store, matteValue_t
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == 0);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE; 
     matte_store_garbage_collect__add_to_color(store, d);  
@@ -2027,7 +2038,7 @@ void matte_value_into_new_object_array_ref_(matteStore_t * store, matteValue_t *
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_table(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == 0);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     matte_store_garbage_collect__add_to_color(store, d);  
@@ -2066,14 +2077,15 @@ matteValue_t matte_value_frame_get_named_referrable(matteStore_t * store, matteV
 
     // referrables come from a history of creation contexts.
     matteValue_t context = vframe->context;
-    matteObject_t * origin = matte_store_bin_fetch_function(store->bin, context.value.id);
-
+    uint32_t originID = context.value.id;
     matteValue_t out = matte_store_new_value(store);
 
-    while(origin) {
+    while(originID) {
         #if MATTE_DEBUG__STORE
             printf("Looking in args..\n");
         #endif
+        matteObject_t * origin = matte_store_bin_fetch_function(store->bin, originID);
+
 
         len = matte_bytecode_stub_arg_count(origin->function.stub);
         for(i = 0; i < len; ++i) {
@@ -2107,7 +2119,7 @@ matteValue_t matte_value_frame_get_named_referrable(matteStore_t * store, matteV
             }
         }
 
-        origin = origin->function.origin;
+        originID = origin->function.origin;
     }
 
     matte_vm_raise_error_cstring(store->vm, "Could not find named referrable!");
@@ -2173,7 +2185,7 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_function(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == 0);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     matte_store_garbage_collect__add_to_color(store, d);  
@@ -2197,7 +2209,7 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
     d->function.stub = src->function.stub;
     d->function.origin = src->function.origin;
     if (d->function.origin)
-        object_link_parent(store, d, d->function.origin);
+        object_link_parent(store, d, matte_store_bin_fetch(store->bin, d->function.origin));
 
     if (src->function.types) {
         d->function.types = matte_array_clone(src->function.types);
@@ -2254,7 +2266,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
     v->binID = MATTE_VALUE_TYPE_OBJECT;
     matteObject_t * d = matte_store_bin_add_function(store->bin);
     #ifdef MATTE_DEBUG__STORE
-        assert(d->prevColor == d->nextColor && d->prevColor == NULL);
+        assert(d->prevColor == d->nextColor && d->prevColor == 0);
     #endif
     d->color = OBJECT_TRICOLOR__WHITE;  
     matte_store_garbage_collect__add_to_color(store, d);  
@@ -2286,8 +2298,8 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
     if (matte_vm_get_stackframe_size(store->vm)) {
         frame = matte_vm_get_stackframe(store->vm, 0);
         matteObject_t * origin = matte_store_bin_fetch_function(store->bin, frame.context.value.id);
-        d->function.origin = origin;
-        object_link_parent(store, d, d->function.origin);
+        d->function.origin = origin->storeID;
+        object_link_parent(store, d, matte_store_bin_fetch(store->bin, d->function.origin));
     }
     // TODO: can we speed this up?
     if (!len) return;
@@ -2311,7 +2323,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
                 matte_array_push(captures, ref);
                 break;
             }
-            origin = origin->function.origin;
+            origin = matte_store_bin_fetch(store->bin, origin->function.origin);
         }
 
         if (!origin) {
@@ -2581,7 +2593,7 @@ void matte_value_print(matteStore_t * store, matteValue_t v) {
             return;
         }
         printf("  color  :   %s\n", m->color == OBJECT_TRICOLOR__BLACK ? "black" : m->color == OBJECT_TRICOLOR__GREY ? "grey":"white");
-        printf("         %d<->%d\n", m->prevColor ? m->prevColor->storeID : -1, m->nextColor ? m->nextColor->storeID : -1);
+        printf("         %d<->%d\n", m->prevColor ? m->prevColor : -1, m->nextColor ? m->nextColor : -1);
 
         printf("  refct  :   %d\n", (int)m->refcount);
 
@@ -4494,43 +4506,6 @@ static void assert_tricolor_invariant__child(matteStore_t * h, matteObject_t * p
 
 
 
-static matteObject_t * create_table() {
-    matteObject_t * out = (matteObject_t*)matte_allocate(sizeof(matteObject_t));
-    //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
-    //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
-
-    out->table.keyvalues_string = NULL;//matte_table_create_hash_pointer();
-    out->table.keyvalues_types  = NULL;//matte_table_create_hash_pointer();
-    out->table.keyvalues_number = NULL;//matte_array_create(sizeof(matteValue_t));
-    out->table.keyvalues_object = NULL;//matte_table_create_hash_pointer();
-    out->table.keyvalue_true = NULL;
-    out->table.keyvalue_false = NULL;   
-    out->children = NULL;
-    #ifdef MATTE_DEBUG__STORE
-        out->parents = matte_array_create(sizeof(matteValue_t));
-    #endif
-    CREATED_COUNT++;
-    return out;
-}
-
-static matteObject_t * create_function() {
-    matteObject_t * out = (matteObject_t*)matte_allocate(sizeof(matteObject_t));
-    out->children = NULL;
-    //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
-    //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
-    #ifdef MATTE_DEBUG__STORE
-        out->parents = matte_array_create(sizeof(matteValue_t));
-    #endif
-
-    out->function.referrables = NULL;
-    out->function.captures = NULL;
-    out->function.referrablesCount = 0;
-    out->function.capturesCount = 0;
-    out->function.types = NULL;
-    CREATED_COUNT++;
-    return out;
-}
-
 
 
 static void destroy_object(void * d) {
@@ -4555,10 +4530,6 @@ static void destroy_object(void * d) {
         if (out->table.keyvalues_number) matte_array_destroy(out->table.keyvalues_number);
     }
 
-
-    //matte_array_destroy(out->refParents);
-    //matte_array_destroy(out->refChildren);
-    matte_deallocate(out);
 }
 
 
@@ -4591,16 +4562,20 @@ struct matteStoreBin_t {
 matteStoreBin_t * matte_store_bin_create() {
     matteStoreBin_t * store = (matteStoreBin_t*)matte_allocate(sizeof(matteStoreBin_t));
     
-    store->functions = matte_array_create(sizeof(matteObject_t *));
-    store->tables    = matte_array_create(sizeof(matteObject_t *));
+    store->functions = matte_array_create(sizeof(matteObject_t));
+    store->tables    = matte_array_create(sizeof(matteObject_t));
 
-    // empty function
-    matteObject_t * o = create_function();
-    o->function.stub = matte_bytecode_stub_create_symbolic();
-    matte_array_push(store->functions, o);
 
     store->deadFunctions = matte_array_create(sizeof(uint32_t));
     store->deadTables    = matte_array_create(sizeof(uint32_t));
+
+    // the 0th object. Nonexistent;
+    create_function(store);
+
+
+    // empty function
+    matteObject_t * o = create_function(store);
+    o->function.stub = matte_bytecode_stub_create_symbolic();
     
     return store;
 }
@@ -4608,14 +4583,12 @@ matteStoreBin_t * matte_store_bin_create() {
 matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
     uint32_t deadSize = matte_array_get_size(store->deadFunctions);
     if (deadSize == 0) {
-        matteObject_t * o = create_function();
-        o->storeID = matte_array_get_size(store->functions) * 2;
-        matte_array_push(store->functions, o);
+        matteObject_t * o = create_function(store);
         return o;
     } else {
         uint32_t id = matte_array_at(store->deadFunctions, uint32_t, deadSize-1);
         matte_array_set_size(store->deadFunctions, deadSize-1);
-        matteObject_t * o = matte_array_at(store->functions, matteObject_t *, (id)/2);
+        matteObject_t * o = &matte_array_at(store->functions, matteObject_t, (id)/2);
         o->storeID = id;
         return o;
     }
@@ -4624,14 +4597,12 @@ matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
 matteObject_t * matte_store_bin_add_table(matteStoreBin_t * store) {
     uint32_t deadSize = matte_array_get_size(store->deadTables);
     if (deadSize == 0) {
-        matteObject_t * o = create_table();
-        o->storeID = matte_array_get_size(store->tables) * 2 + 1;
-        matte_array_push(store->tables, o);        
+        matteObject_t * o = create_table(store);
         return o;
     } else {
         uint32_t id = matte_array_at(store->deadTables, uint32_t, deadSize-1);
         matte_array_set_size(store->deadTables, deadSize-1);
-        matteObject_t * o = matte_array_at(store->tables, matteObject_t *, (id)/2);
+        matteObject_t * o = &matte_array_at(store->tables, matteObject_t, (id)/2);
         o->storeID = id;
         return o;
     }
@@ -4639,24 +4610,32 @@ matteObject_t * matte_store_bin_add_table(matteStoreBin_t * store) {
 }
 
 matteObject_t * matte_store_bin_fetch(matteStoreBin_t * store, uint32_t id) {
+    #ifdef MATTE_DEBUG__STORE
+        assert(id != 0);
+    #endif
+
     // function (is even)
     if (IS_FUNCTION_ID(id)) {
         id /= 2;
         #ifdef MATTE_DEBUG__STORE
             assert(id < matte_array_get_size(store->functions));
         #endif
-        return matte_array_at(store->functions, matteObject_t *, id);
+        return &matte_array_at(store->functions, matteObject_t, id);
     // is object
     } else {
         id /= 2;
         #ifdef MATTE_DEBUG__STORE
             assert(id < matte_array_get_size(store->tables));
         #endif
-        return matte_array_at(store->tables, matteObject_t *, id);    
+        return &matte_array_at(store->tables, matteObject_t, id);    
     }
 }
 
 matteObject_t * matte_store_bin_fetch_function(matteStoreBin_t * store, uint32_t id) {
+    #ifdef MATTE_DEBUG__STORE
+        assert(id != 0);
+    #endif
+
     #ifdef MATTE_DEBUG__STORE
         assert(IS_FUNCTION_ID(id));
     #endif
@@ -4664,7 +4643,7 @@ matteObject_t * matte_store_bin_fetch_function(matteStoreBin_t * store, uint32_t
     #ifdef MATTE_DEBUG__STORE
         assert(id < matte_array_get_size(store->functions));
     #endif
-    return matte_array_at(store->functions, matteObject_t *, id);
+    return &matte_array_at(store->functions, matteObject_t, id);
 }
 
 matteObject_t * matte_store_bin_fetch_table(matteStoreBin_t * store, uint32_t id) {
@@ -4675,7 +4654,7 @@ matteObject_t * matte_store_bin_fetch_table(matteStoreBin_t * store, uint32_t id
     #ifdef MATTE_DEBUG__STORE
         assert (id < matte_array_get_size(store->tables));
     #endif
-    return matte_array_at(store->tables, matteObject_t *, id);
+    return &matte_array_at(store->tables, matteObject_t, id);
 }
 
 void matte_store_bin_recycle(matteStoreBin_t * store, uint32_t id) {
@@ -4694,19 +4673,19 @@ void matte_store_bin_recycle(matteStoreBin_t * store, uint32_t id) {
 
 void matte_store_bin_destroy(matteStoreBin_t * store) {
     uint32_t i;
-    matteObject_t ** iter = (matteObject_t **)matte_array_get_data(store->functions);
+    matteObject_t * iter = (matteObject_t *)matte_array_get_data(store->functions);
      
     uint32_t size = matte_array_get_size(store->functions);
     for(i = 0; i < size; ++i) {
-        destroy_object(iter[i]);
+        destroy_object(&iter[i]);
     }
 
 
-    iter = (matteObject_t **)matte_array_get_data(store->tables);
+    iter = (matteObject_t *)matte_array_get_data(store->tables);
      
     size = matte_array_get_size(store->tables);
     for(i = 0; i < size; ++i) {
-        destroy_object(iter[i]);
+        destroy_object(&iter[i]);
     }
 
     matte_array_destroy(store->tables);
@@ -4714,6 +4693,35 @@ void matte_store_bin_destroy(matteStoreBin_t * store) {
     matte_array_destroy(store->deadFunctions);
     matte_array_destroy(store->deadTables);
     matte_deallocate(store);
+}
+
+static matteObject_t * create_table(matteStoreBin_t * store) {
+
+    matteObject_t out = {};
+    //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
+    //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
+
+    out.storeID = matte_array_get_size(store->tables) * 2 + 1;
+    #ifdef MATTE_DEBUG__STORE
+        out.parents = matte_array_create(sizeof(matteValue_t));
+    #endif
+    CREATED_COUNT++;
+    matte_array_push(store->tables, out);        
+    return &matte_array_at(store->tables, matteObject_t, store->tables->size-1);
+}
+
+static matteObject_t * create_function(matteStoreBin_t * store) {
+    matteObject_t out = {};
+    //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
+    //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
+
+    out.storeID = matte_array_get_size(store->functions) * 2;
+    #ifdef MATTE_DEBUG__STORE
+        out.parents = matte_array_create(sizeof(matteValue_t));
+    #endif
+    CREATED_COUNT++;
+    matte_array_push(store->functions, out);        
+    return &matte_array_at(store->functions, matteObject_t, store->functions->size-1);
 }
 
 

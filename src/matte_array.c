@@ -38,7 +38,13 @@ DEALINGS IN THE SOFTWARE.
 #include "matte.h"
 
 
-#define array_resize_amt 1.3
+
+float get_resize(uint32_t size) {
+    if (size < 10) return 2;
+    if (size < 1000) return 1.3;
+    return 1.1;    
+}
+
 #define array_presize_amt 1
 
 
@@ -134,7 +140,7 @@ void matte_array_push_n(matteArray_t * t, const void * elements, uint32_t count)
     #endif
     while(t->size + count > t->allocSize) {
         uint32_t oldSize = t->allocSize*t->sizeofType;
-        t->allocSize = t->allocSize*array_resize_amt+1;
+        t->allocSize = t->allocSize*get_resize(t->allocSize)+1;
         uint8_t * newData = (uint8_t*)matte_allocate(t->allocSize*t->sizeofType);
         memcpy(newData, t->data, oldSize);
         matte_deallocate(t->data);
@@ -191,7 +197,7 @@ void matte_array_set_size(matteArray_t * t, uint32_t size) {
     #endif
     while(size >= t->allocSize) {
         uint32_t oldSize = t->allocSize*t->sizeofType;
-        t->allocSize = t->allocSize*array_resize_amt+1;
+        t->allocSize = t->allocSize*get_resize(t->allocSize)+1;
         uint8_t * newData = (uint8_t*)matte_allocate(t->allocSize*t->sizeofType);
         memcpy(newData, t->data, oldSize);
         matte_deallocate(t->data);

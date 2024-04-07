@@ -103,7 +103,7 @@ typedef struct  {
 } matteValue_t;
 
 /// macro for quickly determining if a funciton is the empty function.
-#define matte_value_is_empty_function(__V__) ((__V__).binID == MATTE_VALUE_TYPE_OBJECT && (__V__).value.id == 0)
+#define matte_value_is_empty_function(__V__) ((__V__).binID == MATTE_VALUE_TYPE_OBJECT && (__V__).value.id == 2)
 
 /// macro for getting the type of a matteValue_t
 #define matte_value_type(__V__) ((__V__).binID)
