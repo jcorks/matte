@@ -28,7 +28,7 @@ DEALINGS IN THE SOFTWARE.
 
 */
 
-#include "matte_u32mvt.h"
+#include "matte_mvt2.h"
 #include "matte_string.h"
 #include "matte_array.h"
 #include "matte.h"
@@ -46,21 +46,22 @@ DEALINGS IN THE SOFTWARE.
 #define TRUE 1
 #define FALSE 0
 
-#define U32MVT_bucket_start_size 4      
-#define U32MVT_bucket_fill_rate 0.80       //<- larger than this triggers resize
-#define U32MVT_bucket_fill_amount 4
+#define MVT2_bucket_start_size 4      
+#define MVT2_bucket_fill_rate 0.80       //<- larger than this triggers resize
+#define MVT2_bucket_fill_amount 4
 
 // holds an individual key-value pair
-typedef struct matteU32MVTEntry_t matteU32MVTEntry_t;
-struct matteU32MVTEntry_t {
+typedef struct matteMVT2Entry_t matteMVT2Entry_t;
+struct matteMVT2Entry_t {
     uint32_t indexPacked;
     uint32_t key;
+    uint32_t binID;
 };
 
 
-typedef struct matteU32MVTBucket_t matteU32MVTBucket_t;
-struct matteU32MVTBucket_t {
-    matteU32MVTEntry_t * entries;
+typedef struct matteMVT2Bucket_t matteMVT2Bucket_t;
+struct matteMVT2Bucket_t {
+    matteMVT2Entry_t * entries;
     uint32_t size;
     uint32_t alloc;
 };
@@ -74,7 +75,7 @@ static matteArray_t * mainReserve_ID_dead = NULL;
 
 
 
-struct matteU32MVT_t {
+struct matteMVT2_t {
     // numer of keys
     uint32_t size;
 
@@ -82,33 +83,33 @@ struct matteU32MVT_t {
     uint32_t nBuckets;
 
     // actual buckets
-    matteU32MVTBucket_t * buckets;
+    matteMVT2Bucket_t * buckets;
     
     uint32_t bucketsFilled;
 };
 
 
-static void bucket_add(matteU32MVTBucket_t * bucket, matteU32MVTEntry_t entry) {
+static void bucket_add(matteMVT2Bucket_t * bucket, matteMVT2Entry_t entry) {
     // for now...
     if (bucket->size + 1 > bucket->alloc) {
         uint32_t oldSize = bucket->alloc;
-        matteU32MVTEntry_t * oldEntries = bucket->entries;
+        matteMVT2Entry_t * oldEntries = bucket->entries;
         
         if (bucket->alloc == 0) bucket->alloc  = 1;
-        else                    bucket->alloc += U32MVT_bucket_fill_amount/2;
+        else                    bucket->alloc += MVT2_bucket_fill_amount/2;
         
-        bucket->entries = matte_allocate(bucket->alloc*sizeof(matteU32MVTEntry_t));
+        bucket->entries = matte_allocate(bucket->alloc*sizeof(matteMVT2Entry_t));
         uint32_t i;
         for(i = 0; i < oldSize; ++i)
             bucket->entries[i] = oldEntries[i];
         matte_deallocate(oldEntries);
     }
     
-    matteU32MVTEntry_t * entryNew = &bucket->entries[bucket->size++];
+    matteMVT2Entry_t * entryNew = &bucket->entries[bucket->size++];
     *entryNew = entry;
 }
 
-static void bucket_remove(matteU32MVTBucket_t * bucket, uint32_t i) {
+static void bucket_remove(matteMVT2Bucket_t * bucket, uint32_t i) {
     bucket->entries[i] = bucket->entries[bucket->size-1];
     bucket->size--;
 }
@@ -121,14 +122,14 @@ static void bucket_remove(matteU32MVTBucket_t * bucket, uint32_t i) {
 
 
 // resizes and redistributes all key-value pairs
-static void matte_u32mvt_resize(matteU32MVT_t * t) {
+static void matte_mvt2_resize(matteMVT2_t * t) {
     #ifdef MATTE_DEBUG
-        assert(t && "matteU32MVT_t pointer cannot be NULL.");
+        assert(t && "matteMVT2_t pointer cannot be NULL.");
     #endif
-    matteU32MVTBucket_t * buckets;
-    matteU32MVTEntry_t * entry;
-    matteU32MVTEntry_t * next;
-    matteU32MVTEntry_t * prev;
+    matteMVT2Bucket_t * buckets;
+    matteMVT2Entry_t * entry;
+    matteMVT2Entry_t * next;
+    matteMVT2Entry_t * prev;
 
     uint32_t nEntries = 0, i, index;
 
@@ -140,18 +141,18 @@ static void matte_u32mvt_resize(matteU32MVT_t * t) {
 
     // then resize
     t->nBuckets = 3 + (t->nBuckets * 1.4);
-    t->buckets = (matteU32MVTBucket_t*)matte_allocate(t->nBuckets * sizeof(matteU32MVTBucket_t));
+    t->buckets = (matteMVT2Bucket_t*)matte_allocate(t->nBuckets * sizeof(matteMVT2Bucket_t));
     t->bucketsFilled = 0;
 
     // redistribute in-place
     uint32_t n;
-    matteU32MVTBucket_t * bucket;
+    matteMVT2Bucket_t * bucket;
     for(i = 0; i < nEntries; ++i) {
         bucket = buckets+i;
         for(n = 0; n < bucket->size; ++n) {
             entry = bucket->entries+n;
-            matteU32MVTBucket_t * next = t->buckets+(entry->key%t->nBuckets);
-            if (next->size == U32MVT_bucket_fill_amount)
+            matteMVT2Bucket_t * next = t->buckets+(entry->key%t->nBuckets);
+            if (next->size == MVT2_bucket_fill_amount)
                 t->bucketsFilled ++;
             bucket_add(next, *entry);
         }
@@ -162,11 +163,11 @@ static void matte_u32mvt_resize(matteU32MVT_t * t) {
 
 
 
-int matte_u32mvt_get_size(const matteU32MVT_t * U32MVT) {
+int matte_mvt2_get_size(const matteMVT2_t * MVT2) {
     #ifdef MATTE_DEBUG
-        assert(U32MVT && "matteU32MVT_t pointer cannot be NULL.");
+        assert(MVT2 && "matteMVT2_t pointer cannot be NULL.");
     #endif
-    return U32MVT->size;
+    return MVT2->size;
 }   
 
 #define PACKED_TYPE(__IP__)  ((__IP__) & 7)
@@ -263,8 +264,8 @@ static uint32_t add_reserve(matteValue_t * v) {
 }
 
 
-matteU32MVT_t * matte_u32mvt_create() {
-    matteU32MVT_t * t = matte_allocate(sizeof(matteU32MVT_t));    
+matteMVT2_t * matte_mvt2_create() {
+    matteMVT2_t * t = matte_allocate(sizeof(matteMVT2_t));    
     if (mainReserve == NULL) {
         mainReserve = matte_array_create(sizeof(double));
         mainReserve_dead = matte_array_create(sizeof(uint32_t));
@@ -281,8 +282,8 @@ matteU32MVT_t * matte_u32mvt_create() {
         valNumber.binID = 2;
     }
 
-    t->buckets = (matteU32MVTBucket_t*)matte_allocate(sizeof(matteU32MVTBucket_t) * U32MVT_bucket_start_size);
-    t->nBuckets = U32MVT_bucket_start_size;
+    t->buckets = (matteMVT2Bucket_t*)matte_allocate(sizeof(matteMVT2Bucket_t) * MVT2_bucket_start_size);
+    t->nBuckets = MVT2_bucket_start_size;
     t->size = 0;
     return t;
 }
@@ -293,30 +294,30 @@ matteU32MVT_t * matte_u32mvt_create() {
 
 
 
-void matte_u32mvt_destroy(matteU32MVT_t * t) {
-    matte_u32mvt_clear(t);
+void matte_mvt2_destroy(matteMVT2_t * t) {
+    matte_mvt2_clear(t);
     matte_deallocate(t->buckets);
     matte_deallocate(t);
 }
 
 
-matteValue_t * matte_u32mvt_insert(matteU32MVT_t * t, uint32_t key, matteValue_t v) {
+matteValue_t * matte_mvt2_insert(matteMVT2_t * t, matteValue_t key, matteValue_t v) {
     #ifdef MATTE_DEBUG
-        assert(t && "matteU32MVT_t pointer cannot be NULL.");
+        assert(t && "matteMVT2_t pointer cannot be NULL.");
     #endif
         
-    // invariant broken, expand and reform the hashU32MVT.
-    if (t->bucketsFilled / (float)t->nBuckets  > U32MVT_bucket_fill_rate) {
-        matte_u32mvt_resize(t);
+    // invariant broken, expand and reform the hashMVT2.
+    if (t->bucketsFilled / (float)t->nBuckets  > MVT2_bucket_fill_rate) {
+        matte_mvt2_resize(t);
     }
 
-    matteU32MVTBucket_t * src  = t->buckets+(key%t->nBuckets);
+    matteMVT2Bucket_t * src  = t->buckets+(key.value.id%t->nBuckets);
     int bucketLen = src->size;
     uint32_t i;
     // look for preexisting entry
     for(i = 0; i < bucketLen; ++i) {
-        matteU32MVTEntry_t * next = src->entries+i;
-        if (next->key == key) {
+        matteMVT2Entry_t * next = src->entries+i;
+        if (next->key == key.value.id && next->binID == key.binID) {
             remove_reserve(next->indexPacked);
             next->indexPacked = add_reserve(&v);
             return get_reserve(next->indexPacked);
@@ -324,12 +325,13 @@ matteValue_t * matte_u32mvt_insert(matteU32MVT_t * t, uint32_t key, matteValue_t
     }    
 
     // add to chain at the end
-    matteU32MVTEntry_t entry = {};
-    entry.key = key;
+    matteMVT2Entry_t entry = {};
+    entry.key = key.value.id;
+    entry.binID = key.binID;
     entry.indexPacked = add_reserve(&v);
 
 
-    if (src->size == U32MVT_bucket_fill_amount)
+    if (src->size == MVT2_bucket_fill_amount)
         t->bucketsFilled ++;
 
     t->size++;
@@ -339,18 +341,18 @@ matteValue_t * matte_u32mvt_insert(matteU32MVT_t * t, uint32_t key, matteValue_t
 
 
 
-matteValue_t * matte_u32mvt_find(const matteU32MVT_t * t, uint32_t key) {
+matteValue_t * matte_mvt2_find(const matteMVT2_t * t, matteValue_t key) {
     #ifdef MATTE_DEBUG
-        assert(t && "matteU32MVT_t pointer cannot be NULL.");
+        assert(t && "matteMVT2_t pointer cannot be NULL.");
     #endif
 
-    matteU32MVTBucket_t * bucket  = t->buckets+(key%t->nBuckets);
-    matteU32MVTEntry_t * next;
+    matteMVT2Bucket_t * bucket  = t->buckets+(key.value.id%t->nBuckets);
+    matteMVT2Entry_t * next;
     // look for preexisting entry
     uint32_t i;
     for(i = 0; i < bucket->size; ++i) {
         next = bucket->entries+i;
-        if (next->key == key) {
+        if (next->key == key.value.id && next->binID == key.binID) {
             return get_reserve(next->indexPacked);
         }
     }    
@@ -360,14 +362,14 @@ matteValue_t * matte_u32mvt_find(const matteU32MVT_t * t, uint32_t key) {
 
 
 
-void matte_u32mvt_remove(matteU32MVT_t * t, uint32_t key) {
-    matteU32MVTBucket_t * bucket  = t->buckets+(key%t->nBuckets);
-    matteU32MVTEntry_t * next;
+void matte_mvt2_remove(matteMVT2_t * t, matteValue_t key) {
+    matteMVT2Bucket_t * bucket  = t->buckets+(key.value.id%t->nBuckets);
+    matteMVT2Entry_t * next;
     // look for preexisting entry
     uint32_t i;
     for(i = 0; i < bucket->size; ++i) {
         next = bucket->entries+i;
-        if (next->key == key) {
+        if (next->key == key.value.id && next->binID == key.binID) {
             remove_reserve(next->indexPacked);
             bucket_remove(bucket, i);
             t->size--;
@@ -376,17 +378,17 @@ void matte_u32mvt_remove(matteU32MVT_t * t, uint32_t key) {
     }    
 }
 
-int matte_u32mvt_is_empty(const matteU32MVT_t * t) {
+int matte_mvt2_is_empty(const matteMVT2_t * t) {
     return t->size == 0;
 }
 
-void matte_u32mvt_clear(matteU32MVT_t * t) {
+void matte_mvt2_clear(matteMVT2_t * t) {
     #ifdef MATTE_DEBUG
-        assert(t && "matteU32MVT_t pointer cannot be NULL.");
+        assert(t && "matteMVT2_t pointer cannot be NULL.");
     #endif
     uint32_t i = 0;
-    matteU32MVTBucket_t * src;
-    matteU32MVTEntry_t * toRemove;
+    matteMVT2Bucket_t * src;
+    matteMVT2Entry_t * toRemove;
     uint32_t n;
     for(; i < t->nBuckets; ++i) {
         src = t->buckets+i;
@@ -400,34 +402,38 @@ void matte_u32mvt_clear(matteU32MVT_t * t) {
     }
 }
 
-void matte_u32mvt_get_all_keys(const matteU32MVT_t * t, matteArray_t * arr) {
+void matte_mvt2_get_all_keys(const matteMVT2_t * t, matteArray_t * arr) {
     if (t->size == 0) return;
 
     // look for preexisting entry
     uint32_t i;
     uint32_t n;
     
-    matteU32MVTBucket_t * bucket;
-    matteU32MVTEntry_t * next;
+    matteMVT2Bucket_t * bucket;
+    matteMVT2Entry_t * next;
     for(i = 0; i < t->nBuckets; ++i) {
         bucket = t->buckets+i;
         for(n = 0; n < bucket->size; ++n) {
             next = bucket->entries+n;
-            matte_array_push(arr, next->key);
+            
+            matteValue_t key = {};
+            key.binID = next->binID;
+            key.value.id = next->key;
+            matte_array_push(arr, key);
         }
     }
 }
 
 
-void matte_u32mvt_get_limited_keys(const matteU32MVT_t * t, matteArray_t * arr, int count) {
+void matte_mvt2_get_limited_keys(const matteMVT2_t * t, matteArray_t * arr, int count) {
     if (t->size == 0) return;
 
     // look for preexisting entry
     uint32_t i;
     uint32_t n;
     
-    matteU32MVTBucket_t * bucket;
-    matteU32MVTEntry_t * next;
+    matteMVT2Bucket_t * bucket;
+    matteMVT2Entry_t * next;
     for(i = 0; i < t->nBuckets; ++i) {
         bucket = t->buckets+i;
         for(n = 0; n < bucket->size; ++n) {
@@ -440,13 +446,13 @@ void matte_u32mvt_get_limited_keys(const matteU32MVT_t * t, matteArray_t * arr, 
 
 
 
-void matte_u32mvt_get_all_values(const matteU32MVT_t * t, matteArray_t * arr) {
+void matte_mvt2_get_all_values(const matteMVT2_t * t, matteArray_t * arr) {
     // look for preexisting entry
     uint32_t i;
     uint32_t n;
     
-    matteU32MVTBucket_t * bucket;
-    matteU32MVTEntry_t * next;
+    matteMVT2Bucket_t * bucket;
+    matteMVT2Entry_t * next;
     for(i = 0; i < t->nBuckets; ++i) {
         bucket = t->buckets+i;
         for(n = 0; n < bucket->size; ++n) {

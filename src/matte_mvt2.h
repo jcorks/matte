@@ -29,8 +29,8 @@ DEALINGS IN THE SOFTWARE.
 */
 
 
-#ifndef H_MATTE__U32MVT__INCLUDED
-#define H_MATTE__U32MVT__INCLUDED
+#ifndef H_MATTE__MVT2__INCLUDED
+#define H_MATTE__MVT2__INCLUDED
 
 #include "matte_store.h"
 
@@ -38,46 +38,46 @@ DEALINGS IN THE SOFTWARE.
 typedef struct matteArray_t matteArray_t;
 
 
-/// HashU32MVT able to handle various kinds of keys.
+/// HashMVT2 able to handle various kinds of keys.
 /// For buffer and string keys, key copies are created, so 
 /// the source key does not need to be kept in memory
 /// once created.
 ///
-typedef struct matteU32MVT_t matteU32MVT_t;
+typedef struct matteMVT2_t matteMVT2_t;
 
 
 
 
-/// Creates a new U32MVT whose keys are a pointer value.
+/// Creates a new MVT2 whose keys are a pointer value.
 ///
-matteU32MVT_t * matte_u32mvt_create();
+matteMVT2_t * matte_mvt2_create();
 
 
 
 
-/// Frees the given U32MVT.
+/// Frees the given MVT2.
 ///
-void matte_u32mvt_destroy(
-    /// The U32MVT to destroy.
-    matteU32MVT_t * U32MVT
+void matte_mvt2_destroy(
+    /// The MVT2 to destroy.
+    matteMVT2_t * MVT2
 );
 
 
-/// Inserts a new key-value pair into the U32MVT.
-/// If a key is already within the U32MVT, the value 
+/// Inserts a new key-value pair into the MVT2.
+/// If a key is already within the MVT2, the value 
 /// corresponding to that key is updated with the new copy.
 ///
-/// Notes regarding keys: when copied into the U32MVT, a value copy 
-/// is performed if this hash U32MVT's keys are pointer values.
+/// Notes regarding keys: when copied into the MVT2, a value copy 
+/// is performed if this hash MVT2's keys are pointer values.
 /// If a buffer or string, a new buffer is stored and kept until 
 /// key-value removal.
 ///
-matteValue_t * matte_u32mvt_insert(
-    /// The U32MVT to insert content into.
-    matteU32MVT_t * U32MVT, 
+matteValue_t * matte_mvt2_insert(
+    /// The MVT2 to insert content into.
+    matteMVT2_t * MVT2, 
     
     /// The key associated with the value.
-    uint32_t key,
+    matteValue_t key,
 
     /// The value to store.
     matteValue_t value
@@ -88,65 +88,65 @@ matteValue_t * matte_u32mvt_insert(
 /// Returns the value corresponding to the given key.
 /// If none is found, NULL is returned. Note that this 
 /// implies useful output only if key-value pair contains 
-/// non-null data. You can use "matte_u32mvt_entry_exists()" to 
+/// non-null data. You can use "matte_mvt2_entry_exists()" to 
 /// handle NULL values.
 ///
-matteValue_t * matte_u32mvt_find(
-    /// The U32MVT to search.
-    const matteU32MVT_t * U32MVT, 
+matteValue_t * matte_mvt2_find(
+    /// The MVT2 to search.
+    const matteMVT2_t * MVT2, 
 
     /// The key to search for.
-    uint32_t key
+    matteValue_t key
 );
 
 
 
-void matte_u32mvt_get_all_keys(
-    const matteU32MVT_t * U32MVT,
+void matte_mvt2_get_all_keys(
+    const matteMVT2_t * MVT2,
     matteArray_t * output
 );
 
 
-void matte_u32mvt_get_limited_keys(
-    const matteU32MVT_t * U32MVT,
+void matte_mvt2_get_limited_keys(
+    const matteMVT2_t * MVT2,
     matteArray_t * output,
     int
 );
 
-void matte_u32mvt_get_all_values(
-    const matteU32MVT_t * U32MVT,
+void matte_mvt2_get_all_values(
+    const matteMVT2_t * MVT2,
     matteArray_t * output
 );
 
 
-int matte_u32mvt_get_size(const matteU32MVT_t * U32MVT);
+int matte_mvt2_get_size(const matteMVT2_t * MVT2);
 
 
 
-/// Removes the key-value pair from the U32MVT whose key matches 
+/// Removes the key-value pair from the MVT2 whose key matches 
 /// the one given. If no such pair exists, no action is taken.
 ///
-void matte_u32mvt_remove(
-    /// The U32MVT to remove content from.
-    matteU32MVT_t * U32MVT, 
+void matte_mvt2_remove(
+    /// The MVT2 to remove content from.
+    matteMVT2_t * MVT2, 
 
     /// The key referring to the element to remove.
-    uint32_t key
+    matteValue_t key
 );
 
 
-/// Returns whether the U32MVT has entries.
+/// Returns whether the MVT2 has entries.
 ///
-int matte_u32mvt_is_empty(
-    /// The U32MVT to query.
-    const matteU32MVT_t * U32MVT
+int matte_mvt2_is_empty(
+    /// The MVT2 to query.
+    const matteMVT2_t * MVT2
 );
 
 /// Removes all key-value pairs.
 ///
-void matte_u32mvt_clear(
-    /// The U32MVT to clear.
-    matteU32MVT_t * U32MVT
+void matte_mvt2_clear(
+    /// The MVT2 to clear.
+    matteMVT2_t * MVT2
 );
 
 
