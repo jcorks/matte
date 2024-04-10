@@ -30,6 +30,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_store.h"
 #include "matte_table.h"
 #include "matte_array.h"
+#include "matte_au32.h"
 #include "matte_string.h"
 #include "matte_bytecode_stub.h"
 #include "matte_vm.h"
@@ -346,7 +347,7 @@ struct matteObject_t {
     #ifdef MATTE_DEBUG__STORE
         matteArray_t * parents;
     #endif
-    matteObjectChildNode_t * children;
+    matteAU32_t * children;
     
     union {
         struct {
@@ -554,36 +555,19 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
             matte_store_garbage_collect__add_to_color(h, child);
         }
     }
-    
-    matteObjectChildNode_t * ch = parent->children;
-    int added = 0;
-    while(ch) {
-        if (ch->dataID == child->storeID) {
-            added = 1;
-            ch->count++;
-            break;
-        }
-        ch = ch->next;
-    }
-    if (!added) {
-        matteObjectChildNode_t * newC = (matteObjectChildNode_t*)matte_allocate(sizeof(matteObjectChildNode_t));
-        newC->dataID = child->storeID;
-        newC->next = parent->children;
-        newC->count++;
-        parent->children = newC;
-    }
+    if (!parent->children)
+        parent->children = matte_au32_create();
         
+    matte_au32_push(parent->children, child->storeID);        
     child->refcount++;
 }
 
 static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matteObject_t * child) {
     if (child == NULL) return; // when? only when root check early refcount = 0 forced cleanup?
 
-    if (parent->storeID == 3)
-        printf("hi");
-
 
     #ifdef MATTE_DEBUG__STORE
+    {
         uint32_t i;
         int found = 0;
         for(i = 0; i < matte_array_get_size(child->parents); ++i) {
@@ -595,34 +579,24 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
         }
         
         assert(found);
+    }
     #endif
 
-    matteObjectChildNode_t * ch = parent->children;
-    matteObjectChildNode_t * prev = NULL;
-    if (ch) {
-        if (ch->dataID == child->storeID) {
-            ch->count--;
-            if (ch->count == 0) {
-                parent->children = ch->next;
-                matte_deallocate(ch);
-            }        
-        } else {
-            while(ch) {
-                if (ch->dataID == child->storeID) {
-                    ch->count--;
-                    if (ch->count == 0) {
-                        if (prev)
-                            prev->next = ch->next;
-                        matte_deallocate(ch);
-                    }
-                    break;
-                }
-                prev = ch;
-                ch = ch->next;
-            }
+
+    uint32_t i;
+    uint32_t len = parent->children->size;
+    uint32_t * data = parent->children->data;
+    for(i = 0; i < len; ++i) {
+        if (data[i] == child->storeID) {
+            matte_au32_remove(parent->children, i);
+            break;
         }
     }
-
+    
+    if (parent->children->size == 0) {
+        matte_au32_destroy(parent->children);
+        parent->children = NULL;
+    }
 
     if (child->refcount) {
         child->refcount--; 
@@ -2282,7 +2256,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
 
 
     // referrables come from a history of creation contexts.
-    matteArray_t * captures = matte_array_create(sizeof(CapturedReferrable_t));
+    d->function.captures = matte_allocate(len * sizeof(CapturedReferrable_t));
     for(i = 0; i < len; ++i) {
         matteValue_t context = frame.context;
 
@@ -2292,11 +2266,8 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
                 CapturedReferrable_t ref;                
 
                 ref.functionID = origin->storeID;
-                object_link_parent(store, d, origin);
-
                 ref.index = capturesRaw[i].referrable;
-
-                matte_array_push(captures, ref);
+                d->function.captures[i] = ref;
                 break;
             }
             origin = matte_store_bin_fetch(store->bin, origin->function.origin);
@@ -2307,18 +2278,11 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
             CapturedReferrable_t ref;
             ref.functionID = d->storeID; // need a valid reference
             ref.index = 0;
-            matte_array_push(captures, ref);
+            d->function.captures[i] = ref;
         }
     }
     
-    d->function.capturesCount = matte_array_get_size(captures);
-    d->function.captures = matte_allocate(d->function.capturesCount * sizeof(CapturedReferrable_t));
-    memcpy(
-        d->function.captures, 
-        matte_array_get_data(captures),
-        d->function.capturesCount * sizeof(CapturedReferrable_t)
-    );
-    matte_array_destroy(captures);
+    d->function.capturesCount = len;
 }
 
 void matte_value_into_new_function_ref_(matteStore_t * store, matteValue_t * v, matteBytecodeStub_t * stub) {
@@ -4279,12 +4243,11 @@ static void destroy_object(void * d) {
     #ifdef MATTE_DEBUG__STORE
         matte_array_destroy(out->parents);
     #endif
-    matteObjectChildNode_t * child = out->children;
-    while(child) {
-        matteObjectChildNode_t * prev = child;
-        child = child->next;
-        matte_deallocate(prev);    
+    if (out->children) {
+        matte_au32_destroy(out->children);
+        out->children = NULL;
     }
+
     if (IS_FUNCTION_OBJECT(out)) {
         matte_deallocate(out->function.captures);
         matte_deallocate(out->function.referrables);

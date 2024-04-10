@@ -39,7 +39,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 
-float get_resize(uint32_t size) {
+static float get_resize(uint32_t size) {
     if (size < 10) return 2;
     if (size < 1000) return 1.3;
     return 1.1;    
@@ -59,9 +59,6 @@ matteArray_t * matte_array_create(uint32_t typesize) {
 }
 
 void matte_array_destroy(matteArray_t * t) {
-    #ifdef MATTE_DEBUG
-        assert(t && "matteArray_t pointer cannot be NULL.");
-    #endif
     matte_deallocate(t->data);
     matte_deallocate(t);
 }
