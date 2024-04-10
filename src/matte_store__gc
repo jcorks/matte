@@ -207,6 +207,10 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
             m->function.stub = NULL;
             uint32_t n;
             uint32_t subl = m->function.capturesCount;
+            // should be unlinked already because of above
+            for(n = 0; n < subl; ++n) {
+                object_unlink_parent(h, m, matte_store_bin_fetch_function(h->bin, m->function.captures[n].functionID));
+            }
             if (m->function.captures)
                 matte_deallocate(m->function.captures);
             m->function.capturesCount = 0;
@@ -294,12 +298,12 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         m->rootState = 0;
         m->prevRoot = 0;
         m->nextRoot = 0;
-        if (m->table.ext) {
-            if (m->table.ext->nativeFinalizer) {
-                m->table.ext->nativeFinalizer(m->table.ext->userdata, m->table.ext->nativeFinalizerData);
+        if (m->ext) {
+            if (m->ext->nativeFinalizer) {
+                m->ext->nativeFinalizer(m->ext->userdata, m->ext->nativeFinalizerData);
             }
-            matte_deallocate(m->table.ext);
-            m->table.ext = NULL;
+            matte_deallocate(m->ext);
+            m->ext = NULL;
         }        
     }
     #ifdef MATTE_DEBUG__STORE

@@ -348,6 +348,7 @@ struct matteObject_t {
         matteArray_t * parents;
     #endif
     matteAU32_t * children;
+    matteObjectExternalData_t * ext; 
     
     union {
         struct {
@@ -360,7 +361,6 @@ struct matteObject_t {
             matteValue_t * attribSet;
             matteValue_t * privateBinding;
 
-            matteObjectExternalData_t * ext; 
             
         } table;
         
@@ -2266,7 +2266,10 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
                 CapturedReferrable_t ref;                
 
                 ref.functionID = origin->storeID;
+                object_link_parent(store, d, origin);
+
                 ref.index = capturesRaw[i].referrable;
+
                 d->function.captures[i] = ref;
                 break;
             }
@@ -2560,30 +2563,30 @@ void matte_value_print_from_id(matteStore_t * store, uint32_t bin, uint32_t v) {
 #endif
 
 void matte_value_object_set_native_finalizer(matteStore_t * store, matteValue_t v, void (*fb)(void * objectUserdata, void * functionUserdata), void * functionUserdata) {
-    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || v.value.id%2 == 0) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
         matte_vm_raise_error_cstring(store->vm, "Tried to set native finalizer on a non-object value.");
         return;
     }
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
-    if (!m->table.ext) m->table.ext = (matteObjectExternalData_t*)matte_allocate(sizeof(matteObjectExternalData_t));
-    m->table.ext->nativeFinalizer = fb;
-    m->table.ext->nativeFinalizerData = functionUserdata;        
+    if (!m->ext) m->ext = (matteObjectExternalData_t*)matte_allocate(sizeof(matteObjectExternalData_t));
+    m->ext->nativeFinalizer = fb;
+    m->ext->nativeFinalizerData = functionUserdata;        
 }
 
 
 void matte_value_object_set_userdata(matteStore_t * store, matteValue_t v, void * userData) {
     if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
-        if (!m->table.ext) m->table.ext = (matteObjectExternalData_t*)matte_allocate(sizeof(matteObjectExternalData_t));
-        m->table.ext->userdata = userData;
+        if (!m->ext) m->ext = (matteObjectExternalData_t*)matte_allocate(sizeof(matteObjectExternalData_t));
+        m->ext->userdata = userData;
     }
 }
 
 void * matte_value_object_get_userdata(matteStore_t * store, matteValue_t v) {
     if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
-        if (!m->table.ext) return NULL;
-        return m->table.ext->userdata;
+        if (!m->ext) return NULL;
+        return m->ext->userdata;
     }
     return NULL;
 }
