@@ -3255,7 +3255,15 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
                         continue;
                     }
 
-                    matteValue_t vv = matte_vm_call(store->vm, *getter, matte_array_empty(), matte_array_empty(), NULL);
+                    matteValue_t vv = matte_vm_call_full(
+                        store->vm, 
+                        *getter, 
+                        matte_value_object_get_interface_private_binding_unsafe(store, v),
+                        matte_array_empty(), 
+                        matte_array_empty(), 
+                        NULL
+                    );
+
                     m = matte_store_bin_fetch_table(store->bin, v.value.id);
                     matte_array_push(vals, vv);                
                 }    
@@ -3470,7 +3478,15 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
                         continue;
                     }
 
-                    args[1] = matte_vm_call(store->vm, *getter, matte_array_empty(), matte_array_empty(), NULL);
+                    
+                    args[1] = matte_vm_call_full(
+                        store->vm, 
+                        *getter, 
+                        matte_value_object_get_interface_private_binding_unsafe(store, v),
+                        matte_array_empty(), 
+                        matte_array_empty(), 
+                        NULL
+                    );
                     m = (matteObject_t*)matte_store_bin_fetch_table(store->bin, v.value.id);
                 }
                 
