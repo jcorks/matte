@@ -745,6 +745,8 @@ const Matte = {
                     return createValue();
                 })(),
                 
+                createEmpty : function() {return store.empty;},
+                
                 createNumber : function(val) {
                     return val;
                 },
@@ -1737,9 +1739,14 @@ const Matte = {
                     
                     if (typeobj.id == store_type_any.id) return 1;
                     if (valToType(value) != TYPE_OBJECT) {
+                        if (typeobj.id == store_type_nullable.id && value == undefined)
+                            return 1;
                         return (store.valueGetType(value)).id == typeobj.id;
                     } else {
+                        if (typeobj.id == store_type_nullable.id) return 1;
                         if (typeobj.id == store_type_object.id) return 1;
+                        if (typeobj.id == store_type_function.id)
+                            return value.function_stub != undefined;
                         const typep = store.valueGetType(value); 
                         if (typep.id == typeobj.id) return 1;
                         
@@ -1789,6 +1796,7 @@ const Matte = {
                       case 5: return store_specialString_type_object;
                       case 6: return store_specialString_type_function;
                       case 7: return store_specialString_type_type;
+                      case 8: return store_specialString_type_nullable;
                       default:
                         return value.name;
                     }
@@ -1801,7 +1809,8 @@ const Matte = {
                 getObjectType   : function() {return store_type_object;},
                 getFunctionType : function() {return store_type_function;},
                 getTypeType     : function() {return store_type_type;},
-                getAnyType      : function() {return store_type_any;}
+                getAnyType      : function() {return store_type_any;},
+                getNullableType      : function() {return store_type_nullable;}
                 
                                 
             };
@@ -2260,6 +2269,7 @@ const Matte = {
             const store_type_function = store.createType();
             const store_type_type = store.createType();
             const store_type_any = store.createType();
+            const store_type_nullable = store.createType();
             
             
             const store_specialString_false = store.createString('false');
@@ -2274,6 +2284,7 @@ const Matte = {
             const store_specialString_type_object = store.createString('Object');
             const store_specialString_type_type = store.createString('Type');
             const store_specialString_type_function = store.createString('Function');
+            const store_specialString_type_nullable = store.createString('Nullable');
 
             const store_specialString_bracketAccess = store.createString('[]');
             const store_specialString_dotAccess = store.createString('.');
@@ -3951,6 +3962,7 @@ const Matte = {
                   case 5: v = store.getFunctionType(); break;
                   case 6: v = store.getTypeType(); break;
                   case 7: v = store.getAnyType(); break;
+                  case 8: v = store.getNullableType(); break;
                 }
                 frame.valueStack.push(v);
             };
