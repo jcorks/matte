@@ -3290,6 +3290,22 @@ static matteArray_t * compile_function_call(
             merge_instructions(inst, exp); // push argument
             break;
         }
+        
+        if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {
+            iter = iter->next; // skip *    
+            
+           
+            // add a dummy blank string as the argname. This tells 
+            // the runtime to treat it as an automatic argument.
+            matteString_t * blank = matte_string_create();
+            uint32_t i = function_intern_string(block, blank);
+            matte_string_destroy(blank);
+           
+            exp = compile_expression(g, block, functions, &iter);
+            merge_instructions(inst, exp); // push argument
+            write_instruction__nst(inst, iter->line - block->startingLine, i);
+            break;        
+        }
     
         // parse out the parameters
         uint32_t i = function_intern_string(block, (matteString_t*)iter->data);

@@ -141,6 +141,7 @@ struct matteVM_t {
     
     matteValue_t specialString_onerror;
     matteValue_t specialString_onsend;
+    matteValue_t specialString_;
 
 };
 
@@ -1613,6 +1614,8 @@ matteVM_t * matte_vm_create(matte_t * m) {
     matte_value_into_string(vm->store, &vm->specialString_parameters, MATTE_VM_STR_CAST(vm, "parameters"));
     vm->specialString_base = matte_store_new_value(vm->store);
     matte_value_into_string(vm->store, &vm->specialString_base, MATTE_VM_STR_CAST(vm, "base"));
+    vm->specialString_ = matte_store_new_value(vm->store);
+    matte_value_into_string(vm->store, &vm->specialString_, MATTE_VM_STR_CAST(vm, ""));
 
 
     vm->specialString_onsend = matte_store_new_value(vm->store);
@@ -2117,53 +2120,76 @@ matteValue_t matte_vm_call_full(
         memset(matte_array_get_data(argsReal), 0, sizeof(matteValue_t)*len);
         
         // external functions are never var arg functions.
-        for(i = 0; i < lenReal; ++i) {
-            for(n = 0; n < len; ++n) {
-                if (matte_bytecode_stub_get_arg_name(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
-                    matteValue_t v = matte_array_at(args, matteValue_t, i);
-                    matte_array_at(argsReal, matteValue_t, n) = v;
-                    // sicne this function doesn't use a referrable, we need to set roots manually.
-                    if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
-                        matte_value_object_push_lock(vm->store, v);
-                    } else if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
-                        matteValue_t vv = matte_store_new_value(vm->store);
-                        matte_value_into_copy(vm->store, &vv, v);
-                        matte_array_at(argsReal, matteValue_t, n) = vv;                    
-                    }
-
-                    break;
-                }
-            }       
-            
-            if (n == len) {
+        if (lenReal == 1 && matte_array_at(argNames, matteValue_t, 0).value.id == vm->specialString_.value.id) {
+            if (len > 1) {
                 matteString_t * str;
-                // couldnt find the requested name. Throw an error.
-                if (len)
-                    str = matte_string_create_from_c_str(
-                        "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
-                    );
-                else {
-                    str = matte_string_create_from_c_str(
-                        "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
-                    );                
-                }
-
-                for(n = 0; n < len; ++n) {
-                    matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
-                    matte_string_concat_printf(str, " \"");
-                    matte_string_concat(str, matte_value_string_get_string_unsafe(vm->store, name));
-                    matte_string_concat_printf(str, "\" ");
-                }
-                
+                str = matte_string_create_from_c_str(
+                    "Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument."
+                );
                 matte_vm_raise_error_string(vm, str);
-                matte_string_destroy(str);
-                
+                matte_string_destroy(str);                
                 matte_array_destroy(argsReal);
                 return matte_store_new_value(vm->store);
+            }
+
+            matteValue_t v = matte_array_at(args, matteValue_t, 0);
+            matte_array_at(argsReal, matteValue_t, 0) = v;
+            // sicne this function doesn't use a referrable, we need to set roots manually.
+            if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
+                matte_value_object_push_lock(vm->store, v);
+            } else if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
+                matteValue_t vv = matte_store_new_value(vm->store);
+                matte_value_into_copy(vm->store, &vv, v);
+                matte_array_at(argsReal, matteValue_t, 0) = vv;                    
+            }            
+        } else {
+            for(i = 0; i < lenReal; ++i) {
+                for(n = 0; n < len; ++n) {
+                    if (matte_bytecode_stub_get_arg_name(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
+                        matteValue_t v = matte_array_at(args, matteValue_t, i);
+                        matte_array_at(argsReal, matteValue_t, n) = v;
+                        // sicne this function doesn't use a referrable, we need to set roots manually.
+                        if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
+                            matte_value_object_push_lock(vm->store, v);
+                        } else if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
+                            matteValue_t vv = matte_store_new_value(vm->store);
+                            matte_value_into_copy(vm->store, &vv, v);
+                            matte_array_at(argsReal, matteValue_t, n) = vv;                    
+                        }
+
+                        break;
+                    }
+                }       
                 
+                if (n == len) {
+                    matteString_t * str;
+                    // couldnt find the requested name. Throw an error.
+                    if (len)
+                        str = matte_string_create_from_c_str(
+                            "Could not bind requested parameter: '%s'.\n Bindable parameters for this function: ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
+                        );
+                    else {
+                        str = matte_string_create_from_c_str(
+                            "Could not bind requested parameter: '%s'.\n (no bindable parameters for this function) ", matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_array_at(argNames, matteValue_t, i)))
+                        );                
+                    }
+
+                    for(n = 0; n < len; ++n) {
+                        matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
+                        matte_string_concat_printf(str, " \"");
+                        matte_string_concat(str, matte_value_string_get_string_unsafe(vm->store, name));
+                        matte_string_concat_printf(str, "\" ");
+                    }
+                    
+                    matte_vm_raise_error_string(vm, str);
+                    matte_string_destroy(str);
+                    
+                    matte_array_destroy(argsReal);
+                    return matte_store_new_value(vm->store);
+                    
+                }
             }
         }
-        
         
         
         matte_value_object_push_lock(vm->store, d);
@@ -2216,7 +2242,20 @@ matteValue_t matte_vm_call_full(
         // empty for any unset values.
         memset(matte_array_get_data(referrables), 0, sizeof(matteValue_t)*(len+1));
 
-        if (matte_bytecode_stub_is_vararg(stub)) {
+
+        if (lenReal == 1 && matte_array_at(argNames, matteValue_t, 0).value.id == vm->specialString_.value.id) {
+            if (len > 1) {
+                matteString_t * str;
+                str = matte_string_create_from_c_str(
+                    "Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument."
+                );
+                matte_vm_raise_error_string(vm, str);
+                matte_string_destroy(str);                
+                return matte_store_new_value(vm->store);
+            }
+            matte_array_at(referrables, matteValue_t, 1) = matte_array_at(args, matteValue_t, 0);
+
+        } else if (matte_bytecode_stub_is_vararg(stub)) {
             // var arg functions have a single argument
             // that are prepared from the calling args.
             matteValue_t val = matte_store_new_value(vm->store);

@@ -9,4 +9,6 @@
 @g :: (a) {
     return a + 40;
 }
-return g(a:f()+10);
+// also remember: for single-argument calls, auto-binding can be used 
+// which is the same as parameter binding, but you omit the name.
+return g(:f()+10);

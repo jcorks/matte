@@ -2988,32 +2988,38 @@ const Matte = {
                         argsReal.push(store.empty);
                     }
                     
-                    
-                    for(var i = 0; i < lenReal; ++i) {
-                        for(var n = 0; n < len; ++n) {
-                            if (stub.argNames[n] == argNames[i]) {
-                                argsReal[n] = args[i];
-                                break;
-                            }
+                    if (lenReal == 1 && argNames[0] == '') {
+                        if (len > 1) {
+                            vm.raiseErrorString("Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument.");
+                            return store.empty;                        
                         }
-                        
-                        if (n == len) {
-                            var str;
-                            if (len) {
-                                str = "Could not bind requested parameter: '"+argNames[i]+"'.\n Bindable parameters for this function: ";
-                            } else {
-                                str = "Could not bind requested parameter: '"+argNames[i]+"'.\n (no bindable parameters for this function)";                                
+                        argsReal[0] = args[0];                    
+                    } else {
+                        for(var i = 0; i < lenReal; ++i) {
+                            for(var n = 0; n < len; ++n) {
+                                if (stub.argNames[n] == argNames[i]) {
+                                    argsReal[n] = args[i];
+                                    break;
+                                }
                             }
                             
-                            for(n = 0; n < len; ++n) {
-                                str += " \"" + stub.argNames[n] + "\" ";
+                            if (n == len) {
+                                var str;
+                                if (len) {
+                                    str = "Could not bind requested parameter: '"+argNames[i]+"'.\n Bindable parameters for this function: ";
+                                } else {
+                                    str = "Could not bind requested parameter: '"+argNames[i]+"'.\n (no bindable parameters for this function)";                                
+                                }
+                                
+                                for(n = 0; n < len; ++n) {
+                                    str += " \"" + stub.argNames[n] + "\" ";
+                                }
+                                
+                                vm.raiseErrorString(str);
+                                return store.empty;
                             }
-                            
-                            vm.raiseErrorString(str);
-                            return store.empty;
                         }
                     }
-                    
                     var result;
                     if (callable == 2) {
                         const ok = store.valueObjectFunctionPreTypeCheckUnsafe(func, argsReal);
@@ -3042,39 +3048,46 @@ const Matte = {
                         }
                         referrables[1] = val;
                     } else {
-                        const nameMap = {};
-                        
-                        for(var i = 0; i < lenReal; ++i) {
-                            nameMap[argNames[i]] = i;
-                        };
-                        
-                        for(var i = 0; i < len; ++i) {
-                            const name = stub.argNames[i];
-                            const res = nameMap[name];
-                            if (res == undefined) {                      
-                            } else {
-                                delete nameMap[name];
-                                referrables[i+1] = args[res];                            
+                        if (lenReal == 1 && argNames[0] == '') {
+                            if (len > 1) {
+                                vm.raiseErrorString("Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument.");
                             }
-                        }
-                        
-                        
-                        const unbound = Object.keys(nameMap);
-                        if (unbound.length) {
-                            const which = unbound[0];
-                            var str;
-                            if (len) {
-                                str = "Could not bind requested parameter: '"+which+"'.\n Bindable parameters for this function: ";
-                            } else {
-                                str = "Could not bind requested parameter: '"+which+"'.\n (no bindable parameters for this function)";                                
+                            referrables[1] = args[0];                            
+                        } else {
+                            const nameMap = {};
+                            
+                            for(var i = 0; i < lenReal; ++i) {
+                                nameMap[argNames[i]] = i;
+                            };
+                            
+                            for(var i = 0; i < len; ++i) {
+                                const name = stub.argNames[i];
+                                const res = nameMap[name];
+                                if (res == undefined) {                      
+                                } else {
+                                    delete nameMap[name];
+                                    referrables[i+1] = args[res];                            
+                                }
                             }
                             
-                            for(n = 0; n < len; ++n) {
-                                str += " \"" + stub.argNames[n] + "\" ";
-                            }
                             
-                            vm.raiseErrorString(str);
-                            return store.empty;                          
+                            const unbound = Object.keys(nameMap);
+                            if (unbound.length) {
+                                const which = unbound[0];
+                                var str;
+                                if (len) {
+                                    str = "Could not bind requested parameter: '"+which+"'.\n Bindable parameters for this function: ";
+                                } else {
+                                    str = "Could not bind requested parameter: '"+which+"'.\n (no bindable parameters for this function)";                                
+                                }
+                                
+                                for(n = 0; n < len; ++n) {
+                                    str += " \"" + stub.argNames[n] + "\" ";
+                                }
+                                
+                                vm.raiseErrorString(str);
+                                return store.empty;                          
+                            }
                         }
                     }
                     
