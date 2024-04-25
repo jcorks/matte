@@ -1758,7 +1758,7 @@ static void matte_syntax_graph_print_error(
     } else {
         matte_string_concat_printf(message, " but reached the end of the source instead.");
     }
-    if (startedLine > 0) {
+    if (startedLine > 0 && startedLine != matte_tokenizer_current_line(graph->tokenizer)) {
         matte_string_concat_printf(message, " (Note: This syntactic construct started at line %d)", startedLine);    
     }
 
@@ -4498,6 +4498,57 @@ static matteFunctionBlock_t * compile_function_block(
                         // object.
                         write_instruction__pto(b->typestrict_types, GET_LINE_OFFSET(b), 7); 
                     }   
+                    
+                    
+                    // default value binding
+                    //
+                    // It only computes the expression IF the value is empty.
+                    if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {
+                        iter = iter->next; // skip :
+
+                        write_instruction__prf(
+                            b->instructions, 
+                            b->startingLine,                             
+                            matte_array_get_size(b->args)
+                        );
+
+                        write_instruction__nem(
+                            b->instructions, 
+                            b->startingLine                       
+                        );
+                        
+                        write_instruction__opr(
+                            b->instructions, 
+                            b->startingLine,                             
+                            MATTE_OPERATOR_EQ
+                        );
+
+                        matteArray_t * expInst = compile_expression(
+                            g,
+                            b,
+                            functions,
+                            &iter
+                        );                         
+
+                        write_instruction__skp_insert(
+                            b->instructions, 
+                            b->startingLine,                             
+                            matte_array_get_size(expInst)+1 // skip expression+arf
+                        );
+
+                        write_instruction__arf(
+                            expInst, 
+                            b->startingLine,                             
+                            matte_array_get_size(b->args), 
+                            0
+                        );
+                        
+                        merge_instructions(
+                            b->instructions,
+                            expInst
+                        );
+                    }
+                    
                     if (iter->ttype == MATTE_TOKEN_FUNCTION_ARG_END) break;
                     
                     

@@ -113,7 +113,9 @@ typedef enum {
     // 3 -> string 
     // 4 -> object
     // 5 -> type (type of the type object) 
-    // 6 -> any (not physically in code, just for the vm)
+    // 6 -> Function 
+    // 7 -> Any 
+    // 8 -> Nullable
     MATTE_OPCODE_PTO,
     
     
