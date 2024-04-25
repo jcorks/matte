@@ -34,7 +34,7 @@ fn();
 testObject.something();
 function(a:1000);
 
-print(:out);
+return out;
 
 
 
