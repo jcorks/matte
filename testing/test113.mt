@@ -26,11 +26,11 @@ return ::<= {
                             @:data = {}
                             foreach(state)::(name, value) {
                                 when (initialized[name] == empty)
-                                    error(detail:'"' + name + '" is not a member of the structure ' + String(from:type));
+                                    error(:'"' + name + '" is not a member of the structure ' + String(from:type));
 
                                 when (itemTypes[name] != value->type)
-                                    error(
-                                        detail:'"' + name + '" should be of type ' 
+                                    error(:
+                                        '"' + name + '" should be of type ' 
                                         + String(from:itemTypes[name]) +  
                                         ', but given value was of type ' +
                                         String(from:value->type)
@@ -52,25 +52,25 @@ return ::<= {
                             @:reactor = {
                                 get ::(key) {
                                     if (initialized[key] == empty)
-                                        error(detail:'"' + key + '" is not a member of the structure ' + String(from:type));
+                                        error(:'"' + key + '" is not a member of the structure ' + String(from:type));
                                     return data[key];
                                 },
 
                                 set: if (readOnly) 
                                             ::(key, value) {
-                                                error(detail:'Structure ' + String(from:type) + ' is read-only.'); 
+                                                error(:'Structure ' + String(:type) + ' is read-only.'); 
                                             }
                                         else
                                             ::(key, value) {
                                                 when (initialized[key] == empty)
-                                                    error(detail:'"' + name + '" is not a member of the structure ' + String(from:type));
+                                                    error(:'"' + name + '" is not a member of the structure ' + String(from:type));
                                             
                                                 data[key] = value;
                                             }
                             }
                             
                             out->setAttributes(
-                                attributes : {
+                                : {
                                     '[]' : reactor,
                                     '.'  : reactor,
                                     foreach ::<- data,
@@ -136,7 +136,7 @@ return ::<= {
         }
     );  
     
-    @:inst = TextIter.new(state:{
+    @:inst = TextIter.new(:{
         text : 'Hello!',
         color : 30
     });

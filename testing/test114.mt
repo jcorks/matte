@@ -22,12 +22,12 @@ return ::<= {
         @:lineColor = [];
         
         for(0, CANVAS_WIDTH) ::(ch) {
-            line->push(value:' ');
-            lineColor->push(value:hints.NEUTRAL);
+            line->push(:' ');
+            lineColor->push(:hints.NEUTRAL);
         }
         
-        canvas->push(value:line);
-        canvasColors->push(value:lineColor);
+        canvas->push(:line);
+        canvasColors->push(:lineColor);
     }
     return canvasColors[10][20];
 }

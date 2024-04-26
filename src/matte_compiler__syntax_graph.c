@@ -330,10 +330,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             NULL,    
             
             // single argument binding (auto-binding)
-            matte_syntax_graph_node_token(MATTE_TOKEN_GENERAL_SPECIFIER),
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),                
-            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_VALUE_BINDING),
             matte_syntax_graph_node_end(),
             NULL,
                     

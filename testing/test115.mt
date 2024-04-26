@@ -3,7 +3,7 @@
 // subset
 
 @out = '';
-out = String.combine(strings:(['H','e','l','l','o',',']->subset(from:2, to:5)));
+out = String.combine(:(['H','e','l','l','o',',']->subset(from:2, to:5)));
 
 out = out + (["1"]->subset(from:0, to:0))[0];
 

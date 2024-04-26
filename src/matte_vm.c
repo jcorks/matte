@@ -2142,7 +2142,35 @@ matteValue_t matte_vm_call_full(
                 matte_value_into_copy(vm->store, &vv, v);
                 matte_array_at(argsReal, matteValue_t, 0) = vv;                    
             }            
-        } else {
+            
+        // special case: base (query) + automatic bind
+        // little bit gross, fix later
+        } else if (lenReal == 2 && matte_array_at(argNames, matteValue_t, 1).value.id == vm->specialString_base.value.id &&
+                                   matte_array_at(argNames, matteValue_t, 0).value.id == vm->specialString_.value.id) {
+            if (len > 2) {
+                matteString_t * str;
+                str = matte_string_create_from_c_str(
+                    "Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument."
+                );
+                matte_vm_raise_error_string(vm, str);
+                matte_string_destroy(str);                
+                matte_array_destroy(argsReal);
+                return matte_store_new_value(vm->store);
+            }
+
+            for(i = 0; i < 2; ++i) {
+                matteValue_t v = matte_array_at(args, matteValue_t, 1-i);
+                matte_array_at(argsReal, matteValue_t, i) = v;
+                // sicne this function doesn't use a referrable, we need to set roots manually.
+                if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
+                    matte_value_object_push_lock(vm->store, v);
+                } else if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
+                    matteValue_t vv = matte_store_new_value(vm->store);
+                    matte_value_into_copy(vm->store, &vv, v);
+                    matte_array_at(argsReal, matteValue_t, i) = vv;                    
+                }                       
+            }  
+        } else {                                   
             for(i = 0; i < lenReal; ++i) {
                 for(n = 0; n < len; ++n) {
                     if (matte_bytecode_stub_get_arg_name(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {

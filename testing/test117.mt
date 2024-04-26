@@ -11,13 +11,13 @@
 ];
 
 @out = '';
-out = out + list->findIndex(value:list[2]);
-out = out + list->findIndex(value:{});
+out = out + list->findIndex(:list[2]);
+out = out + list->findIndex(:{});
 
-out = out + list->findIndex(query::(value) <- value.id == 0);
-out = out + list->findIndex(query::(value) <- value.id == 10);
-out = out + list->findIndex(query::(value) <- value.id > 20);
-out = out + list->findIndex(query::(value) <- false);
+out = out + list->findIndexCondition(:(value) <- value.id == 0);
+out = out + list->findIndexCondition(:(value) <- value.id == 10);
+out = out + list->findIndexCondition(:(value) <- value.id > 20);
+out = out + list->findIndexCondition(:(value) <- false);
 
 
 {:::} {

@@ -7,22 +7,22 @@
 
 
 //3
-@out = '' + incrementer(value:2);
+@out = '' + incrementer(:2);
 
 
 
 
-@:setIsBelow10 ::(set) <- (set->all(condition:::(value) <- value < 10));
+@:setIsBelow10 ::(set) <- (set->all(::(value) <- value < 10));
 
 // false, since 11 
-out = out + setIsBelow10(set:[2, 11, 4, 5]);
+out = out + setIsBelow10(:[2, 11, 4, 5]);
 
 
 // true
-out = out + setIsBelow10(set:[2, 1, 4]);
+out = out + setIsBelow10(:[2, 1, 4]);
 
 // true
-out = out + setIsBelow10(set:[2]);
+out = out + setIsBelow10(:[2]);
 
 
 return out;

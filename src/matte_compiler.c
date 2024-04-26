@@ -3291,8 +3291,11 @@ static matteArray_t * compile_function_call(
             break;
         }
         
-        if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {
-            iter = iter->next; // skip *    
+        if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER ||
+            iter->next->next->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+
+            if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER)
+                iter = iter->next; // skip :    
             
            
             // add a dummy blank string as the argname. This tells 

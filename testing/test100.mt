@@ -25,14 +25,14 @@ test +=  1;
 out = out + test.data;
 
 {:::}{
-    10->setAttributes(attributes:op);    
+    10->setAttributes(:op);    
 }: {onError:::(message){
     out = out + 'noobj0';
 }}
 
 
 {:::}{
-    test->setAttributes(attributes:0);    
+    test->setAttributes(:0);    
 }:{ onError:::(message){
     out = out + 'noobj1';
 }}
@@ -52,20 +52,20 @@ out = out + test.data;
     }
 }
 
-test->setAttributes(attributes:op2);
+test->setAttributes(:op2);
 test +=  33;
 out = out + test.data;
 
 
 
-out = out + Boolean(from:test->attributes == op2);
+out = out + Boolean(:test->attributes == op2);
 {:::}{
-    Object.getAttributes(of:'d');
+    Object.getAttributes(:'d');
 }: {onError:::(message){
     out = out + 'noobjEX';
 }}
 
-out = out + Boolean(from:test->attributes == op);
+out = out + Boolean(:test->attributes == op);
 
 
 

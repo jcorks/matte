@@ -6,23 +6,21 @@
 @:test = {}
 
 
-test->setAttributes(
-    attributes: {
+test->setAttributes(:{
         keys   :: <- [1, 2, 3, 4, 5],
         values :: <- [6, 7, 8, 9]
-    }
-);
+});
 
 
 
 @out = '';
 
-test->keys->foreach(do:::(index, value) {
+test->keys->foreach(::(index, value) {
     out = out + value;
 });
 
 
-test->values->foreach(do:::(index, value) {
+test->values->foreach(::(index, value) {
     out = out + value;
 });
 
