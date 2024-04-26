@@ -652,7 +652,8 @@ Here are the different available queries:
     <li><b>length:</b> Returns the length of the string in characters.</li>
     <li><b>search(<i>key</i>):</b> Returns the index where the key string can be found within "string". If not present, -1 is returned.</li>
     <li><b>searchAll(<i>key</i>):</b> Returns an array of indices where the key string can be found within "string". If not present, an empty array is returned.</li>
-    <li><b>contains(<i>key</i>, <i>keys</i>):</b> Returns a boolean on whether key (or array of keys) is contained within string. </li>
+    <li><b>contains(<i>key</i>):</b> Returns a boolean on whether key is contained within string. </li>
+    <li><b>containsAny(<i>keys</i>):</b> Returns a boolean on whether an array of keys is contained within string. </li>
     <li><b>replace(<i>key</i>, <i>keys</i>, <i>with</i>):</b> Returns a new string representing the replacement of "key" (or array of "keys") with "with" within "string".</li>
     <li><b>format(<i>items</i>):</b> Returns a new string which replaces tokens (%[index within "items"]) with String forms of "items" members. Use %% to print a single %.</li>
     <li><b>count(<i>key</i>, <i>keys</i>):</b> Returns the number of times "key" (or array of "keys") is within "string".</li>
@@ -680,7 +681,8 @@ Here are the different available queries:
     <li><b>attributes:</b> Returns the attributes for this object.</li>
     <li><b>sort(<i>func</i>):</b> Sorts the object's values with number keys according to a comparator. The comparator is given each value.</li>
     <li><b>subset(<i>from</i>, <i>to</i>):</b> Returns a slice of the object's number-keyed values.</li>
-    <li><b>findIndex(<i>value</i>, <i>query</i>):</b> Returns the index within the object's numbered keys whose value matches the one given. Returns -1 if not found. Alternatively, a function can be supplied for 'query', which will return true for the index that matches.</li>
+    <li><b>findIndex(<i>value</i>):</b> Returns the index within the object's numbered keys whose value matches the one given. Returns -1 if not found.</li>
+    <li><b>findIndexCondition(<i>query</i>):</b> Returns the index within the object's numbered keys whose value matches the one given by returning a true for a function passed its value. Returns -1 if the query function never returns true. </li>
     <li><b>is(<i>type</i>):</b> Returns whether the object is the given Type, taking into account inheritance. </li>
     <li><b>map(<i>func</i>):</b> Applies a function to all members of an object, altering them.</li>
     <li><b>reduce(<i>func</i>):</b> Returns a reduction of the given set.</li>
