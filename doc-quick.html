@@ -571,7 +571,7 @@ Additionally <i>foreach</i> is a special query function that allows for iteratio
     // 1 -> b 
     // 2 -> c
     //
-    object->foreach(do:::(key, value){
+    object->foreach(::(key, value){
         print(:'' + key + '->' + value);
     });
 </pre>
@@ -653,7 +653,6 @@ Here are the different available queries:
     <li><b>search(<i>key</i>):</b> Returns the index where the key string can be found within "string". If not present, -1 is returned.</li>
     <li><b>searchAll(<i>key</i>):</b> Returns an array of indices where the key string can be found within "string". If not present, an empty array is returned.</li>
     <li><b>contains(<i>key</i>):</b> Returns a boolean on whether key is contained within string. </li>
-    <li><b>containsAny(<i>keys</i>):</b> Returns a boolean on whether an array of keys is contained within string. </li>
     <li><b>replace(<i>key</i>, <i>keys</i>, <i>with</i>):</b> Returns a new string representing the replacement of "key" (or array of "keys") with "with" within "string".</li>
     <li><b>format(<i>items</i>):</b> Returns a new string which replaces tokens (%[index within "items"]) with String forms of "items" members. Use %% to print a single %.</li>
     <li><b>count(<i>key</i>, <i>keys</i>):</b> Returns the number of times "key" (or array of "keys") is within "string".</li>
@@ -770,7 +769,7 @@ a <i>send()</i> call. The Listen Function acts as a barrier for messages, much l
                 // If a true cell is found, all functions are stopped 
                 // up until the nearest listen function, carrying the expression 
                 // 'Found!' with it.
-                when(my2DArray[x][y] == true) send(message:'Found!');
+                when(my2DArray[x][y] == true) send(:'Found!');
             }
         }
         
@@ -799,7 +798,7 @@ function overall, so the handler effectively supervises the entire listen functi
                 // If a true cell is found, all functions are stopped 
                 // up until the nearest listen function, carrying the expression 
                 // 'Found!' with it.
-                when(my2DArray[x][y] == true) send(message:'Found!');
+                when(my2DArray[x][y] == true) send(:'Found!');
             }
         }
     } : {

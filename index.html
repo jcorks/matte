@@ -21,13 +21,15 @@ and linking C functions to Matte functions, or it can be used with a standalone
 interpreter. The interpreter extends the language with common OS features, such 
 as I/O.
 <p>
-In the most broad sense, think of Matte like embeddable Javascript put through a filter 
-with some other features added and removed.
+In the most broad sense, think of Matte like an alternative to Lua, as embeddability is 
+one of its primary goals, but with some additional syntactic features.
 
 Main Language Features:
 <ul>
 
 <li> Small and easily embeddable with no external dependencies required</li>
+
+<li> Built-in debugger, available even when embedded</li>
 
 <li> Both C / C++ compatible code</li>
 
@@ -41,13 +43,11 @@ Main Language Features:
 
 <li> Simple module management </li>
 
-<li> Built-in modules for classes, strings, JSON, and more </li>
+<li> Built-in modules for classes, JSON, and more </li>
 
 <li> Optional OS feature extension modules for asynchronous computation, socket I/O, and more </li>
 
 <li> Dump to/from portable VM bytecode</li>
-
-<li> Built-in optional runtime debugging features </li>
 
 <li> Easily extensible </li>
 
@@ -100,11 +100,11 @@ Unless otherwise specified, the Matte sources are copyright Johnathan Corkery
 <h2> Additional Support + Special Thanks </h2>
 <ul>
   <li><a href="skie.me">Adrian Hernik</a> - for helping me make fewer bad decisions and keeping me (mostly) sane</li>
-  <li>Braden Ehlert - for all her patience and help with improving the language and performance</li>
+  <li>Braden Ehlert - for all their patience and help with improving the language and performance</li>
 </ul>
 
 
-<h2>Other's Projects</h2> 
+<h2>Inspirations</h2> 
 
 
 <ul>

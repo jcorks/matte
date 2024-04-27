@@ -4,7 +4,7 @@
 //
 // The class function can be retrieved by importing
 // the Matte.Core.Class module.
-@:class = import(module:'Matte.Core.Class');
+@:class = import(:'Matte.Core.Class');
 
 
 // The class function generates classes by using 
@@ -36,7 +36,7 @@
 		this.constructor = ::(
 			initialValue
 		) {
-			print(message:'Class constructed!');
+			print(:'Class constructed!');
 			privateValue = initialValue;
 			return this;
 		}
@@ -55,7 +55,7 @@
 				// get is called when accessing the member.
 				// Its return value is what the user is given.
 				get:: {
-					print(message:"'a' was accessed!");
+					print(:"'a' was accessed!");
 					return privateValue;
 				}
 			},
@@ -68,7 +68,7 @@
 			// set to the function 
 			
 			c ::(argument) {
-				print(message: "'c' was called with argument: " + argument);
+				print(: "'c' was called with argument: " + argument);
 				return this.b;
 			}
 		}
@@ -81,7 +81,7 @@
 
 // The public members may be accessed as if 
 // its a normal object.
-print(message:instance.a);
-print(message:instance.b);
+print(:instance.a);
+print(:instance.b);
 
-return instance.c(argument:'Hi!');
+return instance.c(:'Hi!');
