@@ -371,6 +371,7 @@ function_call : FUNCTION_ARG_BEGIN function_call__content
 function_call__content : FUNCTION_ARG_END
                        | VARARG expression FUNCTION_ARG_END
                        | IDENTIFIER function_call__content_arg
+                       | value_binding FUNCTION_ARG_END
                        ;
                        
 function_call__content_arg : FUNCTION_ARG_SEPARATOR function_call__content_arg
@@ -485,15 +486,19 @@ value_function_creation_args : FUNCTION_ARG_BEGIN FUNCTION_ARG_END
 
 value_function_creation_args__name_chunk 
     : IDENTIFIER value_function_creation_args__tail_chunk
-    | IDENTIFIER FUNCTION_ARG_SEPARATOR value_function_creation_args__name_chunk
-    | IDENTIFIER FUNCTION_TYPESPEC expression value_function_creation_args__name_chunk
-    | FUNCTION_ARG_END
     ; 
 
 value_function_creation_args__tail_chunk 
              : FUNCTION_ARG_END
              | FUNCTION_ARG_SEPARATOR value_function_creation_args__name_chunk 
-             | FUNCTION_TYPESPEC expression value_function_creation_args__tail_chunk
+             | FUNCTION_TYPESPEC expression value_function_creation_args__typespec_tail
+             | GENERAL_SPECIFIER expression value_function_creation_args__name_chunk
+             ;
+
+value_function_creation_args__typespec_tail
+             : FUNCTION_ARG_END
+             | FUNCTION_ARG_SEPARATOR value_function_creation_args__name_chunk 
+             | GENERAL_SPECIFIER expression value_function_creation_args__name_chunk
              ;
 
 

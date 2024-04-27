@@ -1,4 +1,4 @@
-@:class = import(module:'Matte.Core.Class');
+@:class = import(:'Matte.Core.Class');
 
 
 @:Shape = class(
@@ -15,7 +15,7 @@
 
 
 @:smallShape = Shape.new();
-smallShape.setSize(newSize: 0.001);
+smallShape.setSize(: 0.001);
 
 
 

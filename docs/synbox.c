@@ -133,7 +133,7 @@ const char * matte_js_run(const char * source) {
     matteValue_t v = matte_run_source(m, matte_string_get_c_str(src));
     matteVM_t * vm = matte_get_vm(m);
     matte_string_destroy(src);
-    if (v.binID == 0)
+    if (matte_value_type(v) == MATTE_VALUE_TYPE_EMPTY)
         return matte_string_get_c_str(matte_js_run__stdout);
 
     matte_string_concat_printf(

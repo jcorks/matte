@@ -10,4 +10,4 @@ a[key] = "object";
 
 // Should print 4, as there are 
 // 4 unique key-value pairs.
-print(message:a->keycount);
+print(:a->keycount);

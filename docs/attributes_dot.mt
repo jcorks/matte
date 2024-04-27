@@ -11,24 +11,22 @@
     
     @:check::(key) {
         if (names[key] == empty)
-            error(detail: 'No such member ' + key + ' within struct.');    
+            error(: 'No such member ' + key + ' within struct.');    
     }
     
-    wrapped->setAttributes(
-        attributes : {
-            '.' : {
-                get ::(key) {
-                    check(key);
-                    return storage[key];
-                },
-                
-                set ::(key, value) {
-                    check(key);
-                    return storage[key] = value;
-                }
+    wrapped->setAttributes(:{
+        '.' : {
+            get ::(key) {
+                check(key);
+                return storage[key];
+            },
+            
+            set ::(key, value) {
+                check(key);
+                return storage[key] = value;
             }
         }
-    );  
+    });  
     
     return wrapped;
 };
@@ -49,11 +47,11 @@ a.y = 10;
 a.length = 100;
 
 // Should return 20
-print(message: a.x + a.y);
+print(:a.x + a.y);
 
 // Should return empty, as it invokes 
 // bracket access.
-print(message: a['x']);
+print(:a['x']);
 
 
 

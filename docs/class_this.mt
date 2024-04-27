@@ -1,4 +1,4 @@
-@:class = import(module:'Matte.Core.Class');
+@:class = import(:'Matte.Core.Class');
 
 @test;
 
@@ -11,7 +11,7 @@
 @myInstance = MyClass.new();
 
 // Should print true
-print(message:myInstance == test);
+print(:myInstance == test);
 
 
 

@@ -8,4 +8,4 @@
 @b = 1 > 4;
 
 // Will print false.
-print(message:b);
+print(:b);

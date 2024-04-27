@@ -1,23 +1,21 @@
 @:a = {};
 
-a->setAttributes(
-    attributes : {
-        'values' :: {
-            @output = {};
-            for(0, a->size) ::(i) {
-                @str = a[i];
-                for(0, str->length) ::(n) {
-                    output[str->charAt(index:n)] = true;
-                }
+a->setAttributes(:{
+    'values' :: {
+        @output = {};
+        for(0, a->size) ::(i) {
+            @str = a[i];
+            for(0, str->length) ::(n) {
+                output[str->charAt(:n)] = true;
             }
-            return output->keys;
         }
+        return output->keys;
     }
-);
+});
 
 
-a->push(value:'Hello');
-a->push(value:'World');
+a->push(:'Hello');
+a->push(:'World');
 
 @outStr = '';
 foreach(a->values) ::(index, value) {
@@ -26,5 +24,5 @@ foreach(a->values) ::(index, value) {
 
 // Should print a series of the characters within 
 // Hello and World with no repeats in some order.
-print(message: outStr);
+print(:outStr);
  
