@@ -5,7 +5,7 @@
 @out = '';
 
 {:::}{
-    'aaa'->foreach(do:::{
+    'aaa'->foreach(::{
     
     });
 }: { onError:::(message){
@@ -15,7 +15,7 @@
 
 
 {:::}{
-    {}->foreach(do:'aaa');
+    {}->foreach(:'aaa');
 }: { onError:::(message){
     out = out + 'nofn';
 }}
@@ -24,7 +24,7 @@
 
 
 {:::}{
-    {}->foreach(do:::{
+    {}->foreach(::{
         out = 'c';
     });
 }: { onError:::(message){
@@ -36,7 +36,7 @@
 
 
 {:::}{
-    ['a', 'b', 'c']->foreach(do:::(key => Number, val => String) {
+    ['a', 'b', 'c']->foreach(::(key => Number, val => String) {
         out = out + val;
     });
 }: { onError:::(message){

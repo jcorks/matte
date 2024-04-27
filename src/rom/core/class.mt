@@ -27,13 +27,13 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
+
+
+
 @classType = Object.newType(name:'Matte.Class');
 
-
 @:class ::(define => Function, name, inherits, statics) {
-    @classInstance = Object.instantiate(
-        type: classType
-    );
+    @classInstance = Object.instantiate(:classType)
     @type = if (inherits == empty) 
         Object.newType(name)
     else 
@@ -104,3 +104,4 @@ DEALINGS IN THE SOFTWARE.
     return classInstance;
 }
 return class;
+

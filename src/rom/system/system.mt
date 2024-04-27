@@ -27,17 +27,17 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@class = import(module:'Matte.Core.Class');
+@class = import(:'Matte.Core.Class');
 return class(
     name : 'Matte.System',
     define:::(this) {
         this.interface = {
-            ConsoleIO    : import(module:'Matte.System.ConsoleIO'),
-            Filesystem   : import(module:'Matte.System.Filesystem'),
-            SocketIO     : import(module:'Matte.System.SocketIO'),
-            Time         : import(module:'Matte.System.Time'),
-            Utility      : import(module:'Matte.System.Utility')    ,
-            Async        : import(module:'Matte.System.Async')
+            ConsoleIO    : import(:'Matte.System.ConsoleIO'),
+            Filesystem   : import(:'Matte.System.Filesystem'),
+            SocketIO     : import(:'Matte.System.SocketIO'),
+            Time         : import(:'Matte.System.Time'),
+            Utility      : import(:'Matte.System.Utility')    ,
+            Async        : import(:'Matte.System.Async')
         }
     }
 ).new();

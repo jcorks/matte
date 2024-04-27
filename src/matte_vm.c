@@ -1641,8 +1641,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
     const matteString_t * keys = MATTE_VM_STR_CAST(vm, "keys");
     const matteString_t * removeKey_names[] = {
         query_name,
-        keyName,
-        keys
+        keyName
     };
     const matteString_t * type_names[] = {
         MATTE_VM_STR_CAST(vm, "name"),
@@ -1727,9 +1726,13 @@ matteVM_t * matte_vm_create(matte_t * m) {
     
     const matteString_t * findIndex_names[] = {
         query_name,        
-        value,
+        value
+    };
+    const matteString_t * findIndexCondition_names[] = {
+        query_name,        
         MATTE_VM_STR_CAST(vm, "query")        
     };
+
     const matteString_t * is_names[] = {
         query_name,
         type,
@@ -1791,7 +1794,8 @@ matteVM_t * matte_vm_create(matte_t * m) {
     matteArray_t temp;
     vm_add_built_in(vm, MATTE_EXT_CALL_NOOP,  matte_array_empty(), vm_ext_call__noop);
     vm_add_built_in(vm, MATTE_EXT_CALL_BREAKPOINT,  matte_array_empty(), vm_ext_call__breakpoint);
-    temp = MATTE_ARRAY_CAST(&import_names, matteString_t *, 4);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  &temp, vm_ext_call__import);
+    temp = MATTE_ARRAY_CAST(&import_names, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  &temp, vm_ext_call__import);
+    temp = MATTE_ARRAY_CAST(&import_names, matteString_t *, 4);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORTMODULE,  &temp, vm_ext_call__importmodule);
 
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      &temp, vm_ext_call__print);
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_SEND,       &temp, vm_ext_call__send);
@@ -1832,12 +1836,13 @@ matteVM_t * matte_vm_create(matte_t * m) {
     temp = MATTE_ARRAY_CAST(push_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__PUSH,     &temp, vm_ext_call__object__push);    
     temp = MATTE_ARRAY_CAST(setsize_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SETSIZE,     &temp, vm_ext_call__object__setsize);    
     temp = MATTE_ARRAY_CAST(insert_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__INSERT,     &temp, vm_ext_call__object__insert);    
-    temp = MATTE_ARRAY_CAST(removeKey_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REMOVE,     &temp, vm_ext_call__object__remove);    
+    temp = MATTE_ARRAY_CAST(removeKey_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REMOVE,     &temp, vm_ext_call__object__remove);    
     temp = MATTE_ARRAY_CAST(setAttributes_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SETATTRIBUTES,     &temp, vm_ext_call__object__set_attributes);    
     temp = MATTE_ARRAY_CAST(sort_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SORT,     &temp, vm_ext_call__object__sort);    
     temp = MATTE_ARRAY_CAST(subset_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__SUBSET,     &temp, vm_ext_call__object__subset);    
     temp = MATTE_ARRAY_CAST(filterNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FILTER,     &temp, vm_ext_call__object__filter);    
-    temp = MATTE_ARRAY_CAST(findIndex_names, matteString_t *, 3);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FINDINDEX,     &temp, vm_ext_call__object__findindex);    
+    temp = MATTE_ARRAY_CAST(findIndex_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FINDINDEX,     &temp, vm_ext_call__object__findindex);    
+    temp = MATTE_ARRAY_CAST(findIndexCondition_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__FINDINDEXCONDITION,     &temp, vm_ext_call__object__findindexcondition);    
     temp = MATTE_ARRAY_CAST(is_names, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__ISA,     &temp, vm_ext_call__object__is);    
     temp = MATTE_ARRAY_CAST(mapReduceNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__MAP,     &temp, vm_ext_call__object__map);    
     temp = MATTE_ARRAY_CAST(mapReduceNames, matteString_t *, 2);   vm_add_built_in(vm, MATTE_EXT_CALL__QUERY__REDUCE,     &temp, vm_ext_call__object__reduce);    
@@ -2079,7 +2084,8 @@ matteValue_t matte_vm_call_full(
     // special case: type object as a function
     if (matte_value_type(func) == MATTE_VALUE_TYPE_TYPE) {                
         if (matte_array_get_size(args)) {
-            if (matte_array_at(argNames, matteValue_t, 0).value.id != vm->specialString_from.value.id) {
+            if (matte_array_at(argNames, matteValue_t, 0).value.id != vm->specialString_from.value.id &&
+                matte_array_at(argNames, matteValue_t, 0).value.id != vm->specialString_.value.id ) {
                 matte_vm_raise_error_cstring(vm, "Type conversion failed: unbound parameter to function ('from')");            
             }
             return matte_value_to_type(vm->store, matte_array_at(args, matteValue_t, 0), func);
@@ -2552,7 +2558,7 @@ matteValue_t matte_vm_import(
         preloadBool
     };
     matte_value_object_push_lock(vm->store, parameters);
-    matteValue_t v =  vm_ext_call__import(vm, matte_store_new_value(vm->store), args, NULL);
+    matteValue_t v =  vm_ext_call__importmodule(vm, matte_store_new_value(vm->store), args, NULL);
     matte_value_object_pop_lock(vm->store, parameters);
 
     matte_store_recycle(vm->store, pathStr);

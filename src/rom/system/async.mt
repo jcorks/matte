@@ -39,7 +39,7 @@ DEALINGS IN THE SOFTWARE.
 // arg0: path to source to load 
 // arg1: input data string
 // returns: worker id
-@_workerstart = getExternalFunction(name:"__matte_::async_start");
+@_workerstart = getExternalFunction(:"__matte_::async_start");
 
 
 // arg0: worker id
@@ -48,32 +48,32 @@ DEALINGS IN THE SOFTWARE.
 // 1 -> finish successs
 // 2 -> finish fail
 // 3 -> unknown
-@_workerstate = getExternalFunction(name:"__matte_::async_state");
+@_workerstate = getExternalFunction(:"__matte_::async_state");
 
 
 // arg0: worker id
 // always a string.
-@_workerresult = getExternalFunction(name:"__matte_::async_result");
+@_workerresult = getExternalFunction(:"__matte_::async_result");
 
 // Send a message to a referrable worker.
 // arg0: worker id if a child. if empty, sending message to the parent
 // arg1: string message.
-@_workersendmessage = getExternalFunction(name:"__matte_::async_sendmessage");
+@_workersendmessage = getExternalFunction(:"__matte_::async_sendmessage");
 
 
 // returns a string if a pending message
 // 0-> worker id. always populated
 // 1-> message (string)
-@_workernextmessage = getExternalFunction(name:"__matte_::async_nextmessage");
+@_workernextmessage = getExternalFunction(:"__matte_::async_nextmessage");
 
 // returns a string IFF the worker ended in error. Else, empty
 // arg0: worker id. 
-@_workererror = getExternalFunction(name:"__matte_::async_error");
+@_workererror = getExternalFunction(:"__matte_::async_error");
 
 
-@EventSystem = import(module:'Matte.Core.EventSystem');
-@Time        = import(module:'Matte.System.Time');
-@class       = import(module:'Matte.Core.Class');
+@EventSystem = import(:'Matte.Core.EventSystem');
+@Time        = import(:'Matte.System.Time');
+@class       = import(:'Matte.Core.Class');
 
 
 @workers = ::<={
@@ -87,7 +87,7 @@ DEALINGS IN THE SOFTWARE.
                 get ::(key) {
                     when(key == 'length') o->keycount;
                     when(key == 'push') push;
-                    error(detail:'this is an array.. what u doing?? (internal async error)');
+                    error(:'this is an array.. what u doing?? (internal async error)');
                 }
             }
         }   
@@ -108,7 +108,7 @@ return class(
         @idToWorker::(id) {
             return {:::} {
                 for(0, workers.length)::(i){
-                    if (workers[i].id == id) send(message:workers[i]);
+                    if (workers[i].id == id) send(:workers[i]);
                 }
 
                 // is parent
@@ -170,9 +170,9 @@ return class(
                         onStateChange::(detail){}
                     }
 
-                    id = _workerstart(a:String(from:module), b:String(from:input));
-                    when(id == empty) error(detail:'The worker failed to start with the given args');
-                    workers.push(value:this);
+                    id = _workerstart(a:String(:module), b:String(:input));
+                    when(id == empty) error(:'The worker failed to start with the given args');
+                    workers.push(:this);
                     queryState();
                 };                
                 

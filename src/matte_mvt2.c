@@ -92,7 +92,7 @@ static matteMVT2Entry_t * bucket_add(matteMVT2Bucket_t * bucket, matteMVT2Entry_
         if (bucket->alloc == 0) bucket->alloc  = 1;
         else                    bucket->alloc += MVT2_bucket_fill_amount/2;
         
-        bucket->entries = matte_allocate(bucket->alloc*sizeof(matteMVT2Entry_t));
+        bucket->entries = (matteMVT2Entry_t*)matte_allocate(bucket->alloc*sizeof(matteMVT2Entry_t));
         uint32_t i;
         for(i = 0; i < oldSize; ++i)
             bucket->entries[i] = oldEntries[i];
@@ -167,7 +167,7 @@ int matte_mvt2_get_size(const matteMVT2_t * MVT2) {
 
 
 matteMVT2_t * matte_mvt2_create() {
-    matteMVT2_t * t = matte_allocate(sizeof(matteMVT2_t));    
+    matteMVT2_t * t = (matteMVT2_t*)matte_allocate(sizeof(matteMVT2_t));    
     t->buckets = (matteMVT2Bucket_t*)matte_allocate(sizeof(matteMVT2Bucket_t) * MVT2_bucket_start_size);
     t->nBuckets = MVT2_bucket_start_size;
     t->size = 0;

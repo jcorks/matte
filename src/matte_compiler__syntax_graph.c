@@ -329,10 +329,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             matte_syntax_graph_node_end(),
             NULL,    
             
-            // single argument binding (auto-binding)
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_VALUE_BINDING),
-            matte_syntax_graph_node_end(),
-            NULL,
+
                     
 
             // one or more args
@@ -362,6 +359,12 @@ static void generate_graph(matteSyntaxGraph_t * g) {
                 NULL
             ),
             NULL,
+            // single argument binding (auto-binding)
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_VALUE_BINDING),
+            matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_ARG_END),
+            matte_syntax_graph_node_end(),
+            NULL,
+
             NULL
         ),
         NULL

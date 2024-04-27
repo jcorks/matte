@@ -27,12 +27,12 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@:class = import(module:"Matte.Core.Class");
+@:class = import(:"Matte.Core.Class");
 
 
-@:_run = getExternalFunction(name:"__matte_::utility_system");
-@:_os = getExternalFunction(name:"__matte_::utility_os")();
-@:_exit = getExternalFunction(name:"__matte_::utility_exit");
+@:_run = getExternalFunction(:"__matte_::utility_system");
+@:_os = getExternalFunction(:"__matte_::utility_os")();
+@:_exit = getExternalFunction(:"__matte_::utility_exit");
 return class(
     name : 'Matte.System.OS',
     define:::(this) {

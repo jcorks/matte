@@ -3,7 +3,7 @@
 // 
 
 @a = '-=-';
-a = String.combine(strings:
+a = String.combine(:
     [
         a,
         '[][][]',
@@ -14,13 +14,13 @@ a = String.combine(strings:
 );
 
 
-@b = "Hello_%0!_Did_you_%1_your_%2_today?"->format(items:[
+@b = "Hello_%0!_Did_you_%1_your_%2_today?"->format(:[
     'World',
     'Debug',
     'Program'
 ])
 
-@c = "%2%2%3%%%%%4%0"->format(items:[
+@c = "%2%2%3%%%%%4%0"->format(:[
     13,
     24,
     57,
@@ -29,4 +29,4 @@ a = String.combine(strings:
 ])
 
 
-return String(from:a) + b + c;
+return String(:a) + b + c;

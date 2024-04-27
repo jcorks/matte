@@ -122,7 +122,7 @@ int main() {
             // When called, a subsequent call to retrieve 
             // the external function will fail. This is 
             // for security reasons.
-            "@:f = getExternalFunction(name:'c_function_id');"
+            "@:f = getExternalFunction(:'c_function_id');"
             
             // runs it and returns the result
             // If you change any of the arguments to 

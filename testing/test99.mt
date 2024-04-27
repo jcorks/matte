@@ -22,21 +22,21 @@
 }}
 
 
-testObj->remove(key:'hello');
-out = out + String(from:testObj.hello);
+testObj->remove(:'hello');
+out = out + String(:testObj.hello);
 
-testObj->remove(key:'');
-testObj->remove(key:'hello1');
+testObj->remove(:'');
+testObj->remove(:'hello1');
 
 out = out + testObj[String];
 out = out + testObj[keyobj];
 
 out = out + testObj->keycount;;
 
-testObj->remove(key:String);
-testObj->remove(key:keyobj);
-testObj->remove(key:'keyobj');
-testObj->remove(key:String); // ok
+testObj->remove(:String);
+testObj->remove(:keyobj);
+testObj->remove(:'keyobj');
+testObj->remove(:String); // ok
 
 out = out + testObj->size;
 

@@ -29,23 +29,23 @@ DEALINGS IN THE SOFTWARE.
 */
 // Only for children workers.
 // Allows for communication with the parent
-@:AsyncWorker = import(module:'Matte.System.AsyncWorker');
-@:JSON = import(module:'Matte.Core.JSON');
+@:AsyncWorker = import(:'Matte.System.AsyncWorker');
+@:JSON = import(:'Matte.Core.JSON');
 
 
 
 // Async parameters are always within parameters.input as a string.
-@input = JSON.decode(string:parameters.input);
+@input = JSON.decode(:parameters.input);
 
 
 AsyncWorker.sendToParent(
-    message:'Im alive! you sent me input:' + parameters.input
+    :'Im alive! you sent me input:' + parameters.input
 );
 
 AsyncWorker.installHook(
     event:'onNewMessage', 
     hook:::(detail) {
-        print(message:'Message from parent: ' + detail);
+        print(:'Message from parent: ' + detail);
     }
 );
 

@@ -27,9 +27,8 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@:class = import(module:'Matte.Core.Class');
-@:offset = Number(from:parameters.offset);
-
+@:class = import(:'Matte.Core.Class');
+@:offset = 1000;
 return class(
     define :: (this) {
         // declare local variables

@@ -180,7 +180,7 @@ static void bucket_add(matteTableBucket_t * bucket, matteTableEntry_t entry) {
         if (bucket->alloc == 0) bucket->alloc = 1;
         else                    bucket->alloc *= 2;
         
-        bucket->entries = matte_allocate(bucket->alloc*sizeof(matteTableEntry_t));
+        bucket->entries = (matteTableEntry_t*)matte_allocate(bucket->alloc*sizeof(matteTableEntry_t));
         uint32_t i;
         for(i = 0; i < oldSize; ++i)
             bucket->entries[i] = oldEntries[i];

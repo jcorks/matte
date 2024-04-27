@@ -61,8 +61,8 @@ int main() {
     matteValue_t result = matte_run_source(m, 
         // import 2 modules, each returning an object 
         // with a member called "myFunction"
-        "@:m1 = import(module:'module1.mt');"
-        "@:m2 = import(module:'module2.mt');"
+        "@:m1 = import(:'module1.mt');"
+        "@:m2 = import(:'module2.mt');"
         ""
         // return the result of adding them
         "return m1.myFunction() + m2.myFunction();"

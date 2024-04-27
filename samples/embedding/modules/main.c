@@ -70,7 +70,7 @@ int main() {
     
     // Import the module in code and work with it.
     matteValue_t result = matte_run_source(m,
-        "@:m = import(module:'TestModule');"
+        "@:m = import(:'TestModule');"
         "m.a = 30;"
         "m.b = 40;"
         "return m.add();"

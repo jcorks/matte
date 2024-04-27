@@ -136,7 +136,7 @@ matteString_t * matte_string_create_from_array_xfer(
     matteArray_t * src
 ) {
     matteString_t * out = (matteString_t*)matte_allocate(sizeof(matteString_t));
-    out->utf8 = matte_array_get_data(src);
+    out->utf8 = (uint32_t*)matte_array_get_data(src);
     out->len = matte_array_get_size(src);
     matte_array_destroy_xfer(src);
     out->cstrtemp = NULL;

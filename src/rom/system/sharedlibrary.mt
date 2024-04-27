@@ -29,9 +29,9 @@ DEALINGS IN THE SOFTWARE.
 */
 @:class = import(module:'Matte.Core.Class');
 
-@:_sharedlibrary_open = getExternalFunction(name:"_sharedlibrary_open");
-@:_sharedlibrary_getCallable = getExternalFunction(name:"_sharedlibrary_getSymbol");
-@:_sharedlibrary_callCallable = getExternalFunction(name:"_sharedlibrary_getSymbol");
+@:_sharedlibrary_open = getExternalFunction(:"_sharedlibrary_open");
+@:_sharedlibrary_getCallable = getExternalFunction(:"_sharedlibrary_getSymbol");
+@:_sharedlibrary_callCallable = getExternalFunction(:"_sharedlibrary_getSymbol");
 
 
 @TYPES = {

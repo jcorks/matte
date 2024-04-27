@@ -42,10 +42,10 @@ DEALINGS IN THE SOFTWARE.
     @:len = str->length; 
     m.size = len;
     for(0, len)::(i){
-        m.writeI8(offset:i, value:str->charCodeAt(index:i));
+        m.writeI8(offset:i, value:str->charCodeAt(:i));
     }
     
-    client.send(bytes:m);
+    client.send(:m);
 }
 
 
@@ -58,11 +58,11 @@ DEALINGS IN THE SOFTWARE.
 // Clients are EventSystems, meaning they mostly 
 // are interacted with via events and responses to 
 // those events.
-client.installHooks(events:{
+client.installHooks(:{
     // When attempting to connect to a server and the connection 
     // is established, the onConnectSuccess event is fired.
-    'onConnectSuccess':::(detail){
-        ConsoleIO.println(message:'Successfully connected.');
+    onConnectSuccess ::(detail){
+        ConsoleIO.println(:'Successfully connected.');
         
         // Since we were able to connect, lets send some data 
         // to the server.
@@ -71,26 +71,26 @@ client.installHooks(events:{
     
     // When attempting to connect to a server and the connection 
     // could not be established, the onConnectFail event is fired.
-    'onConnectFail':::(detail => String) {
-        ConsoleIO.println(message:'Connection failed: ' + detail);
+    onConnectFail ::(detail => String) {
+        ConsoleIO.println(:'Connection failed: ' + detail);
     },
 
     // When an existing connection is broken, this event fires.
-    'onDisconnect':::(detail){
-        ConsoleIO.println(message:'Disconnected');
+    onDisconnect ::(detail){
+        ConsoleIO.println(:'Disconnected');
     },
     
     // When the connected server sends data, this event fires,
     // sending with it a MemoryBuffer containing the data.
-    'onIncomingData':::(detail) {        
+    onIncomingData ::(detail) {        
         // Lets assume that the data incoming is plain text and print it
         @:data = detail;
         @str = '';
         for(0, data.size)::(i) {
             str = str + ' ';
-            str = str->setCharCodeAt(index:i, value:data.readI8(offset:i));
+            str = str->setCharCodeAt(index:i, value:data.readI8(:i));
         }
-        ConsoleIO.println(message:'Message from server: ' + str);
+        ConsoleIO.println(:'Message from server: ' + str);
     }
 });
 

@@ -30,8 +30,8 @@ DEALINGS IN THE SOFTWARE.
 //// Implementation of Stephen Wolfram's 
 //// cellular automata
 
-@Time    = import(module:'Matte.System.Time');
-@Console = import(module:'Matte.System.ConsoleIO');
+@Time    = import(:'Matte.System.Time');
+@Console = import(:'Matte.System.ConsoleIO');
 
 @:SWCA_WIDTH = 80;
 @:SWCA_SPEED = 120;
@@ -42,9 +42,9 @@ DEALINGS IN THE SOFTWARE.
     b1 => Boolean,
     b2 => Boolean
 ) {
-    return Number(from:b0)  + 
-           Number(from:b1)*2 + 
-           Number(from:b2)*4;
+    return Number(:b0)  + 
+           Number(:b1)*2 + 
+           Number(:b2)*4;
 }
 
 // Populate the next state
@@ -120,12 +120,12 @@ forever ::{
         stateNext = temp;
 
         progress = 0;
-        Console.printf(format:'\n');
+        Console.put(:'\n');
     }
-    @nextChar = str->charAt(index:progress);
+    @nextChar = str->charAt(:progress);
     @wait = (if (nextChar == ' ') SWCA_SPEED/7 else SWCA_SPEED);
     Time.sleep(milliseconds:Number.random()*wait);
-    Console.printf(format:nextChar);
+    Console.put(:nextChar);
     progress += 1;
 }
 

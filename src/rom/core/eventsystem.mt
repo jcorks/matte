@@ -27,7 +27,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@class = import(module:'Matte.Core.Class');
+@class = import(:'Matte.Core.Class');
 @EventSystem = class(
     name : 'Matte.Core.EventSystem',
     define:::(this) {
@@ -37,7 +37,7 @@ DEALINGS IN THE SOFTWARE.
         this.interface = {
             events : {
                 set ::(value) {
-                    when (events->keycount != 0) error(detail:'Interface is already defined.');
+                    when (events->keycount != 0) error(:'Interface is already defined.');
                     
                     // filter to ensure types of key/val pairs
                     foreach(value)::(key => String, val => Function) {
@@ -55,7 +55,7 @@ DEALINGS IN THE SOFTWARE.
             // emits a specific event.
             emit::(event => String, detail) {
                 @: ev = events[event];
-                when(ev == empty) error(detail:"Cannot emit event for non-existent event "+ev);
+                when(ev == empty) error(:"Cannot emit event for non-existent event "+ev);
                 
                 @continue = {:::} {
                     when(ev.handlerCount == 0) true;
@@ -123,19 +123,19 @@ DEALINGS IN THE SOFTWARE.
             
             uninstallHook::(event => String, hook) {
                 @: ev = events[event];
-                when(ev == empty) error(detail:"Cannot uninstall hook for non-existent event "+ev);
-                @:index = ev.hooks->findIndex(value:hook);
+                when(ev == empty) error(:"Cannot uninstall hook for non-existent event "+ev);
+                @:index = ev.hooks->findIndex(:hook);
                 when(index == -1) empty;
-                ev.hooks->remove(key:index);
+                ev.hooks->remove(:index);
             },
             
             uninstallHandler::(event => String, handler) {
                 @: ev = events[event];
-                when(ev == empty) error(detail:"Cannot uninstall handler for non-existent event "+ev);
+                when(ev == empty) error(:"Cannot uninstall handler for non-existent event "+ev);
                 {:::} {
                     for(0, ev.handlerCount)::(i) {
                         if (ev.handlers[i] == handler) ::<= { 
-                            ev.handlers->remove(key:i);
+                            ev.handlers->remove(:i);
                             ev.handlerCount-=1;
                             send();
                         }

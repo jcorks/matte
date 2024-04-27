@@ -27,21 +27,19 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
-@ConsoleIO    = import(module:'Matte.System.ConsoleIO');
-@class        = import(module:'Matte.Core.Class');
-
+@MemoryBuffer = import(:'Matte.Core.MemoryBuffer');
+@ConsoleIO    = import(:'Matte.System.ConsoleIO');
+@class        = import(:'Matte.Core.Class');
 
 when(parameters == empty || parameters.file == empty) ::<={
-    print(message:'DumpHex usage:');
-    print(message:'');
-    print(message:'matte DumpHex.mt file:[filename]');
-
+    print(:'DumpHex usage:');
+    print(:'');
+    print(:'matte DumpHex.mt file:[filename]');
 }
 
 
 // config
-@:BYTES_PER_LINE = if ((parameters.wordsize)->type == String) Number.parse(string:parameters.wordsize) else 8;
+@:BYTES_PER_LINE = if ((parameters.wordsize)->type == String) Number.parse(:parameters.wordsize) else 8;
 @:BYTES_PER_PAGE = BYTES_PER_LINE*8;
     
 
@@ -67,7 +65,7 @@ when(parameters == empty || parameters.file == empty) ::<={
 // assumes 0-255
 @: numberToHex::(n => Number) {
     return {first :hextable[n / 16], // number lookups are always floored.
-     second:hextable[n % 16]}
+            second:hextable[n % 16]}
 }
 
 @asciitable = {
@@ -220,16 +218,16 @@ when(parameters == empty || parameters.file == empty) ::<={
 
     @:flush ::{
         lines->push(value: 
-            String.combine(strings:[                        
-                String.combine(strings:linePoints),
+            String.combine(:[                        
+                String.combine(:linePoints),
                 "      ",
-                String.combine(strings:lineAsTextPoints),
+                String.combine(:lineAsTextPoints),
                 '\n'
             ])
         );;
         iter = 0;
-        linePoints->setSize(size:0);
-        lineAsTextPoints->setSize(size:0);    
+        linePoints->setSize(:0);
+        lineAsTextPoints->setSize(:0);    
     }
 
     {:::} {
@@ -243,14 +241,14 @@ when(parameters == empty || parameters.file == empty) ::<={
                     flush();
                 }
 
-                @n = numberToHex(n:data[i]);
-                linePoints->push(value:n.first);
-                linePoints->push(value:n.second);
-                linePoints->push(value:' ');
+                @n = numberToHex(:data[i]);
+                linePoints->push(:n.first);
+                linePoints->push(:n.second);
+                linePoints->push(:' ');
 
-                n = numberToAscii(n:data[i]);
-                lineAsTextPoints->push(value:n.first);
-                lineAsTextPoints->push(value:n.second);
+                n = numberToAscii(:data[i]);
+                lineAsTextPoints->push(:n.first);
+                lineAsTextPoints->push(:n.second);
 
                 iter += 1;
             }
@@ -263,9 +261,9 @@ when(parameters == empty || parameters.file == empty) ::<={
 
             iterBytes = endPoint();
             foreach(lines) ::(k, v) {
-                onLineFinish(page:v);
+                onLineFinish(:v);
             }
-            lines->setSize(size:0);
+            lines->setSize(:0);
             
             when(iterBytes >= data.size) send();
         }
@@ -283,7 +281,7 @@ when(parameters == empty || parameters.file == empty) ::<={
             
             
             dump::(buffer => MemoryBuffer.type, onLineFinish) {
-                onLineFinish = if(onLineFinish == empty) ::(page) {ConsoleIO.printf(format:page);} else onLineFinish;
+                onLineFinish = if(onLineFinish == empty) ::(page) {ConsoleIO.put(:page);} else onLineFinish;
                 dumphex(data:buffer, onLineFinish:onLineFinish); 
             }
             
@@ -293,7 +291,7 @@ when(parameters == empty || parameters.file == empty) ::<={
 
 
 
-@:Filesystem = import(module:'Matte.System.Filesystem');
+@:Filesystem = import(:'Matte.System.Filesystem');
 @:buf = Filesystem.readBytes(path:parameters.file);
 DumpHex.dump(buffer:buf);
 

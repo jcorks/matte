@@ -1,3 +1,0 @@
-return {
-    value: 'Hello, world!'
-};

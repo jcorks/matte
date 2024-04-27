@@ -27,9 +27,9 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@class = import(module:'Matte.Core.Class');
-@EventSystem = import(module:'Matte.Core.EventSystem');
-@MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
+@class = import(:'Matte.Core.Class');
+@EventSystem = import(:'Matte.Core.EventSystem');
+@MemoryBuffer = import(:'Matte.Core.MemoryBuffer');
 @Socket = {
     Server : ::<={
         // Creates a new socket bound to an address and port.
@@ -47,7 +47,7 @@ DEALINGS IN THE SOFTWARE.
         // socket server object.
         //
         // CAN THROW AN ERROR if the socket could not be created
-        @:_socket_server_create = getExternalFunction(name:"__matte_::socket_server_create");
+        @:_socket_server_create = getExternalFunction(:"__matte_::socket_server_create");
 
 
         // updates the socket server state. This is just:
@@ -59,7 +59,7 @@ DEALINGS IN THE SOFTWARE.
         // returns:
         // None
         //
-        @:_socket_server_update = getExternalFunction(name:"__matte_::socket_server_update");
+        @:_socket_server_update = getExternalFunction(:"__matte_::socket_server_update");
 
 
         // Given a client 0-index, returns an ID referring to the client.
@@ -69,7 +69,7 @@ DEALINGS IN THE SOFTWARE.
         // 
         // returns:
         // client id (Number) or empty if not a valid index.
-        @:_socket_server_client_index_to_id = getExternalFunction(name:"__matte_::socket_server_client_index_to_id");
+        @:_socket_server_client_index_to_id = getExternalFunction(:"__matte_::socket_server_client_index_to_id");
 
 
 
@@ -79,14 +79,14 @@ DEALINGS IN THE SOFTWARE.
         // 
         // returns:
         // number of clients (Number)
-        @:_socket_server_get_client_count  = getExternalFunction(name:"__matte_::socket_server_get_client_count");      
+        @:_socket_server_get_client_count  = getExternalFunction(:"__matte_::socket_server_get_client_count");      
         
         
         // Updates the state
         // - Get any additional pending data 
         // - Send out pending data
         // - updates the states of clients
-        @:_socket_server_client_update = getExternalFunction(name:"__matte_::socket_server_client_update");
+        @:_socket_server_client_update = getExternalFunction(:"__matte_::socket_server_client_update");
 
         // Gets a string containing the address of the client
         //
@@ -96,7 +96,7 @@ DEALINGS IN THE SOFTWARE.
         //
         // returns:
         // address of the client (string)
-        @:_socket_server_client_address = getExternalFunction(name:"__matte_::socket_server_client_address");
+        @:_socket_server_client_address = getExternalFunction(:"__matte_::socket_server_client_address");
 
         // Gets a string containing info on the client.
         //
@@ -106,7 +106,7 @@ DEALINGS IN THE SOFTWARE.
         //
         // returns:
         // info on the client (string)
-        @:_socket_server_client_infostring = getExternalFunction(name:"__matte_::socket_server_client_infostring");
+        @:_socket_server_client_infostring = getExternalFunction(:"__matte_::socket_server_client_infostring");
 
 
 
@@ -119,7 +119,7 @@ DEALINGS IN THE SOFTWARE.
             //
             // returns:
             // string if pending message exists, empty if none.
-            @:_socket_server_client_get_next_message = getExternalFunction(name:"__matte_::socket_server_client_get_next_message");
+            @:_socket_server_client_get_next_message = getExternalFunction(:"__matte_::socket_server_client_get_next_message");
             
             // Sends a new string message. The string 
             // has an upper limit of 16777216 characters
@@ -130,11 +130,11 @@ DEALINGS IN THE SOFTWARE.
             // arg1: clientID
             // arg2: message (string)
             // 
-            @:_socket_server_client_send_message = getExternalFunction(name:"__matte_::socket_server_client_send_message");
+            @:_socket_server_client_send_message = getExternalFunction(:"__matte_::socket_server_client_send_message");
             
             // Gets the number of pending messages that have yet to 
             // be retrieved.
-            @:_socket_server_client_get_pending_message_count = getExternalFunction(name:"__matte_::socket_server_client_get_pending_message_count");
+            @:_socket_server_client_get_pending_message_count = getExternalFunction(:"__matte_::socket_server_client_get_pending_message_count");
         
         
         ///////// if in raw mode 
@@ -142,15 +142,15 @@ DEALINGS IN THE SOFTWARE.
             // arg0: server 
             // arg1: client 
             // returns: number of bytes waiting to be read.
-            @:_socket_server_client_get_pending_byte_count = getExternalFunction(name:"__matte_::socket_server_client_get_pending_byte_count");
+            @:_socket_server_client_get_pending_byte_count = getExternalFunction(:"__matte_::socket_server_client_get_pending_byte_count");
 
 
             // returns:
             // a MemoryBuffer object of the given number of bytes OR throws an error 
             // if cant.
-            @:_socket_server_client_read_bytes = getExternalFunction(name:"__matte_::socket_server_client_read_bytes");
+            @:_socket_server_client_read_bytes = getExternalFunction(:"__matte_::socket_server_client_read_bytes");
             
-            @:_socket_server_client_write_bytes = getExternalFunction(name:"__matte_::socket_server_client_write_bytes");
+            @:_socket_server_client_write_bytes = getExternalFunction(:"__matte_::socket_server_client_write_bytes");
 
 
             
@@ -160,7 +160,7 @@ DEALINGS IN THE SOFTWARE.
         
         // Request termination. If its successful, the client will be taken off the 
         // managed client list next update.
-        @:_socket_server_client_terminate = getExternalFunction(name:"__matte_::socket_server_client_terminate");
+        @:_socket_server_client_terminate = getExternalFunction(:"__matte_::socket_server_client_terminate");
         
 
 
@@ -204,7 +204,7 @@ DEALINGS IN THE SOFTWARE.
 
                         if (count > 0) ::<={
                             @: bytes = MemoryBuffer.new();
-                            bytes.bindNative(handle:_socket_server_client_read_bytes(a:socket, b:id_number));
+                            bytes.bindNative(:_socket_server_client_read_bytes(a:socket, b:id_number));
                             this.emit(
                                 event:'onIncomingData',
                                 detail:bytes
@@ -229,7 +229,7 @@ DEALINGS IN THE SOFTWARE.
                         onIncomingData ::(detail){},
                         onDisconnect ::(detail){}
                     }                
-                    id_number = Number.parse(string:id);
+                    id_number = Number.parse(:id);
                     socket = handle;
                     messageIn = message;
                     
@@ -323,13 +323,13 @@ DEALINGS IN THE SOFTWARE.
                         @:newlen = _socket_server_get_client_count(a:socket);
                         @: found = {}
                         for(0, newlen)::(i){
-                            @id = String(from:_socket_server_client_index_to_id(a:socket, b:i));
+                            @id = String(:_socket_server_client_index_to_id(a:socket, b:i));
                             found[id] = true;
 
                             // new client
                             if (clientIndex[id] == empty) ::<={
                                 @client = Client.new(id:id, handle:socket);
-                                clients->push(value:client);
+                                clients->push(:client);
                                 clientIndex[id] = true;
                                 found[id] = true;
 
@@ -343,14 +343,14 @@ DEALINGS IN THE SOFTWARE.
                             forever ::{
                                 when(i == clients->keycount) send();
                                 
-                                @idKey = String(from:clients[i].id);
+                                @idKey = String(:clients[i].id);
                                 if (found[idKey]) ::<= {
                                     clients[i].update();
                                     i+=1;
                                 } else ::<={
                                     clients[i].emit(event:'onDisconnect', detail:clients[i]);
-                                    clients->remove(key:i);
-                                    clientIndex->remove(key:idKey);                                
+                                    clients->remove(:i);
+                                    clientIndex->remove(:idKey);                                
                                 }
                             }
                         }                  
@@ -378,38 +378,38 @@ DEALINGS IN THE SOFTWARE.
         //
         // CAN THROW AN ERROR if the socket could not be created
         // returns socket handle (number)
-        @_socket_client_create = getExternalFunction(name:"__matte_::socket_client_create");
+        @_socket_client_create = getExternalFunction(:"__matte_::socket_client_create");
 
         // cleans up the socket, terminating the connection.
         // arg0: socket handle
-        @_socket_client_delete = getExternalFunction(name:"__matte_::socket_client_delete");
+        @_socket_client_delete = getExternalFunction(:"__matte_::socket_client_delete");
 
         // arg0: socket handle
         // CAN THROW AN ERROR if the state is 1 (pending connection) and the connection 
         // fails to complete 
-        @_socket_client_update = getExternalFunction(name:"__matte_::socket_client_update");
+        @_socket_client_update = getExternalFunction(:"__matte_::socket_client_update");
 
         // arg0: socket handle 
         // returns state:
         // 0 -> disconnected 
         // 1 -> pending connection 
         // 2 -> connected
-        @_socket_client_get_state = getExternalFunction(name:"__matte_::socket_client_get_state");
+        @_socket_client_get_state = getExternalFunction(:"__matte_::socket_client_get_state");
         
         // arg0: socket handle 
         // returns a string about the host if connected or pending connection.
-        @_socket_client_get_host_info = getExternalFunction(name:"__matte_::socket_client_get_host_info");
+        @_socket_client_get_host_info = getExternalFunction(:"__matte_::socket_client_get_host_info");
         
         ///////// if in raw mode 
             // arg0: socket handle 
-            @_socket_get_pending_byte_count = getExternalFunction(name:"__matte_::socket_client_get_pending_byte_count");
+            @_socket_get_pending_byte_count = getExternalFunction(:"__matte_::socket_client_get_pending_byte_count");
     
             // returns:
             // a MemoryBuffer object of the given number of bytes OR throws an error 
             // if cant.
-            @:_socket_client_read_bytes = getExternalFunction(name:"__matte_::socket_client_read_bytes");
+            @:_socket_client_read_bytes = getExternalFunction(:"__matte_::socket_client_read_bytes");
             
-            @:_socket_client_write_bytes = getExternalFunction(name:"__matte_::socket_client_write_bytes");
+            @:_socket_client_write_bytes = getExternalFunction(:"__matte_::socket_client_write_bytes");
 
                 
                 
@@ -490,7 +490,7 @@ DEALINGS IN THE SOFTWARE.
                 
                 this.interface = {
                     connect::(address => String, port => Number, mode, tls) {
-                        when (socket != empty) error(message:'Socket is already connected.');
+                        when (socket != empty) error(:'Socket is already connected.');
                         if (mode == empty) ::<={
                             mode = 0;
                         }

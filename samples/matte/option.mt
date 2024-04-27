@@ -78,12 +78,12 @@ DEALINGS IN THE SOFTWARE.
     )
 ;
 
-@:full    = Option.some(value:42);
+@:full    = Option.some(:42);
 @:notFull = Option.none(); 
 
 
-print(message:"showValue(full)    -> " + showValue(opt:full));
-print(message:"showValue(notFull) -> " + showValue(opt:notFull));
+print(:"showValue(full)    -> " + showValue(:full));
+print(:"showValue(notFull) -> " + showValue(:notFull));
 
 
 

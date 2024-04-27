@@ -33,22 +33,22 @@ DEALINGS IN THE SOFTWARE.
 // Binary files are worked with as MemoryBuffers, so check out 
 // the memorybuffer_simple.mt to see how they work if more info is 
 // needed.
-@:Filesystem = import(module:'Matte.System.Filesystem');
-@:MBuffer = import(module:'Matte.Core.MemoryBuffer');
+@:Filesystem = import(:'Matte.System.Filesystem');
+@:MBuffer = import(:'Matte.Core.MemoryBuffer');
 
 
 
 // The Filesystem current working directory (cwd) always starts 
 // where the Matte interpreter is started.
-print(message: 'Currently working within: '+Filesystem.cwd);
+print(: 'Currently working within: '+Filesystem.cwd);
 
 
 // directoryContents is a read-only array that shows 
 // the contents of the cwd. Each element has a name, 
 // whether its a file, and its fully qualified path.
-print(message: 'Current working contents:');
+print(: 'Current working contents:');
 foreach(Filesystem.directoryContents) ::(index, file) {
-    print(message: 'name: ' + file.name + ', isFile? ' + file.isFile);
+    print(: 'name: ' + file.name + ', isFile? ' + file.isFile);
 }
 
 
@@ -56,9 +56,9 @@ foreach(Filesystem.directoryContents) ::(index, file) {
 // A file can have its string contents read and dumped.
 // Note that readString will throw and error on failure.
 @:testPath = Filesystem.directoryContents[0].path;
-print(message: 'Reading contents of the first file: ' + testPath);
-print(message:
-    Filesystem.readString(path:testPath)
+print(: 'Reading contents of the first file: ' + testPath);
+print(:
+    Filesystem.readString(:testPath)
 );
 
 
@@ -77,7 +77,7 @@ Filesystem.writeString(
 @:writeBuffer = MBuffer.new();
 writeBuffer.size = 10;
 for(0, 10) ::(i) {
-    writeBuffer.writeI8(offset:i, value:i);
+    writeBuffer.writeI8(offset:i, value:i+10);
 }
 
 // The byte analogs of writing and reading
@@ -89,14 +89,12 @@ Filesystem.writeBytes(
 );
 
 
-@:readBuffer = Filesystem.readBytes(
-    path:'test.bin'
-);
+@:readBuffer = Filesystem.readBytes(:'test.bin');
 
 
-print(message: 'Read byte buffer from test.bin: ' + readBuffer.size + ' bytes');
+print(: 'Read byte buffer from test.bin: ' + readBuffer.size + ' bytes');
 for(0, readBuffer.size) ::(i) {
-    print(message: 'Byte ' + i + ' = ' + readBuffer.readI8(offset:i));
+    print(: 'Byte ' + i + ' = ' + readBuffer.readI8(:i));
 }
 
 

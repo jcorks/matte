@@ -100,27 +100,10 @@ static matteValue_t vm_ext_call__object__insert(matteVM_t * vm, matteValue_t fn,
 
 static matteValue_t vm_ext_call__object__remove(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_object(vm, args)) return matte_store_new_value(vm->store);
-    if (matte_value_type(args[1])) {
-        matte_value_object_remove_key(vm->store, 
-            args[0],
-            args[1]
-        );
-    } else if (matte_value_type(args[2])) {
-        if (matte_value_type(args[2]) != MATTE_VALUE_TYPE_OBJECT) {
-            matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "'keys' for remove query requires argument to be an Object."));
-            return matte_store_new_value(vm->store);            
-        }
-        uint32_t i;
-        uint32_t len = matte_value_object_get_number_key_count(vm->store, args[2]);
-        for(i = 0; i < len; ++i) {
-            matteValue_t v = matte_value_object_access_index(vm->store, args[2], i);        
-            matte_value_object_remove_key(vm->store, 
-                args[0],
-                v
-            );
-            matte_store_recycle(vm->store, v);
-        }
-    }
+    matte_value_object_remove_key(vm->store, 
+        args[0],
+        args[1]
+    );
     return matte_store_new_value(vm->store);
 }
 
@@ -214,16 +197,10 @@ static matteValue_t vm_ext_call__object__filter(matteVM_t * vm, matteValue_t fn,
 
 static matteValue_t vm_ext_call__object__findindex(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (!ensure_arg_object(vm, args)) return matte_store_new_value(vm->store);
-    if (matte_value_type(args[1]) != MATTE_VALUE_TYPE_EMPTY &&
-        matte_value_type(args[2]) != MATTE_VALUE_TYPE_EMPTY) {
-        matte_vm_raise_error_cstring(vm, "findIndex() cannot have both 'value' and 'query' specified.");        
-        return matte_store_new_value(vm->store);                   
-    }
 
 
     matte_value_object_push_lock(vm->store, args[0]);
     matte_value_object_push_lock(vm->store, args[1]);
-    matte_value_object_push_lock(vm->store, args[2]);
     
     
     
@@ -232,42 +209,59 @@ static matteValue_t vm_ext_call__object__findindex(matteVM_t * vm, matteValue_t 
     uint32_t len = matte_value_object_get_number_key_count(vm->store, args[0]);
     uint32_t i;
     
-    if (matte_value_type(args[2])) {
-        if (!matte_value_is_callable(vm->store, args[2])) {
-            matte_vm_raise_error_cstring(vm, "When specified, the query parameter for findIndex() must be callable.");        
-        } else {
-            matteArray_t namesSrc = MATTE_ARRAY_CAST(&vm->specialString_value, matteValue_t, 1);
-            matteArray_t * names = matte_array_clone(&namesSrc);
-            for(i = 0; i < len; ++i) {
-                if (vm->pendingCatchable) break;
-                matteValue_t v = matte_value_object_access_index(vm->store, args[0], i);
-                matteArray_t argsv = MATTE_ARRAY_CAST(&v, matteValue_t, 1);
+    for(i = 0; i < len; ++i) {
+        if (vm->pendingCatchable) break;
+        matteValue_t v = matte_value_object_access_index(vm->store, args[0], i);
 
-                if (matte_value_as_boolean(vm->store, matte_vm_call(vm, args[2], &argsv, names, NULL))) {
-                    matte_value_into_number(vm->store, &out, i);
-                    break;
-                }
-            }
-            
-            matte_array_destroy(names);
-        }
-    } else {
-        for(i = 0; i < len; ++i) {
-            if (vm->pendingCatchable) break;
-            matteValue_t v = matte_value_object_access_index(vm->store, args[0], i);
-
-            if (matte_value_as_boolean(vm->store, vm_operator__eq(vm, v, args[1])))  {
-                matte_value_into_number(vm->store, &out, i);
-                break;
-            }
+        if (matte_value_as_boolean(vm->store, vm_operator__eq(vm, v, args[1])))  {
+            matte_value_into_number(vm->store, &out, i);
+            break;
         }
     }
     matte_value_object_pop_lock(vm->store, args[0]);
     matte_value_object_pop_lock(vm->store, args[1]);
-    matte_value_object_pop_lock(vm->store, args[2]);
 
     return out;
 }
+
+static matteValue_t vm_ext_call__object__findindexcondition(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
+    if (!ensure_arg_object(vm, args)) return matte_store_new_value(vm->store);
+
+    matte_value_object_push_lock(vm->store, args[0]);
+    matte_value_object_push_lock(vm->store, args[1]);
+    
+    
+    
+    matteValue_t out = {};   
+    matte_value_into_number(vm->store, &out, -1);
+    uint32_t len = matte_value_object_get_number_key_count(vm->store, args[0]);
+    uint32_t i;
+    
+    if (!matte_value_is_callable(vm->store, args[1])) {
+        matte_vm_raise_error_cstring(vm, "When specified, the query parameter for findIndexCondition() must be callable.");        
+    } else {
+        matteArray_t namesSrc = MATTE_ARRAY_CAST(&vm->specialString_value, matteValue_t, 1);
+        matteArray_t * names = matte_array_clone(&namesSrc);
+        for(i = 0; i < len; ++i) {
+            if (vm->pendingCatchable) break;
+            matteValue_t v = matte_value_object_access_index(vm->store, args[0], i);
+            matteArray_t argsv = MATTE_ARRAY_CAST(&v, matteValue_t, 1);
+
+            if (matte_value_as_boolean(vm->store, matte_vm_call(vm, args[1], &argsv, names, NULL))) {
+                matte_value_into_number(vm->store, &out, i);
+                break;
+            }
+        }
+        
+        matte_array_destroy(names);
+    }
+    matte_value_object_pop_lock(vm->store, args[0]);
+    matte_value_object_pop_lock(vm->store, args[1]);
+
+    return out;
+}
+
+
 
 static matteValue_t vm_ext_call__object__newtype(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     matteValue_t out = matte_value_create_type(vm->store, args[0], args[1], args[2]);

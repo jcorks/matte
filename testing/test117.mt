@@ -14,14 +14,14 @@
 out = out + list->findIndex(:list[2]);
 out = out + list->findIndex(:{});
 
-out = out + list->findIndexCondition(:(value) <- value.id == 0);
-out = out + list->findIndexCondition(:(value) <- value.id == 10);
-out = out + list->findIndexCondition(:(value) <- value.id > 20);
-out = out + list->findIndexCondition(:(value) <- false);
+out = out + list->findIndexCondition(::(value) <- value.id == 0);
+out = out + list->findIndexCondition(::(value) <- value.id == 10);
+out = out + list->findIndexCondition(::(value) <- value.id > 20);
+out = out + list->findIndexCondition(::(value) <- false);
 
 
 {:::} {
-    list->findIndex(value:21);
+    list->findIndex(:21);
 } : {
     onError::(message) {
         out = out + 'error';

@@ -44,36 +44,35 @@ DEALINGS IN THE SOFTWARE.
 // Once created, worker are immediately started.
 @w = Async.Worker.new(
     module : 'async_simple__helper.mt',
-    input  : JSON.encode(object:{a:"hello", count:4200})
+    input  : JSON.encode(:{a:"hello", count:4200})
 );
 
-w.installHooks(events:{
+w.installHooks(:{
     // Workers are eventsystems and have a set of events 
     // that are hookable. onStateChange is one of the most useful.
-    'onStateChange' :::(detail) {
+    onStateChange ::(detail) {
         // When successful, the state will change to 'Finished'.
         when(detail == Async.Worker.State.Finished) ::<= {
-            print(message:'Done. Computed result: ' + w.result);    
+            print(:'Done. Computed result: ' + w.result);    
         }
         
         // When an error occurs in the worker, the state will change to 'Failed'.
         when(detail == Async.Worker.State.Failed) ::<= {
-            print(message:'Failed');    
-            print(message:'From worker:');
-            print(message:w.error);
+            print(:'Failed');    
+            print(:'From worker:');
+            print(:w.error);
         }
     },
 
     // Communication can occur between the parent and the workers
     // Listening for messages is done with an event hook.
-    'onNewMessage' :::(detail) {
-            print(message:'Message from worker: ' + detail);
-        
+    onNewMessage ::(detail) {
+        print(:'Message from worker: ' + detail);        
     }
 });
 
 // Similarly, we can send messages to the child.
-w.send(message:'Hi!');
+w.send(:'Hi!');
 
 
 // To wait for workers, a convenience function "wait()"

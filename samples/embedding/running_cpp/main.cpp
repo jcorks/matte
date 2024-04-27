@@ -133,10 +133,10 @@ int main() {
         "@:array = [10, 40, 3, 6, 20, 450];"
         
         // Retrieve the external C++ sort function
-        "@:sort = getExternalFunction(name:'c++_sort');"
+        "@:sort = getExternalFunction(:'c++_sort');"
         
         // Call the sort and return the newly sorted array.
-        "return sort(list:array);"
+        "return sort(:array);"
     );
     
     // return the sorted array as an introspected string.

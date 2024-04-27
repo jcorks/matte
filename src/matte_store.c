@@ -1589,6 +1589,7 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         }
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__CONTAINS);
       }
+
       case MATTE_QUERY__REPLACE: {
         if (matte_value_type(*v) != MATTE_VALUE_TYPE_STRING) {
             matteString_t * str = matte_string_create_from_c_str("replace requires base value to be a string.");
@@ -1827,6 +1828,16 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         }
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__FINDINDEX);
       }
+      
+      case MATTE_QUERY__FINDINDEXCONDITION: {
+        if (matte_value_type(*v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v->value.id)) {
+            matteString_t * str = matte_string_create_from_c_str("findIndexCondition requires base value to be an object.");
+            matte_vm_raise_error_string(store->vm, str);
+            matte_string_destroy(str);
+            return out;
+        }
+        return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__FINDINDEXCONDITION);
+      }      
 
       case MATTE_QUERY__ISA: {
         return *matte_vm_get_external_builtin_function_as_value(store->vm, MATTE_EXT_CALL__QUERY__ISA);
@@ -2112,7 +2123,7 @@ void matte_value_object_function_activate_closure(matteStore_t * store, matteVal
         matte_deallocate(m->function.referrables);
         
     m->function.referrablesCount = len;
-    m->function.referrables = matte_allocate(len * sizeof(matteValue_t));
+    m->function.referrables = (matteValue_t*)matte_allocate(len * sizeof(matteValue_t));
 
     for(i = 0; i < len; ++i) {
         matteValue_t vSrc = matte_array_at(refs, matteValue_t, i);
@@ -2161,7 +2172,7 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
     }
 
     d->function.capturesCount = src->function.capturesCount;
-    d->function.captures = matte_allocate(src->function.capturesCount*sizeof(CapturedReferrable_t));
+    d->function.captures = (CapturedReferrable_t*)matte_allocate(src->function.capturesCount*sizeof(CapturedReferrable_t));
 
     uint32_t i;
     uint32_t len = d->function.capturesCount;
@@ -2250,7 +2261,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
 
 
     // referrables come from a history of creation contexts.
-    d->function.captures = matte_allocate(len * sizeof(CapturedReferrable_t));
+    d->function.captures = (CapturedReferrable_t*)matte_allocate(len * sizeof(CapturedReferrable_t));
     for(i = 0; i < len; ++i) {
         matteValue_t context = frame.context;
 

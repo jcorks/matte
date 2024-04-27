@@ -232,7 +232,7 @@ static matteValue_t vm_ext_call__string__format(matteVM_t * vm, matteValue_t fn,
         if (i >= len - otherLen) {
             matte_string_concat(str, newst); 
         } else {
-            uint32_t * buffer = malloc(matte_string_get_length(newst) * sizeof(uint32_t));
+            uint32_t * buffer = (uint32_t*)malloc(matte_string_get_length(newst) * sizeof(uint32_t));
             for(n = 0; n < lenNew; ++n) {
                 buffer[n] = matte_string_get_char(newst, n);                        
             }

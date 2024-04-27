@@ -27,10 +27,10 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@:TestModule = import(module:'module.mt', parameters:{offset:1000});
+@:TestModule = import(:'module.mt');
 
 
 @a = TestModule.new(initial:300);
 a.value0 = 100;
 a.value1 = 200;
-print(message:a.add());
+print(:a.add());

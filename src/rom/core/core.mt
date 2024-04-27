@@ -27,11 +27,11 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@class = import(module:"Matte.Core.Class");
-@json        = import(module:"Matte.Core.JSON");
-@eventSystem = import(module:'Matte.Core.EventSystem');
-@introspect  = import(module:'Matte.Core.Introspect');
-@memorybuffer= import(module:'Matte.Core.MemoryBuffer');
+@class = import(:"Matte.Core.Class");
+@json        = import(:"Matte.Core.JSON");
+@eventSystem = import(:'Matte.Core.EventSystem');
+@introspect  = import(:'Matte.Core.Introspect');
+@memorybuffer= import(:'Matte.Core.MemoryBuffer');
 
 return class(
     define:::(this) {

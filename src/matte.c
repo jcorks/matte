@@ -132,7 +132,7 @@ struct matte_t {
 // Implementation of strdup since it is not part of C99 standard
 static char * matte_strdup(const char * str) {
     int len = strlen(str);
-    char * cpy = matte_allocate(len+1);
+    char * cpy = (char*)matte_allocate(len+1);
     memcpy(cpy, str, len+1);
     return cpy;   
 }
@@ -155,7 +155,7 @@ static void matte_print(matte_t * m, const char * fmt, ...) {
     if (size <= 0) return;
     va_list args;
     va_start(args, fmt);
-    char * buffer = matte_allocate(size+2);
+    char * buffer = (char*)matte_allocate(size+2);
     vsnprintf(
         buffer,
         size+1,

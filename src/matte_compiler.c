@@ -975,6 +975,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "import");
         break;
       }
+      case MATTE_TOKEN_EXTERNAL_IMPORTMODULE: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "importModule");
+        break;
+      }
 
 
 
@@ -2832,6 +2836,11 @@ static matteArray_t * compile_base_value(
         *src = iter->next;
         return inst;
       }
+      case MATTE_TOKEN_EXTERNAL_IMPORTMODULE: {
+        write_instruction__ext(inst, GET_LINE_OFFSET(block), MATTE_EXT_CALL_IMPORTMODULE);
+        *src = iter->next;
+        return inst;
+      }
 
       
       case MATTE_TOKEN_EXTERNAL_TYPEEMPTY: {
@@ -3147,6 +3156,7 @@ static int query_name_to_index(const matteString_t * str) {
     if (!strcmp(st, "subset")) return MATTE_QUERY__SUBSET;
     if (!strcmp(st, "filter")) return MATTE_QUERY__FILTER;
     if (!strcmp(st, "findIndex")) return MATTE_QUERY__FINDINDEX;
+    if (!strcmp(st, "findIndexCondition")) return MATTE_QUERY__FINDINDEXCONDITION;
     if (!strcmp(st, "isa")) return MATTE_QUERY__ISA;
     if (!strcmp(st, "map")) return MATTE_QUERY__MAP;
     if (!strcmp(st, "reduce")) return MATTE_QUERY__REDUCE;
@@ -3292,7 +3302,7 @@ static matteArray_t * compile_function_call(
         }
         
         if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER ||
-            iter->next->next->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+            iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
 
             if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER)
                 iter = iter->next; // skip :    
@@ -3314,12 +3324,12 @@ static matteArray_t * compile_function_call(
         uint32_t i = function_intern_string(block, (matteString_t*)iter->data);
         uint32_t nameLineNum = iter->line;
 
-        if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("$", matte_string_get_c_str(iter->data))) {
+        if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("$", matte_string_get_c_str((matteString_t*)iter->data))) {
             matte_syntax_graph_print_compile_error(g, iter, "Cannot bind as argument special dynamic binding character $.");
             goto L_FAIL;            
         }
 
-        if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("_", matte_string_get_c_str(iter->data))) {
+        if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("_", matte_string_get_c_str((matteString_t*)iter->data))) {
             matte_syntax_graph_print_compile_error(g, iter, "Cannot bind as argument special interface private accessor _.");
             goto L_FAIL;            
         }
@@ -4328,11 +4338,11 @@ static int compile_statement(
       case MATTE_TOKEN_DECLARE_CONST:
         varConst = 1;
       case MATTE_TOKEN_DECLARE: {
-        if (iter->next->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("$", matte_string_get_c_str(iter->next->data))) {
+        if (iter->next->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("$", matte_string_get_c_str((matteString_t*)iter->next->data))) {
             matte_syntax_graph_print_compile_error(g, iter, "Cannot declare variable with special binding name $.");
             return -1;
         }
-        if (iter->next->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("_", matte_string_get_c_str(iter->next->data))) {
+        if (iter->next->ttype == MATTE_TOKEN_VARIABLE_NAME && !strcmp("_", matte_string_get_c_str((matteString_t*)iter->next->data))) {
             matte_syntax_graph_print_compile_error(g, iter, "Cannot declare variable with special interface private accessor _.");
             return -1;
         }

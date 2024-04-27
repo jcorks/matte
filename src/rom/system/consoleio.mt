@@ -27,9 +27,9 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@class = import(module:"Matte.Core.Class");
-@_print = getExternalFunction(name:"__matte_::consoleio_print");
-@_getch = getExternalFunction(name:"__matte_::consoleio_getch");
+@class = import(:"Matte.Core.Class");
+@_print = getExternalFunction(:"__matte_::consoleio_print");
+@_getch = getExternalFunction(:"__matte_::consoleio_getch");
 return class(
     name : 'Matte.System.ConsoleIO',
     define:::(this) {
@@ -65,9 +65,9 @@ return class(
                 return _getch(a:unbuffered);
             },
 
-            getln : getExternalFunction(name:"__matte_::consoleio_getline"),
+            getln : getExternalFunction(:"__matte_::consoleio_getline"),
 
-            clear : getExternalFunction(name:"__matte_::consoleio_clear")
+            clear : getExternalFunction(:"__matte_::consoleio_clear")
         }
     }
 ).new();

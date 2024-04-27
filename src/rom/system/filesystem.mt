@@ -27,24 +27,24 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@class = import(module:"Matte.Core.Class");
-@MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
+@class = import(:"Matte.Core.Class");
+@MemoryBuffer = import(:'Matte.Core.MemoryBuffer');
 
-@_getcwd = getExternalFunction(name:"__matte_::filesystem_getcwd");
-@_setcwd = getExternalFunction(name:"__matte_::filesystem_setcwd");
-@_directoryEnumerate = getExternalFunction(name:"__matte_::filesystem_directoryenumerate");
-@_directoryObjectCount  = getExternalFunction(name:"__matte_::filesystem_directoryobjectcount");
-@_directoryObjectName   = getExternalFunction(name:"__matte_::filesystem_directoryobjectname");
-@_directoryObjectPath   = getExternalFunction(name:"__matte_::filesystem_directoryobjectpath");
-@_directoryObjectIsFile = getExternalFunction(name:"__matte_::filesystem_directoryobjectisfile");
-@_readBytes = getExternalFunction(name:"__matte_::filesystem_readbytes");
+@_getcwd = getExternalFunction(:"__matte_::filesystem_getcwd");
+@_setcwd = getExternalFunction(:"__matte_::filesystem_setcwd");
+@_directoryEnumerate = getExternalFunction(:"__matte_::filesystem_directoryenumerate");
+@_directoryObjectCount  = getExternalFunction(:"__matte_::filesystem_directoryobjectcount");
+@_directoryObjectName   = getExternalFunction(:"__matte_::filesystem_directoryobjectname");
+@_directoryObjectPath   = getExternalFunction(:"__matte_::filesystem_directoryobjectpath");
+@_directoryObjectIsFile = getExternalFunction(:"__matte_::filesystem_directoryobjectisfile");
+@_readBytes = getExternalFunction(:"__matte_::filesystem_readbytes");
 
-@_readString = getExternalFunction(name:"__matte_::filesystem_readstring");
-@_writeString = getExternalFunction(name:"__matte_::filesystem_writestring");
-@_writeBytes = getExternalFunction(name:"__matte_::filesystem_writebytes");
-@_remove = getExternalFunction(name:"__matte_::filesystem_remove");
-@_getFullPath = getExternalFunction(name:"__matte_::filesystem_getfullpath");
-@_exists = getExternalFunction(name:"__matte_::filesystem_exists");
+@_readString = getExternalFunction(:"__matte_::filesystem_readstring");
+@_writeString = getExternalFunction(:"__matte_::filesystem_writestring");
+@_writeBytes = getExternalFunction(:"__matte_::filesystem_writebytes");
+@_remove = getExternalFunction(:"__matte_::filesystem_remove");
+@_getFullPath = getExternalFunction(:"__matte_::filesystem_getfullpath");
+@_exists = getExternalFunction(:"__matte_::filesystem_exists");
 
 return class(
     name : 'Matte.System.Filesystem',
@@ -64,7 +64,7 @@ return class(
             
             // changes directory to the directory above.
             // Throws an error on failure.
-            cwdUp : getExternalFunction(name:"__matte_::filesystem_cwdup"),
+            cwdUp : getExternalFunction(:"__matte_::filesystem_cwdup"),
             
             // returns a Matte.Array describing the contents of the current directory.
             // Each member of the array is an object with the following 
@@ -105,7 +105,7 @@ return class(
             // On failure, throws an error.
             readBytes : ::(path){            
                 @:m = MemoryBuffer.new()  
-                m.bindNative(handle:_readBytes(a:path));
+                m.bindNative(:_readBytes(a:path));
                 return m;
             },
 

@@ -32,43 +32,43 @@ return ::(value) {
     @strings = [];
     @pspace ::(level) {
         for(0,level)::{
-            strings->push(value:'  ');
+            strings->push(:'  ');
         }
     }
     @helper ::(obj, level) {
         @poself = helper;
 
         match(obj->type) {
-            (String) :  strings->push(value:'(type => String): \'' + obj + '\''),
-            (Number) :  strings->push(value:'(type => Number): '+obj),
-            (Boolean):  strings->push(value:'(type => Boolean): '+obj),
-            (Function): strings->push(value:'(type => Function)'),
-            (Empty)  :  strings->push(value:'<empty>'),
-            (Type):     strings->push(value:'(type => Type): ' + obj),
+            (String) :  strings->push(:'(type => String): \'' + obj + '\''),
+            (Number) :  strings->push(:'(type => Number): '+obj),
+            (Boolean):  strings->push(:'(type => Boolean): '+obj),
+            (Function): strings->push(:'(type => Function)'),
+            (Empty)  :  strings->push(:'<empty>'),
+            (Type):     strings->push(:'(type => Type): ' + obj),
             default: ::<={
-                when(already[obj] == true) strings->push(value:
+                when(already[obj] == true) strings->push(:
                     '(type => '+obj->type+'): [already printed]'
                 );
                 already[obj] = true;
 
-                strings->push(value:'(type => '+obj->type+'): {');
+                strings->push(:'(type => '+obj->type+'): {');
 
                 @multi = false;
                 foreach(obj)::(key, val) {                        
-                    strings->push(value:(if (multi) ',\n' else '\n')); 
+                    strings->push(:(if (multi) ',\n' else '\n')); 
                     pspace(level:level+1);
-                    strings->push(value:String(from:key));
-                    strings->push(value:' : ');
+                    strings->push(:String(:key));
+                    strings->push(:' : ');
                     poself(obj:val, level:level+1);
                     multi = true;
                 }
                 pspace(level:level);
                 if (multi) ::<= {
-                    strings->push(value:'\n');
+                    strings->push(:'\n');
                     pspace(level:level);
-                    strings->push(value:'}');
+                    strings->push(:'}');
                 } else 
-                    strings->push(value:'}');
+                    strings->push(:'}');
             }
         }
     }

@@ -35,13 +35,13 @@ DEALINGS IN THE SOFTWARE.
 // be accessible. ConsoleIO guarantees standard out interaction.
 // In addition, ConsoleIO.getln() allows for reading from stdin in the traditional 
 // wait-for-input way which is useful for simple commandline tools.
-@:Console = import(module:'Matte.System.ConsoleIO');
+@:Console = import(:'Matte.System.ConsoleIO');
 
 
 // This can be used to clear the console in a system-specific way.
 Console.clear();
 
-Console.println(message:"Hi. What's your favorite color?");
+Console.println(:"Hi. What's your favorite color?");
 @result = ::<= {
     // Pauses until input is read.
     @raw = Console.getln();

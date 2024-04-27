@@ -43,10 +43,10 @@ DEALINGS IN THE SOFTWARE.
     @:len = str->length; 
     m.size = len;
     for(0, len)::(i){
-        m.writeI8(offset:i, value:str->charCodeAt(index:i));
+        m.writeI8(offset:i, value:str->charCodeAt(:i));
     }
     
-    client.send(bytes:m);
+    client.send(:m);
     m.release();
 }
 
@@ -82,31 +82,31 @@ server.installHook(event:'onNewClient', hook:::(detail){
     
     // There are also some identifying data members, such as 
     // address.
-    print(message:'Server: ' + client.address + ' has connected.');
+    print(:'Server: ' + client.address + ' has connected.');
 
 
-    client.installHooks(events:{
+    client.installHooks(:{
 
         // The onDisconnect event fires when the client is 
         // detected as lost by the OS.
-        'onDisconnect':::(detail){
-            print(message:'Server: ' + client.address + ' has disconnected');    
+        onDisconnect ::(detail){
+            print(:'Server: ' + client.address + ' has disconnected');    
         },
         
 
         // The onIncomingData event fires when data has successfully 
         // been received from the client.
-        'onIncomingData':::(detail) {
+        onIncomingData ::(detail) {
             
             // Lets assume the data is string data and print it.
             @:data = detail;
             @str = '';
             for(0, data.size)::(i) {
                 str = str + ' ';
-                str = str->setCharCodeAt(index:i, value:data.readI8(offset:i));
+                str = str->setCharCodeAt(index:i, value:data.readI8(:i));
             }
 
-            print(message:'Server: ' + client.address + ' has sent ' + data.size + 'bytes :' + str);        
+            print(:'Server: ' + client.address + ' has sent ' + data.size + 'bytes :' + str);        
 
             // and send back a string to the client
             sendDataString(client:client, str:'pong!');

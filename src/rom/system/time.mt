@@ -27,13 +27,13 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-@class = import(module:"Matte.Core.Class");
-@EventSystem = import(module:'Matte.Core.EventSystem');
+@class = import(:"Matte.Core.Class");
+@EventSystem = import(:'Matte.Core.EventSystem');
 
 
-@_sleepms = getExternalFunction(name:"__matte_::time_sleepms");
-@_getTicks = getExternalFunction(name:"__matte_::time_getticks");
-@_date = getExternalFunction(name:"__matte_::time_date");
+@_sleepms = getExternalFunction(:"__matte_::time_sleepms");
+@_getTicks = getExternalFunction(:"__matte_::time_getticks");
+@_date = getExternalFunction(:"__matte_::time_date");
 @initTime = _getTicks();
 
 
@@ -47,7 +47,7 @@ return class(
 
             // Gets the current time, as from the C standard time() function with the 
             // NULL argument.
-            time : getExternalFunction(name:"__matte_::time_time"),
+            time : getExternalFunction(:"__matte_::time_time"),
 
             // Gets the number of milliseconds since the instance started
             getTicks ::{

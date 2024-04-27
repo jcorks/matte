@@ -7,7 +7,7 @@
 
 @strout = '';
 for(0, a->length) ::(i){
-    strout = strout + a->charCodeAt(index:i);
+    strout = strout + a->charCodeAt(:i);
 }
 
 
