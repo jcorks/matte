@@ -22,59 +22,61 @@ const Matte = {
             EXT_CALL : {
                 NOOP : 0,
                 IMPORT : 1,
-                PRINT : 2,
-                SEND : 3,
-                ERROR : 4,
-                BREAKPOINT : 5,
+                IMPORTMODULE : 2,
+                PRINT : 3,
+                SEND : 4,
+                ERROR : 5,
+                BREAKPOINT : 6,
                 
-                NUMBER_PI : 6,
-                NUMBER_PARSE : 7,
-                NUMBER_RANDOM : 8,
+                NUMBER_PI : 7,
+                NUMBER_PARSE : 8,
+                NUMBER_RANDOM : 9,
                 
-                STRING_COMBINE : 9,
+                STRING_COMBINE : 10,
                 
-                OBJECT_NEWTYPE : 10,
-                OBJECT_INSTANTIATE : 11,
-                OBJECT_FREEZEGC : 12,
-                OBJECT_THAWGC : 13,
-                OBJECT_GARBAGECOLLECT : 14,
+                OBJECT_NEWTYPE : 11,
+                OBJECT_INSTANTIATE : 12,
+                OBJECT_FREEZEGC : 13,
+                OBJECT_THAWGC : 14,
+                OBJECT_GARBAGECOLLECT : 15,
                 
-                QUERY_ATAN2 : 15,
+                QUERY_ATAN2 : 16,
                 
-                QUERY_PUSH : 16,
-                QUERY_INSERT: 17,
-                QUERY_REMOVE : 18,
-                QUERY_SETATTRIBUTES : 19,
-                QUERY_SORT : 20,
-                QUERY_SUBSET : 21,
-                QUERY_FILTER : 22,
-                QUERY_FINDINDEX : 23,
-                QUERY_ISA : 24,
-                QUERY_MAP : 25,
-                QUERY_REDUCE : 26,
-                QUERY_ANY : 27,
-                QUERY_ALL : 28,
-                QUERY_FOREACH : 29,
-                QUERY_SETSIZE : 30,
+                QUERY_PUSH : 17,
+                QUERY_INSERT: 18,
+                QUERY_REMOVE : 19,
+                QUERY_SETATTRIBUTES : 20,
+                QUERY_SORT : 21,
+                QUERY_SUBSET : 22,
+                QUERY_FILTER : 23,
+                QUERY_FINDINDEX : 24,
+                QUERY_FINDINDEXCONDITION : 25,
+                QUERY_ISA : 26,
+                QUERY_MAP : 27,
+                QUERY_REDUCE : 28,
+                QUERY_ANY : 29,
+                QUERY_ALL : 30,
+                QUERY_FOREACH : 31,
+                QUERY_SETSIZE : 32,
                 
-                QUERY_CHARAT : 31,
-                QUERY_CHARCODEAT : 32,
-                QUERY_SETCHARAT : 33,
-                QUERY_SETCHARCODEAT : 34,
-                QUERY_SCAN : 35,
-                QUERY_SEARCH : 36,
-                QUERY_SEARCH_ALL : 37,
-                QUERY_FORMAT : 38,
-                QUERY_SPLIT : 39,
-                QUERY_SUBSTR : 40,
-                QUERY_CONTAINS : 41,
-                QUERY_COUNT : 42,
-                QUERY_REPLACE : 43,
-                QUERY_REMOVECHAR : 44,
+                QUERY_CHARAT : 33,
+                QUERY_CHARCODEAT : 34,
+                QUERY_SETCHARAT : 35,
+                QUERY_SETCHARCODEAT : 36,
+                QUERY_SCAN : 37,
+                QUERY_SEARCH : 38,
+                QUERY_SEARCH_ALL : 39,
+                QUERY_FORMAT : 40,
+                QUERY_SPLIT : 41,
+                QUERY_SUBSTR : 42,
+                QUERY_CONTAINS : 43,
+                QUERY_COUNT : 44,
+                QUERY_REPLACE : 45,
+                QUERY_REMOVECHAR : 46,
                 
-                QUERY_SETISINTERFACE : 45,
+                QUERY_SETISINTERFACE : 47,
                 
-                GETEXTERNALFUNCTION : 46
+                GETEXTERNALFUNCTION : 48
                 
             },
             
@@ -459,13 +461,14 @@ const Matte = {
                 SUBSET : 43,
                 FILTER : 44,
                 FINDINDEX : 45,
-                ISA : 46,
-                MAP : 47,
-                REDUCE : 48,
-                ANY : 49,
-                ALL : 50,
-                FOREACH : 51,
-                SETISINTERFACE : 52
+                FINDINDEXCONDITION : 46,
+                ISA : 47,
+                MAP : 48,
+                REDUCE : 49,
+                ANY : 50,
+                ALL : 51,
+                FOREACH : 52,
+                SETISINTERFACE : 53
             };
             
             var typecode_id_pool = 10;
@@ -2191,6 +2194,14 @@ const Matte = {
                 return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FINDINDEX);
             };
 
+            store_queryTable[QUERY.FINDINDEXCONDITION] = function(value) {
+                if (valToType(value) != TYPE_OBJECT) {
+                    vm.raiseErrorString("findIndexCondition requires base value to be an object.");
+                    return createValue();
+                }
+                return vm.getBuiltinFunctionAsValue(vm.EXT_CALL.QUERY_FINDINDEXCONDITION);
+            };
+
             store_queryTable[QUERY.ISA] = function(value) {
                 if (valToType(value) != TYPE_OBJECT) {
                     vm.raiseErrorString("isa requires base value to be an object.");
@@ -2960,7 +2971,8 @@ const Matte = {
                 
                 if (valToType(func) == store.TYPE_TYPE) {
                     if (args.length) {
-                        if (argNames[0] != vm_specialString_from) {
+                        if (argNames[0] != vm_specialString_from &&
+                            argNames[0] != '') {
                             vm.raiseErrorString("Type conversion failed: unbound parameter to function ('from')");
                         }
                         return store.valueToType(args[0], func);
@@ -2994,6 +3006,15 @@ const Matte = {
                             return store.empty;                        
                         }
                         argsReal[0] = args[0];                    
+                    } else if (lenReal == 2 && argNames[0] == '' &&
+                                               argNames[1] == 'base'
+                    ) {
+                        if (len > 2) {
+                            vm.raiseErrorString("Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument.");
+                            return store.empty;                        
+                        }
+                        argsReal[0] = args[1];                    
+                        argsReal[1] = args[0];                    
                     } else {
                         for(var i = 0; i < lenReal; ++i) {
                             for(var n = 0; n < len; ++n) {
@@ -4439,8 +4460,12 @@ const Matte = {
             };
             
             
-            vm_addBuiltIn(vm.EXT_CALL.IMPORT, ['module', 'parameters'], function(fn, args) {
+            vm_addBuiltIn(vm.EXT_CALL.IMPORT, ['module'], function(fn, args) {
                 return vm.import(store.valueAsString(args[0]), args[1]);
+            });
+
+            vm_addBuiltIn(vm.EXT_CALL.IMPORTMODULE, ['module', 'parameters'], function(fn, args) {
+                return vm.import(store.valueAsString(args[0]), undefined);
             });
             
             vm_addBuiltIn(vm.EXT_CALL.PRINT, ['message'], function(fn, args) {
@@ -4597,21 +4622,9 @@ const Matte = {
                 return args[0];
             });
 
-            vm_addBuiltIn(vm.EXT_CALL.QUERY_REMOVE, ['base', 'key', 'keys'], function(fn, args) {
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_REMOVE, ['base', 'key'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.empty;
-                if (valToType(args[1])) {
-                    store.valueObjectRemoveKey(args[0], args[1])
-                } else if (valToType(args[2])) {
-                    if (valToType(args[2]) != store.TYPE_OBJECT) {
-                        vm.raiseErrorString("'keys' for remove query requires argument to be an Object.");
-                        return store.empty;
-                    }                
-                    const len = store.valueObjectGetNumberKeyCount(args[2]);
-                    for(var i = 0; i < len; ++i) {
-                        const v = store.valueObjectAccessIndex(args[2], i);
-                        store.valueObjectRemoveKey(args[0], v);
-                    }
-                }
+                store.valueObjectRemoveKey(args[0], args[1])
                 return store.empty;
             });
 
@@ -4665,45 +4678,47 @@ const Matte = {
             });            
 
 
-            vm_addBuiltIn(vm.EXT_CALL.QUERY_FINDINDEX, ['base', 'value', 'query'], function(fn, args) {
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_FINDINDEX, ['base', 'value'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.empty;
-                if (valToType(args[1]) != store.TYPE_EMPTY &&
-                    valToType(args[2]) != store.TYPE_EMPTY) {
-                    vm.raiseErrorString("findIndex() cannot have both 'value' and 'query' specified.");
-                    return store.empty;                    
-                }
 
                 const len = store.valueObjectGetNumberKeyCount(args[0]);
 
-                if (valToType(args[2]) != store.TYPE_EMPTY) {
-                    const names = [vm_specialString_value];
-                    const vals = [];
-                    if (!store.valueIsCallable(args[2])) {
-                        vm.raiseErrorString("When specified, the query parameter for findIndex() must be callable.");
-                    } else {
-                        for(var i = 0; i < len; ++i) {
-                        
-                            if (vm_pendingCatchable) break;
-                            const v = store.valueObjectAccessIndex(args[0], i);
-                            vals[0] = v;
-
-                            if (store.valueAsBoolean(vm.callFunction(args[2], vals, names))) {
-                                return store.createNumber(i);
-                            }                        
-                        }
-                    }                
-                } else {
-                    for(var i = 0; i < len; ++i) {
-                        if (vm_pendingCatchable) break;
-                        const v = store.valueObjectAccessIndex(args[0], i);
-                        if (store.valueAsBoolean(vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ](v, args[1]))) {
-                            return store.createNumber(i);
-                        }
+                for(var i = 0; i < len; ++i) {
+                    if (vm_pendingCatchable) break;
+                    const v = store.valueObjectAccessIndex(args[0], i);
+                    if (store.valueAsBoolean(vm_operatorFunc[vm_operator.MATTE_OPERATOR_EQ](v, args[1]))) {
+                        return store.createNumber(i);
                     }
                 }
 
                 return store.createNumber(-1);
             });
+
+            vm_addBuiltIn(vm.EXT_CALL.QUERY_FINDINDEXCONDITION, ['base', 'query'], function(fn, args) {
+                if (!ensureArgObject(args)) return store.empty;
+
+                const len = store.valueObjectGetNumberKeyCount(args[0]);
+
+                const names = [vm_specialString_value];
+                const vals = [];
+                if (!store.valueIsCallable(args[1])) {
+                    vm.raiseErrorString("When specified, the query parameter for findIndexCondition() must be callable.");
+                } else {
+                    for(var i = 0; i < len; ++i) {
+                    
+                        if (vm_pendingCatchable) break;
+                        const v = store.valueObjectAccessIndex(args[0], i);
+                        vals[0] = v;
+
+                        if (store.valueAsBoolean(vm.callFunction(args[1], vals, names))) {
+                            return store.createNumber(i);
+                        }                        
+                    }
+                }                
+
+                return store.createNumber(-1);
+            });
+
             
             vm_addBuiltIn(vm.EXT_CALL.QUERY_ISA, ['base', 'type'], function(fn, args) {
                 if (!ensureArgObject(args)) return store.empty;
