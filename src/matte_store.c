@@ -3314,7 +3314,8 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
 
 // Returns the number of number keys within the object, ignoring keys of other types.
 uint32_t matte_value_object_get_number_key_count(matteStore_t * store, matteValue_t v) {
-    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
+        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only get size from something that's an Object."));        
         return 0;
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3323,7 +3324,8 @@ uint32_t matte_value_object_get_number_key_count(matteStore_t * store, matteValu
 
 
 uint32_t matte_value_object_get_key_count(matteStore_t * store, matteValue_t v) {
-    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
+        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only get a keycount from something that's an Object."));        
         return 0;
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3342,7 +3344,10 @@ void matte_value_object_remove_key_string(matteStore_t * store, matteValue_t v, 
 }
 
 void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteValue_t key) {
-    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) return;
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
+        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only remove from something that's an Object."));        
+        return;
+    }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
     switch(matte_value_type(key)) {
       case MATTE_VALUE_TYPE_EMPTY: return;
@@ -3402,7 +3407,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
 }
 
 void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue_t func) {
-    if (IS_FUNCTION_ID(v.value.id)) {
+    if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
         matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "'foreach' requires an object."));
         return;
     }

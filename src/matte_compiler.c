@@ -2421,7 +2421,7 @@ static matteArray_t * push_variable_name(
                     capture.stubID = block->stubID;
                     capture.referrable = i+1;
                     write_instruction__prf(
-                        inst, GET_LINE_OFFSET(block), 
+                        inst, GET_LINE_OFFSET(blockSrc), 
                         1+matte_array_get_size(blockSrc->locals)+
                           matte_array_get_size(blockSrc->args) +
                           matte_array_get_size(blockSrc->captures)
@@ -2444,7 +2444,7 @@ static matteArray_t * push_variable_name(
                     capture.stubID = block->stubID;
                     capture.referrable = i+offset;
                     write_instruction__prf(
-                        inst, GET_LINE_OFFSET(block), 
+                        inst, GET_LINE_OFFSET(blockSrc), 
                         1+matte_array_get_size(blockSrc->locals)+
                           matte_array_get_size(blockSrc->args) +
                           matte_array_get_size(blockSrc->captures)
@@ -3315,8 +3315,12 @@ static matteArray_t * compile_function_call(
             matte_string_destroy(blank);
            
             exp = compile_expression(g, block, functions, &iter);
-            merge_instructions(inst, exp); // push argument
-            write_instruction__nst(inst, iter->line - block->startingLine, i);
+            if (exp) {
+                merge_instructions(inst, exp); // push argument
+                write_instruction__nst(inst, iter->line - block->startingLine, i);
+            } else {
+                goto L_FAIL;
+            }
             break;        
         }
     
@@ -4521,18 +4525,18 @@ static matteFunctionBlock_t * compile_function_block(
 
                         write_instruction__prf(
                             b->instructions, 
-                            b->startingLine,                             
+                            GET_LINE_OFFSET(b),                             
                             matte_array_get_size(b->args)
                         );
 
                         write_instruction__nem(
                             b->instructions, 
-                            b->startingLine                       
+                            GET_LINE_OFFSET(b)
                         );
                         
                         write_instruction__opr(
                             b->instructions, 
-                            b->startingLine,                             
+                            GET_LINE_OFFSET(b),
                             MATTE_OPERATOR_EQ
                         );
 
@@ -4545,13 +4549,13 @@ static matteFunctionBlock_t * compile_function_block(
 
                         write_instruction__skp_insert(
                             b->instructions, 
-                            b->startingLine,                             
+                            GET_LINE_OFFSET(b),
                             matte_array_get_size(expInst)+1 // skip expression+arf
                         );
 
                         write_instruction__arf(
                             expInst, 
-                            b->startingLine,                             
+                            GET_LINE_OFFSET(b),
                             matte_array_get_size(b->args), 
                             0
                         );

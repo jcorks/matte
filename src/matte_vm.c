@@ -853,6 +853,11 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
              
             matteValue_t p = STACK_PEEK(0);
             matteValue_t target = STACK_PEEK(1);
+
+            if (matte_value_type(p) != MATTE_VALUE_TYPE_OBJECT) {
+                matte_vm_raise_error_cstring(vm, "VM error: tried to prepare key-value pairs for object construction, but a value was given that isn't an Object.");    
+                break;            
+            }
                        
             uint32_t len = matte_value_object_get_number_key_count(vm->store, p);
             uint32_t i;
@@ -2052,6 +2057,33 @@ void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr) {
 matteStore_t * matte_vm_get_store(matteVM_t * vm) {return vm->store;}
 
 
+static void matte_vm_call_full__raise_error(
+    matteVM_t * vm,
+    matteValue_t func,
+    const matteString_t * error
+) {
+
+    matteString_t * fullErr = NULL;
+    matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, func);
+    if (stub && matte_bytecode_stub_get_file_id(stub) != 0) {
+        int line = matte_bytecode_stub_get_starting_line(stub);
+        uint32_t fileID = matte_bytecode_stub_get_file_id(stub);
+        fullErr = matte_string_create_from_c_str(
+            "Error occurred while starting call: %s\nFunction was defined in %s, line %d.",
+            matte_string_get_c_str(error),
+            matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, fileID)),
+            line
+        );
+    } else {
+        fullErr = matte_string_create_from_c_str(
+            "Error occurred while starting call: %s",
+            matte_string_get_c_str(error)
+        );
+    }
+    matte_vm_raise_error_string(vm, fullErr);
+    matte_string_destroy(fullErr);
+}
+
 matteValue_t matte_vm_call_full(
     matteVM_t * vm, 
     matteValue_t func, 
@@ -2068,7 +2100,7 @@ matteValue_t matte_vm_call_full(
     }
     int callable = matte_value_is_callable(vm->store, func); 
     if (!callable) {
-        matteString_t * err = matte_string_create_from_c_str("Error: cannot call non-function value ");
+        matteString_t * err = matte_string_create_from_c_str("Cannot call non-function value ");
         if (prettyName)
             matte_string_concat(err, prettyName);
         matte_vm_raise_error_string(vm, err);
@@ -2077,7 +2109,7 @@ matteValue_t matte_vm_call_full(
     }
 
     if (matte_array_get_size(args) != matte_array_get_size(argNames)) {
-        matte_vm_raise_error_cstring(vm, "VM call as mismatching arguments and parameter names.");            
+        matte_vm_raise_error_cstring(vm, "VM call has mismatching arguments and parameter names.");            
         return matte_store_new_value(vm->store);
     }
 
@@ -2086,11 +2118,16 @@ matteValue_t matte_vm_call_full(
         if (matte_array_get_size(args)) {
             if (matte_array_at(argNames, matteValue_t, 0).value.id != vm->specialString_from.value.id &&
                 matte_array_at(argNames, matteValue_t, 0).value.id != vm->specialString_.value.id ) {
-                matte_vm_raise_error_cstring(vm, "Type conversion failed: unbound parameter to function ('from')");            
+                matteString_t * str = matte_string_create_from_c_str("Type conversion failed: unbound parameter to function ('from')");
+                matte_vm_call_full__raise_error(vm, func, str);            
+                matte_string_destroy(str);
             }
             return matte_value_to_type(vm->store, matte_array_at(args, matteValue_t, 0), func);
         } else {
-            matte_vm_raise_error_cstring(vm, "Type conversion failed (no value given to convert).");
+            matteString_t * str = matte_string_create_from_c_str("Type conversion failed (no value given to convert).");
+            matte_vm_call_full__raise_error(vm, func, str);            
+            matte_string_destroy(str);
+
             return matte_store_new_value(vm->store);
         }
     }
@@ -2132,7 +2169,7 @@ matteValue_t matte_vm_call_full(
                 str = matte_string_create_from_c_str(
                     "Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument."
                 );
-                matte_vm_raise_error_string(vm, str);
+                matte_vm_call_full__raise_error(vm, func, str);
                 matte_string_destroy(str);                
                 matte_array_destroy(argsReal);
                 return matte_store_new_value(vm->store);
@@ -2158,7 +2195,7 @@ matteValue_t matte_vm_call_full(
                 str = matte_string_create_from_c_str(
                     "Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument."
                 );
-                matte_vm_raise_error_string(vm, str);
+                matte_vm_call_full__raise_error(vm, func, str);
                 matte_string_destroy(str);                
                 matte_array_destroy(argsReal);
                 return matte_store_new_value(vm->store);
@@ -2215,7 +2252,7 @@ matteValue_t matte_vm_call_full(
                         matte_string_concat_printf(str, "\" ");
                     }
                     
-                    matte_vm_raise_error_string(vm, str);
+                    matte_vm_call_full__raise_error(vm, func, str);
                     matte_string_destroy(str);
                     
                     matte_array_destroy(argsReal);
@@ -2283,7 +2320,7 @@ matteValue_t matte_vm_call_full(
                 str = matte_string_create_from_c_str(
                     "Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument."
                 );
-                matte_vm_raise_error_string(vm, str);
+                matte_vm_call_full__raise_error(vm, func, str);
                 matte_string_destroy(str);                
                 return matte_store_new_value(vm->store);
             }
@@ -2336,7 +2373,7 @@ matteValue_t matte_vm_call_full(
                         matte_string_concat_printf(str, "\" ");
                     }
 
-                    matte_vm_raise_error_string(vm, str);
+                    matte_vm_call_full__raise_error(vm, func, str);
                     matte_string_destroy(str); 
                     return matte_store_new_value(vm->store);
                 }
