@@ -412,7 +412,9 @@ static void busy_possum_restart_cycle(matteStore_t * h) {
     uint32_t rootID = h->roots;
     while(rootID) {
         matteObject_t * root = matte_store_bin_fetch(h->bin, rootID);
-        matte_array_push(h->pendingRoots, root->storeID);
+        if (m->rootState) {        
+            matte_array_push(h->pendingRoots, root->storeID);
+        }
         rootID = root->nextRoot;
     }
 }

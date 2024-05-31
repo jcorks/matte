@@ -140,7 +140,6 @@ static matteObject_t * create_function(matteStoreBin_t * store);
 
 
 typedef struct {
-    uint32_t prev;
     uint32_t next;
     uint32_t data;
 } matteObjectNode_t;
@@ -590,7 +589,6 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
     if (!parent->children) {
         parent->children = mon_create(h->nodes);
         matteObjectNode_t * n = mon_get(h->nodes, parent->children);
-        n->prev = 0;
         n->next = 0;
         n->data = child->storeID;
     } else {
@@ -598,11 +596,9 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
         matteObjectNode_t * n = mon_get(h->nodes, next);
         matteObjectNode_t * old = mon_get(h->nodes, parent->children);
         
-        n->prev = 0;
         n->next = parent->children;
         n->data = child->storeID;
         
-        old->prev = next;
         parent->children = next;
     }
 }
@@ -629,19 +625,14 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
 
 
     uint32_t next = parent->children;
+    matteObjectNode_t * prev = NULL;
     while(next) {
         matteObjectNode_t * node = mon_get(h->nodes, next);
-        if (node->data == child->storeID) {
-            matteObjectNode_t * prevnode = node->prev ? mon_get(h->nodes, node->prev) : NULL;
-            matteObjectNode_t * nextnode = node->next ? mon_get(h->nodes, node->next) : NULL;
-            
-            if (prevnode) {
-                prevnode->next = node->next;
+        if (node->data == child->storeID) {            
+            if (prev) {
+                prev->next = node->next;
             }
             
-            if (nextnode) {
-                nextnode->prev = node->prev;
-            }
             if (parent->children == next)
                 parent->children = node->next;
             
@@ -649,6 +640,7 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
             break;
         }
         next = node->next;
+        prev = node;
     }
 
     
@@ -3182,7 +3174,7 @@ void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
     if (m->rootState) {
         m->rootState--;
         if (m->rootState == 0) {
-            remove_root_node(store, &store->roots, m); 
+            //remove_root_node(store, &store->roots, m); 
             if (m->color == OBJECT_TRICOLOR__BLACK) {
                 matte_store_garbage_collect__rem_from_color(store, m);
                 m->color = OBJECT_TRICOLOR__GREY;
