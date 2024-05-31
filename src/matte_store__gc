@@ -206,35 +206,26 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         if (IS_FUNCTION_OBJECT(m)) {
             m->function.stub = NULL;
             uint32_t n;
-            uint32_t subl = m->function.capturesCount;
+            uint32_t subl = 0;
             // should be unlinked already because of above
-            for(n = 0; n < subl; ++n) {
-                object_unlink_parent(h, m, matte_store_bin_fetch_function(h->bin, m->function.captures[n].functionID));
+            if (m->function.vars->captures && m->function.isCloned == 0) {
+                matte_deallocate(m->function.vars->captures);
+                matte_deallocate(m->function.vars->captureOrigins);
             }
-            if (m->function.captures)
-                matte_deallocate(m->function.captures);
-            m->function.capturesCount = 0;
-            m->function.captures = NULL;
-
-            if (m->function.origin)
-                object_unlink_parent(h, m, matte_store_bin_fetch(h->bin, m->function.origin));
+            m->function.isCloned = 0;
+            m->function.vars->captures = NULL;
+            m->function.vars->captureOrigins = NULL;
             m->function.origin = 0;
 
             subl = m->function.referrablesCount;
             for(n = 0; n < subl; ++n) {
-                matteValue_t child = m->function.referrables[n];
-                if (matte_value_type(child) == MATTE_VALUE_TYPE_OBJECT) {
-                    object_unlink_parent_value(h, m, &child);
-                }
+                matteValue_t child = m->function.vars->referrables[n];
                 matte_store_recycle(h, child);
             }
-            if (m->function.referrables)
-                matte_deallocate(m->function.referrables);
+            if (m->function.vars->referrables)
+                matte_deallocate(m->function.vars->referrables);
             m->function.referrablesCount = 0;
-            m->function.referrables = NULL;
-
-
-
+            m->function.vars->referrables = NULL;
             if (m->function.types) {
                 matte_array_destroy(m->function.types);
             }
@@ -244,10 +235,6 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         } else {
 
             if (m->table.attribSet) {
-                if (matte_value_type(*m->table.attribSet)) {
-                    //matte_store_recycle(h, m->table.attribSet);
-                    object_unlink_parent_value(h, m, m->table.attribSet);
-                }
                 matte_deallocate(m->table.attribSet);
                 m->table.attribSet = NULL;
             }
@@ -256,7 +243,7 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                 uint32_t n;
                 uint32_t subl = matte_array_get_size(m->table.keyvalues_number);
                 for(n = 0; n < subl; ++n) {
-                    object_unlink_parent_value(h, m, &matte_array_at(m->table.keyvalues_number, matteValue_t, n));                
+                    matte_store_recycle(h, matte_array_at(m->table.keyvalues_number, matteValue_t, n));                
                 }
                 matte_array_destroy(m->table.keyvalues_number);
                 m->table.keyvalues_number = NULL;
@@ -274,11 +261,8 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                     matteValue_t v = matte_array_at(valIter, matteValue_t, i);
                     matteValue_t k = matte_array_at(keyIter, matteValue_t, i);
 
-                    if (matte_value_type(k) == MATTE_VALUE_TYPE_STRING)
-                        matte_string_store_unref(h->stringStore, k.value.id);
-
-                    object_unlink_parent_value(h, m, &k);  
-                    object_unlink_parent_value(h, m, &v);                
+                    matte_store_recycle(h, k);  
+                    matte_store_recycle(h, v);                
 
                 }
                 matte_mvt2_destroy(m->table.keyvalues_id);
@@ -292,6 +276,31 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
 
         // clean up object;
         if (m->children != NULL) {
+            uint32_t i;
+            uint32_t len = m->children->size;
+            uint32_t * children = m->children->data;
+            for(i = 0; i < len; ++i) {
+                matteObject_t * child = matte_store_bin_fetch(h->bin, children[i]);
+                if (child->refcount)
+                    child->refcount--;
+
+
+                #ifdef MATTE_DEBUG__STORE
+                {
+                    uint32_t i;
+                    int found = 0;
+                    for(i = 0; i < matte_array_get_size(child->parents); ++i) {
+                        if (matte_array_at(child->parents, matteValue_t, i).value.id == m->storeID) {
+                            matte_array_remove(child->parents, i);
+                            found = 1;
+                            break;            
+                        }
+                    }
+                    assert(found);
+                }
+                #endif
+            }
+        
             matte_au32_destroy(m->children);
             m->children = NULL;
         }

@@ -2299,11 +2299,11 @@ static uint32_t get_local_referrable(
     len = matte_array_get_size(block->args);
     for(i = 0; i < len; ++i) {
         if (matte_string_test_eq((const matteString_t*)iter->data, matte_array_at(block->args, matteString_t *, i))) {
-            return i+1;
+            return i;
         }
     }
 
-    uint32_t offset = len+1;
+    uint32_t offset = len;
     len = matte_array_get_size(block->locals);
     for(i = 0; i < len; ++i) {
         if (matte_string_test_eq((const matteString_t*)iter->data, matte_array_at(block->locals, matteString_t *, i))) {
@@ -2321,7 +2321,6 @@ static uint32_t get_local_referrable(
 // This will go through existing captures as well.
 static int is_referrable_const(matteFunctionBlock_t * block, uint32_t referrable) {
 
-    referrable--;    
     // overwriting local-face arguments is okay though!
     if (referrable < matte_array_get_size(block->args)) return 0;
     
@@ -2401,7 +2400,7 @@ static matteArray_t * push_variable_name(
         len = matte_array_get_size(block->captureNames);
         for(i = 0; i < len; ++i) {
             if (matte_string_test_eq((const matteString_t*)iter->data, matte_array_at(block->captureNames, matteString_t *, i))) {
-                write_instruction__prf(inst, GET_LINE_OFFSET(block), i+1+matte_array_get_size(block->locals)+matte_array_get_size(block->args));
+                write_instruction__prf(inst, GET_LINE_OFFSET(block), i+matte_array_get_size(block->locals)+matte_array_get_size(block->args));
                 *src = iter->next;
                 return inst;                    
             }
@@ -2419,10 +2418,10 @@ static matteArray_t * push_variable_name(
                 if (matte_string_test_eq((const matteString_t*)iter->data, matte_array_at(block->args, matteString_t *, i))) {
                     matteBytecodeStubCapture_t capture;
                     capture.stubID = block->stubID;
-                    capture.referrable = i+1;
+                    capture.referrable = i;
                     write_instruction__prf(
                         inst, GET_LINE_OFFSET(blockSrc), 
-                        1+matte_array_get_size(blockSrc->locals)+
+                          matte_array_get_size(blockSrc->locals)+
                           matte_array_get_size(blockSrc->args) +
                           matte_array_get_size(blockSrc->captures)
                     );
@@ -2436,7 +2435,7 @@ static matteArray_t * push_variable_name(
                 }
             }
 
-            uint32_t offset = len+1;
+            uint32_t offset = len;
             len = matte_array_get_size(block->locals);
             for(i = 0; i < len; ++i) {
                 if (matte_string_test_eq((const matteString_t*)iter->data, matte_array_at(block->locals, matteString_t *, i))) {
@@ -2445,14 +2444,14 @@ static matteArray_t * push_variable_name(
                     capture.referrable = i+offset;
                     write_instruction__prf(
                         inst, GET_LINE_OFFSET(blockSrc), 
-                        1+matte_array_get_size(blockSrc->locals)+
+                          matte_array_get_size(blockSrc->locals)+
                           matte_array_get_size(blockSrc->args) +
                           matte_array_get_size(blockSrc->captures)
                     );
                     matte_array_push(blockSrc->captures, capture);
                     matteString_t * str = matte_string_clone((const matteString_t*)iter->data);
                     matte_array_push(blockSrc->captureNames, str);
-                    isconst = is_referrable_const(block, i + 1 + matte_array_get_size(block->args));
+                    isconst = is_referrable_const(block, i + matte_array_get_size(block->args));
                     matte_array_push(blockSrc->capture_isConst, isconst);
 
                     *src = iter->next;
@@ -4526,7 +4525,7 @@ static matteFunctionBlock_t * compile_function_block(
                         write_instruction__prf(
                             b->instructions, 
                             GET_LINE_OFFSET(b),                             
-                            matte_array_get_size(b->args)
+                            matte_array_get_size(b->args)-1
                         );
 
                         write_instruction__nem(
@@ -4556,7 +4555,7 @@ static matteFunctionBlock_t * compile_function_block(
                         write_instruction__arf(
                             expInst, 
                             GET_LINE_OFFSET(b),
-                            matte_array_get_size(b->args), 
+                            matte_array_get_size(b->args)-1, 
                             0
                         );
                         

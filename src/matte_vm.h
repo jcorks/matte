@@ -258,6 +258,7 @@ struct matteVMStackFrame_t {
     /// Holds captured values.
     matteValue_t context;
     
+    
     /// Special value that serves as the "_" value.
     /// Canonically, this is reserved for the private interface binding.
     matteValue_t privateBinding;
@@ -265,6 +266,8 @@ struct matteVMStackFrame_t {
     /// Current instruction index within the stub
     uint32_t pc;
     
+    // shorthand number of referrables
+    uint32_t referrableCount;
     
     /// contextualized, human-readable string of the name of the running 
     /// function. It is not always possible to get an accurate name,
@@ -276,12 +279,10 @@ struct matteVMStackFrame_t {
 
     /// Copy of the referrable list owned by the context function 
     /// Is available for quick access, but is owned by the context function
-    /// NOTE: these values are ONLY representative of the context referrables 
-    /// at the ACTIVATION of the stack frame. Due to the nature of closures 
-    /// they will almost always mutate. The only metric that is guaranteed is 
-    /// the size of the referrable list, which is static.
-    matteArray_t *  referrables;
+    const matteValue_t * referrablesSet;
 
+    
+    const matteValue_t ** captures;
 
     
     /// Working array of values utilized by this function.

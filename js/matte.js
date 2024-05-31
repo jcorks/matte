@@ -3057,7 +3057,7 @@ const Matte = {
                     const lenReal = args.length;
                     var   len = stub.argCount;
                     const referrables = [];
-                    for(var i = 0; i < len+1; ++i) {
+                    for(var i = 0; i < len; ++i) {
                         referrables.push(store.empty);
                     }
                     
@@ -3067,13 +3067,13 @@ const Matte = {
                         for(i = 0; i < lenReal; ++i) {
                             store.valueObjectSet(val, argNames[i], args[i], 0);
                         }
-                        referrables[1] = val;
+                        referrables[0] = val;
                     } else {
                         if (lenReal == 1 && argNames[0] == '') {
                             if (len > 1) {
                                 vm.raiseErrorString("Call requested automatic binding using an expression argument, but it is vague which parameter this belongs to. Automatic binding is only available to functions that require a single argument.");
                             }
-                            referrables[1] = args[0];                            
+                            referrables[0] = args[0];                            
                         } else {
                             const nameMap = {};
                             
@@ -3087,7 +3087,7 @@ const Matte = {
                                 if (res == undefined) {                      
                                 } else {
                                     delete nameMap[name];
-                                    referrables[i+1] = args[res];                            
+                                    referrables[i] = args[res];                            
                                 }
                             }
                             
@@ -3114,7 +3114,7 @@ const Matte = {
                     
                     var ok = 1;
                     if (callable == 2 && len) {
-                        const arr = referrables.slice(1, referrables.length); 
+                        const arr = referrables.slice(0, referrables.length); 
                         ok = store.valueObjectFunctionPreTypeCheckUnsafe(func, arr);
                     }
                     len = stub.localCount;
@@ -3125,7 +3125,6 @@ const Matte = {
                     frame.context = func;
                     frame.privateBinding = callingContext;
                     frame.stub = stub;
-                    referrables[0] = func;
                     frame.referrable = store.createObjectArray(referrables);
                     frame.referrableSize = referrables.length;
                     
@@ -4811,7 +4810,7 @@ const Matte = {
                 if (d.usesi) {
                     store.valueObjectSetIndexUnsafe(
                         frame.referrable,
-                        1,
+                        0,
                         store.createNumber(d.i)
                     );
                 }
@@ -4829,7 +4828,7 @@ const Matte = {
                 if (d.usesi) {
                     store.valueObjectSetIndexUnsafe(
                         frame.referrable,
-                        1,
+                        0,
                         store.createNumber(d.i)
                     );
                 }

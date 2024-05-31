@@ -323,6 +323,18 @@ struct matteObjectChildNode_t {
 };
 
 
+typedef struct {
+    // call captured variables. Defined at function creation.
+    matteValue_t ** captures;
+
+    // in order, the origin functions for each capture
+    uint32_t * captureOrigins;
+
+    // list of THIS functions referrables. This is 
+    // owned and freed by the function
+    matteValue_t * referrables;    
+} matteVariableData_t;
+
 
 struct matteObject_t {
     
@@ -377,15 +389,11 @@ struct matteObject_t {
             // can track back to original creation contexts.
             uint32_t origin;
 
-            uint16_t capturesCount;
+            uint16_t isCloned;
             uint16_t referrablesCount;
 
-            // call captured variables. Defined at function creation.
-            CapturedReferrable_t * captures;
 
-            // list of THIS functions referrables. This is 
-            // owned and freed by the function
-            matteValue_t * referrables;    
+            matteVariableData_t * vars;
         } function;
     };
 
@@ -2054,7 +2062,7 @@ matteValue_t matte_value_frame_get_named_referrable(matteStore_t * store, matteV
             #endif
             matteValue_t argName = matte_bytecode_stub_get_arg_name(origin->function.stub, i);
             if (argName.value.id == name.value.id) {
-                matte_value_into_copy(store, &out, origin->function.referrables[1+i]);
+                matte_value_into_copy(store, &out, origin->function.vars->referrables[i]);
                 return out;
             }
         }
@@ -2071,7 +2079,7 @@ matteValue_t matte_value_frame_get_named_referrable(matteStore_t * store, matteV
                 );
             #endif
             if (matte_bytecode_stub_get_local_name(origin->function.stub, i).value.id == name.value.id) {
-                matte_value_into_copy(store, &out, origin->function.referrables[1+i+matte_bytecode_stub_arg_count(origin->function.stub)]);
+                matte_value_into_copy(store, &out, origin->function.vars->referrables[i+matte_bytecode_stub_arg_count(origin->function.stub)]);
                 return out;
             }
         }
@@ -2114,26 +2122,32 @@ int matte_value_object_function_was_activated(matteStore_t * store, matteValue_t
     return m->function.referrablesCount != 0;
 }
 
-void matte_value_object_function_activate_closure(matteStore_t * store, matteValue_t v, matteArray_t * refs) {
+const matteValue_t ** matte_value_object_function_activate_closure(
+    matteStore_t * store, 
+    matteValue_t v, 
+    matteValue_t * refs
+) {
     matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
     uint32_t i;
-    uint32_t len = matte_array_get_size(refs);
 
-    if (m->function.referrables)
-        matte_deallocate(m->function.referrables);
+    m->function.vars->referrables = refs;    
+    matteBytecodeStub_t * stub = m->function.stub;
         
-    m->function.referrablesCount = len;
-    m->function.referrables = (matteValue_t*)matte_allocate(len * sizeof(matteValue_t));
+    m->function.referrablesCount = (
+        matte_bytecode_stub_arg_count(stub) + 
+        matte_bytecode_stub_local_count(stub)
+    );
+    uint32_t len = m->function.referrablesCount;
 
     for(i = 0; i < len; ++i) {
-        matteValue_t vSrc = matte_array_at(refs, matteValue_t, i);
+        matteValue_t vSrc = refs[i];
         matteValue_t vv = matte_store_new_value(store);
         matte_value_into_copy(store, &vv, vSrc);
         if (matte_value_type(vv) == MATTE_VALUE_TYPE_OBJECT) {
             object_link_parent_value(store, m, &vv);
         }
-        m->function.referrables[i] = vv;
     }
+    return (const matteValue_t **)m->function.vars->captures;
 }
 
 
@@ -2171,17 +2185,12 @@ void matte_value_into_cloned_function_ref_(matteStore_t * store, matteValue_t * 
         d->function.types = matte_array_clone(src->function.types);
     }
 
-    d->function.capturesCount = src->function.capturesCount;
-    d->function.captures = (CapturedReferrable_t*)matte_allocate(src->function.capturesCount*sizeof(CapturedReferrable_t));
+    d->function.isCloned = 1;
+    d->function.vars->captures = src->function.vars->captures;
+    d->function.vars->captureOrigins = src->function.vars->captureOrigins;
 
-    uint32_t i;
-    uint32_t len = d->function.capturesCount;
-    for(i = 0; i < len; ++i) {
-        CapturedReferrable_t ref = src->function.captures[i];
-        object_link_parent(store, d, matte_store_bin_fetch_function(store->bin, ref.functionID));
-        d->function.captures[i] = ref;
-    }
-
+    // better? worse? you decide!
+    object_link_parent(store, d, src);
 }
 
 void matte_value_object_function_set_closure_value_unsafe(matteStore_t * store, matteValue_t v, uint32_t index, matteValue_t val) {
@@ -2190,7 +2199,7 @@ void matte_value_object_function_set_closure_value_unsafe(matteStore_t * store, 
         assert(index < m->function.referrablesCount);
     #endif
     
-    matteValue_t vOld = m->function.referrables[index];
+    matteValue_t vOld = m->function.vars->referrables[index];
 
     matteValue_t vNew = matte_store_new_value(store);
     matte_value_into_copy(store, &vNew, val);
@@ -2204,17 +2213,9 @@ void matte_value_object_function_set_closure_value_unsafe(matteStore_t * store, 
     if (matte_value_type(vNew) == MATTE_VALUE_TYPE_OBJECT) {
         object_link_parent_value(store, m, &vNew);
     }
-    m->function.referrables[index] = vNew;
+    m->function.vars->referrables[index] = vNew;
 }
 
-matteValue_t * matte_value_object_function_get_closure_value_unsafe(matteStore_t * store, matteValue_t v, uint32_t index) {
-    matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
-    #ifdef MATTE_DEBUG__STORE
-        assert(index < m->function.referrablesCount);
-    #endif
-
-    return m->function.referrables+index;
-}
 
 
 static void matte_value_into_new_function_ref_real(matteStore_t * store, matteValue_t * v, matteBytecodeStub_t * stub, int external) {
@@ -2261,21 +2262,19 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
 
 
     // referrables come from a history of creation contexts.
-    d->function.captures = (CapturedReferrable_t*)matte_allocate(len * sizeof(CapturedReferrable_t));
+    matteVariableData_t * vars = d->function.vars;
+    vars->captures = (matteValue_t**)matte_allocate(len * sizeof(matteValue_t *));
+    vars->captureOrigins = matte_allocate(len * sizeof(uint32_t));
+    
     for(i = 0; i < len; ++i) {
         matteValue_t context = frame.context;
 
         matteObject_t * origin = matte_store_bin_fetch_function(store->bin, context.value.id);
         while(origin) {
             if (matte_bytecode_stub_get_id(origin->function.stub) == capturesRaw[i].stubID) {
-                CapturedReferrable_t ref;                
-
-                ref.functionID = origin->storeID;
                 object_link_parent(store, d, origin);
-
-                ref.index = capturesRaw[i].referrable;
-
-                d->function.captures[i] = ref;
+                vars->captures[i] = origin->function.vars->referrables+capturesRaw[i].referrable;
+                vars->captureOrigins[i] = origin->storeID;
                 break;
             }
             origin = matte_store_bin_fetch(store->bin, origin->function.origin);
@@ -2283,14 +2282,12 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
 
         if (!origin) {
             matte_vm_raise_error_cstring(store->vm, "Could not find captured variable!");
-            CapturedReferrable_t ref;
-            ref.functionID = d->storeID; // need a valid reference
-            ref.index = 0;
-            d->function.captures[i] = ref;
+            static matteValue_t err = {};
+            vars->captures[i] = &err;
         }
     }
     
-    d->function.capturesCount = len;
+    d->function.isCloned = 0;
 }
 
 void matte_value_into_new_function_ref_(matteStore_t * store, matteValue_t * v, matteBytecodeStub_t * stub) {
@@ -2358,12 +2355,7 @@ matteBytecodeStub_t * matte_value_get_bytecode_stub(matteStore_t * store, matteV
 matteValue_t * matte_value_get_captured_value(matteStore_t * store, matteValue_t v, uint32_t index) {
     if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
         matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
-        if (index >= m->function.capturesCount) return NULL;
-        CapturedReferrable_t referrable = m->function.captures[index];
-
-
-
-        return matte_store_bin_fetch_function(store->bin, referrable.functionID)->function.referrables+referrable.index;
+        return m->function.vars->captures[index];
     }
     return NULL;
 }
@@ -2371,6 +2363,29 @@ matteValue_t * matte_value_get_captured_value(matteStore_t * store, matteValue_t
 void matte_value_set_captured_value(matteStore_t * store, matteValue_t v, uint32_t index, matteValue_t val) {
     if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT && IS_FUNCTION_ID(v.value.id)) {
         matteObject_t * m = matte_store_bin_fetch_function(store->bin, v.value.id);
+
+        matteObject_t * origin = matte_store_bin_fetch_function(store->bin, 
+            m->function.vars->captureOrigins[index]
+        );
+        
+        matteValue_t vNew = matte_store_new_value(store);
+        matte_value_into_copy(store, &vNew, val);        
+        if (matte_value_type(*m->function.vars->captures[index]) == MATTE_VALUE_TYPE_OBJECT) {        
+            object_unlink_parent_value(store, origin, m->function.vars->captures[index]);
+        }
+        
+        matte_store_recycle(store, *m->function.vars->captures[index]);        
+
+        if (matte_value_type(vNew) == MATTE_VALUE_TYPE_OBJECT) {
+            object_link_parent_value(store, origin, &vNew);
+        }    
+        
+        *m->function.vars->captures[index] = vNew;
+        
+
+
+
+        /*
         if (index >= m->function.capturesCount) return;
 
         CapturedReferrable_t referrable = m->function.captures[index];
@@ -2391,6 +2406,7 @@ void matte_value_set_captured_value(matteStore_t * store, matteValue_t v, uint32
 
 
         functionSrc->function.referrables[referrable.index] = vNew;
+        */
     }
 }
 
@@ -2411,7 +2427,8 @@ static void print_object_children(matteStore_t * h, matteObject_t * o) {
     
     if (IS_FUNCTION_OBJECT(o)) {
 
-        uint32_t subl = o->function.capturesCount;
+        uint32_t subl;
+        matte_bytecode_stub_get_captures(o->function.stub, &subl);
         // should be unlinked already because of above
         for(n = 0; n < subl; ++n) {
             matteValue_t dummy = {};
@@ -4278,8 +4295,7 @@ static void destroy_object(void * d) {
     }
 
     if (IS_FUNCTION_OBJECT(out)) {
-        matte_deallocate(out->function.captures);
-        matte_deallocate(out->function.referrables);
+        matte_deallocate(out->function.vars);
     } else {
 
         if (out->table.keyvalues_id) matte_mvt2_destroy(out->table.keyvalues_id);
@@ -4470,6 +4486,7 @@ static matteObject_t * create_function(matteStoreBin_t * store) {
     //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
     //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
 
+    out.function.vars = matte_allocate(sizeof(matteVariableData_t));
     out.storeID = matte_array_get_size(store->functions) * 2;
     #ifdef MATTE_DEBUG__STORE
         out.parents = matte_array_create(sizeof(matteValue_t));

@@ -550,7 +550,9 @@ const matteValue_t * matte_store_get_nullable_type(matteStore_t *);
 /// to the function. The callers references are transfered (moved)
 ///
 /// This is normally not needed by user code.
-void matte_value_object_function_activate_closure(matteStore_t *, matteValue_t v, matteArray_t * refs);
+const matteValue_t ** matte_value_object_function_activate_closure(matteStore_t *, matteValue_t v, matteValue_t * refs);
+
+
 
 
 /// return whether the function was activated.
