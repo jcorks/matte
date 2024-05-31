@@ -142,20 +142,22 @@ static void matte_store_garbage_collect__rem_from_color(matteStore_t * h, matteO
 
 
 static uint32_t busy_possum_mark_grey(matteStore_t * h, matteObject_t * o) {
-    uint32_t n;
-    uint32_t count = 0;
-    
     if (o->color != OBJECT_TRICOLOR__BLACK) return 0;
-    if (o->children == NULL) return 0;
-    
-    count = o->children->size;
-    uint32_t * data = o->children->data;
-    for(n = 0; n < count; ++n) {
-        matteObject_t * c = matte_store_bin_fetch(h->bin, data[n]);
+    if (o->children == 0) return 0;
+
+    uint32_t next = o->children;
+    uint32_t count = 0;
+    while(next) {
+        count++;        
+        matteObjectNode_t * node = mon_get(h->nodes, next);
+        next = node->next;
+        matteObject_t * c = matte_store_bin_fetch(h->bin, node->data);
         if (c->color != OBJECT_TRICOLOR__WHITE) continue;
         matte_store_garbage_collect__rem_from_color(h, c);
         c->color = OBJECT_TRICOLOR__GREY;
         matte_store_garbage_collect__add_to_color(h, c); 
+
+
     }
     return count;
 }
@@ -275,14 +277,13 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         
 
         // clean up object;
-        if (m->children != NULL) {
-            uint32_t i;
-            uint32_t len = m->children->size;
-            uint32_t * children = m->children->data;
-            for(i = 0; i < len; ++i) {
-                matteObject_t * child = matte_store_bin_fetch(h->bin, children[i]);
-                if (child->refcount)
-                    child->refcount--;
+        if (m->children) {
+            uint32_t next = m->children;
+            while(next) {
+                matteObjectNode_t * node = mon_get(h->nodes, next);
+                matteObject_t * child = matte_store_bin_fetch(h->bin, node->data);
+                //if (child->refcount)
+                //    child->refcount--;
 
 
                 #ifdef MATTE_DEBUG__STORE
@@ -299,10 +300,10 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                     assert(found);
                 }
                 #endif
+                mon_destroy(h->nodes, next);
+                next = node->next;
             }
-        
-            matte_au32_destroy(m->children);
-            m->children = NULL;
+            m->children = 0;
         }
         m->rootState = 0;
         m->prevRoot = 0;

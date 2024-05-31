@@ -138,6 +138,30 @@ static matteObject_t * create_function(matteStoreBin_t * store);
 #define IS_FUNCTION_ID(__ID__) (((__ID__)/2)*2 == (__ID__))
 #define IS_FUNCTION_OBJECT(__OBJ__) (((__OBJ__)->storeID/2)*2 == (__OBJ__)->storeID)
 
+
+typedef struct {
+    uint32_t prev;
+    uint32_t next;
+    uint32_t data;
+} matteObjectNode_t;
+
+typedef struct matteObjectNodePool_t matteObjectNodePool_t;
+
+// Creates a node pool;
+static matteObjectNodePool_t * monp_create();
+
+// Destroys a node pool
+static void monp_destroy(matteObjectNodePool_t *);
+
+
+// Creates a new node from the pool
+static uint32_t mon_create(matteObjectNodePool_t * m);
+static matteObjectNode_t * mon_get(matteObjectNodePool_t * m, uint32_t id);
+
+// destroys a node from the pool;
+static void mon_destroy(matteObjectNodePool_t * m, uint32_t id);
+
+
 enum {
     ROOT_AGE__YOUNG,
     ROOT_AGE__OLDEST
@@ -260,7 +284,7 @@ struct matteStore_t {
     
     
     
-    
+    matteObjectNodePool_t * nodes;
 
     // multipurpose iterator so no need to 
     // create an ephemeral one
@@ -341,7 +365,7 @@ struct matteObject_t {
 
     //matteTable_t * refChildren;
     //matteTable_t * refParents;
-    uint32_t refcount;
+    uint32_t children;
     uint32_t storeID;
 
     uint32_t typecode;
@@ -349,9 +373,10 @@ struct matteObject_t {
     uint16_t rootState;
     uint8_t  state;
     uint8_t  color;
+
     uint32_t prevRoot;
     uint32_t nextRoot;
-
+    
     uint32_t prevColor;
     uint32_t nextColor;
 
@@ -359,7 +384,6 @@ struct matteObject_t {
     #ifdef MATTE_DEBUG__STORE
         matteArray_t * parents;
     #endif
-    matteAU32_t * children;
     matteObjectExternalData_t * ext; 
     
     union {
@@ -563,11 +587,24 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
             matte_store_garbage_collect__add_to_color(h, child);
         }
     }
-    if (!parent->children)
-        parent->children = matte_au32_create();
+    if (!parent->children) {
+        parent->children = mon_create(h->nodes);
+        matteObjectNode_t * n = mon_get(h->nodes, parent->children);
+        n->prev = 0;
+        n->next = 0;
+        n->data = child->storeID;
+    } else {
+        uint32_t next = mon_create(h->nodes);
+        matteObjectNode_t * n = mon_get(h->nodes, next);
+        matteObjectNode_t * old = mon_get(h->nodes, parent->children);
         
-    matte_au32_push(parent->children, child->storeID);        
-    child->refcount++;
+        n->prev = 0;
+        n->next = parent->children;
+        n->data = child->storeID;
+        
+        old->prev = next;
+        parent->children = next;
+    }
 }
 
 static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matteObject_t * child) {
@@ -591,21 +628,31 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
     #endif
 
 
-    uint32_t i;
-    uint32_t len = parent->children->size;
-    uint32_t * data = parent->children->data;
-    for(i = 0; i < len; ++i) {
-        if (data[i] == child->storeID) {
-            matte_au32_remove(parent->children, i);
+    uint32_t next = parent->children;
+    while(next) {
+        matteObjectNode_t * node = mon_get(h->nodes, next);
+        if (node->data == child->storeID) {
+            matteObjectNode_t * prevnode = node->prev ? mon_get(h->nodes, node->prev) : NULL;
+            matteObjectNode_t * nextnode = node->next ? mon_get(h->nodes, node->next) : NULL;
+            
+            if (prevnode) {
+                prevnode->next = node->next;
+            }
+            
+            if (nextnode) {
+                nextnode->prev = node->prev;
+            }
+            if (parent->children == next)
+                parent->children = node->next;
+            
+            mon_destroy(h->nodes, next);
             break;
         }
-    }
-    
-    if (parent->children->size == 0) {
-        matte_au32_destroy(parent->children);
-        parent->children = NULL;
+        next = node->next;
     }
 
+    
+    /*
     if (child->refcount) {
         child->refcount--; 
         if (child->refcount == 0) {
@@ -619,7 +666,7 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
         }
         // TODO: change color of child? next cycle ok? 
     }
-
+    */
     /*
         if (child->refcount)
             child->refcount--; 
@@ -898,6 +945,7 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->routePather = matte_array_create(sizeof(void*));
     out->routeIter = matte_table_iter_create();
     out->freeIter = matte_table_iter_create();
+    out->nodes = monp_create();
     //out->verifiedRoot = matte_table_create_hash_pointer();
     out->stringStore = matte_string_store_create();
     out->toRemove = matte_array_create(sizeof(uint32_t));
@@ -1047,6 +1095,7 @@ void matte_store_destroy(matteStore_t * h) {
     matte_array_destroy(h->toRemove);
     matte_array_destroy(h->pendingRoots);
     matte_table_iter_destroy(h->freeIter);
+    monp_destroy(h->nodes);
 
     matte_array_destroy(h->kvIter_v);
     matte_array_destroy(h->kvIter_k);
@@ -2526,7 +2575,7 @@ void matte_value_print(matteStore_t * store, matteValue_t v) {
         printf("  color  :   %s\n", m->color == OBJECT_TRICOLOR__BLACK ? "black" : m->color == OBJECT_TRICOLOR__GREY ? "grey":"white");
         printf("         %d<->%d\n", m->prevColor ? m->prevColor : -1, m->nextColor ? m->nextColor : -1);
 
-        printf("  refct  :   %d\n", (int)m->refcount);
+        //printf("  refct  :   %d\n", (int)m->refcount);
 
         if (QUERY_STATE(m, OBJECT_STATE__RECYCLED)) {
             printf("  (WARNING: this object is currently dormant.)\n") ;          
@@ -4290,8 +4339,7 @@ static void destroy_object(void * d) {
         matte_array_destroy(out->parents);
     #endif
     if (out->children) {
-        matte_au32_destroy(out->children);
-        out->children = NULL;
+        out->children = 0;
     }
 
     if (IS_FUNCTION_OBJECT(out)) {
@@ -4542,6 +4590,50 @@ void * matte_pool_fetch(matteObjectPool_t * p) {
 void matte_pool_recycle(matteObjectPool_t * p, void * obj) {
     matte_array_push(p->pool, obj);
 }
+
+struct matteObjectNodePool_t {
+    matteAU32_t * dead;
+    matteArray_t * alive;
+};
+
+static matteObjectNodePool_t * monp_create() {
+    matteObjectNodePool_t * out = matte_allocate(sizeof(matteObjectNodePool_t));
+    out->dead = matte_au32_create();
+    out->alive = matte_array_create(sizeof(matteObjectNode_t));
+    return out;
+}
+
+// Destroys a node pool
+static void monp_destroy(matteObjectNodePool_t * m) {
+    matte_array_destroy(m->alive);
+    matte_au32_destroy(m->dead);
+    matte_deallocate(m);
+}
+
+
+// Creates a new node from the pool
+uint32_t mon_create(matteObjectNodePool_t * m) {
+    if (m->dead->size) {
+        uint32_t out = m->dead->data[m->dead->size-1];
+        m->dead->size--;
+        return out;
+    } else {
+        matteObjectNode_t n = {};
+        matte_array_push(m->alive, n);
+        return m->alive->size-1;
+    }
+}
+
+matteObjectNode_t * mon_get(matteObjectNodePool_t * m, uint32_t id) {
+    return ((matteObjectNode_t *)m->alive->data)+id;
+}
+
+// destroys a node from the pool;
+void mon_destroy(matteObjectNodePool_t * m, uint32_t id) {
+    matte_au32_push(m->dead, id);
+}
+
+
 
  
 
