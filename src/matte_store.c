@@ -235,7 +235,6 @@ struct matteStore_t {
     matteArray_t * kvIter_v;
     matteArray_t * kvIter_k;
     matteArray_t * mgIter;
-    matteArray_t * pendingRoots;
     matteArray_t * routePather;
     matteTableIter_t * routeIter;
     // all objects contained in here are "verified as root-reachable"
@@ -246,6 +245,7 @@ struct matteStore_t {
     int shutdown;
     uint32_t gcRequestStrength;
     uint32_t gcOldCycle;
+    uint32_t pendingRoots;
     matteVM_t * vm;
 
     matteStringStore_t * stringStore;
@@ -467,18 +467,6 @@ static void print_list(matteStore_t * h) {
 }
 */
 
-static void push_root_node(matteStore_t * h, uint32_t * root, matteObject_t * m) {
-    m->nextRoot = 0;
-    m->prevRoot = 0;
-    if (!*root)
-        *root = m->storeID;
-    else {
-        m->nextRoot = *root;
-        matte_store_bin_fetch(h->bin, *root)->prevRoot = m->storeID;
-        *root = m->storeID;
-    }
-
-}
 
 static void remove_root_node(matteStore_t * h, uint32_t * root, matteObject_t * m) {
     //print_list(h);
@@ -636,6 +624,7 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
             if (parent->children == next)
                 parent->children = node->next;
             
+            node->next = 0;
             mon_destroy(h->nodes, next);
             break;
         }
@@ -944,7 +933,7 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->external = matte_array_create(sizeof(matteValue_t));
     out->kvIter_v = matte_array_create(sizeof(matteValue_t));
     out->kvIter_k = matte_array_create(sizeof(matteValue_t));
-    out->pendingRoots = matte_array_create(sizeof(uint32_t));
+    out->pendingRoots = 0;
 
     MatteTypeData dummyD = {};
     matte_array_push(out->typecode2data, dummyD);
@@ -1085,7 +1074,6 @@ void matte_store_destroy(matteStore_t * h) {
     matte_table_destroy(h->type_string_methods);
     store_free_value_pointers(h);
     matte_array_destroy(h->toRemove);
-    matte_array_destroy(h->pendingRoots);
     matte_table_iter_destroy(h->freeIter);
     monp_destroy(h->nodes);
 
@@ -3155,7 +3143,15 @@ void matte_value_object_push_lock_(matteStore_t * store, matteValue_t v) {
     if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) return;
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
     if (m->rootState == 0) {
-        push_root_node(store, &store->roots, m);
+
+        uint32_t n = mon_create(store->nodes);
+        matteObjectNode_t * node = mon_get(store->nodes, n);
+        node->data = m->storeID;
+        if (store->roots) {
+            node->next = store->roots;
+        }
+        store->roots = n;
+
         if (m->color == OBJECT_TRICOLOR__WHITE) {
             matte_store_garbage_collect__rem_from_color(store, m);
             m->color = OBJECT_TRICOLOR__GREY; // not accurate, but lets the algorithm work correctly
@@ -3174,7 +3170,6 @@ void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
     if (m->rootState) {
         m->rootState--;
         if (m->rootState == 0) {
-            //remove_root_node(store, &store->roots, m); 
             if (m->color == OBJECT_TRICOLOR__BLACK) {
                 matte_store_garbage_collect__rem_from_color(store, m);
                 m->color = OBJECT_TRICOLOR__GREY;
