@@ -143,6 +143,12 @@ typedef struct {
 
     // auxiliary data
     union {
+        struct {
+            uint16_t slot0;
+            uint16_t slot1;
+            uint16_t slot2;
+            uint16_t slot3;
+        } args;
         double data;
         struct {
             uint32_t stubID;

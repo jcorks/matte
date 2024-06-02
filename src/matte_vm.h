@@ -245,6 +245,27 @@ void matte_vm_raise_error_cstring(matteVM_t *, const char * );
 int matte_vm_pending_message(matteVM_t *);
 
 
+/// Extended values that hold a normal value and some auxiliary data.
+typedef struct {
+    // The value itself.
+    matteValue_t value;
+    
+    // Data associated with the value.
+    uint32_t aux;
+} matteValue_Extended_t;
+
+
+/// Specialized array for the value stack used by stack frames.
+typedef struct {
+    /// values currently in the stack.
+    matteValue_Extended_t * values;
+    /// Number of values in the stack that are valid
+    uint32_t size;
+    /// Number allocated for the value stack. Default allocation is 32.
+    uint32_t alloc;
+} matteVMStackFrameValueStack_t;
+
+
 /// Represents a stack frame within the current execution of the stub.
 /// The validity of the values is only granteed as so 
 /// until the next matte_vm call.
@@ -284,10 +305,10 @@ struct matteVMStackFrame_t {
     
     const matteValue_t ** captures;
 
-    
     /// Working array of values utilized by this function.
-    matteArray_t * valueStack;
+    matteVMStackFrameValueStack_t valueStack;
     
+
 
     /// Some parts of algorithms may want to start the current calling stack 
     /// frame function from the start. If restartCondition is non-NULL, it 

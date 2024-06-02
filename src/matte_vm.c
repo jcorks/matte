@@ -149,10 +149,6 @@ struct matteVM_t {
 };
 
 
-typedef struct {
-    matteValue_t value;
-    uint32_t aux;
-} matteValue_Extended_t;
 
 
 typedef struct {
@@ -169,8 +165,8 @@ void matte_vm_find_in_stack(matteVM_t * vm, uint32_t id) {
         matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t *, i);
         
         uint32_t n = 0;
-        for(n = 0; n < matte_array_get_size(frame->valueStack); ++n) {
-            matteValue_t v = matte_array_at(frame->valueStack, matteValue_Extended_t, n).value;
+        for(n = 0; n < frame->valueStack.size; ++n) {
+            matteValue_t v = frame->valueStack.values[n].value;
             if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
                 printf("@ stackframe %d, valuestack %d\n", i, n);
             }
@@ -373,7 +369,9 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
             frame->prettyName = matte_string_create();
             frame->context = matte_store_new_value(vm->store); // will contain captures
             frame->stub = NULL;
-            frame->valueStack = matte_array_create(sizeof(matteValue_Extended_t));
+            frame->valueStack.alloc = 32;
+            frame->valueStack.values = matte_allocate(frame->valueStack.alloc * sizeof(matteValue_Extended_t));
+            frame->valueStack.size = 0;
 
             matte_array_push(vm->callstack, frame);
         }
@@ -385,7 +383,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
         frame->referrableCount = 0;
         frame->captures = NULL;;
         matte_string_clear(frame->prettyName);     
-        matte_array_set_size(frame->valueStack, 0);
+        frame->valueStack.size = 0;
         frame->pc = 0;
            
     }
@@ -609,14 +607,28 @@ static const char * opcode_to_str(int oc) {
 }
 */
 
-#define STACK_SIZE() matte_array_get_size(frame->valueStack)
-#define STACK_POP() matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1).value; matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
-#define STACK_POP_NORET() matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1).value); matte_array_set_size(frame->valueStack, matte_array_get_size(frame->valueStack)-1);
-#define STACK_PEEK(__n__) (matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1-(__n__))).value
-#define STACK_PUSH(__v__) ve_.value = __v__; matte_array_push(frame->valueStack, ve_);
 
-#define STACK_PEEK_EXTENDED(__n__) (matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1-(__n__)))
-#define STACK_PUSH_EXTENDED(__VE__) (matte_array_push(frame->valueStack, __VE__));
+static void vs_realloc(matteVMStackFrame_t * frame) {
+    matteValue_Extended_t * newVals = matte_allocate((frame->valueStack.alloc + 32) * sizeof(matteValue_Extended_t));
+    uint32_t alloc = frame->valueStack.alloc;
+    uint32_t i;
+    for(i = 0; i < alloc; ++i) {
+        newVals[i] = frame->valueStack.values[i];
+    }
+    matte_deallocate(frame->valueStack.values);
+    frame->valueStack.values = newVals;
+    frame->valueStack.alloc += 32;
+}
+
+
+#define STACK_SIZE() (frame->valueStack.size)
+#define STACK_POP() frame->valueStack.values[frame->valueStack.size-1].value; frame->valueStack.size--;
+#define STACK_POP_NORET() matte_store_recycle(vm->store, frame->valueStack.values[frame->valueStack.size-1].value); frame->valueStack.size--;
+#define STACK_PEEK(__n__) (frame->valueStack.values[frame->valueStack.size-1-(__n__)]).value
+#define STACK_PUSH(__v__) if (frame->valueStack.size == frame->valueStack.alloc) vs_realloc(frame); frame->valueStack.values[frame->valueStack.size].value = (__v__); frame->valueStack.values[(frame->valueStack.size++)].aux = 0;
+
+#define STACK_PEEK_EXTENDED(__n__) (frame->valueStack.values[frame->valueStack.size-1-(__n__)])
+#define STACK_PUSH_EXTENDED(__v__) if (frame->valueStack.size == frame->valueStack.alloc) vs_realloc(frame); frame->valueStack.values[(frame->valueStack.size++)] = (__v__);
 
 
 
@@ -1514,15 +1526,15 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     
     matteValue_t output;
     // top of stack is output
-    if (matte_array_get_size(frame->valueStack)) {
+    if (frame->valueStack.size) {
         
-        output = matte_array_at(frame->valueStack, matteValue_Extended_t, matte_array_get_size(frame->valueStack)-1).value;
+        output = frame->valueStack.values[frame->valueStack.size-1].value;
         uint32_t i;
-        uint32_t len = matte_array_get_size(frame->valueStack);
+        uint32_t len = frame->valueStack.size;
         for(i = 0; i < len-1; ++i) { 
-            matte_store_recycle(vm->store, matte_array_at(frame->valueStack, matteValue_Extended_t, i).value);
+            matte_store_recycle(vm->store, frame->valueStack.values[i].value);
         }
-        matte_array_set_size(frame->valueStack, 0);
+        frame->valueStack.size = 0;
 
         if (vm->pendingCatchable) 
             output = matte_store_new_value(vm->store);
@@ -2033,7 +2045,7 @@ void matte_vm_destroy(matteVM_t * vm) {
     for(i = 0; i < len; ++i) {
         matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t *, i);
         matte_string_destroy(frame->prettyName);
-        matte_array_destroy(frame->valueStack);
+        matte_deallocate(frame->valueStack.values);
         matte_deallocate(frame);
     }
 
@@ -2458,9 +2470,9 @@ matteValue_t matte_vm_call_full(
 
         // push locks for all current frame 
         if (prevFrame) {
-            len = matte_array_get_size(prevFrame->valueStack);
+            len = prevFrame->valueStack.size;
             for(i = 0; i < len; ++i) {
-                matte_value_object_push_lock(vm->store, matte_array_at(prevFrame->valueStack, matteValue_Extended_t, i).value);        
+                matte_value_object_push_lock(vm->store, prevFrame->valueStack.values[i].value);        
             }
         }
 
@@ -2477,9 +2489,9 @@ matteValue_t matte_vm_call_full(
         matte_store_garbage_collect(vm->store);
         
         if (prevFrame) {
-            len = matte_array_get_size(prevFrame->valueStack);
+            len = prevFrame->valueStack.size;
             for(i = 0; i < len; ++i) {
-                matte_value_object_pop_lock(vm->store, matte_array_at(prevFrame->valueStack, matteValue_Extended_t, i).value);        
+                matte_value_object_pop_lock(vm->store, prevFrame->valueStack.values[i].value);        
             }
         };
 

@@ -69,6 +69,7 @@ typedef enum {
     
 
     // push a new callstack from the given function object.
+    // Pops all arguments and leaves behind the result on the top of the stack.
     MATTE_OPCODE_CAL,
     // assign value to a referrable 
     MATTE_OPCODE_ARF,
