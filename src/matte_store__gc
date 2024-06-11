@@ -271,6 +271,12 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                 m->table.keyvalues_id = NULL;
             }
             
+            if (m->table.privateBinding) {
+                matte_store_recycle(h, *m->table.privateBinding);       
+                matte_deallocate(m->table.privateBinding);     
+                m->table.privateBinding = NULL;
+            }
+            
             matte_store_bin_recycle(h->bin, m->storeID);
 
         }
