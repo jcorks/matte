@@ -85,6 +85,7 @@ MATTE_EXT_FN(matte_filesystem__directoryenumerate) {
         }
         closedir(d);
     }
+    matte_deallocate(cwd);
     
 
     return matte_store_new_value(store);

@@ -149,15 +149,13 @@ static uint32_t busy_possum_mark_grey(matteStore_t * h, matteObject_t * o) {
     uint32_t count = 0;
     while(next) {
         count++;        
-        matteObjectNode_t * node = mon_get(h->nodes, next);
-        next = node->next;
+        matteObjectNode_t * node = matte_pool_fetch(h->nodes, matteObjectNode_t, next);
         matteObject_t * c = matte_store_bin_fetch(h->bin, node->data);
+        next = node->next;
         if (c->color != OBJECT_TRICOLOR__WHITE) continue;
         matte_store_garbage_collect__rem_from_color(h, c);
         c->color = OBJECT_TRICOLOR__GREY;
         matte_store_garbage_collect__add_to_color(h, c); 
-
-
     }
     return count;
 }
@@ -228,11 +226,12 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                 matte_deallocate(m->function.vars->referrables);
             m->function.referrablesCount = 0;
             m->function.vars->referrables = NULL;
+            matte_deallocate(m->function.vars);
+            m->function.vars = NULL;
             if (m->function.types) {
                 matte_array_destroy(m->function.types);
             }
             m->function.types = NULL;
-            matte_store_bin_recycle(h->bin, m->storeID);
         
         } else {
 
@@ -277,7 +276,6 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                 m->table.privateBinding = NULL;
             }
             
-            matte_store_bin_recycle(h->bin, m->storeID);
 
         }
         
@@ -286,28 +284,31 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         if (m->children) {
             uint32_t next = m->children;
             while(next) {
-                matteObjectNode_t * node = mon_get(h->nodes, next);
-                matteObject_t * child = matte_store_bin_fetch(h->bin, node->data);
+                matteObjectNode_t * node = matte_pool_fetch(h->nodes, matteObjectNode_t, next);
                 //if (child->refcount)
                 //    child->refcount--;
 
 
                 #ifdef MATTE_DEBUG__STORE
                 {
-                    uint32_t i;
-                    int found = 0;
-                    for(i = 0; i < matte_array_get_size(child->parents); ++i) {
-                        if (matte_array_at(child->parents, matteValue_t, i).value.id == m->storeID) {
-                            matte_array_remove(child->parents, i);
-                            found = 1;
-                            break;            
+                    matteObject_t * child = matte_store_bin_fetch(h->bin, node->data);
+                    if (child) {
+                        uint32_t i;
+                        int found = 0;
+                        for(i = 0; i < matte_array_get_size(child->parents); ++i) {
+                            if (matte_array_at(child->parents, matteValue_t, i).value.id == m->storeID) {
+                                matte_array_remove(child->parents, i);
+                                found = 1;
+                                break;            
+                            }
                         }
+                        assert(found);
                     }
-                    assert(found);
                 }
                 #endif
-                mon_destroy(h->nodes, next);
+                uint32_t old = next;
                 next = node->next;
+                matte_pool_recycle(h->nodes, old);
             }
             m->children = 0;
         }
@@ -321,6 +322,7 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
             matte_deallocate(m->ext);
             m->ext = NULL;
         }        
+        matte_store_bin_recycle(h->bin, m->storeID);
     }
     #ifdef MATTE_DEBUG__STORE
         printf("cleaned Up: %d\n", cleanedUP);
@@ -349,7 +351,7 @@ static void busy_possum_process_roots(matteStore_t * h) {
     uint32_t count = 0;
     while(h->pendingRoots && count < BUSY_POSSUM__ROOT_CHUNK) {
         uint32_t rootID = h->pendingRoots;
-        matteObjectNode_t * node = mon_get(h->nodes, rootID);
+        matteObjectNode_t * node = matte_pool_fetch(h->nodes, matteObjectNode_t, rootID);
         h->pendingRoots = node->next;
         matteObject_t * root = matte_store_bin_fetch(h->bin, node->data);
         count++;
@@ -419,7 +421,7 @@ static void busy_possum_restart_cycle(matteStore_t * h) {
     uint32_t root = h->roots;
     matteObjectNode_t * prev = NULL;
     while(root) {
-        matteObjectNode_t * node = mon_get(h->nodes, root);
+        matteObjectNode_t * node = matte_pool_fetch(h->nodes, matteObjectNode_t, root);
         matteObject_t * m = matte_store_bin_fetch(h->bin, node->data);
 
         uint32_t next = node->next;
@@ -431,7 +433,7 @@ static void busy_possum_restart_cycle(matteStore_t * h) {
             }
             node->next = 0;
             node->data = 0;
-            mon_destroy(h->nodes, root);
+            matte_pool_recycle(h->nodes, root);
             if (h->roots == root)
                 h->roots = next;
             

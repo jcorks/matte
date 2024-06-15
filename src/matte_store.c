@@ -30,6 +30,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_store.h"
 #include "matte_table.h"
 #include "matte_array.h"
+#include "matte_pool.h"
 #include "matte_au32.h"
 #include "matte_string.h"
 #include "matte_bytecode_stub.h"
@@ -117,48 +118,16 @@ static void matte_store_bin_destroy(matteStoreBin_t *);
 
 
 
-typedef struct matteObjectPool_t matteObjectPool_t;
-
-static matteObjectPool_t * matte_pool_create(void*(*)(), void (*)(void *));
-
-static void matte_pool_destroy(matteObjectPool_t *);
-
-// returns a pre-allocated instance else
-// returns a new instance from the first creation argument (create function)
-static void * matte_pool_fetch(matteObjectPool_t *);
-
-// returns a reference to be return by an additional fetch.
-static void matte_pool_recycle(matteObjectPool_t *, void *);
-
-
-static matteObject_t * create_table(matteStoreBin_t * store);
-static matteObject_t * create_function(matteStoreBin_t * store);
 
 
 #define IS_FUNCTION_ID(__ID__) (((__ID__)/2)*2 == (__ID__))
 #define IS_FUNCTION_OBJECT(__OBJ__) (((__OBJ__)->storeID/2)*2 == (__OBJ__)->storeID)
 
-
+			
 typedef struct {
     uint32_t next;
     uint32_t data;
 } matteObjectNode_t;
-
-typedef struct matteObjectNodePool_t matteObjectNodePool_t;
-
-// Creates a node pool;
-static matteObjectNodePool_t * monp_create();
-
-// Destroys a node pool
-static void monp_destroy(matteObjectNodePool_t *);
-
-
-// Creates a new node from the pool
-static uint32_t mon_create(matteObjectNodePool_t * m);
-static matteObjectNode_t * mon_get(matteObjectNodePool_t * m, uint32_t id);
-
-// destroys a node from the pool;
-static void mon_destroy(matteObjectNodePool_t * m, uint32_t id);
 
 
 enum {
@@ -196,7 +165,6 @@ matteValue_t * matte_vm_get_external_builtin_function_as_value(
 
 struct matteStore_t {    
     matteStoreBin_t * bin;
-    matteObjectPool_t * keyvalues_numberPool; // for number-keyed arrays.
     matteArray_t * valueStore;
     matteArray_t * valueStore_dead;
 
@@ -283,7 +251,7 @@ struct matteStore_t {
     
     
     
-    matteObjectNodePool_t * nodes;
+    mattePool_t * nodes;
 
     // multipurpose iterator so no need to 
     // create an ephemeral one
@@ -575,14 +543,14 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
         }
     }
     if (!parent->children) {
-        parent->children = mon_create(h->nodes);
-        matteObjectNode_t * n = mon_get(h->nodes, parent->children);
+        parent->children = matte_pool_add(h->nodes);
+        matteObjectNode_t * n = matte_pool_fetch(h->nodes, matteObjectNode_t, parent->children);
         n->next = 0;
         n->data = child->storeID;
     } else {
-        uint32_t next = mon_create(h->nodes);
-        matteObjectNode_t * n = mon_get(h->nodes, next);
-        matteObjectNode_t * old = mon_get(h->nodes, parent->children);
+        uint32_t next = matte_pool_add(h->nodes);
+        matteObjectNode_t * n = matte_pool_fetch(h->nodes, matteObjectNode_t, next);
+        matteObjectNode_t * old = matte_pool_fetch(h->nodes, matteObjectNode_t, parent->children);
         
         n->next = parent->children;
         n->data = child->storeID;
@@ -615,7 +583,7 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
     uint32_t next = parent->children;
     matteObjectNode_t * prev = NULL;
     while(next) {
-        matteObjectNode_t * node = mon_get(h->nodes, next);
+        matteObjectNode_t * node = matte_pool_fetch(h->nodes, matteObjectNode_t, next);
         if (node->data == child->storeID) {            
             if (prev) {
                 prev->next = node->next;
@@ -625,7 +593,7 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
                 parent->children = node->next;
             
             node->next = 0;
-            mon_destroy(h->nodes, next);
+            matte_pool_recycle(h->nodes, next);
             break;
         }
         next = node->next;
@@ -926,7 +894,7 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->routePather = matte_array_create(sizeof(void*));
     out->routeIter = matte_table_iter_create();
     out->freeIter = matte_table_iter_create();
-    out->nodes = monp_create();
+    out->nodes = matte_pool_create(sizeof(matteObjectNode_t), NULL);
     //out->verifiedRoot = matte_table_create_hash_pointer();
     out->stringStore = matte_string_store_create();
     out->toRemove = matte_array_create(sizeof(uint32_t));
@@ -1075,7 +1043,7 @@ void matte_store_destroy(matteStore_t * h) {
     store_free_value_pointers(h);
     matte_array_destroy(h->toRemove);
     matte_table_iter_destroy(h->freeIter);
-    monp_destroy(h->nodes);
+    matte_pool_destroy(h->nodes);
 
     matte_array_destroy(h->kvIter_v);
     matte_array_destroy(h->kvIter_k);
@@ -3144,8 +3112,8 @@ void matte_value_object_push_lock_(matteStore_t * store, matteValue_t v) {
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
     if (m->rootState == 0) {
 
-        uint32_t n = mon_create(store->nodes);
-        matteObjectNode_t * node = mon_get(store->nodes, n);
+        uint32_t n = matte_pool_add(store->nodes);
+        matteObjectNode_t * node = matte_pool_fetch(store->nodes, matteObjectNode_t, n);
         node->data = m->storeID;
         if (store->roots) {
             node->next = store->roots;
@@ -4354,11 +4322,8 @@ static void destroy_object(void * d) {
 
 
 struct matteStoreBin_t {
-    matteArray_t * functions;
-    matteArray_t * tables;
-    
-    matteArray_t * deadFunctions;
-    matteArray_t * deadTables;
+    mattePool_t * functions;
+    mattePool_t * tables;
 };
 
 
@@ -4368,50 +4333,50 @@ struct matteStoreBin_t {
 matteStoreBin_t * matte_store_bin_create() {
     matteStoreBin_t * store = (matteStoreBin_t*)matte_allocate(sizeof(matteStoreBin_t));
     
-    store->functions = matte_array_create(sizeof(matteObject_t));
-    store->tables    = matte_array_create(sizeof(matteObject_t));
-
-
-    store->deadFunctions = matte_array_create(sizeof(uint32_t));
-    store->deadTables    = matte_array_create(sizeof(uint32_t));
+    store->functions = matte_pool_create(sizeof(matteObject_t), destroy_object);
+    store->tables    = matte_pool_create(sizeof(matteObject_t), destroy_object);
 
     // the 0th object. Nonexistent;
-    create_function(store);
+    matte_store_bin_add_function(store);
 
 
     // empty function
-    matteObject_t * o = create_function(store);
+    matteObject_t * o = matte_store_bin_add_function(store);
     o->function.stub = matte_bytecode_stub_create_symbolic();
     
     return store;
 }
 
 matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
-    uint32_t deadSize = matte_array_get_size(store->deadFunctions);
-    if (deadSize == 0) {
-        matteObject_t * o = create_function(store);
-        return o;
-    } else {
-        uint32_t id = matte_array_at(store->deadFunctions, uint32_t, deadSize-1);
-        matte_array_set_size(store->deadFunctions, deadSize-1);
-        matteObject_t * o = &matte_array_at(store->functions, matteObject_t, (id)/2);
-        o->storeID = id;
-        return o;
-    }
+    uint32_t id = matte_pool_add(store->functions);
+    matteObject_t * o = matte_pool_fetch(store->functions, matteObject_t, id);
+    o->storeID = id*2;
+    
+    #ifdef MATTE_DEBUG__STORE
+        if (o->parents == NULL)
+            o->parents = matte_array_create(sizeof(matteValue_t));
+    #endif
+    if (o->function.vars == NULL)
+        o->function.vars = matte_allocate(sizeof(matteVariableData_t));
+	    
+    return o;
 }
 
 matteObject_t * matte_store_bin_add_table(matteStoreBin_t * store) {
-    uint32_t deadSize = matte_array_get_size(store->deadTables);
-    if (deadSize == 0) {
-        matteObject_t * o = create_table(store);
-        return o;
-    } else {
-        uint32_t id = matte_array_at(store->deadTables, uint32_t, deadSize-1);
-        matte_array_set_size(store->deadTables, deadSize-1);
-        matteObject_t * o = &matte_array_at(store->tables, matteObject_t, (id)/2);
-        o->storeID = id;
-        return o;
-    }
+    uint32_t id = matte_pool_add(store->tables);
+    matteObject_t * o = matte_pool_fetch(store->tables, matteObject_t, id);
+    #ifdef MATTE_DEBUG__STORE
+        if (o->parents == NULL)
+            o->parents = matte_array_create(sizeof(matteValue_t));
+    #endif
+
+    #ifdef MATTE_DEBUG__STORE
+        if (o->parents == NULL)
+            o->parents = matte_array_create(sizeof(matteValue_t));
+    #endif
+
+    o->storeID = id*2+1;
+    return o;
 
 }
 
@@ -4423,17 +4388,11 @@ matteObject_t * matte_store_bin_fetch(matteStoreBin_t * store, uint32_t id) {
     // function (is even)
     if (IS_FUNCTION_ID(id)) {
         id /= 2;
-        #ifdef MATTE_DEBUG__STORE
-            assert(id < matte_array_get_size(store->functions));
-        #endif
-        return &matte_array_at(store->functions, matteObject_t, id);
+        return matte_pool_fetch(store->functions, matteObject_t, id);
     // is object
     } else {
         id /= 2;
-        #ifdef MATTE_DEBUG__STORE
-            assert(id < matte_array_get_size(store->tables));
-        #endif
-        return &matte_array_at(store->tables, matteObject_t, id);    
+        return matte_pool_fetch(store->tables, matteObject_t, id);    
     }
 }
 
@@ -4446,10 +4405,7 @@ matteObject_t * matte_store_bin_fetch_function(matteStoreBin_t * store, uint32_t
         assert(IS_FUNCTION_ID(id));
     #endif
     id /= 2;
-    #ifdef MATTE_DEBUG__STORE
-        assert(id < matte_array_get_size(store->functions));
-    #endif
-    return &matte_array_at(store->functions, matteObject_t, id);
+    return matte_pool_fetch(store->functions, matteObject_t, id);
 }
 
 matteObject_t * matte_store_bin_fetch_table(matteStoreBin_t * store, uint32_t id) {
@@ -4457,79 +4413,25 @@ matteObject_t * matte_store_bin_fetch_table(matteStoreBin_t * store, uint32_t id
         assert(!IS_FUNCTION_ID(id));
     #endif
     id /= 2;
-    #ifdef MATTE_DEBUG__STORE
-        assert (id < matte_array_get_size(store->tables));
-    #endif
-    return &matte_array_at(store->tables, matteObject_t, id);
+    return matte_pool_fetch(store->tables, matteObject_t, id);
 }
 
 void matte_store_bin_recycle(matteStoreBin_t * store, uint32_t id) {
     // function (is even)
     if (IS_FUNCTION_ID(id)) {
-        #ifdef MATTE_DEBUG__STORE
-            assert (id/2 < matte_array_get_size(store->functions));
-        #endif
-        matte_array_push(store->deadFunctions, id);
+        matte_pool_recycle(store->functions, id/2);
     // is object
     } else {
-        if (id/2 >= matte_array_get_size(store->tables)) return;
-        matte_array_push(store->deadTables, id);
+        matte_pool_recycle(store->tables, id/2);
     }
 }
 
 void matte_store_bin_destroy(matteStoreBin_t * store) {
-    uint32_t i;
-    matteObject_t * iter = (matteObject_t *)matte_array_get_data(store->functions);
-     
-    uint32_t size = matte_array_get_size(store->functions);
-    for(i = 0; i < size; ++i) {
-        destroy_object(&iter[i]);
-    }
-
-
-    iter = (matteObject_t *)matte_array_get_data(store->tables);
-     
-    size = matte_array_get_size(store->tables);
-    for(i = 0; i < size; ++i) {
-        destroy_object(&iter[i]);
-    }
-
-    matte_array_destroy(store->tables);
-    matte_array_destroy(store->functions);
-    matte_array_destroy(store->deadFunctions);
-    matte_array_destroy(store->deadTables);
+    matte_pool_destroy(store->tables);
+    matte_pool_destroy(store->functions);
     matte_deallocate(store);
 }
 
-static matteObject_t * create_table(matteStoreBin_t * store) {
-
-    matteObject_t out = {};
-    //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
-    //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
-
-    out.storeID = matte_array_get_size(store->tables) * 2 + 1;
-    #ifdef MATTE_DEBUG__STORE
-        out.parents = matte_array_create(sizeof(matteValue_t));
-    #endif
-    CREATED_COUNT++;
-    matte_array_push(store->tables, out);        
-    return &matte_array_at(store->tables, matteObject_t, store->tables->size-1);
-}
-
-static matteObject_t * create_function(matteStoreBin_t * store) {
-    matteObject_t out = {};
-    //out->refChildren = matte_array_create(sizeof(MatteStoreParentChildLink));
-    //out->refParents = matte_array_create(sizeof(MatteStoreParentChildLink));
-
-    out.function.vars = matte_allocate(sizeof(matteVariableData_t));
-    out.storeID = matte_array_get_size(store->functions) * 2;
-    #ifdef MATTE_DEBUG__STORE
-        out.parents = matte_array_create(sizeof(matteValue_t));
-    #endif
-    CREATED_COUNT++;
-    matte_array_push(store->functions, out);        
-    return &matte_array_at(store->functions, matteObject_t, store->functions->size-1);
-}
 
 
 
@@ -4541,84 +4443,7 @@ struct matteObjectPool_t {
     void (*destroy)(void*);
 };
 
-matteObjectPool_t * matte_pool_create(void*(*cr)(), void (*ds)(void *)) {
-    matteObjectPool_t * out = (matteObjectPool_t*)matte_allocate(sizeof(matteObjectPool_t));
-    out->create = cr;
-    out->destroy = ds;
-    out->pool = matte_array_create(sizeof(void *));
-    return out;
-}
 
-
-
-void matte_pool_destroy(matteObjectPool_t * p) {
-    uint32_t i;
-    for(i = 0; i < matte_array_get_size(p->pool); ++i) {
-        p->destroy(matte_array_at(p->pool, void *, i));
-    }
-    matte_array_destroy(p->pool);
-    matte_deallocate(p);
-}
-
-// returns a pre-allocated instance else
-// returns a new instance from the first creation argument (create function)
-void * matte_pool_fetch(matteObjectPool_t * p) {
-    uint32_t size = matte_array_get_size(p->pool);
-    if (size) {
-        void * obj = matte_array_at(p->pool, void *, size-1);
-        matte_array_set_size(p->pool, size-1);
-        return obj;
-    }
-    
-    return p->create();
-}
-
-// returns a reference to be return by an additional fetch.
-void matte_pool_recycle(matteObjectPool_t * p, void * obj) {
-    matte_array_push(p->pool, obj);
-}
-
-struct matteObjectNodePool_t {
-    matteAU32_t * dead;
-    matteArray_t * alive;
-};
-
-static matteObjectNodePool_t * monp_create() {
-    matteObjectNodePool_t * out = matte_allocate(sizeof(matteObjectNodePool_t));
-    out->dead = matte_au32_create();
-    out->alive = matte_array_create(sizeof(matteObjectNode_t));
-    return out;
-}
-
-// Destroys a node pool
-static void monp_destroy(matteObjectNodePool_t * m) {
-    matte_array_destroy(m->alive);
-    matte_au32_destroy(m->dead);
-    matte_deallocate(m);
-}
-
-
-// Creates a new node from the pool
-uint32_t mon_create(matteObjectNodePool_t * m) {
-    if (m->dead->size) {
-        uint32_t out = m->dead->data[m->dead->size-1];
-        m->dead->size--;
-        return out;
-    } else {
-        matteObjectNode_t n = {};
-        matte_array_push(m->alive, n);
-        return m->alive->size-1;
-    }
-}
-
-matteObjectNode_t * mon_get(matteObjectNodePool_t * m, uint32_t id) {
-    return ((matteObjectNode_t *)m->alive->data)+id;
-}
-
-// destroys a node from the pool;
-void mon_destroy(matteObjectNodePool_t * m, uint32_t id) {
-    matte_au32_push(m->dead, id);
-}
 
 
 
