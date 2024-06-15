@@ -10,11 +10,11 @@
 #include <stdio.h>
 
 
-//#define POOL_PAGE_SIZE 512
-//#define POOL_PAGE_SIZE_DEAD 4096
+#define POOL_PAGE_SIZE 1024
+#define POOL_PAGE_SIZE_DEAD 4096
 
-#define POOL_PAGE_SIZE 16
-#define POOL_PAGE_SIZE_DEAD 16
+//#define POOL_PAGE_SIZE 16
+//#define POOL_PAGE_SIZE_DEAD 16
 
 
 typedef struct  {
