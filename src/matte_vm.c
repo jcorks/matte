@@ -769,6 +769,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matte_value_into_new_object_ref(vm->store, &v);
             #ifdef MATTE_DEBUG__STORE
                 matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
+                matte_store_value_object_mark_created(vm->store, v, frame->stub, inst);
             #endif
             STACK_PUSH(v);
             break;
@@ -2363,6 +2364,10 @@ matteValue_t matte_vm_call_full(
             // that are prepared from the calling args.
             matteValue_t val = matte_store_new_value(vm->store);
             matte_value_into_new_object_ref(vm->store, &val);
+            #ifdef MATTE_DEBUG__STORE
+                matte_store_value_object_mark_created(vm->store, v, frame->stub, inst);
+            #endif
+
             
             for(i = 0; i < lenReal; ++i) {
                 matte_value_object_set(

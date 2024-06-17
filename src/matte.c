@@ -115,6 +115,9 @@ struct matte_t {
     // List of breakpoints. currently not used.
     matteArray_t * breakpoints;
     
+    // Last compiler run error if applicable
+    matteString_t * lastCompilerError;
+    
     // current stackframe in debugger
     uint32_t stackframe;
     
@@ -211,8 +214,11 @@ static void debug_print_area(matte_t * m) {
 // Default handler for compile errors.
 static void default_compile_error(const matteString_t * str, uint32_t line, uint32_t ch, void * data) {
     matte_t * m = (matte_t*)data;
-    matte_print(m, "%s (line %d:%d)", matte_string_get_c_str(str), line, ch);
-    
+    if (m->lastCompilerError)
+        matte_string_destroy(m->lastCompilerError);
+    m->lastCompilerError = matte_string_create_from_c_str(
+        "%s (line %d:%d)", matte_string_get_c_str(str), line, ch
+    );
 }
 
 static char * prompt(matte_t * m) {
@@ -516,7 +522,7 @@ static uint32_t default_importer(
     // dump bytes
     FILE * f = fopen(name, "rb");
     if (!f) {
-        matteString_t * str = matte_string_create_from_c_str("Could not import file '%s'.", name);
+        matteString_t * str = matte_string_create_from_c_str("Could not import file '%s'. File could not be accessed or found.", name);
         matte_vm_raise_error_string(m->vm, str);
         matte_string_destroy(str);
         return 0;
@@ -848,7 +854,7 @@ uint32_t matte_add_module(
         
         if (!bytes || ! bytecodeLen) {
             fileid = 0; // failed.
-            matteString_t * str = matte_string_create_from_c_str("Could not import '%s'.", name);
+            matteString_t * str = matte_string_create_from_c_str("Could not import '%s'. %s", name, (m->lastCompilerError) ? matte_string_get_c_str(m->lastCompilerError) : "<no data>");
             matte_vm_raise_error_string(m->vm, str);
             matte_string_destroy(str);
         } else {

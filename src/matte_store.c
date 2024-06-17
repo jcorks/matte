@@ -350,6 +350,8 @@ struct matteObject_t {
     
     #ifdef MATTE_DEBUG__STORE
         matteArray_t * parents;
+        uint32_t fileIDsrc;
+        uint32_t fileLine;
     #endif
     matteObjectExternalData_t * ext; 
     
@@ -4696,7 +4698,9 @@ int matte_store_report(matteStore_t * store) {
 }
 
 
+void matte_store_value_object_mark_created(
 
+);
 
 
 
