@@ -32,6 +32,42 @@ DEALINGS IN THE SOFTWARE.
 #define H_MATTE__BYTECODE_STUB__INCLUDED
 
 #include <stdint.h>
+
+
+typedef struct {
+    /// Line offset for the instruction from the stub function
+    uint16_t lineOffset;
+    /// The opcode;
+    uint8_t opcode;
+} matteBytecodeStubInstruction_Info_t;
+
+
+
+
+/// Get all the stub's instructions
+typedef struct {    
+    /// information on the instruction;
+    matteBytecodeStubInstruction_Info_t info;
+
+    // auxiliary data
+    union {
+        struct {
+            uint16_t slot0;
+            uint16_t slot1;
+            uint16_t slot2;
+            uint16_t slot3;
+        } args;
+        double data;
+        struct {
+            uint32_t stubID;
+            /// Per-opcode auxiliary data. Currently only used for fileID for nfn opcodes
+            int32_t  nfnFileID;
+        } funcData;
+    };
+
+} matteBytecodeStubInstruction_t;
+
+
 #include "matte_store.h"
 
 typedef struct matteArray_t matteArray_t;
@@ -89,15 +125,18 @@ uint8_t matte_bytecode_stub_local_count(const matteBytecodeStub_t *);
 
 /// Gets the argument name of the local variable at the given index
 /// If none, empty is returned
-matteValue_t matte_bytecode_stub_get_arg_name(const matteBytecodeStub_t *, uint8_t);
+/// The returned string is NOT refd, so an additional unref is not needed.
+matteValue_t matte_bytecode_stub_get_arg_name_noref(const matteBytecodeStub_t *, uint8_t);
 
 /// Gets the local variable name of the local variable at the given index
 /// If none, empty is returned.
-matteValue_t matte_bytecode_stub_get_local_name(const matteBytecodeStub_t *, uint8_t);
+/// The returned string is NOT refd, so an additional unref is not needed.
+matteValue_t matte_bytecode_stub_get_local_name_noref(const matteBytecodeStub_t *, uint8_t);
 
 /// Gets the pre-compiled static string by local ID.
 /// These local IDs are used for NST
-matteValue_t matte_bytecode_stub_get_string(const matteBytecodeStub_t *, uint32_t localStringID);
+/// The returned string is NOT refd, so an additional unref is not needed.
+matteValue_t matte_bytecode_stub_get_string_noref(const matteBytecodeStub_t *, uint32_t localStringID);
 
 /// Returns whether the function is a vararg function, meaning it will 
 /// always have a single argument that contains all called arguments 
@@ -125,39 +164,6 @@ const matteBytecodeStubCapture_t * matte_bytecode_stub_get_captures(
     const matteBytecodeStub_t *, 
     uint32_t * count
 );
-
-typedef struct {
-    /// Line offset for the instruction from the stub function
-    uint16_t lineOffset;
-    /// The opcode;
-    uint8_t opcode;
-} matteBytecodeStubInstruction_Info_t;
-
-
-
-
-/// Get all the stub's instructions
-typedef struct {    
-    /// information on the instruction;
-    matteBytecodeStubInstruction_Info_t info;
-
-    // auxiliary data
-    union {
-        struct {
-            uint16_t slot0;
-            uint16_t slot1;
-            uint16_t slot2;
-            uint16_t slot3;
-        } args;
-        double data;
-        struct {
-            uint32_t stubID;
-            /// Per-opcode auxiliary data. Currently only used for fileID for nfn opcodes
-            int32_t  nfnFileID;
-        } funcData;
-    };
-
-} matteBytecodeStubInstruction_t;
 
 /// Gets all instructions held by the stub.
 const matteBytecodeStubInstruction_t * matte_bytecode_stub_get_instructions(const matteBytecodeStub_t *, uint32_t * count);

@@ -245,7 +245,10 @@ uint8_t * matte_compile_source(
     uint32_t * bytecodeSize, 
 
     /// The C-String source to compile.    
-    const char * source
+    const char * source,
+    
+    /// If an error occurs, will contain an error message. Can be NULL.
+    matteString_t * error
 );
 
 

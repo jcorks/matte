@@ -507,7 +507,8 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
 /// Given a value type, returns the public name of it.
 /// Every type has a name.
 /// This is intended for use with custom types for more descriptive errors.
-matteValue_t matte_value_type_name(matteStore_t *, matteValue_t);
+/// Calling this does NOT ref the output string. 
+matteValue_t matte_value_type_name_noref(matteStore_t *, matteValue_t);
 
 
 /// Pushes a lock on the garbage collected. As long as one unpopped lock 
@@ -615,7 +616,8 @@ void matte_value_object_set_index_unsafe(matteStore_t *, matteValue_t, uint32_t 
 /// Gets the string representing the dynamic bind token. 
 ///
 /// This is normally not needed by user code.
-matteValue_t matte_store_get_dynamic_bind_token(matteStore_t *);
+/// This returns the string without refing it, so it should not be unrefed.
+matteValue_t matte_store_get_dynamic_bind_token_noref(matteStore_t *);
 
 /// Updates another frame of the garbage collection routine.
 /// This is normally called for you frequently.
@@ -629,5 +631,60 @@ matteValue_t matte_store_get_dynamic_bind_token(matteStore_t *);
 /// This is normally not needed by user code.
 void matte_store_garbage_collect(matteStore_t *);
 
+
+#ifdef MATTE_DEBUG__STORE
+
+#include "matte_bytecode_stub.h"
+
+/// Marks the creation location in source of an object.
+void matte_store_value_object_mark_created(
+    matteStore_t * store,
+    matteValue_t v,
+    matteVMStackFrame_t *
+);
+
+void matte_store_value_object_mark_created_manual(
+    matteStore_t * store,
+    matteValue_t v,
+    uint32_t fileLine,
+    uint32_t fileIDsrc
+);
+
+
+/// Creates a nodes.js and edges.js in the current directory that 
+/// output the tracing reference tree of the given object and its 
+/// parent history as a set of graphology nodes and edges for debugging 
+void matte_store_value_object_get_reference_graphology_value(
+    matteStore_t * store,
+    matteVM_t * vm,
+    matteValue_t v
+);
+
+void matte_store_value_object_get_reference_graphology_all(
+    matteStore_t * store,
+    matteVM_t * vm
+);
+
+void matte_store_value_object_get_reference_graphology(
+    matteStore_t * store,
+    matteVM_t * vm,
+    const char * filename,
+    uint32_t line,
+    int depthLevel
+
+);
+
+/// prints to standard out a memory breakdown of 
+/// objects that have 
+void matte_store_value_object_get_memory_breakdown(
+    matteStore_t * store,
+    matteVM_t * vm,
+    const char * filename,
+    int nResults
+);
+
+
+
+#endif
 
 #endif

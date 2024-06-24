@@ -38,7 +38,7 @@ DEALINGS IN THE SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
-static int TESTID = 1;
+static int TESTID = 51;
 
 
 
@@ -263,7 +263,43 @@ static matteValue_t test_external_function(
     return a;
 }
 
+#include "../src/matte_pool.h"
+
 int main() {
+    /*
+    {
+    
+        srand(0xdeadbeef);
+        uint32_t n = 0;
+        mattePool_t * pool = matte_pool_create(sizeof(int), NULL);
+        matteArray_t * r = matte_array_create(sizeof(uint32_t));
+        
+        int m = 0;
+        for(m = 0; m < 5; ++m) {
+            for(n = 0; n < 100000; ++n) {
+                uint32_t id = matte_pool_add(pool);
+                *(matte_pool_fetch(pool, int, id)) = n+1;
+                matte_array_push(r, id);
+            }
+
+            for(n = 0; n < 70000; ++n) {
+                int which = (rand() / (double)RAND_MAX) * (r->size-1);
+                
+                uint32_t id = matte_array_at(r, uint32_t, which);
+                assert(*(matte_pool_fetch(pool, int, id)) != 0);
+                matte_pool_recycle(pool, id);
+                matte_array_remove(r, which);
+            }
+        }
+
+        
+        
+
+
+        return 0;
+    }
+    */
+
     uint32_t i = 0;
     
     matte_set_allocator(test_allocator, test_deallocator);
@@ -320,7 +356,8 @@ int main() {
         uint8_t * outBytes = matte_compile_source(
             m,
             &outByteLen,
-            srcstr
+            srcstr,
+            NULL
         );
 
         free(srcstr);

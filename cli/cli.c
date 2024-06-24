@@ -168,18 +168,20 @@ static uint32_t cli_importer(
         char * source = (char*)matte_allocate(byteLen+1);
         memcpy(source, bytes, byteLen);
         uint32_t bytecodeLen;
+        matteString_t * error = matte_string_create_from_c_str("");
         uint8_t * bytecode = matte_compile_source(
             m,
             &bytecodeLen,
-            source
+            source,
+            error
         );
         if (DEBUG)
             matte_debugging_register_source(m, fileid, source);
             
         matte_deallocate(source);
-        
+          
         if (!bytes || ! bytecodeLen) {
-            matteString_t * str = matte_string_create_from_c_str("Could not import '%s'.", name);
+            matteString_t * str = matte_string_create_from_c_str("Could not import '%s': %s", name, matte_string_get_c_str(error));
             matte_vm_raise_error_string(matte_get_vm(m), str);
             matte_string_destroy(str);
             fileid = 0;
@@ -199,6 +201,7 @@ static uint32_t cli_importer(
                 //matte_print(m, "Failed to assemble bytecode %s.", name); 
             }           
         }
+        matte_string_destroy(error);
         matte_deallocate(bytecode);
     }
 
@@ -322,7 +325,7 @@ matteValue_t packager_compile(
     
     
     uint32_t byteLen = 0;
-    uint8_t * bytes = matte_compile_source(m, &byteLen, srcStr);
+    uint8_t * bytes = matte_compile_source(m, &byteLen, srcStr, NULL);
     if (!bytes || !byteLen)
         exit(1);
         
@@ -481,16 +484,19 @@ int main(int argc, char ** args) {
         str[sourceLen] = 0;
 
         uint32_t outByteLen;
+        matteString_t * error = matte_string_create_from_c_str("");
         uint8_t * outBytes = matte_compile_source(
             m,
             &outByteLen,
-            str
+            str,
+            error
         );
         
         if (!outBytes) {
-            printf("Unable to compile input file.\n");
+            printf("Unable to compile input file. %s\n", matte_string_get_c_str(error));
             exit(1);
         }
+        matte_string_destroy(error);
 
         FILE * out = fopen(args[3], "wb");
         if (!out) {

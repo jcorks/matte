@@ -259,9 +259,12 @@ struct matteStore_t {
     
     matteArray_t * toRemove;
     uint32_t roots;
-    
-    
     double ticksGC;
+
+    
+    #ifdef MATTE_DEBUG__STORE 
+        uint64_t gcCycles;
+    #endif
 };
 
 
@@ -352,6 +355,7 @@ struct matteObject_t {
         matteArray_t * parents;
         uint32_t fileIDsrc;
         uint32_t fileLine;
+        uint64_t gcCycles;
     #endif
     matteObjectExternalData_t * ext; 
     
@@ -694,8 +698,8 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             matteString_t * err = matte_string_create_from_c_str(
                 "Object member '%s' cannot be set from a %s. Any setting must be of type %s.",
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key)),
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, val)))),
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, typeVal))) 
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, val)))),
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, typeVal))) 
             );
             matte_vm_raise_error_string(store->vm, err);
             matte_string_destroy(err);
@@ -1953,7 +1957,7 @@ void matte_value_into_new_object_ref_typed_(matteStore_t * store, matteValue_t *
     matte_store_garbage_collect__add_to_color(store, d);  
     v->value.id = d->storeID;
     if (matte_value_type(typeobj) != MATTE_VALUE_TYPE_TYPE) {        
-        matteString_t * str = matte_string_create_from_c_str("Cannot instantiate object without a Type. (given value is of type %s)", matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, typeobj))));
+        matteString_t * str = matte_string_create_from_c_str("Cannot instantiate object without a Type. (given value is of type %s)", matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, typeobj))));
         matte_vm_raise_error_string(store->vm, str);
         matte_string_destroy(str);
         d->typecode = store->type_object.value.id;
@@ -2055,11 +2059,11 @@ matteValue_t matte_value_frame_get_named_referrable(matteStore_t * store, matteV
         for(i = 0; i < len; ++i) {
             #if MATTE_DEBUG__STORE
                 printf("TESTING %s against %s\n",
-                    matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_bytecode_stub_get_arg_name(origin->function.stub, i))),
+                    matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_bytecode_stub_get_arg_name_noref(origin->function.stub, i))),
                     matte_string_get_c_str(matte_value_string_get_string_unsafe(store, name))
                 );
             #endif
-            matteValue_t argName = matte_bytecode_stub_get_arg_name(origin->function.stub, i);
+            matteValue_t argName = matte_bytecode_stub_get_arg_name_noref(origin->function.stub, i);
             if (argName.value.id == name.value.id) {
                 matte_value_into_copy(store, &out, origin->function.vars->referrables[i]);
                 return out;
@@ -2073,11 +2077,11 @@ matteValue_t matte_value_frame_get_named_referrable(matteStore_t * store, matteV
         for(i = 0; i < len; ++i) {
             #if MATTE_DEBUG__STORE
                 printf("TESTING %s against %s\n",
-                    matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_bytecode_stub_get_local_name(origin->function.stub, i))),
+                    matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_bytecode_stub_get_local_name_noref(origin->function.stub, i))),
                     matte_string_get_c_str(matte_value_string_get_string_unsafe(store, name))
                 );
             #endif
-            if (matte_bytecode_stub_get_local_name(origin->function.stub, i).value.id == name.value.id) {
+            if (matte_bytecode_stub_get_local_name_noref(origin->function.stub, i).value.id == name.value.id) {
                 matte_value_into_copy(store, &out, origin->function.vars->referrables[i+matte_bytecode_stub_arg_count(origin->function.stub)]);
                 return out;
             }
@@ -2101,7 +2105,7 @@ void matte_value_into_new_typed_function_ref_(matteStore_t * store, matteValue_t
             if (i == len-1) {
                 str = matte_string_create_from_c_str("Function constructor with type specifiers requires those specifications to be Types. The return value specifier is not a Type.");
             } else {
-                str = matte_string_create_from_c_str("Function constructor with type specifiers requires those specifications to be Types. The type specifier for Argument '%s' is not a Type.\n",                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_bytecode_stub_get_arg_name(stub, i))));
+                str = matte_string_create_from_c_str("Function constructor with type specifiers requires those specifications to be Types. The type specifier for Argument '%s' is not a Type.\n",                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_bytecode_stub_get_arg_name_noref(stub, i))));
             }
             
             matte_vm_raise_error_string(store->vm, str);
@@ -2136,6 +2140,7 @@ const matteValue_t ** matte_value_object_function_activate_closure(
         matte_bytecode_stub_arg_count(stub) + 
         matte_bytecode_stub_local_count(stub)
     );
+    
     uint32_t len = m->function.referrablesCount;
 
     for(i = 0; i < len; ++i) {
@@ -2658,10 +2663,14 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
       case MATTE_VALUE_TYPE_EMPTY: 
         //matte_vm_raise_error_cstring(store->vm, "Cannot convert empty into a string.");
         ///return 0;
-        return store->specialString_empty;
+        matteValue_t out;
+        matte_value_into_copy(store, &out, store->specialString_empty);
+        return out;
 
       case MATTE_VALUE_TYPE_TYPE: { 
-        return matte_value_type_name(store, v);
+        matteValue_t out;
+        matte_value_into_copy(store, &out, matte_value_type_name_noref(store, v));
+        return out;
       }
 
       // slow.. make fast please!
@@ -2680,7 +2689,9 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
         return out;        
       }
       case MATTE_VALUE_TYPE_BOOLEAN: {
-        return v.value.boolean ? store->specialString_true : store->specialString_false;
+        matteValue_t out;
+        matte_value_into_copy(store, &out, v.value.boolean ? store->specialString_true : store->specialString_false);
+        return out;
       }
       case MATTE_VALUE_TYPE_STRING: {
         matteValue_t out = matte_store_new_value(store);
@@ -2693,7 +2704,9 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
       case MATTE_VALUE_TYPE_OBJECT: {
         if (IS_FUNCTION_ID(v.value.id)) {
             matte_vm_raise_error_cstring(store->vm, "Cannot convert function into a string.");
-            return store->specialString_empty;        
+            matteValue_t out;
+            matte_value_into_copy(store, &out, store->specialString_empty);
+            return out;        
         }
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
         matteValue_t operator_ = object_get_conv_operator(store, m, store->type_string.value.id);
@@ -2708,7 +2721,9 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
         }
       }
     }
-    return store->specialString_empty;
+    matteValue_t out;
+    matte_value_into_copy(store, &out, store->specialString_empty);
+    return out;        
 }
 
 
@@ -2843,9 +2858,9 @@ int matte_value_object_function_pre_typecheck_unsafe(matteStore_t * store, matte
         )) {
             matteString_t * err = matte_string_create_from_c_str(
                 "Argument '%s' (type: %s) is not of required type %s",
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_bytecode_stub_get_arg_name(m->function.stub, i))),
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, matte_array_at(arr, matteValue_t, i))))),
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_array_at(m->function.types, matteValue_t, i))))
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_bytecode_stub_get_arg_name_noref(m->function.stub, i))),
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, matte_array_at(arr, matteValue_t, i))))),
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_array_at(m->function.types, matteValue_t, i))))
             );
             matte_vm_raise_error_string(store->vm, err);
             matte_string_destroy(err);
@@ -2861,8 +2876,8 @@ void matte_value_object_function_post_typecheck_unsafe(matteStore_t * store, mat
     if (!matte_value_isa(store, ret, matte_array_at(m->function.types, matteValue_t, matte_array_get_size(m->function.types) - 1))) {
         matteString_t * err = matte_string_create_from_c_str(
             "Return value (type: %s) is not of required type %s.",
-            matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, ret)))),
-            matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_array_at(m->function.types, matteValue_t, matte_array_get_size(m->function.types) - 1))))
+            matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, ret)))),
+            matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_array_at(m->function.types, matteValue_t, matte_array_get_size(m->function.types) - 1))))
 
         );
         matte_vm_raise_error_string(store->vm, err);
@@ -2991,7 +3006,7 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
       default: {
         matteString_t * err = matte_string_create_from_c_str(
             "Cannot access member of a non-object type. (Given value is of type: %s)",
-            matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, v))))
+            matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, v))))
         );
         matte_vm_raise_error_string(store->vm, err);
         return matte_store_new_value(store);
@@ -3034,7 +3049,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
         if (!base) {
             matteString_t * err = matte_string_create_from_c_str(
                 "The given type has no built-in functions. (Given value is of type: %s)",
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, v))))
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, v))))
             );
             matte_vm_raise_error_string(store->vm, err);
             return NULL;
@@ -3057,7 +3072,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
         if (IS_FUNCTION_ID(v.value.id)) {
             matteString_t * err = matte_string_create_from_c_str(
                 "Cannot access member of type Function (Functions do not have members).",
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, v))))
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, v))))
             );
             matte_vm_raise_error_string(store->vm, err);
             return NULL; //matte_store_new_value(store);        
@@ -3077,7 +3092,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
       default: {
         matteString_t * err = matte_string_create_from_c_str(
             "Cannot access member of a non-object type. (Given value is of type: %s)",
-            matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name(store, matte_value_get_type(store, v))))
+            matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, v))))
         );
         matte_vm_raise_error_string(store->vm, err);
         return NULL; //matte_store_new_value(store);
@@ -3129,7 +3144,7 @@ void matte_value_object_push_lock_(matteStore_t * store, matteValue_t v) {
         }
     }
     m->rootState++;
-    #ifdef MATTE_DEBUG__STORE    
+    #ifdef MATTE_DEBUG__STORE_LEVEL_2   
     printf("%d + at state %d\n", v.value.id, m->rootState);
     #endif
 }
@@ -3148,7 +3163,7 @@ void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
             store->gcRequestStrength++;
         }
     }     
-    #ifdef MATTE_DEBUG__STORE    
+    #ifdef MATTE_DEBUG__STORE_LEVEL_2
     printf("%d - at state %d\n", v.value.id, m->rootState);
     #endif
 }
@@ -3469,8 +3484,8 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
     matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(store, func);
     // dynamic name binding for foreach
     if (stub && matte_bytecode_stub_arg_count(stub) >= 2) {
-        argNames[0] = matte_bytecode_stub_get_arg_name(stub, 0);
-        argNames[1] = matte_bytecode_stub_get_arg_name(stub, 1);
+        argNames[0] = matte_bytecode_stub_get_arg_name_noref(stub, 0);
+        argNames[1] = matte_bytecode_stub_get_arg_name_noref(stub, 1);
     }
 
     matteArray_t argNames_array = MATTE_ARRAY_CAST(argNames, matteValue_t, 2);
@@ -4079,7 +4094,7 @@ int matte_value_isa(matteStore_t * store, matteValue_t v, matteValue_t typeobj) 
     }
 }
 
-matteValue_t matte_value_type_name(matteStore_t * store, matteValue_t v) {
+matteValue_t matte_value_type_name_noref(matteStore_t * store, matteValue_t v) {
     if (matte_value_type(v) != MATTE_VALUE_TYPE_TYPE) {
         matte_vm_raise_error_cstring(store->vm, "VM error: cannot get type name of non Type value.");
         return store->specialString_empty;
@@ -4134,7 +4149,7 @@ const matteValue_t * matte_store_get_nullable_type(matteStore_t * h) {
     return &h->type_nullable;
 }
 
-matteValue_t matte_store_get_dynamic_bind_token(matteStore_t * h) {
+matteValue_t matte_store_get_dynamic_bind_token_noref(matteStore_t * h) {
     return h->specialString_dynamicBindToken;
 }
 
@@ -4292,6 +4307,8 @@ static void assert_tricolor_invariant__child(matteStore_t * h, matteObject_t * p
 
 static void destroy_object(void * d) {
     matteObject_t * out = (matteObject_t*)d;
+    if (out->storeID == 0) return;
+    out->storeID = 0;
     #ifdef MATTE_DEBUG__STORE
         matte_array_destroy(out->parents);
     #endif
@@ -4341,10 +4358,11 @@ matteStoreBin_t * matte_store_bin_create() {
     // the 0th object. Nonexistent;
     matte_store_bin_add_function(store);
 
-
     // empty function
     matteObject_t * o = matte_store_bin_add_function(store);
     o->function.stub = matte_bytecode_stub_create_symbolic();
+ 
+    
     
     return store;
 }
@@ -4352,14 +4370,15 @@ matteStoreBin_t * matte_store_bin_create() {
 matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
     uint32_t id = matte_pool_add(store->functions);
     matteObject_t * o = matte_pool_fetch(store->functions, matteObject_t, id);
-    o->storeID = id*2;
     
     #ifdef MATTE_DEBUG__STORE
+        assert(o->storeID == 0 || o->storeID == 0xffffffff);
         if (o->parents == NULL)
             o->parents = matte_array_create(sizeof(matteValue_t));
     #endif
     if (o->function.vars == NULL)
         o->function.vars = matte_allocate(sizeof(matteVariableData_t));
+    o->storeID = id*2;
 	    
     return o;
 }
@@ -4367,12 +4386,10 @@ matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
 matteObject_t * matte_store_bin_add_table(matteStoreBin_t * store) {
     uint32_t id = matte_pool_add(store->tables);
     matteObject_t * o = matte_pool_fetch(store->tables, matteObject_t, id);
+    
+    
     #ifdef MATTE_DEBUG__STORE
-        if (o->parents == NULL)
-            o->parents = matte_array_create(sizeof(matteValue_t));
-    #endif
-
-    #ifdef MATTE_DEBUG__STORE
+        assert(o->storeID == 0 || o->storeID == 0xffffffff);
         if (o->parents == NULL)
             o->parents = matte_array_create(sizeof(matteValue_t));
     #endif
@@ -4698,9 +4715,686 @@ int matte_store_report(matteStore_t * store) {
 }
 
 
-void matte_store_value_object_mark_created(
+static int matte_value_count_children(matteStore_t * store, matteObject_t * m) {
+    uint32_t next = m->children;
+    uint32_t count = 0;
+    while(next) {
+        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, next);        
+        count ++;
+        next = n->next;
+    }
+    return count;
+}
 
-);
+void matte_store_value_object_mark_created(
+    matteStore_t * store,
+    matteValue_t v,
+    matteVMStackFrame_t * frame
+) {
+    matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);            
+    if (frame == NULL) {
+        m->fileLine = 0;
+        m->fileIDsrc = 0xffffffff;
+        return;
+    }
+    uint32_t instCount;
+    const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
+    const matteBytecodeStub_t * stub = frame->stub;
+    matteBytecodeStubInstruction_t inst = program[frame->pc-1];
+
+    uint32_t startingLine = matte_bytecode_stub_get_starting_line(stub);    
+    m->fileLine = startingLine + inst.info.lineOffset;
+    m->fileIDsrc = matte_bytecode_stub_get_file_id(stub);
+}
+
+void matte_store_value_object_mark_created_manual(
+    matteStore_t * store,
+    matteValue_t v,
+    uint32_t fileLine,
+    uint32_t fileIDsrc
+) {
+    matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);            
+    m->fileLine = fileLine;
+    m->fileIDsrc = fileIDsrc;
+}
+
+
+
+void matte_store_value_object_get_reference_graphology__make_node(
+    matteVM_t * vm,
+    FILE * f,
+    uint32_t id,
+    uint32_t fileID,
+    uint32_t lineNumber,
+    int isSource,
+    int size,
+    int gcCycles,
+    int gcCyclesTotal,
+    int rootState
+) {
+    int isFunction = id/2 == (id+1)/2;
+
+    const matteString_t * str = matte_vm_get_script_name_by_id(vm, fileID);
+    fprintf(
+        f,
+        "{\"key\":\"%d\", \"attributes\":{\"label\":\"%s %d - %s, %d.\\nAlive %d cycles.%s\", \"size\":%f",
+        (int) id,
+        (isFunction) ? "Fn" : "Obj",
+        (int) id,
+        (str == NULL ? "???" : matte_string_get_c_str(str)),
+        (int)lineNumber,
+        gcCycles,
+        (rootState) ? "Is a root." : "",
+        (float) isSource ? 7 : 3 + (size/(float)10)
+    );
+    
+    if (isSource) {
+        fprintf(f, ", \"color\":\"red\"}},\n");
+    } else {
+        int amt = 0x15 + (int)((0xff - 0x15)*(1 - gcCycles / (float)gcCyclesTotal));
+        fprintf(f, ", \"color\":\"#%2x%2x%2x\"}},\n", amt, amt, amt);
+    }
+}
+
+void matte_store_value_object_get_reference_graphology__make_edge(
+    FILE * f,
+    uint32_t id0,
+    uint32_t id1
+) {
+    fprintf(
+        f,
+        "{\"source\":\"%d\", \"target\":\"%d\"},\n", 
+        (int) id0,
+        (int) id1
+    );
+}
+
+static void matte_store_value_object_get_reference_graphology_value__scan_object(
+    matteStore_t * store,
+    matteTable_t * visited,
+    matteVM_t * vm,
+    matteValue_t v,
+    int source,
+    FILE * fnodes,
+    FILE * fedges,
+    int depthLevel
+) {
+    if (depthLevel <= 0) return;
+    matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);            
+    if (source != 1 && matte_table_find_by_uint(visited, m->storeID)) return;
+    
+    matte_table_insert_by_uint(visited, m->storeID, (void*)0x1);
+    matte_store_value_object_get_reference_graphology__make_node(
+        vm,
+        fnodes,
+        m->storeID,
+        m->fileIDsrc,
+        m->fileLine,
+        source,
+        1+matte_value_count_children(store, m),
+        (int)(store->gcCycles - m->gcCycles),
+        (int) store->gcCycles,
+        m->rootState
+    );
+    
+    
+    uint32_t i;
+    uint32_t len = matte_array_get_size(m->parents);
+    for(i = 0; i < len; ++i) {
+        matteValue_t v = matte_array_at(m->parents, matteValue_t, i);
+        
+        matte_store_value_object_get_reference_graphology__make_edge(
+            fedges,
+            m->storeID,
+            v.value.id
+        );
+        
+        matte_store_value_object_get_reference_graphology_value__scan_object(
+            store,
+            visited,
+            vm,
+            v,
+            0,
+            fnodes,
+            fedges,
+            depthLevel-1
+        );
+    }
+}
+
+
+
+
+void matte_store_value_object_get_reference_graphology_value(
+    matteStore_t * store,
+    matteVM_t * vm,
+    matteValue_t v
+) {
+
+    matteTable_t * t = matte_table_create_hash_pointer();
+    
+
+    FILE * fnodes = fopen("nodes.js", "w");
+    FILE * fedges = fopen("edges.js", "w");
+
+    fprintf(fnodes, "%s", "MATTE_NODES = [\n");
+    fprintf(fedges, "%s", "MATTE_EDGES = [\n");
+
+    matte_store_value_object_get_reference_graphology_value__scan_object(
+        store,
+        t,
+        vm,
+        v,
+        1,
+        fnodes,
+        fedges,
+        1000000
+    );
+
+    fprintf(fnodes, "%s", "];\n");
+    fprintf(fedges, "%s", "];\n");
+
+    
+    fclose(fnodes);   
+    fclose(fedges);   
+    
+    matte_table_destroy(t);
+}
+
+
+
+
+
+
+void matte_store_value_object_get_reference_graphology_all__scan_object_down(
+    matteStore_t * store,
+    matteTable_t * visited,
+    matteVM_t * vm,
+    matteValue_t v,
+    int source,
+    FILE * fnodes,
+    FILE * fedges
+) {
+    matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);            
+    if (matte_table_find_by_uint(visited, m->storeID)) return;
+    
+    matte_table_insert_by_uint(visited, m->storeID, (void*)0x1);
+    matte_store_value_object_get_reference_graphology__make_node(
+        vm,
+        fnodes,
+        m->storeID,
+        m->fileIDsrc,
+        m->fileLine,
+        source,
+        1+matte_value_count_children(store, m),
+        (int)(store->gcCycles - m->gcCycles),
+        (int) store->gcCycles,
+        m->rootState
+    );
+    
+
+    uint32_t iter = m->children;
+    while(iter) {
+        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, iter);
+        
+        matteValue_t v = {};
+        v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
+        v.value.id = n->data;
+        
+        matte_store_value_object_get_reference_graphology__make_edge(
+            fedges,
+            m->storeID,
+            v.value.id
+        );
+        
+        matte_store_value_object_get_reference_graphology_all__scan_object_down(
+            store,
+            visited,
+            vm,
+            v,
+            0,
+            fnodes,
+            fedges
+        );
+        iter = n->next;
+    }
+}
+
+void matte_store_value_object_get_reference_graphology_all(
+    matteStore_t * store,
+    matteVM_t * vm
+) {
+
+    matteTable_t * t = matte_table_create_hash_pointer();
+    
+
+    FILE * fnodes = fopen("nodes.js", "w");
+    FILE * fedges = fopen("edges.js", "w");
+
+    fprintf(fnodes, "%s", "MATTE_NODES = [\n");
+    fprintf(fedges, "%s", "MATTE_EDGES = [\n");
+
+
+
+    uint32_t root = store->roots;
+    while(root) {
+        matteObjectNode_t * node = matte_pool_fetch(store->nodes, matteObjectNode_t, root);
+        matteValue_t v = {};
+        v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
+        v.value.id = node->data;
+    
+        matte_store_value_object_get_reference_graphology_all__scan_object_down(
+            store,
+            t,
+            vm,
+            v,
+            1,
+            fnodes,
+            fedges
+        );
+
+        uint32_t next = node->next;        
+        root = next;
+    }
+
+
+    fprintf(fnodes, "%s", "];\n");
+    fprintf(fedges, "%s", "];\n");
+
+    
+    fclose(fnodes);   
+    fclose(fedges);   
+    
+    matte_table_destroy(t);
+}
+
+
+
+
+
+void matte_store_value_object_get_reference_graphology__scan_object_down(
+    matteStore_t * store,
+    matteTable_t * visited,
+    matteArray_t * hits,
+    matteVM_t * vm,
+    matteValue_t v,
+    uint32_t line,
+    uint32_t fileIDsrc
+) {
+    matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);            
+    if (matte_table_find_by_uint(visited, m->storeID)) return;
+    
+    matte_table_insert_by_uint(visited, m->storeID, (void*)0x1);
+    if (m->fileLine == line &&
+        m->fileIDsrc == fileIDsrc) {
+        matte_array_push(hits, v.value.id);
+    }
+
+
+
+    uint32_t iter = m->children;
+    while(iter) {
+        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, iter);
+        
+        matteValue_t v = {};
+        v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
+        v.value.id = n->data;
+        
+        matte_store_value_object_get_reference_graphology__scan_object_down(
+            store,
+            visited,
+            hits,
+            vm,
+            v,
+            line,
+            fileIDsrc
+        );
+        
+        iter = n->next;
+    }
+}
+
+
+
+void matte_store_value_object_get_reference_graphology(
+    matteStore_t * store,
+    matteVM_t * vm,
+    const char * filename,
+    uint32_t line,
+    int depthLevel
+) {
+    printf("Looking for %s, line %d...\n", filename, (int)line);
+
+    uint32_t fileID = matte_vm_get_file_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
+    if (fileID == 0xffffffff) {
+        printf("Could not find file as a registered script.\n");
+        return;
+    } 
+    printf("Found file as fileID %d\n", (int)fileID);
+    matteTable_t * t = matte_table_create_hash_pointer();
+    matteArray_t * hits = matte_array_create(sizeof(uint32_t));
+
+    printf("Traversing node graph...\n");
+
+    uint32_t root = store->roots;
+    while(root) {
+        matteObjectNode_t * node = matte_pool_fetch(store->nodes, matteObjectNode_t, root);
+        matteValue_t v = {};
+        v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
+        v.value.id = node->data;
+    
+        matte_store_value_object_get_reference_graphology__scan_object_down(
+            store,
+            t,
+            hits,
+            vm,
+            v,
+            line,
+            fileID
+        );
+
+
+        uint32_t next = node->next;        
+        root = next;
+    }
+    matte_table_destroy(t);
+    if (matte_array_get_size(hits) == 0) {
+        printf("...No live object could be found at location.\n");
+        return;
+    }
+        
+    printf("Found %d objects alive from location.\n", (int) matte_array_get_size(hits));
+
+    printf("Generating graph...\n");
+    matteValue_t v = {};
+    v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
+  
+    {
+        matteTable_t * t = matte_table_create_hash_pointer();
+        
+
+        FILE * fnodes = fopen("nodes.js", "w");
+        FILE * fedges = fopen("edges.js", "w");
+
+        fprintf(fnodes, "%s", "MATTE_NODES = [\n");
+        fprintf(fedges, "%s", "MATTE_EDGES = [\n");
+
+
+        uint32_t i;
+        uint32_t len = matte_array_get_size(hits);
+        for(i = 0; i < len; ++i) {
+            matte_table_insert_by_uint(
+                t,
+                matte_array_at(hits, uint32_t, i),
+                (void*)0x1
+            );
+        }
+    
+        
+        for(i = 0; i < len; ++i) {
+            v.value.id = matte_array_at(hits, uint32_t, i);
+            matte_store_value_object_get_reference_graphology_value__scan_object(
+                store,
+                t,
+                vm,
+                v,
+                1,
+                fnodes,
+                fedges,
+                depthLevel
+            );
+        }
+        
+        
+
+        fprintf(fnodes, "%s", "];\n");
+        fprintf(fedges, "%s", "];\n");
+
+        
+        fclose(fnodes);   
+        fclose(fedges);   
+        
+        matte_table_destroy(t);    
+    }
+    matte_array_destroy(hits);
+    printf("...Done. Hits marked in red.\n");
+
+}
+
+uint32_t matte_store_value_object_get_memory_breakdown__estimate_usage(matteObject_t * m) {
+    uint32_t totalMemory = 0;
+    totalMemory += sizeof(matteObject_t);
+    
+    if (m->storeID%2 == 0) {
+        uint32_t len;
+        const matteBytecodeStubCapture_t * capturesRaw = matte_bytecode_stub_get_captures(
+            m->function.stub,
+            &len
+        );
+    
+        totalMemory += sizeof(matteVariableData_t);
+        totalMemory += (m->function.isCloned == 0) ? (sizeof(uint32_t)+sizeof(matteValue_t*)) * len : 0;
+        totalMemory += (m->function.vars->referrables) ? 
+            (matte_bytecode_stub_arg_count(m->function.stub) + 
+             matte_bytecode_stub_local_count(m->function.stub)) * sizeof(matteValue_t) : 0;
+    } else {
+        totalMemory += sizeof(matteVariableData_t);
+        if (m->table.keyvalues_number) {
+            totalMemory += sizeof(matteArray_t);
+            totalMemory += sizeof(matteValue_t) * m->table.keyvalues_number->allocSize;
+        }
+
+        if (m->table.keyvalues_id) {
+            totalMemory += matte_mvt2_get_size(m->table.keyvalues_id) * (sizeof(matteValue_t)*2);
+        }
+        
+        if (m->table.attribSet) {
+            totalMemory += sizeof(matteValue_t);
+        }
+
+        if (m->table.privateBinding) {
+            totalMemory += sizeof(matteValue_t);
+        }
+
+    }
+    return totalMemory;
+}
+
+
+void matte_store_value_object_get_memory_breakdown__find_relevant(
+    matteStore_t * store,
+    matteTable_t * visited,
+    matteArray_t * hits,
+    matteVM_t * vm,
+    uint32_t id,
+    uint32_t fileIDsrc,
+    uint32_t * totalMemory
+) {
+    matteObject_t * m = matte_store_bin_fetch(store->bin, id);            
+    if (matte_table_find_by_uint(visited, id)) return;
+    
+    matte_table_insert_by_uint(visited, m->storeID, (void*)0x1);
+    *totalMemory += matte_store_value_object_get_memory_breakdown__estimate_usage(m);
+    if (m->fileIDsrc == fileIDsrc) {
+        matte_array_push(hits, m->storeID);
+    }
+
+    uint32_t iter = m->children;
+    while(iter) {
+        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, iter);
+        
+        matte_store_value_object_get_memory_breakdown__find_relevant(
+            store,
+            visited,
+            hits,
+            vm,
+            n->data,
+            fileIDsrc,
+            totalMemory
+        );
+        
+        iter = n->next;
+    }
+}
+
+
+void matte_store_value_object_get_memory_breakdown__track_memory(
+    matteStore_t * store,
+    matteTable_t * visited,
+    matteVM_t * vm,
+    uint32_t id,
+    uint32_t * totalMemory
+) {
+    matteObject_t * m = matte_store_bin_fetch(store->bin, id);            
+    if (matte_table_find_by_uint(visited, id)) return;
+    
+    matte_table_insert_by_uint(visited, m->storeID, (void*)0x1);
+    *totalMemory += matte_store_value_object_get_memory_breakdown__estimate_usage(m);
+
+    uint32_t iter = m->children;
+    while(iter) {
+        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, iter);
+        
+        matte_store_value_object_get_memory_breakdown__track_memory(
+            store,
+            visited,
+            vm,
+            n->data,
+            totalMemory
+        );
+        
+        iter = n->next;
+    }
+}
+
+
+typedef struct {
+    matteObject_t * obj;
+    uint32_t reachableCount;
+    uint32_t estimatedWeight;
+    double fraction;
+} DataLayoutSummary;
+
+int matte_store_value_object_get_memory_breakdown__less(
+    const void * a,
+    const void * b
+) {
+    DataLayoutSummary * al = (DataLayoutSummary*)a;
+    DataLayoutSummary * bl = (DataLayoutSummary*)b;
+    
+    return al->reachableCount >= bl->reachableCount;
+}
+
+
+void matte_store_value_object_get_memory_breakdown(
+    matteStore_t * store,
+    matteVM_t * vm,
+    const char * filename,
+    int nResults
+) {
+    printf("Looking for %s...\n", filename);
+
+    uint32_t fileID = matte_vm_get_file_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
+    if (fileID == 0xffffffff) {
+        printf("Could not find file as a registered script.\n");
+        return;
+    } 
+    printf("Found file as fileID %d\n", (int)fileID);
+    matteTable_t * t = matte_table_create_hash_pointer();
+    matteArray_t * hits = matte_array_create(sizeof(uint32_t));
+
+    printf("Traversing node graph...\n");
+    uint32_t totalBytes = 0;
+    uint32_t root = store->roots;
+    while(root) {
+        matteObjectNode_t * node = matte_pool_fetch(store->nodes, matteObjectNode_t, root);
+    
+        matte_store_value_object_get_memory_breakdown__find_relevant(
+            store,
+            t,
+            hits,
+            vm,
+            node->data,
+            fileID,
+            &totalBytes
+        );
+
+
+        uint32_t next = node->next;        
+        root = next;
+    }    
+    
+    printf("Entire reachable set: %d KB\n", (totalBytes));
+
+    printf("Gathering sizes...\n");
+    
+    
+    matteArray_t * output = matte_array_create(sizeof(DataLayoutSummary));
+    
+    
+    uint32_t i;
+    uint32_t len = matte_array_get_size(hits);
+    for(i = 0; i < len; ++i) {
+        uint32_t next = matte_array_at(hits, uint32_t, i);
+        matte_table_clear(t);
+        uint32_t totalMemory = 0;
+        
+        matte_store_value_object_get_memory_breakdown__track_memory(
+            store,
+            t,
+            vm,
+            next,
+            &totalMemory
+        );
+        
+        DataLayoutSummary d = {};
+        d.obj = matte_store_bin_fetch(store->bin, next);
+        d.reachableCount = matte_table_get_size(t);
+        d.estimatedWeight = totalMemory;
+        d.fraction = d.estimatedWeight / totalBytes;
+        
+        matte_array_push(output, d);
+    }
+    
+    qsort(
+        output->data,
+        output->size,
+        sizeof(DataLayoutSummary),
+        matte_store_value_object_get_memory_breakdown__less
+    );
+    
+    len = matte_array_get_size(output);
+
+    printf("Summary for snapshot of %s:\n", filename);
+    printf("%7s %5s %3s %7s %10s %15s\n", 
+        "ID",
+        "Line",
+        "Fn?", 
+        "Obj#",
+        "Mem (KB)",
+        "% Program"
+    );
+    for(i = 0; i < len; ++i) {
+        DataLayoutSummary d = matte_array_at(output, DataLayoutSummary, i);
+        printf("%7d %5d %3s %7d %10d ",
+            (int)d.obj->storeID,
+            (int)d.obj->fileLine,
+            (d.obj->storeID%2==0) ? "x" : " ",
+            (int)d.reachableCount,
+            (int)(d.estimatedWeight / 1024.0)
+        );
+        
+        printf("[");
+        uint32_t n;
+        for(n = 0; n < 13; ++n) {
+            if (n / 13.0 < d.fraction)
+                printf("=");
+            else
+                printf(" ");
+        }
+        printf("]\n");
+    }
+}
 
 
 

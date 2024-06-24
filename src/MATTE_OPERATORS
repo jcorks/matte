@@ -103,7 +103,7 @@ static void bad_operator(
 ) {
     matteString_t * errMessage = matte_string_create_from_c_str("%s", operator_);
     matte_string_concat_printf(errMessage, "%s", " operator on value of type ");
-    matte_string_concat(errMessage, matte_value_string_get_string_unsafe(vm->store, matte_value_type_name(vm->store, matte_value_get_type(vm->store, obj))));
+    matte_string_concat(errMessage, matte_value_string_get_string_unsafe(vm->store, matte_value_type_name_noref(vm->store, matte_value_get_type(vm->store, obj))));
     matte_string_concat_printf(errMessage, "%s", " is undefined.");
     matte_vm_raise_error_string(vm, errMessage);
     matte_string_destroy(errMessage);
@@ -125,11 +125,16 @@ static matteValue_t vm_operator__add(matteVM_t * vm, matteValue_t a, matteValue_
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, b));
+        matteValue_t astrV = matte_value_as_string(vm->store, a);
+        matteValue_t bstrV = matte_value_as_string(vm->store, b);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, astrV);
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, bstrV);
         
         matteString_t * str = matte_string_clone(astr);
         matte_string_concat(str, bstr);
+        
+        matte_store_recycle(vm->store, astrV);
+        matte_store_recycle(vm->store, bstrV);
         
         matte_value_into_string(vm->store, 
             &result, 
@@ -524,10 +529,12 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
+        matteValue_t v = matte_value_as_string(vm->store, b);
         matte_value_into_boolean(vm->store, 
             &result,
-            a.value.id == matte_value_as_string(vm->store, b).value.id
+            a.value.id == v.value.id
         );
+        matte_store_recycle(vm->store, v);
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
@@ -597,10 +604,12 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
+        matteValue_t v = matte_value_as_string(vm->store, b);
         matte_value_into_boolean(vm->store, 
             &result,
-            a.value.id != matte_value_as_string(vm->store, b).value.id
+            a.value.id != v.value.id
         );
+        matte_store_recycle(vm->store, v);
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
@@ -667,9 +676,16 @@ static matteValue_t vm_operator__less(matteVM_t * vm, matteValue_t a, matteValue
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, b));
-        if (!astr || !bstr) return result;
+        matteValue_t astrV = matte_value_as_string(vm->store, a);
+        matteValue_t bstrV = matte_value_as_string(vm->store, b);
+      
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, astrV);
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, bstrV);
+        if (!astr || !bstr) {
+            matte_store_recycle(vm->store, astrV);
+            matte_store_recycle(vm->store, bstrV);
+            return result;
+        }
         
         matte_value_into_boolean(vm->store, 
             &result,
@@ -678,6 +694,8 @@ static matteValue_t vm_operator__less(matteVM_t * vm, matteValue_t a, matteValue
                 bstr
             ) < 0
         );
+        matte_store_recycle(vm->store, astrV);
+        matte_store_recycle(vm->store, bstrV);
         break;
       }
 
@@ -708,9 +726,16 @@ static matteValue_t vm_operator__greater(matteVM_t * vm, matteValue_t a, matteVa
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, b));
-        if (!astr || !bstr) return result;
+        matteValue_t astrV = matte_value_as_string(vm->store, a);
+        matteValue_t bstrV = matte_value_as_string(vm->store, b);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, astrV);
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, bstrV);
+        if (!astr || !bstr) {
+            matte_store_recycle(vm->store, astrV);
+            matte_store_recycle(vm->store, bstrV);
+            return result;
+        }
+
         
         matte_value_into_boolean(vm->store, 
             &result,
@@ -719,6 +744,10 @@ static matteValue_t vm_operator__greater(matteVM_t * vm, matteValue_t a, matteVa
                 bstr
             ) > 0
         );
+
+        matte_store_recycle(vm->store, astrV);
+        matte_store_recycle(vm->store, bstrV);
+
         break;
       }
       
@@ -749,10 +778,15 @@ static matteValue_t vm_operator__lesseq(matteVM_t * vm, matteValue_t a, matteVal
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, b));
-        if (!astr || !bstr) return result;
-        
+        matteValue_t astrV = matte_value_as_string(vm->store, a);
+        matteValue_t bstrV = matte_value_as_string(vm->store, b);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, astrV);
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, bstrV);
+        if (!astr || !bstr) {
+            matte_store_recycle(vm->store, astrV);
+            matte_store_recycle(vm->store, bstrV);            
+            return result;
+        }        
         matte_value_into_boolean(vm->store, 
             &result,
             matte_string_compare(
@@ -760,6 +794,9 @@ static matteValue_t vm_operator__lesseq(matteVM_t * vm, matteValue_t a, matteVal
                 bstr
             ) <= 0
         );       
+        matte_store_recycle(vm->store, astrV);
+        matte_store_recycle(vm->store, bstrV);
+
         break;
       }
       
@@ -788,9 +825,15 @@ static matteValue_t vm_operator__greatereq(matteVM_t * vm, matteValue_t a, matte
         );
         break;
       case MATTE_VALUE_TYPE_STRING: { 
-        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
-        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, b));
-        if (!astr || !bstr) return result;
+        matteValue_t astrV = matte_value_as_string(vm->store, a);
+        matteValue_t bstrV = matte_value_as_string(vm->store, b);
+        const matteString_t * astr = matte_value_string_get_string_unsafe(vm->store, astrV);
+        const matteString_t * bstr = matte_value_string_get_string_unsafe(vm->store, bstrV);
+        if (!astr || !bstr) {
+            matte_store_recycle(vm->store, astrV);
+            matte_store_recycle(vm->store, bstrV);
+            return result;
+        }
         
         matte_value_into_boolean(vm->store, 
             &result,
@@ -799,6 +842,9 @@ static matteValue_t vm_operator__greatereq(matteVM_t * vm, matteValue_t a, matte
                 bstr
             ) >= 0
         );
+
+        matte_store_recycle(vm->store, astrV);
+        matte_store_recycle(vm->store, bstrV);
         break;
       }
       
@@ -859,8 +905,8 @@ static matteValue_t vm_operator__typespec(matteVM_t * vm, matteValue_t a, matteV
         )) {
             matteString_t * err = matte_string_create_from_c_str(
                 "Type specifier (=>) failure: expected value of type '%s', but received value of type '%s'", 
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_value_type_name(vm->store, b))),
-                matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_value_type_name(vm->store, matte_value_get_type(vm->store, a))))
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_value_type_name_noref(vm->store, b))),
+                matte_string_get_c_str(matte_value_string_get_string_unsafe(vm->store, matte_value_type_name_noref(vm->store, matte_value_get_type(vm->store, a))))
             );
             matte_vm_raise_error_string(vm, err);
         }

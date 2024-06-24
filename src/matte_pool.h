@@ -42,6 +42,8 @@ typedef struct mattePool_t mattePool_t;
 
 
 
+/// NOTE: FOR NOW, sometimes cleanups can happen multiple times, 
+/// so watch out for that.
 mattePool_t * matte_pool_create(uint32_t sizeofType, void (*)(void *));
 
 // Destroys a node pool
@@ -59,6 +61,6 @@ void matte_pool_recycle(mattePool_t * m, uint32_t id);
 // Gets the instance at the ID as a raw pointer
 void * matte_pool_fetch_raw(mattePool_t * m, uint32_t id);
 
-#define matte_pool_fetch(__M__, __TYPE__, __ID__) (__TYPE__*)matte_pool_fetch_raw(__M__, __ID__);
+#define matte_pool_fetch(__M__, __TYPE__, __ID__) ((__TYPE__*)matte_pool_fetch_raw(__M__, __ID__))
 
 #endif

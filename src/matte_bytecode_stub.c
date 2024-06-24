@@ -123,7 +123,7 @@ static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID
     ADVANCE(uint8_t, ver);
     if (ver != 1) return out;
 
-    matteValue_t dynamicBindTokenVal = matte_store_get_dynamic_bind_token(store);
+    matteValue_t dynamicBindTokenVal = matte_store_get_dynamic_bind_token_noref(store);
 
 
     out->fileID = fileID;
@@ -223,7 +223,7 @@ uint8_t matte_bytecode_stub_local_count(const matteBytecodeStub_t * stub) {
 }
 
 
-matteValue_t matte_bytecode_stub_get_arg_name(const matteBytecodeStub_t * stub, uint8_t i) {    
+matteValue_t matte_bytecode_stub_get_arg_name_noref(const matteBytecodeStub_t * stub, uint8_t i) {    
     if (i >= stub->argCount) {
         matteValue_t v = {};
         return v;
@@ -231,7 +231,7 @@ matteValue_t matte_bytecode_stub_get_arg_name(const matteBytecodeStub_t * stub, 
     return stub->argNames[i];
 }
 
-matteValue_t matte_bytecode_stub_get_local_name(const matteBytecodeStub_t * stub, uint8_t i) {
+matteValue_t matte_bytecode_stub_get_local_name_noref(const matteBytecodeStub_t * stub, uint8_t i) {
     if (i >= stub->localCount) {
         matteValue_t v = {};
         return v;
@@ -240,7 +240,7 @@ matteValue_t matte_bytecode_stub_get_local_name(const matteBytecodeStub_t * stub
     return stub->localNames[i];
 }
 
-matteValue_t matte_bytecode_stub_get_string(const matteBytecodeStub_t * stub, uint32_t i) {
+matteValue_t matte_bytecode_stub_get_string_noref(const matteBytecodeStub_t * stub, uint32_t i) {
     if (i >= stub->stringCount) {
         matteValue_t v = {};
         return v;

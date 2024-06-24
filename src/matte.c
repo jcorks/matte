@@ -721,8 +721,8 @@ matteValue_t matte_run_bytecode(matte_t * m, const uint8_t * bytecode, uint32_t 
 }
 
 
-uint8_t * matte_compile_source(matte_t * m, uint32_t * bytecodeSize, const char * source) {
-    return matte_compiler_run(
+uint8_t * matte_compile_source(matte_t * m, uint32_t * bytecodeSize, const char * source, matteString_t * error) {
+    uint8_t * a = matte_compiler_run(
         m->graph,
         (uint8_t*)source,
         strlen(source),
@@ -731,6 +731,10 @@ uint8_t * matte_compile_source(matte_t * m, uint32_t * bytecodeSize, const char 
         default_compile_error,
         m
     );
+    if (error && a == NULL && matte_string_get_length(m->lastCompilerError)) {
+        matte_string_set(error, m->lastCompilerError);
+    }
+    return a;
 }
 
 

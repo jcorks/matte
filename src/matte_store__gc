@@ -136,7 +136,7 @@ static void matte_store_garbage_collect__rem_from_color(matteStore_t * h, matteO
 
 
 
-#ifdef MATTE_DEBUG__STORE
+#ifdef MATTE_DEBUG__STORE_LEVEL_2
 #define BUSY_POSSUM__SLEEPY_TIME_MS 0
 #endif
 
@@ -185,8 +185,11 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
         if (QUERY_STATE(m, OBJECT_STATE__RECYCLED)) continue;
         
         cleanedUP++;
-        #ifdef MATTE_DEBUG__STORE        
+        #ifdef MATTE_DEBUG__STORE_LEVEL_2
             printf("--RECYCLING OBJECT %d\n", m->storeID);
+        #endif
+
+        #ifdef MATTE_DEBUG__STORE        
             assert(m->color == OBJECT_TRICOLOR__WHITE);
             {
                 matteValue_t vl;
@@ -291,6 +294,9 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
 
                 #ifdef MATTE_DEBUG__STORE
                 {
+                    m->gcCycles = 0;
+                    m->fileLine = 0;
+                    m->fileIDsrc = 0xffffffff;
                     matteObject_t * child = matte_store_bin_fetch(h->bin, node->data);
                     if (child) {
                         uint32_t i;
@@ -322,9 +328,11 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
             matte_deallocate(m->ext);
             m->ext = NULL;
         }        
-        matte_store_bin_recycle(h->bin, m->storeID);
+        uint32_t id = m->storeID;
+        m->storeID = 0xffffffff;
+        matte_store_bin_recycle(h->bin, id);
     }
-    #ifdef MATTE_DEBUG__STORE
+    #ifdef MATTE_DEBUG__STORE_LEVEL_2
         printf("cleaned Up: %d\n", cleanedUP);
     #endif
     matte_array_destroy(valIter);
@@ -408,7 +416,14 @@ static void busy_possum_restart_cycle(matteStore_t * h) {
         matteObject_t * a = matte_store_bin_fetch(h->bin, blackIter);
         a->color = OBJECT_TRICOLOR__WHITE;  
         blackIter = a->nextColor;
+        #ifdef MATTE_DEBUG__STORE 
+            a->gcCycles += 1;
+        #endif
     }
+
+    #ifdef MATTE_DEBUG__STORE 
+        h->gcCycles += 1;
+    #endif   
     
     uint32_t temp = h->tricolor[OBJECT_TRICOLOR__WHITE];
     h->tricolor[OBJECT_TRICOLOR__WHITE] = h->tricolor[OBJECT_TRICOLOR__BLACK];
@@ -450,6 +465,8 @@ void matte_store_garbage_collect(matteStore_t * h) {
     if (h->gcLocked) return;
     
 
+    // recycles pending objects
+    busy_possum_object_cleanup(h);    
 
 
     double ticks = matte_os_get_ticks();
@@ -473,11 +490,15 @@ void matte_store_garbage_collect(matteStore_t * h) {
             // white objects are transfered to the cleanup list and the lists are 
             // reset.
             busy_possum_restart_cycle(h);
+            if (!h->shutdown) {
+                h->gcOldCycle++;
+                h->gcLocked = 0;
+                return;
+            }
         }
     }
+
     
-    // recycles pending objects
-    busy_possum_object_cleanup(h);    
     
     if (h->shutdown) {
         if (h->tricolor[OBJECT_TRICOLOR__BLACK] ||
@@ -485,6 +506,7 @@ void matte_store_garbage_collect(matteStore_t * h) {
             h->tricolor[OBJECT_TRICOLOR__GREY] ||
             h->toRemove->size ||
             h->pendingRoots) {
+            busy_possum_object_cleanup(h);    
             goto L_BUSY_POSSUM_CYCLE;
         } else {
             // drop out

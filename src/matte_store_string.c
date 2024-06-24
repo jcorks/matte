@@ -74,7 +74,7 @@ uint32_t matte_string_store_ref_cstring(matteStringStore_t * h, const char * str
     if (id == 0) {
         matteStringInfo_t val = {};
         val.str = matte_string_create_from_c_str("%s", strc);
-        val.refs = 1;
+        val.refs = 0;
 
         if (h->deadIDs->size) {
             id = matte_array_at(h->deadIDs, uint32_t, h->deadIDs->size-1);
@@ -90,14 +90,19 @@ uint32_t matte_string_store_ref_cstring(matteStringStore_t * h, const char * str
 
 
 
-        return id;
-    } else {
-        matte_array_at(h->strings, matteStringInfo_t, id).refs++;
-        return id;
+    } 
+    if (id == 4465) {
+        printf("hi");    
     }
+    matte_array_at(h->strings, matteStringInfo_t, id).refs++;
+    return id;
 }
 
 void matte_string_store_ref_id(matteStringStore_t * h, uint32_t id) {
+    if (id == 4465) {
+        printf("hi");    
+    }
+
     if (id >= matte_array_get_size(h->strings)) return;
     matte_array_at(h->strings, matteStringInfo_t, id).refs++;
 }
@@ -112,9 +117,14 @@ void matte_string_store_unref(matteStringStore_t * h, uint32_t id) {
     
         
     matteStringInfo_t * ref = &matte_array_at(h->strings, matteStringInfo_t, id);
+    if (id == 4465) {
+        printf("hi");    
+    }
+    
     #ifdef MATTE_DEBUG__STORE
         assert(ref->refs);
     #endif
+
     ref->refs--;        
     if (ref->refs == 0) {
         #ifdef MATTE_DEBUG__STORE

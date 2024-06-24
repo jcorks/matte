@@ -236,11 +236,13 @@ static matteValue_t matte_vm_vararg_call(
     matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, func);
     matteArray_t * argVals = matte_array_create(sizeof(matteValue_t));
     matteArray_t * argNames = matte_array_create(sizeof(matteValue_t));
-    matteValue_t dynBindName = matte_store_get_dynamic_bind_token(vm->store);
+    matteValue_t dynBindName = matte_store_get_dynamic_bind_token_noref(vm->store);
 
     if (matte_value_type(dynBind)) {
         matte_array_push(argVals, dynBind);
-        matte_array_push(argNames, dynBindName);
+        matteValue_t dynName;
+        matte_value_into_copy(vm->store, &dynName, dynBindName);
+        matte_array_push(argNames, dynName);
     }
 
 
@@ -270,7 +272,9 @@ static matteValue_t matte_vm_vararg_call(
     } else {
         len = matte_bytecode_stub_arg_count(stub);
         for(i = 0; i < len; ++i) {
-            matteValue_t name = matte_bytecode_stub_get_arg_name(stub, i);            
+            matteValue_t name;
+            matte_value_into_copy(vm->store, &name, matte_bytecode_stub_get_arg_name_noref(stub, i));
+           
             if (name.value.id == dynBindName.value.id) {
                 continue;
             }
@@ -294,6 +298,11 @@ static matteValue_t matte_vm_vararg_call(
         matte_store_recycle(
             vm->store,
             matte_array_at(argVals, matteValue_t, i)
+        );
+
+        matte_store_recycle(
+            vm->store,
+            matte_array_at(argNames, matteValue_t, i)
         );
         
         // todo: recycle vararg keys?
@@ -714,7 +723,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           
           case MATTE_OPCODE_PNR: {
             uint32_t referrableStrID = (double) inst->data;
-            matteValue_t v = matte_bytecode_stub_get_string(frame->stub, referrableStrID);
+            matteValue_t v = matte_bytecode_stub_get_string_noref(frame->stub, referrableStrID);
             if (!matte_value_type(v)) {
                 matte_vm_raise_error_cstring(vm, "VM Error: No such bytecode stub string.");
             } else {
@@ -754,7 +763,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t stringID = inst->data;
 
             // NO XFER
-            matteValue_t v = matte_bytecode_stub_get_string(frame->stub, stringID);
+            matteValue_t v = matte_bytecode_stub_get_string_noref(frame->stub, stringID);
             if (!matte_value_type(v)) {
                 matte_vm_raise_error_cstring(vm, "NST opcode refers to non-existent string (corrupt bytecode?)");
                 break;
@@ -769,7 +778,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matte_value_into_new_object_ref(vm->store, &v);
             #ifdef MATTE_DEBUG__STORE
                 matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
-                matte_store_value_object_mark_created(vm->store, v, frame->stub, inst);
+                matte_store_value_object_mark_created(vm->store, v, frame);
             #endif
             STACK_PUSH(v);
             break;
@@ -822,6 +831,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_value_into_new_typed_function_ref(vm->store, &v, stub, &arr);
                 #ifdef MATTE_DEBUG__STORE
                     matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
+                    matte_store_value_object_mark_created(vm->store, v, frame);
                 #endif
 
                 matte_deallocate(vals);
@@ -837,6 +847,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_value_into_new_function_ref(vm->store, &v, stub);
                 #ifdef MATTE_DEBUG__STORE
                     matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_file_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
+                    matte_store_value_object_mark_created(vm->store, v, frame);
                 #endif
 
                 STACK_PUSH(v);
@@ -1061,7 +1072,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
                 matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, function.value);
                 if (stub && matte_bytecode_stub_is_dynamic_bind(stub)) {                    
-                    matteValue_t dynName = matte_store_get_dynamic_bind_token(vm->store);
+                    matteValue_t dynName = matte_store_get_dynamic_bind_token_noref(vm->store);
                     matte_array_push(args, srcObject);
                     matte_array_push(argnames, dynName);
                 }
@@ -1388,7 +1399,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteArray_t arrNames;
             
             if (matte_bytecode_stub_arg_count(stub)) {
-                firstArgName = matte_bytecode_stub_get_arg_name(stub, 0);
+                firstArgName = matte_bytecode_stub_get_arg_name_noref(stub, 0);
                 arr = MATTE_ARRAY_CAST(&iter, matteValue_t, 1);
                 arrNames = MATTE_ARRAY_CAST(&firstArgName, matteValue_t, 1);
             } else {
@@ -2174,6 +2185,22 @@ matteValue_t matte_vm_call_full(
     // source acts as resevoir for captures
     // pushed function never is activated
     matte_value_into_cloned_function_ref(vm->store, &d, func);
+    #ifdef MATTE_DEBUG__STORE
+        {
+
+            matteBytecodeStub_t * stub = matte_value_get_bytecode_stub(vm->store, d);
+            uint32_t instCount;
+            const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(stub, &instCount);
+            uint32_t startingLine = matte_bytecode_stub_get_starting_line(stub);    
+
+            matte_store_value_object_mark_created_manual(
+                vm->store, 
+                d, 
+                startingLine,
+                matte_bytecode_stub_get_file_id(stub)
+            );
+        }
+    #endif
 
 
     if (matte_bytecode_stub_get_file_id(matte_value_get_bytecode_stub(vm->store, d)) == 0) {
@@ -2250,7 +2277,7 @@ matteValue_t matte_vm_call_full(
         } else {                                   
             for(i = 0; i < lenReal; ++i) {
                 for(n = 0; n < len; ++n) {
-                    if (matte_bytecode_stub_get_arg_name(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
+                    if (matte_bytecode_stub_get_arg_name_noref(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
                         matteValue_t v = matte_array_at(args, matteValue_t, i);
                         matte_array_at(argsReal, matteValue_t, n) = v;
                         // sicne this function doesn't use a referrable, we need to set roots manually.
@@ -2280,7 +2307,7 @@ matteValue_t matte_vm_call_full(
                     }
 
                     for(n = 0; n < len; ++n) {
-                        matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
+                        matteValue_t name = matte_bytecode_stub_get_arg_name_noref(stub, n);
                         matte_string_concat_printf(str, " \"");
                         matte_string_concat(str, matte_value_string_get_string_unsafe(vm->store, name));
                         matte_string_concat_printf(str, "\" ");
@@ -2365,7 +2392,7 @@ matteValue_t matte_vm_call_full(
             matteValue_t val = matte_store_new_value(vm->store);
             matte_value_into_new_object_ref(vm->store, &val);
             #ifdef MATTE_DEBUG__STORE
-                matte_store_value_object_mark_created(vm->store, v, frame->stub, inst);
+                matte_store_value_object_mark_created(vm->store, val, prevFrame);
             #endif
 
             
@@ -2383,7 +2410,7 @@ matteValue_t matte_vm_call_full(
         } else {
             for(i = 0; i < lenReal; ++i) {
                 for(n = 0; n < len; ++n) {
-                    if (matte_bytecode_stub_get_arg_name(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
+                    if (matte_bytecode_stub_get_arg_name_noref(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
                         referrables[n] = matte_array_at(args, matteValue_t, i);
                         break;
                     }
@@ -2404,7 +2431,7 @@ matteValue_t matte_vm_call_full(
                     
                     
                     for(n = 0; n < len; ++n) {
-                        matteValue_t name = matte_bytecode_stub_get_arg_name(stub, n);
+                        matteValue_t name = matte_bytecode_stub_get_arg_name_noref(stub, n);
                         matte_string_concat_printf(str, " \"");
                         matte_string_concat(str, matte_value_string_get_string_unsafe(vm->store, name));
                         matte_string_concat_printf(str, "\" ");
@@ -2453,7 +2480,7 @@ matteValue_t matte_vm_call_full(
         frame->referrablesSet = referrables;
 
         #ifdef MATTE_DEBUG__STORE
-        printf("Context    for frame %d is: %d\n", vm->stacksize, frame->context.value.id);
+        //printf("Context    for frame %d is: %d\n", vm->stacksize, frame->context.value.id);
         {
             uint32_t instcount;
             const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame->stub, &instcount);                    
@@ -2579,6 +2606,11 @@ matteValue_t matte_vm_run_fileid(
         return func;
     }
     matte_value_into_new_function_ref(vm->store, &func, stub);
+    #ifdef MATTE_DEBUG__STORE
+        if (vm->stacksize)
+            matte_store_value_object_mark_created(vm->store, func, matte_array_at(vm->callstack, matteVMStackFrame_t *, vm->stacksize-1));
+    #endif
+
     matte_value_object_push_lock(vm->store, func);
 
 

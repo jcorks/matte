@@ -143,7 +143,6 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
             return 0;
         }
       
-        matteString_t * out = matte_string_create();
         matte_table_insert_by_uint(data->recur, val.value.id, (void*)0x1);
         // if is array
         if (matte_value_object_get_key_count(store, val) == matte_value_object_get_number_key_count(store, val)) {
@@ -176,6 +175,7 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
             push_char_buffer(buffer, ']');
         } else {
             matteValue_t keys = matte_value_object_keys(store, val);
+            matte_value_object_push_lock(store, keys);
             
             uint32_t len = matte_value_object_get_key_count(store, keys);
             uint32_t i;
@@ -209,11 +209,18 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
                     );
                     matte_vm_raise_error_string(data->vm, err);
                     matte_string_destroy(err);
+                    matte_value_object_pop_lock(store, keys);
                     return 0;
                 }
                 
-                if (!encode_value(data, keyval)) return 0;
+                int ret = encode_value(data, keyval);
+                matte_store_recycle(store, keyval);
+                if (!ret) {
+                    matte_value_object_pop_lock(store, keys);
+                    return 0;
+                }
             }
+            matte_value_object_pop_lock(store, keys);
             push_char_buffer(buffer, '}');
         }
         break;
@@ -252,6 +259,7 @@ MATTE_EXT_FN(matte_json__encode) {
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_string(store, &out, str);
     matte_string_destroy(str);
+    matte_table_destroy(recur);
     return out;
 }
 typedef struct{

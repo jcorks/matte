@@ -22,7 +22,8 @@ int main(int argc, char ** argv) {
     uint8_t * bytecode = matte_compile_source(
         m,
         &bytecodeSize,
-        str
+        str,
+        NULL
     );
     free(str);
     
