@@ -1,0 +1,9 @@
+This directory is for the MATTE_DEBUG__STORE feature of dumping 
+all or some objects into graphology sources to allow visualization 
+of the objects and their hierarchy in memory along with 
+where the objects are sourced.
+
+When using the creation functions 
+matte_store_value_object_get_reference_graphology*, take the created 
+nodes.js and edges.js and place them here. Then, host and run 
+index.html

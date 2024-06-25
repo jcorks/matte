@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Matte Memory Map (graphology)</title>
+    <script src="sigma.min.js"></script>
+    <script src="graphology-library.min.js"></script>
+    <script src="graphology.min.js"></script>
+    <script src="nodes.js"></script>
+    <script src="edges.js"></script>
+  </head>
+  <body style="background: lightgrey; margin: 0; padding: 0;">
+    <div id="container" style="width: 100vw; height: 100vh; background: white"></div>
+    <script>
+      // Create a graphology graph
+
+      const graph = new graphology.DirectedGraph();
+
+      const nodeRefs = {};
+      for(var i = 0; i < MATTE_NODES.length; ++i) {
+        const node = MATTE_NODES[i];
+        node.attributes.x = Math.random();
+        node.attributes.y = Math.random();
+        graph.addNode(node.key, node.attributes);
+        nodeRefs[node.key] = true;
+      }
+
+      for(var i = 0; i < MATTE_EDGES.length; ++i) {
+        const edge = MATTE_EDGES[i];
+        if (nodeRefs[edge.target] != true ||
+            nodeRefs[edge.source] != true) continue;
+        if (graph.hasEdge(edge.target, edge.source)) continue;
+        edge.type = 'arrow';
+        graph.addEdge(edge.target, edge.source, edge.attributes);
+      }
+
+      // remove dupes
+      /*
+      const edges = (function() {
+        var newEdges = [];
+        var visited = {};
+        for(var i = 0; i < MATTE_EDGES.length; ++i) {
+          const edge = MATTE_EDGES[i];
+          if (visited[edge.source] &&
+              visited[edge.target] && 
+               (visited[edge.source][edge.target] ||
+                visited[edge.target][edge.source])) {
+                
+            continue;
+          }
+          if (!visited[edge.source]) visited[edge.source] = {};
+          if (!visited[edge.target]) visited[edge.target] = {};
+          visited[edge.source][edge.target] = true;
+          visited[edge.target][edge.source] = true;
+          newEdges.push(edge);
+        }
+        return newEdges;
+      })();
+      */
+      /*
+      graph.import({
+        attributes : {
+          name : 'Matte memory',
+        },
+        nodes : MATTE_NODES,
+        edges : edges
+      });
+      */
+      const worker = new graphologyLibrary.FA2Layout(graph, {
+        settings: {gravity: 1}
+      });
+      
+      worker.start();
+
+      const workerWaiter = setInterval(function() {
+        const sigmaInstance = new Sigma(
+          graph,
+          document.getElementById('container')
+        );
+        clearInterval(workerWaiter);
+        worker.kill();
+      }, 3000);
+    </script>
+  </body>
+</html>
