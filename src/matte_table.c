@@ -194,6 +194,11 @@ static void bucket_add(matteTableBucket_t * bucket, matteTableEntry_t entry) {
 static void bucket_remove(matteTableBucket_t * bucket, uint32_t i) {
     bucket->entries[i] = bucket->entries[bucket->size-1];
     bucket->size--;
+    if (bucket->size == 0) {
+        bucket->alloc = 0;
+        matte_deallocate(bucket->entries);
+        bucket->entries = NULL;
+    }
 }
 
 

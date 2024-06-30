@@ -53,7 +53,6 @@ void matte_pool_destroy(mattePool_t * m);
 // Creates a new node from the pool
 uint32_t matte_pool_add(mattePool_t * m);
 
-uint8_t * matte_pool_get_all(mattePool_t * m, uint32_t *);
 
 // destroys a node from the pool;
 void matte_pool_recycle(mattePool_t * m, uint32_t id);

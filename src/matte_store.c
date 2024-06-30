@@ -2300,7 +2300,7 @@ void matte_value_into_new_function_ref_(matteStore_t * store, matteValue_t * v, 
     );
     
 }
-void matte_value_into_new_external_function_ref(matteStore_t * store, matteValue_t * v, matteBytecodeStub_t * stub) {
+void matte_value_into_new_external_function_ref_(matteStore_t * store, matteValue_t * v, matteBytecodeStub_t * stub) {
     matte_value_into_new_function_ref_real(
         store, v, stub, 1
     );
@@ -4669,7 +4669,7 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val) {
 
     MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
     if (!inst) {
-        assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to distroy it.");
+        assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to destroy it.");
     }
 
     matteString_t * fdup = matte_string_create_from_c_str("<REMOVED>");

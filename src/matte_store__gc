@@ -175,8 +175,12 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
     int cleanedUP = 0;
     uint32_t len = matte_array_get_size(h->toRemove);
         
+
     
     uint32_t i;
+
+
+
     for(i = 0; h->toRemove->size && i < BUSY_POSSUM__CLEANUP_CHUNK; ++i) {        
         matteObject_t * m = matte_store_bin_fetch(h->bin, matte_array_at(toRemove, uint32_t, toRemove->size-1));
         matte_array_shrink_by_one(toRemove);
@@ -398,6 +402,14 @@ static void busy_possum_restart_cycle(matteStore_t * h) {
     matteArray_t * kv = h->toRemove;
     uint32_t whiteIter = h->tricolor[OBJECT_TRICOLOR__WHITE];
     while(whiteIter) {
+        #ifdef MATTE_DEBUG__STORE_LEVEL_2
+        {
+            uint32_t i;
+            for(i = 0; i < h->toRemove->size; ++i) {        
+                assert(matte_array_at(h->toRemove, uint32_t, i) != whiteIter);
+            }
+        }
+        #endif
         matte_array_push(h->toRemove, whiteIter);
         matteObject_t * old = matte_store_bin_fetch(h->bin, whiteIter);
         whiteIter = old->nextColor;
