@@ -40,7 +40,9 @@ DEALINGS IN THE SOFTWARE.
 @_readBytes = getExternalFunction(:"__matte_::filesystem_readbytes");
 
 @_readString = getExternalFunction(:"__matte_::filesystem_readstring");
+@_readJSON = getExternalFunction(:"__matte_::filesystem_readjson");
 @_writeString = getExternalFunction(:"__matte_::filesystem_writestring");
+@_writeJSON = getExternalFunction(:"__matte_::filesystem_writejson");
 @_writeBytes = getExternalFunction(:"__matte_::filesystem_writebytes");
 @_remove = getExternalFunction(:"__matte_::filesystem_remove");
 @_getFullPath = getExternalFunction(:"__matte_::filesystem_getfullpath");
@@ -108,11 +110,23 @@ return class(
                 m.bindNative(:_readBytes(a:path));
                 return m;
             },
+            
+            // reads the contents of a JSON file and returns the parsed 
+            // object.
+            readJSON ::(path) {
+                return _readJSON(a:path);
+            },
+            
 
             // Given a path and a string, writes the given file.
             // on failure, throws an error.
             writeString ::(path, string) {
                 _writeString(a:path, b:string);
+            },
+            
+            // Writes the given object as a JSON file.
+            writeJSON ::(path, object) {
+                _writeJSON(a:path, b:object);
             },
 
             // Given a path and a MemoryBuffer, writes the given file.

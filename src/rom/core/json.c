@@ -239,7 +239,7 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
     return 1;
 }
 
-MATTE_EXT_FN(matte_json__encode) {
+matteString_t * matte_json_encode(matteVM_t * vm, matteValue_t object) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteArray_t * arr = matte_array_create(sizeof(uint32_t));
     matteTable_t * recur = matte_table_create_hash_pointer();
@@ -252,14 +252,19 @@ MATTE_EXT_FN(matte_json__encode) {
     data.buffer = arr;
    
     
-    encode_value(&data, args[0]);    
+    encode_value(&data, object);    
     
     matte_string_destroy(data.lastNamedRef);
     matteString_t * str = matte_string_create_from_array_xfer(arr);
+    matte_table_destroy(recur);
+    return str;
+}
+
+MATTE_EXT_FN(matte_json__encode) {
+    matteString_t * str = matte_json_encode(vm, args[0]);
+    matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_string(store, &out, str);
-    matte_string_destroy(str);
-    matte_table_destroy(recur);
     return out;
 }
 typedef struct{
@@ -504,14 +509,18 @@ matteValue_t decode_value(matteVM_t * vm, matteStore_t * store, StringIter * ite
     return out;
 }
 
-MATTE_EXT_FN(matte_json__decode) {
+matteValue_t matte_json_decode(matteVM_t * vm, const matteString_t * str) {
     matteStore_t * store = matte_vm_get_store(vm);
-    const matteString_t * str = matte_value_string_get_string_unsafe(store, args[0]);   
     StringIter iter;
     iter.str = (matteString_t*)str;
     iter.index = 0;
-    matteValue_t out = decode_value(vm, store, &iter);
-    return out;
+    return decode_value(vm, store, &iter);
+}
+
+MATTE_EXT_FN(matte_json__decode) {
+    matteStore_t * store = matte_vm_get_store(vm);
+    const matteString_t * str = matte_value_string_get_string_unsafe(store, args[0]);   
+    return matte_json_decode(vm, str);
 }
 
 
