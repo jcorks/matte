@@ -1,15 +1,22 @@
 all:
 	cd ./src/rom/ && make
 	cd ./src/rom/ && ./makerom
-	gcc -std=c99 -O2 -c ./src/*.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS
-	gcc -std=c99 -O2 -c ./src/rom/native.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS
+	gcc -std=c99 -O2 -c ./src/*.c -DMATTE_USE_SYSTEM_EXTENSIONS -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
+	gcc -std=c99 -O2 -c ./src/rom/native.c -DMATTE_USE_SYSTEM_EXTENSIONS -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
+	ar rcs libmatte.a *.o
+
+all-extensions:
+	cd ./src/rom/ && make
+	cd ./src/rom/ && ./makerom
+	gcc -std=c99 -O2 -c ./src/*.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS__ALL
+	gcc -std=c99 -O2 -c ./src/rom/native.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS__ALL
 	ar rcs libmatte.a *.o
 
 debug:
 	cd ./src/rom/ && make
 	cd ./src/rom/ && ./makerom
-	gcc -std=c99 -g -c ./src/*.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS
-	gcc -std=c99 -g -c ./src/rom/native.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS
+	gcc -std=c99 -g -c ./src/*.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
+	gcc -std=c99 -g -c ./src/rom/native.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS  -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
 	ar rcs libmatte.a *.o
 clean:
 	rm -f *.o
