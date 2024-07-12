@@ -481,16 +481,17 @@ int matte_string_test_eq(const matteString_t * a, const matteString_t * b) {
 }
 
 int matte_string_compare(const matteString_t * a, const matteString_t * b) {
-    if (a->len < b->len) return -1;
-    if (a->len > b->len) return 1;
     uint32_t i;
     uint32_t * aiter = a->utf8;
     uint32_t * biter = b->utf8;
-    uint32_t len = a->len;
+    uint32_t len = a->len < b->len ? a->len : b->len;
     for(i = 0; i < len; ++i, ++aiter, ++biter) {
         if (*aiter < *biter) return -1;
         if (*aiter > *biter) return 1;
     }
+    if (a->len < b->len) return -1;
+    if (a->len > b->len) return 1;
+
     return 0;
 }
 

@@ -313,11 +313,15 @@ static matteValue_t vm_ext_call__object__map(matteVM_t * vm, matteValue_t fn, co
     matte_value_object_push_lock(vm->store, args[0]);
     matte_value_object_push_lock(vm->store, args[1]);
     matte_value_object_push_lock(vm->store, fn);
-    
+
+    matteValue_t out = matte_store_new_value(vm->store);
+    matte_value_into_new_object_ref(vm->store, &out);
+    matte_value_object_push_lock(vm->store, out);    
     
     matteArray_t names = MATTE_ARRAY_CAST(&vm->specialString_value, matteValue_t, 1);
     
     uint32_t len = matte_value_object_get_number_key_count(vm->store, args[0]);
+    matte_value_object_array_set_size_unsafe(vm->store, out, len);
     uint32_t i;
     for(i = 0; i < len; ++i) {
         if (vm->pendingCatchable) break;
@@ -325,13 +329,14 @@ static matteValue_t vm_ext_call__object__map(matteVM_t * vm, matteValue_t fn, co
         matteArray_t argsv = MATTE_ARRAY_CAST(&v, matteValue_t, 1);
 
         matteValue_t newv = matte_vm_call(vm, args[1], &argsv, &names, NULL);
-        matte_value_object_set_index_unsafe(vm->store, args[0], i, newv);
+        matte_value_object_set_index_unsafe(vm->store, out, i, newv);
     }
     
     matte_value_object_pop_lock(vm->store, args[0]);
     matte_value_object_pop_lock(vm->store, args[1]);
     matte_value_object_pop_lock(vm->store, fn);
-    return args[0];
+    matte_value_object_pop_lock(vm->store, out);
+    return out;
 }
 
 static matteValue_t vm_ext_call__object__reduce(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
