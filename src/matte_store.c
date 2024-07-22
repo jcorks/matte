@@ -2660,13 +2660,13 @@ double matte_value_as_number(matteStore_t * store, matteValue_t v) {
 
 matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
     switch(matte_value_type(v)) {
-      case MATTE_VALUE_TYPE_EMPTY: 
+      case MATTE_VALUE_TYPE_EMPTY: { 
         //matte_vm_raise_error_cstring(store->vm, "Cannot convert empty into a string.");
         ///return 0;
         matteValue_t out;
         matte_value_into_copy(store, &out, store->specialString_empty);
         return out;
-
+      }
       case MATTE_VALUE_TYPE_TYPE: { 
         matteValue_t out;
         matte_value_into_copy(store, &out, matte_value_type_name_noref(store, v));
