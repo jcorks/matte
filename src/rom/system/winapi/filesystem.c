@@ -246,6 +246,38 @@ MATTE_EXT_FN(matte_filesystem__readstring) {
     return out;
 }
 
+
+MATTE_EXT_FN(matte_filesystem__readjson) {
+    matteStore_t * store = matte_vm_get_store(vm);
+
+    const matteString_t * str = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, args[0]));
+    if (!str) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "readJSON() requires the first argument to be string coercible."));
+        return matte_store_new_value(store);
+    }
+
+    uint32_t len;
+    uint8_t * bytes = (uint8_t*)dump_bytes(matte_string_get_c_str(str), &len);
+    if (!len || !bytes) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "readJSON() could not read file."));
+        return matte_store_new_value(store);
+    }
+
+    char * bytesStr = (char*)matte_allocate(len+1);
+    memcpy(bytesStr, bytes, len);
+    matte_deallocate(bytes);
+    bytesStr[len] = 0;
+    
+    matteString_t * compiled = matte_string_create_from_c_str("%s", bytesStr);
+    matte_deallocate(bytesStr);
+    
+
+    matteValue_t out = matte_json_decode(vm, compiled);
+    matte_string_destroy(compiled);
+    return out;
+}
+
+
 MATTE_EXT_FN(matte_filesystem__readbytes) {
     matteStore_t * store = matte_vm_get_store(vm);
 
@@ -335,6 +367,42 @@ MATTE_EXT_FN(matte_filesystem__writebytes) {
 }
 
 
+MATTE_EXT_FN(matte_filesystem__writejson) {
+    matteStore_t * store = matte_vm_get_store(vm);
+
+    const matteString_t * str = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, args[0]));
+    if (!str) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeJSON() requires the first argument to be string coercible."));
+        return matte_store_new_value(store);
+    }
+
+
+    matteString_t * data = matte_json_encode(vm, args[1]);
+    if (!data) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeJSON() requires the second argument to be string coercible."));
+        return matte_store_new_value(store);
+    }
+
+
+    FILE * f = fopen(matte_string_get_c_str(str), "wb");
+    if (!f) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeJSON() could not open output file"));
+        matte_string_destroy(data);
+        return matte_store_new_value(store);
+    }
+    if (!fwrite(matte_string_get_utf8_data(data), 1, matte_string_get_utf8_length(data), f)) {
+        fclose(f);
+        matte_string_destroy(data);
+        return matte_store_new_value(store);
+    }
+    fclose(f);
+    matte_string_destroy(data);
+    return matte_store_new_value(store);
+}
+
+
+
+
 MATTE_EXT_FN(matte_filesystem__remove) {
     matteStore_t * store = matte_vm_get_store(vm);
 
@@ -412,9 +480,12 @@ static void matte_system__filesystem(matteVM_t * vm) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_directoryobjectpath"),    1, matte_filesystem__directoryobjectpath, dirfiles);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_directoryobjectisfile"),    1, matte_filesystem__directoryobjectisfile, dirfiles);
 
+
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_readstring"), 1, matte_filesystem__readstring, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_readjson"), 1, matte_filesystem__readjson, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_readbytes"), 1, matte_filesystem__readbytes, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writestring"), 2, matte_filesystem__writestring, NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writejson"), 2, matte_filesystem__writejson, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_writebytes"), 2, matte_filesystem__writebytes, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_remove"), 1, matte_filesystem__remove, NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::filesystem_getfullpath"), 1, matte_filesystem__getfullpath, NULL);
