@@ -55,14 +55,17 @@ DEALINGS IN THE SOFTWARE.
                 inherit.construct(this, args);
             };
         }
-        @constructInterface;
         @constructInit;
         this.interface = {
             set ::(value) {
-                constructInterface = value;
-            },
-            
-            get ::<- constructInterface
+                this->setIsInterface(enabled:false);
+                foreach(value) ::(k, v) {
+                    when(k->type != String) 
+                        error(detail: 'Class interfaces can only have String-keyed members.');
+                    this[k] = v;                
+                }
+                this->setIsInterface(enabled:true);
+            }        
         };
 
         this.constructor = {
@@ -73,22 +76,14 @@ DEALINGS IN THE SOFTWARE.
 
         this->setIsInterface(enabled:true);
         define(this);        
+        if (constructInit) ::<= {        
+            constructInit(*args);
+        }
         this->setIsInterface(enabled:false);
 
-        if (constructInterface) ::<= {
-            foreach(constructInterface)::(k, v) {
-                when(k->type != String) 
-                    error(detail: 'Class interfaces can only have String-keyed members.');
-                this[k] = v;
-            }
-        }
         this->remove(key:'constructor');
         this->remove(key:'interface');
-        if (constructInit) ::<= {        
-            this->setIsInterface(enabled:true);
-            constructInit(*args);
-            this->setIsInterface(enabled:false);
-        }
+
     };
     classInstance.new = ::(*args) {
         @this = Object.instantiate(type);
