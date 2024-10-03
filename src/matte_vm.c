@@ -378,6 +378,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
             frame->prettyName = matte_string_create();
             frame->context = matte_store_new_value(vm->store); // will contain captures
             frame->stub = NULL;
+            frame->fn = matte_store_new_value(vm->store);
             frame->valueStack.alloc = 32;
             frame->valueStack.values = matte_allocate(frame->valueStack.alloc * sizeof(matteValue_Extended_t));
             frame->valueStack.size = 0;
@@ -388,6 +389,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
     } else {
         frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
         frame->stub = NULL;
+        frame->fn = matte_store_new_value(vm->store);
         frame->referrablesSet = NULL;
         frame->referrableCount = 0;
         frame->captures = NULL;;
@@ -419,6 +421,13 @@ static void vm_pop_frame(matteVM_t * vm) {
     } else { 
         vm->top = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
     }
+}
+
+static matteVMStackFrame_t * vm_last_frame(matteVM_t *) {
+    if (vm->stacksize >= matte_array_get_size(vm->callstack))
+        return NULL;
+        
+    return matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize);        
 }
 
 
@@ -645,9 +654,78 @@ static void vs_realloc(matteVMStackFrame_t * frame) {
 #define CONTROL_CODE_VALUE_TYPE__DYNAMIC_BINDING 0xff
 
 static int vm_execution_loop__stack_depth = 0;
-#define VM_EXECUTABLE_LOOP_STACK_DEPTH_LIMIT 1024
+#define VM_EXECUTABLE_LOOP_STACK_DEPTH_LIMIT 1024*256
 #define VM_EXECUTABLE_LOOP_CURRENT_LINE (matte_bytecode_stub_get_starting_line(frame->stub) + inst->info.lineOffset)
+
+static void vm_execution_loop_end_stackframe(matteVM_t * vm, matteValue_t result) {
+    matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
+    int callable = matte_value_is_callable(vm->store, frame->fn); 
+    matteVMStackFrame_t * prevFrame = vm->stacksize == 1 ? NULL :
+        matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-2);                
+
+
+    frame->result = result;
+    matte_array_push(prevFrame->valueStack, result);
+    if (callable == 2) {
+        matte_value_object_function_post_typecheck_unsafe(vm->store, d, result);
+    }
+
+    matte_value_object_push_lock(vm->store, result);
+    matte_store_garbage_collect(vm->store);
+    
+    if (prevFrame) {
+        len = prevFrame->valueStack.size;
+        for(i = 0; i < len; ++i) {
+            matte_value_object_pop_lock(vm->store, prevFrame->valueStack.values[i].value);        
+        }
+    };
+
+    matte_value_object_pop_lock(vm->store, frame->context);
+
+    // cleanup;
+    matte_store_recycle(vm->store, frame->context);
+    matte_value_object_pop_lock(vm->store, privateBinding);
+    vm_pop_frame(vm);
+
+
+    
+
+    // uh oh... unhandled errors...
+    if (!vm->stacksize && vm->pendingCatchable) {
+        if (vm->unhandled) {
+            matteValue_t v = vm->catchable;
+            if (!vm->pendingCatchableIsError) {
+                v = matte_store_new_value(vm->store);
+                matteString_t * errMessage = matte_string_create_from_c_str("An uncaught message was sent.");
+                matte_value_into_string(vm->store, &v, errMessage);
+                matte_string_destroy(errMessage);
+            }
+
+
+            vm->unhandled(
+                vm,
+                vm->errorLastFile,
+                vm->errorLastLine,
+                v,
+                vm->unhandledData                   
+            );           
+
+            if (!vm->pendingCatchableIsError)
+                matte_store_recycle(vm->store, v);     
+        }     
+        matte_value_object_pop_lock(vm->store, vm->catchable);
+        vm->catchable.binIDreserved = 0;
+        vm->pendingCatchable = 0;
+        vm->pendingCatchableIsError = 0;
+        frame->result = matte_store_new_value(vm->store);
+    }
+    matte_value_object_pop_lock(vm->store, result);
+}
+
+
 static matteValue_t vm_execution_loop(matteVM_t * vm) {
+  RELOOP:
+
     vm_execution_loop__stack_depth ++;
     
     if (vm_execution_loop__stack_depth > VM_EXECUTABLE_LOOP_STACK_DEPTH_LIMIT) {
@@ -664,7 +742,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     matteValue_Extended_t ve_ = {};
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
 
-  RELOOP:
     while(frame->pc < instCount) {
         inst = program+frame->pc++;
         
@@ -1565,8 +1642,10 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             goto RELOOP;
         }
     }
+    
+    vm_execution_loop_end_stack_frame();
     vm_execution_loop__stack_depth--;
-    return output;
+    goto RELOOP;
 }
 
 #define WRITE_BYTES(__T__, __VAL__) matte_array_push_n(arr, &(__VAL__), sizeof(__T__));
@@ -2470,6 +2549,7 @@ matteValue_t matte_vm_call_full(
 
         frame->context = d;
         frame->stub = stub;
+        frame->fn = func;
 
         // ref copies of values happen here.
         frame->captures = matte_value_object_function_activate_closure(
@@ -2508,67 +2588,7 @@ matteValue_t matte_vm_call_full(
             }
         }
 
-        if (callable == 2) {
-            if (ok) 
-                result = vm_execution_loop(vm);
-            if (!vm->pendingCatchable)            
-                matte_value_object_function_post_typecheck_unsafe(vm->store, d, result);
-        } else {
-            result = vm_execution_loop(vm);        
-        }
 
-        matte_value_object_push_lock(vm->store, result);
-        matte_store_garbage_collect(vm->store);
-        
-        if (prevFrame) {
-            len = prevFrame->valueStack.size;
-            for(i = 0; i < len; ++i) {
-                matte_value_object_pop_lock(vm->store, prevFrame->valueStack.values[i].value);        
-            }
-        };
-
-        matte_value_object_pop_lock(vm->store, frame->context);
-
-        // cleanup;
-        matte_store_recycle(vm->store, frame->context);
-        matte_value_object_pop_lock(vm->store, privateBinding);
-        vm_pop_frame(vm);
-
-
-        
-
-        // uh oh... unhandled errors...
-        if (!vm->stacksize && vm->pendingCatchable) {
-            if (vm->unhandled) {
-                matteValue_t v = vm->catchable;
-                if (!vm->pendingCatchableIsError) {
-                    v = matte_store_new_value(vm->store);
-                    matteString_t * errMessage = matte_string_create_from_c_str("An uncaught message was sent.");
-                    matte_value_into_string(vm->store, &v, errMessage);
-                    matte_string_destroy(errMessage);
-                }
-
-
-                vm->unhandled(
-                    vm,
-                    vm->errorLastFile,
-                    vm->errorLastLine,
-                    v,
-                    vm->unhandledData                   
-                );           
-
-                if (!vm->pendingCatchableIsError)
-                    matte_store_recycle(vm->store, v);     
-            }     
-            matte_value_object_pop_lock(vm->store, vm->catchable);
-            vm->catchable.binIDreserved = 0;
-            vm->pendingCatchable = 0;
-            vm->pendingCatchableIsError = 0;
-            matte_value_object_pop_lock(vm->store, result);
-            return matte_store_new_value(vm->store);
-        }
-        matte_value_object_pop_lock(vm->store, result);
-        return result; // ok, vm_execution_loop returns new
     } 
 }
 

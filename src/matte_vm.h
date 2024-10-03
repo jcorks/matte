@@ -167,6 +167,18 @@ matteValue_t matte_vm_call(
 );
 
 
+/// Puts in a request for a function call. This will be processed once the main 
+/// processing loop is next reached.
+void matte_vm_call_soft(
+    matteVM_t *,
+    matteValue_t function,
+    const matteArray_t * args,
+    const matteArray_t * argNames,
+    const matteString_t * prettyName
+);
+
+
+
 
 /// Adds an external function.
 /// In the script context: calling getExternalFunction() with the string identifier 
@@ -274,11 +286,17 @@ struct matteVMStackFrame_t {
     /// If the stackframe is invalid, this will be NULL and no other values 
     /// will be valid.
     const matteBytecodeStub_t * stub;
+    
+    /// The function being called.
+    matteValue_t fn;
 
     /// Function object of the stackframe.
     /// Holds captured values.
     matteValue_t context;
-    
+
+    /// Return value for the stackframe. Only populated    
+    /// if the stackframe resolved, else its 
+    matteValue_t result;
     
     /// Special value that serves as the "_" value.
     /// Canonically, this is reserved for the private interface binding.
