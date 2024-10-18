@@ -1058,14 +1058,14 @@ Matte.newVM = function(
             
             valueAsString : function(value) {
                 switch(valToType(value)) {
+                  case TYPE_NUMBER:
+                    return store.createString(String(value));
+
                   case TYPE_EMPTY:
                     return store_specialString_empty;
 
                   case TYPE_TYPE:
                     return store.valueTypeName(value);
-
-                  case TYPE_NUMBER:
-                    return store.createString(Number.parseFloat(value));
 
                   case TYPE_BOOLEAN:
                     return value == true ? store_specialString_true : store_specialString_false;
