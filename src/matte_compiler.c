@@ -2223,7 +2223,14 @@ static void ff_skip_inner_function(matteToken_t ** t) {
           // because inlines are only made of expressions, there is no danger of 
           // irregular function-oriented tokens inherent to function definitions.
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_INLINE:
-            *t = iter->next;
+            iter = iter->next;
+            // but... the inline return could be a function, so:
+            if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR ||
+                iter->ttype == MATTE_TOKEN_FUNCTION_LISTEN) {
+                ff_skip_inner_function(&iter);
+                iter = iter->next;                
+            }
+            *t = iter;
             return;
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR:
           case MATTE_TOKEN_FUNCTION_LISTEN:
