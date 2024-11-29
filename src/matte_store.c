@@ -2268,7 +2268,7 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
     // referrables come from a history of creation contexts.
     matteVariableData_t * vars = d->function.vars;
     vars->captures = (matteValue_t**)matte_allocate(len * sizeof(matteValue_t *));
-    vars->captureOrigins = matte_allocate(len * sizeof(uint32_t));
+    vars->captureOrigins = (uint32_t*)matte_allocate(len * sizeof(uint32_t));
     
     for(i = 0; i < len; ++i) {
         matteValue_t context = frame.context;
@@ -4377,7 +4377,7 @@ matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
             o->parents = matte_array_create(sizeof(matteValue_t));
     #endif
     if (o->function.vars == NULL)
-        o->function.vars = matte_allocate(sizeof(matteVariableData_t));
+        o->function.vars = (matteVariableData_t*)matte_allocate(sizeof(matteVariableData_t));
     o->storeID = id*2;
 	    
     return o;

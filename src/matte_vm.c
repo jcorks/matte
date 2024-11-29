@@ -379,7 +379,7 @@ static matteVMStackFrame_t * vm_push_frame(matteVM_t * vm) {
             frame->context = matte_store_new_value(vm->store); // will contain captures
             frame->stub = NULL;
             frame->valueStack.alloc = 32;
-            frame->valueStack.values = matte_allocate(frame->valueStack.alloc * sizeof(matteValue_Extended_t));
+            frame->valueStack.values = (matteValue_Extended_t *)matte_allocate(frame->valueStack.alloc * sizeof(matteValue_Extended_t));
             frame->valueStack.size = 0;
 
             matte_array_push(vm->callstack, frame);
@@ -618,7 +618,7 @@ static const char * opcode_to_str(int oc) {
 
 
 static void vs_realloc(matteVMStackFrame_t * frame) {
-    matteValue_Extended_t * newVals = matte_allocate((frame->valueStack.alloc + 32) * sizeof(matteValue_Extended_t));
+    matteValue_Extended_t * newVals = (matteValue_Extended_t*)matte_allocate((frame->valueStack.alloc + 32) * sizeof(matteValue_Extended_t));
     uint32_t alloc = frame->valueStack.alloc;
     uint32_t i;
     for(i = 0; i < alloc; ++i) {
@@ -2367,7 +2367,7 @@ matteValue_t matte_vm_call_full(
         );
         // prepare future frame by looking ahead slightly 
         // and preparing its referrables.
-        matteValue_t * referrables = matte_allocate(sizeof(matteValue_t) * refCount);
+        matteValue_t * referrables = (matteValue_t*)matte_allocate(sizeof(matteValue_t) * refCount);
 
         // slot 0 is always the context
         uint32_t i, n;

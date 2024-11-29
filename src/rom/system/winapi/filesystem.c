@@ -37,7 +37,7 @@ MATTE_EXT_FN(matte_filesystem__directoryenumerate) {
     matteStore_t * store = matte_vm_get_store(vm);
 
 
-    matteArray_t * dirfiles = userData;
+    matteArray_t * dirfiles = (matteArray_t*)userData;
     {
         uint32_t i;
         uint32_t len = matte_array_get_size(dirfiles);
@@ -52,17 +52,17 @@ MATTE_EXT_FN(matte_filesystem__directoryenumerate) {
 
 
     const int MAXLEN = 32768;
-    char * cwd = malloc(MAXLEN);
+    char * cwd = (char*)malloc(MAXLEN);
     cwd = getcwd(cwd, MAXLEN-1);
     uint32_t len = strlen(cwd);
 
-    char * cwdsearch = malloc(MAXLEN + 4);
+    char * cwdsearch = (char*)malloc(MAXLEN + 4);
     cwdsearch[0] = 0;
     strcat(cwdsearch, cwd);
     strcat(cwdsearch, "\\*");
 
     WIN32_FIND_DATAA sinfo;
-    HANDLE * d = FindFirstFileA(cwdsearch, &sinfo);
+    HANDLE * d = (HANDLE*)FindFirstFileA(cwdsearch, &sinfo);
     if (d) {
         while ((FindNextFile(d, &sinfo))) {
             if (!strcmp(sinfo.cFileName, ".") ||
@@ -86,7 +86,7 @@ MATTE_EXT_FN(matte_filesystem__directoryenumerate) {
 MATTE_EXT_FN(matte_filesystem__directoryobjectcount) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t v = matte_store_new_value(store);
-    matteArray_t * dirfiles = userData;
+    matteArray_t * dirfiles = (matteArray_t*)userData;
     if (dirfiles) {
         matte_value_into_number(
             store, 
@@ -104,7 +104,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectname) {
 
     matteValue_t v = matte_store_new_value(store);    
     if (matte_vm_pending_message(vm)) return v;
-    matteArray_t * dirfiles = userData;
+    matteArray_t * dirfiles = (matteArray_t*)userData;
 
     if (dirfiles && (index < matte_array_get_size(dirfiles))) {
         matteString_t * str = matte_string_create_from_c_str(
@@ -132,7 +132,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectpath) {
 
     matteValue_t v = matte_store_new_value(store);    
     if (matte_vm_pending_message(vm)) return v;
-    matteArray_t * dirfiles = userData;
+    matteArray_t * dirfiles = (matteArray_t*)userData;
 
     if (dirfiles && (index < matte_array_get_size(dirfiles))) {
         matteString_t * str = matte_string_create_from_c_str(
@@ -160,7 +160,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectisfile) {
 
     matteValue_t v = matte_store_new_value(store);    
     if (matte_vm_pending_message(vm)) return v;
-    matteArray_t * dirfiles = userData;
+    matteArray_t * dirfiles = (matteArray_t*)userData;
 
     if (dirfiles && (index < matte_array_get_size(dirfiles))) {
         matte_value_into_boolean(
@@ -180,7 +180,7 @@ MATTE_EXT_FN(matte_filesystem__directoryobjectisfile) {
 
 MATTE_EXT_FN(matte_filesystem__getcwd) {
     const int MAXLEN = 32768;
-    char * path = malloc(MAXLEN);
+    char * path = (char*)malloc(MAXLEN);
     path[MAXLEN-1] = 0;
     matteStore_t * store = matte_vm_get_store(vm);
     char * cwd = getcwd(path, MAXLEN-1);
@@ -225,13 +225,13 @@ MATTE_EXT_FN(matte_filesystem__readstring) {
     }
 
     uint32_t len;
-    uint8_t * bytes = dump_bytes(matte_string_get_c_str(str), &len);
+    uint8_t * bytes = (uint8_t*)dump_bytes(matte_string_get_c_str(str), &len);
     if (!len || !bytes) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "readString() could not read file."));
         return matte_store_new_value(store);
     }
 
-    char * bytesStr = malloc(len+1);
+    char * bytesStr = (char*)malloc(len+1);
     memcpy(bytesStr, bytes, len);
     free(bytes);
     bytesStr[len] = 0;
@@ -288,7 +288,7 @@ MATTE_EXT_FN(matte_filesystem__readbytes) {
     }
 
     uint32_t len;
-    uint8_t * bytes = dump_bytes(matte_string_get_c_str(str), &len);
+    uint8_t * bytes = (uint8_t*)dump_bytes(matte_string_get_c_str(str), &len);
     if (!len || !bytes) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "readBytes() could not read file."));
         return matte_store_new_value(store);
@@ -437,7 +437,7 @@ MATTE_EXT_FN(matte_filesystem__getfullpath) {
         return matte_store_new_value(store);
     }
 
-    char * canon = malloc(MAX_PATH+1);
+    char * canon = (char*)malloc(MAX_PATH+1);
     
 
     if (!GetFullPathNameA(matte_string_get_c_str(str), MAX_PATH, canon, NULL)) {
@@ -454,7 +454,7 @@ MATTE_EXT_FN(matte_filesystem__getfullpath) {
 
 
 void matte_system__filesystem_cleanup(matteVM_t * vm, void * v) {
-    matteArray_t * dirfiles = v;
+    matteArray_t * dirfiles = (matteArray_t*)v;
     uint32_t i;
     uint32_t len = matte_array_get_size(dirfiles);
     for(i = 0; i < len; ++i) {

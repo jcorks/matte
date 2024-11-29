@@ -45,7 +45,7 @@ struct mattePool_t {
 
 
 mattePool_t * matte_pool_create(uint32_t sizeofType, void (*cleanup)(void *)) {
-    mattePool_t * out = matte_allocate(sizeof(mattePool_t));
+    mattePool_t * out = (mattePool_t *)matte_allocate(sizeof(mattePool_t));
     out->unfilled = NULL;
     out->pages  = matte_array_create(sizeof(mattePoolPage_t));
     out->size = 0;
@@ -54,7 +54,7 @@ mattePool_t * matte_pool_create(uint32_t sizeofType, void (*cleanup)(void *)) {
     return out;
 }
 
-static int matte_pool_check_fill(mattePoolPage_t * page, int total) {
+static void matte_pool_check_fill(mattePoolPage_t * page, int total) {
     int n;
     int id = 0;
     for(n = 0; n < POOL_PAGE_SIZE/64; ++n) {
