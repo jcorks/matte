@@ -891,6 +891,7 @@ uint32_t matte_add_module(
 
 
 void matte_debugging_enable(matte_t * m) {
+    if (m->isDebug) return;
     m->isDebug = 1;
     m->lines = matte_table_create_hash_pointer(); // needs editing
     matte_vm_set_debug_callback(
