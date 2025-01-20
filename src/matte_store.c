@@ -3600,15 +3600,16 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
 
 matteValue_t matte_value_subset(matteStore_t * store, matteValue_t v, uint32_t from, uint32_t to) {
     matteValue_t out = matte_store_new_value(store);
-    if (from > to) return out;
 
     switch(matte_value_type(v)) {
       case MATTE_VALUE_TYPE_OBJECT: {
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
-
-
         uint32_t curlen = m->table.keyvalues_number ? matte_array_get_size(m->table.keyvalues_number) : 0;
-        if (from >= curlen || to >= curlen) return out;
+
+        if (from > to || from >= curlen || to >= curlen) {
+          matte_value_into_new_object_ref(store, &out);
+          return out;
+        }
 
 
         matteArray_t arr = MATTE_ARRAY_CAST(
@@ -3629,7 +3630,12 @@ matteValue_t matte_value_subset(matteStore_t * store, matteValue_t v, uint32_t f
       case MATTE_VALUE_TYPE_STRING: {
         const matteString_t * str = matte_string_store_find(store->stringStore, v.value.id);
         uint32_t curlen = matte_string_get_length(str);
-        if (from >= curlen || to >= curlen) return out;
+        if (from >= curlen || to >= curlen) {
+          matteString_t * mstr = matte_string_create_from_c_str("");
+          matte_value_into_string(store, &out, mstr);
+          matte_string_destroy(mstr);
+          return out;
+        }
 
         matte_value_into_string(store, &out, matte_string_get_substr(str, from, to));
       }
