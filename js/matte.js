@@ -4656,7 +4656,7 @@ Matte.newVM = function(
             if (!ensureArgObject(args)) return store.empty;
             
             var ctout = 0;
-            const len = store.valueObjectGetKeyCount(args[0]);
+            const len = store.valueObjectGetNumberKeyCount(args[0]);
             const out = store.createObject();
             const names = [vm_specialString_value];
             const vals = [0];
