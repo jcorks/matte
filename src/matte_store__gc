@@ -480,13 +480,20 @@ void matte_store_garbage_collect(matteStore_t * h) {
     // recycles pending objects
     busy_possum_object_cleanup(h);    
 
-
-    double ticks = matte_os_get_ticks();
-    //#ifndef MATTE_DEBUG__STORE
-    if (!h->shutdown && (ticks - h->ticksGC < BUSY_POSSUM__SLEEPY_TIME_MS)) return;
+    #ifdef MATTE_GC_FORCE_CYCLE_COUNT_TIMEOUT
+        h->gcRequestStrength++;
+        if (h->gcRequestStrength < MATTE_GC_FORCE_CYCLE_COUNT_TIMEOUT) {
+            return;
+        }
+        h->gcRequestStrength = 0;
+    #else
+        double ticks = matte_os_get_ticks();
+        //#ifndef MATTE_DEBUG__STORE
+        if (!h->shutdown && (ticks - h->ticksGC < BUSY_POSSUM__SLEEPY_TIME_MS)) return;
+        h->ticksGC = ticks;
+    #endif
     //#endif
     h->gcLocked = 1;
-    h->ticksGC = ticks;
   L_BUSY_POSSUM_CYCLE:
     
     if (h->pendingRoots) {
@@ -524,11 +531,12 @@ void matte_store_garbage_collect(matteStore_t * h) {
             // drop out
         }
     } else {
+        
+        #ifndef MATTE_GC_FORCE_CYCLE_COUNT_TIMEOUT
         ticks = matte_os_get_ticks();
-        //#ifndef MATTE_DEBUG__STORE
         if (ticks - h->ticksGC < BUSY_POSSUM__AWAKE_TIME_MS)
             goto L_BUSY_POSSUM_CYCLE;
-        //#endif
+        #endif
 
     }
 

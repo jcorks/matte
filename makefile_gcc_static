@@ -15,7 +15,7 @@ all-extensions:
 debug:
 	cd ./src/rom/ && make
 	cd ./src/rom/ && ./makerom
-	gcc -std=c99 -g -c ./src/*.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
+	gcc -std=c99 -g -c ./src/*.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC -DMATTE_GC_FORCE_CYCLE_COUNT_TIMEOUT=1000
 	gcc -std=c99 -g -c ./src/rom/native.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS  -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
 	ar rcs libmatte.a *.o
 clean:
