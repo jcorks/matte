@@ -2375,7 +2375,7 @@ matteValue_t matte_vm_call_full(
         uint32_t len = matte_bytecode_stub_arg_count(stub);
 
 
-        if (lenReal == 1 && matte_array_at(argNames, matteValue_t, 0).value.id == vm->specialString_.value.id) {
+        if (len && lenReal == 1 && matte_array_at(argNames, matteValue_t, 0).value.id == vm->specialString_.value.id) {
             if (len > 1) {
                 matteString_t * str;
                 str = matte_string_create_from_c_str(
@@ -2386,7 +2386,7 @@ matteValue_t matte_vm_call_full(
                 return matte_store_new_value(vm->store);
             }
             referrables[0] = matte_array_at(args, matteValue_t, 0);
-        } else if (matte_bytecode_stub_is_vararg(stub)) {
+        } else if (len && matte_bytecode_stub_is_vararg(stub)) {
             // var arg functions have a single argument
             // that are prepared from the calling args.
             matteValue_t val = matte_store_new_value(vm->store);
