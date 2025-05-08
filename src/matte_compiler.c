@@ -366,6 +366,24 @@ static int token_is_assignment_derived(matteTokenType_t t) {
     return 0;
 }   
 
+static int utf8_peek_char(uint8_t ** source) {
+    uint8_t * iter = *source;
+    int val = (*source)[0];
+    if (val < 128 && *iter) {
+        val = (iter[0]) & 0x7F;
+        return val;
+    } else if (val < 224 && *iter && iter[1]) {
+        val = ((iter[0] & 0x1F)<<6) + (iter[1] & 0x3F);
+        return val;
+    } else if (val < 240 && *iter && iter[1] && iter[2]) {
+        val = ((iter[0] & 0x0F)<<12) + ((iter[1] & 0x3F)<<6) + (iter[2] & 0x3F);
+        return val;
+    } else if (*iter && iter[1] && iter[2] && iter[3]) {
+        val = ((iter[0] & 0x7)<<18) + ((iter[1] & 0x3F)<<12) + ((iter[2] & 0x3F)<<6) + (iter[3] & 0x3F);
+        return val;
+    }
+    return 0;
+}
 
 static int utf8_next_char(uint8_t ** source) {
     uint8_t * iter = *source;
@@ -677,6 +695,70 @@ static matteToken_t * matte_tokenizer_consume_word(
     }
 }
 
+static int matte_tokenizer_next__is_hex(int ch) {
+  switch(ch) {
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+    
+    case 'a':
+    case 'b':
+    case 'c':
+    case 'd':
+    case 'e':
+    case 'f':
+
+    case 'A':
+    case 'B':
+    case 'C':
+    case 'D':
+    case 'E':
+    case 'F':
+      return 1;
+      break;
+  }
+  
+  return 0;
+}
+
+static int matte_tokenizer_next__ch_to_hex_value(int ch) {
+  switch(ch) {
+    case '0': return 0;
+    case '1': return 1;
+    case '2': return 2;
+    case '3': return 3;
+    case '4': return 4;
+    case '5': return 5;
+    case '6': return 6;
+    case '7': return 7;
+    case '8': return 8;
+    case '9': return 9;
+    
+    case 'a': return 10;
+    case 'b': return 11;
+    case 'c': return 12;
+    case 'd': return 13;
+    case 'e': return 14;
+    case 'f': return 15;
+
+    case 'A': return 10;
+    case 'B': return 11;
+    case 'C': return 12;
+    case 'D': return 13;
+    case 'E': return 14;
+    case 'F': return 15;
+  }
+  
+  return 0;
+}
+
 
 
 // Given a matteTokenType_t, the tokenizer will attempt to parse the next 
@@ -865,6 +947,49 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
                     break;
                   case '\\':
                     matte_string_append_char(text, '\\');
+                    break;
+                  case 'x':
+                    {
+                        matteArray_t * bytes = matte_array_create(sizeof(uint8_t));
+
+                        while(1) { 
+                            int c = utf8_peek_char(&t->iter);
+                            int c2 = 0;
+                            if (matte_tokenizer_next__is_hex(c)) {
+                                c = matte_tokenizer_next__ch_to_hex_value(c);
+                                utf8_next_char(&t->iter);
+                                c2 = utf8_peek_char(&t->iter);
+                                
+                                // both good   
+                                if (matte_tokenizer_next__is_hex(c2)) {
+                                    c2 = matte_tokenizer_next__ch_to_hex_value(c2);
+                                    utf8_next_char(&t->iter);
+                                    uint8_t byte = 16*c + c2;
+                                    matte_array_push(bytes, byte);
+                                
+                                } else {
+                                    uint8_t byte = 16*c;
+                                    matte_array_push(bytes, byte);
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+
+                        }
+                        
+                        uint8_t term = 0;
+                        matte_array_push(bytes, term);
+                        
+                        
+                        matte_string_concat_printf(
+                            text,
+                            "%s", 
+                            (char*)matte_array_get_data(bytes)
+                        );
+                        
+                        matte_array_destroy(bytes);
+                    }
                     break;
 
                   default:
