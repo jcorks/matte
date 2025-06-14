@@ -4,7 +4,7 @@
 
 @out = '';
 
-{:::}{
+::?{
     'aaa'->foreach(::{
     
     });
@@ -14,7 +14,7 @@
 
 
 
-{:::}{
+::?{
     {}->foreach(:'aaa');
 }: { onError:::(message){
     out = out + 'nofn';
@@ -23,7 +23,7 @@
 
 
 
-{:::}{
+::?{
     {}->foreach(::{
         out = 'c';
     });
@@ -35,7 +35,7 @@
 
 
 
-{:::}{
+::?{
     ['a', 'b', 'c']->foreach(::(key => Number, val => String) {
         out = out + val;
     });
@@ -44,7 +44,7 @@
 }}
 
 
-{:::}{
+::?{
     foreach('aaa')::{
     
     }
@@ -54,14 +54,14 @@
 
 
 
-{:::}{
+::?{
     foreach({})'aaa';
 }: { onError:::(message){
     out = out + 'nofn';
 }}
 
 
-{:::}{
+::?{
     foreach(::{})::{};
 }: { onError:::(message){
     out = out + 'noobj2';
@@ -71,7 +71,7 @@
 
 
 
-{:::}{
+::?{
     foreach({})::{
         out = 'c';
     }
@@ -83,7 +83,7 @@
 
 
 
-{:::}{
+::?{
     foreach(['a', 'b', 'c'])::(key => Number, val => String) {
         out = out + val;
     }

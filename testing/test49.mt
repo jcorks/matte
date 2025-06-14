@@ -3,8 +3,8 @@
 // Errors
 
 @errMessage;
-@emptyOnError = {:::}{    
-    {:::}{
+@emptyOnError = ::?{    
+    ::?{
         error(detail:'Testing');
     } : {
         onMessage: ::(msg) {

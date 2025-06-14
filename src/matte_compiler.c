@@ -1162,6 +1162,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "breakpoint");
         break;
       }
+      case MATTE_TOKEN_FUNCTION_LISTEN: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "::?");
+        break;
+      }
       case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '(');
         break;
@@ -1552,11 +1556,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_WITH_SPECIFIER: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, ":::");
         break;  
-      }
-
-      case MATTE_TOKEN_FUNCTION_LISTEN: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "{:::}");
-        break;
       }
       
       case MATTE_TOKEN_OBJECT_LITERAL_SEPARATOR: {

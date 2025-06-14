@@ -6,7 +6,7 @@ return 0;
     print(message:'' + index + '@ ' + (getExternalFunction(name:"system_getticks")() - from));
 }
 
-{:::}{
+::?{
     forever ::{
         @b = a/100;
         a+=1;

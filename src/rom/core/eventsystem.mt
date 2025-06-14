@@ -57,7 +57,7 @@ DEALINGS IN THE SOFTWARE.
                 @: ev = events[event];
                 when(ev == empty) error(:"Cannot emit event for non-existent event "+ev);
                 
-                @continue = {:::} {
+                @continue = ::? {
                     when(ev.handlerCount == 0) true;
                     for(ev.handlerCount-1, 0)::(i) {
                         // when handlers return false, we no longer propogate.           
@@ -132,7 +132,7 @@ DEALINGS IN THE SOFTWARE.
             uninstallHandler::(event => String, handler) {
                 @: ev = events[event];
                 when(ev == empty) error(:"Cannot uninstall handler for non-existent event "+ev);
-                {:::} {
+                ::? {
                     for(0, ev.handlerCount)::(i) {
                         if (ev.handlers[i] == handler) ::<= { 
                             ev.handlers->remove(:i);

@@ -15,7 +15,7 @@
 
 @out = '';
 
-{:::}{
+::?{
     100->remove();
 }: {onError:::(message){
     out = out + 'noobj';

@@ -75,7 +75,7 @@ sq1.length = 4;
 
 
 combinedArea(a:tri0, b:sq0);
-{:::}{
+::?{
     @:combinedAreaRestricted ::(a => Shape.type, b => Square.type) {
         out = out + a.area() + b.area(); 
     }

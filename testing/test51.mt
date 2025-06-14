@@ -5,7 +5,7 @@
 
 @errMessage = 0;
 @iterCheck = 0;
-@n100 = {:::}{    
+@n100 = ::?{    
 
     for(0, 100) ::(i) {
         errMessage = errMessage + i;        

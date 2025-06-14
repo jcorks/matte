@@ -20,7 +20,7 @@ out = out + list->findIndexCondition(::(value) <- value.id > 20);
 out = out + list->findIndexCondition(::(value) <- false);
 
 
-{:::} {
+::? {
     list->findIndex(:21);
 } : {
     onError::(message) {

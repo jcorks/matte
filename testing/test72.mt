@@ -2,7 +2,7 @@
 //
 // Core: String (5)
 @:containsAny::(in, keys) {
-    return {:::}{
+    return ::?{
         keys->foreach(do:::(k, v) {
             when(in->contains(key:v)) send(message:true);
         });

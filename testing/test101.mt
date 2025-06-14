@@ -4,14 +4,14 @@
 
 @fn;
 @out = '';
-{:::}{
+::?{
     fn = getExternalFunction();
     fn();
 }: { onError:::(message){
     out = out + 'nofn';
 }}
 
-{:::}{
+::?{
     fn = getExternalFunction(name:{});
     fn();
 }: { onError:::(message){

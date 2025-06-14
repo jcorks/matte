@@ -108,7 +108,7 @@ sq.length = 3;
 out = out + sq.area();
 out = out + sq.numSides;
 
-{:::} {
+::? {
     out = out + sq.sides;
 } : {
     onError::(message) {

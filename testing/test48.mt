@@ -3,7 +3,7 @@
 // Errors
 
 @errMessage;
-{:::}{
+::?{
         error(detail:'Testing');
 } : {
     onError:::(message) {
@@ -11,7 +11,7 @@
     }
 }
 
-{:::}{
+::?{
     error();
 } : {
     onError:::(message) {
@@ -20,7 +20,7 @@
 }
 
 
-{:::} {
+::? {
         @:a = 2;
         a();
 } : {  

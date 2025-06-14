@@ -12,7 +12,7 @@
 
 
 @findPos =::(grid, len) {
-    return {:::}{
+    return ::?{
         for(0, len) ::(y){
             for(0, len) ::(x) {
                 if (grid[y][x] == 1) ::<={

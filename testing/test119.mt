@@ -63,7 +63,7 @@ out = out + p.iter;
 p.print();
 out = out + (p.x + p.y);
 
-{:::} {
+::? {
     p.hi = 10;
 } : {
     onError ::(message) {
@@ -72,7 +72,7 @@ out = out + (p.x + p.y);
 }
 
 
-{:::} {
+::? {
     p.x = 10;
 } : {
     onError ::(message) {
@@ -80,7 +80,7 @@ out = out + (p.x + p.y);
     }
 }
 
-{:::} {
+::? {
     p.move = 10;
 } : {
     onError ::(message) {
@@ -88,7 +88,7 @@ out = out + (p.x + p.y);
     }
 }
 
-{:::} {
+::? {
     p.x = p.setOnly;
 } : {
     onError ::(message) {

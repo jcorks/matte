@@ -44,7 +44,7 @@ out = out + instance.numSides;
 out = out + instance.area();
 out = out + instance.depth;
 
-{:::} {
+::? {
     instance.grub = 10;
 } : {
     onError::(message) {
@@ -53,7 +53,7 @@ out = out + instance.depth;
 }
 
 
-{:::} {
+::? {
     instance.label = 100;
 } : {
     onError::(message) {
@@ -63,7 +63,7 @@ out = out + instance.depth;
 
 
 
-{:::} {
+::? {
     Object.newType(
         inherits : [
             SuperShape

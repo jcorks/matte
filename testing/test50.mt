@@ -4,7 +4,7 @@
 
 
 @errMessage;
-@n100 = {:::} {
+@n100 = ::? {
     error(detail:'Testing');    
     return 50;
 } : {
