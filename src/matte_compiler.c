@@ -190,7 +190,7 @@ struct matteFunctionBlock_t {
     // whether the function does nothign useful. This will be replaced with 
     // The Empty Function
     int isEmpty;
-    
+        
     // Starting line of the function block
     uint32_t startingLine;
 
@@ -1080,6 +1080,11 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
 
+      case MATTE_TOKEN_LISTEN_IMPLICATION: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "=>");
+        break;  
+      }
+
       case MATTE_TOKEN_EXTERNAL_NOOP: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "noop");
         break;
@@ -1162,8 +1167,8 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "breakpoint");
         break;
       }
-      case MATTE_TOKEN_FUNCTION_LISTEN: {
-        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "::?");
+      case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_LISTEN: {
+        return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "?");
         break;
       }
       case MATTE_TOKEN_EXPRESSION_GROUP_BEGIN: {
@@ -2349,15 +2354,13 @@ static void ff_skip_inner_function(matteToken_t ** t) {
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_INLINE:
             iter = iter->next;
             // but... the inline return could be a function, so:
-            if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR ||
-                iter->ttype == MATTE_TOKEN_FUNCTION_LISTEN) {
+            if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
                 ff_skip_inner_function(&iter);
                 iter = iter->next;                
             }
             *t = iter;
             return;
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR:
-          case MATTE_TOKEN_FUNCTION_LISTEN:
             ff_skip_inner_function(&iter);
             break;
           case MATTE_TOKEN_FUNCTION_END:
@@ -3172,19 +3175,18 @@ static matteArray_t * compile_base_value(
         return inst;
       }
 
-      case MATTE_TOKEN_FUNCTION_LISTEN: { 
-        matteArray_t * arr = (matteArray_t*)iter->data; // the sneaky VI in action....
-        merge_instructions(inst, matte_array_clone(arr));
-        *src = iter->next;
-        return inst;
-      }
-
 
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_WITH_SPECIFIER:
         assert(!"Internal compiler error: Constructor with specifier should be replaced with a normal function constructor in parent context.");
         break;
               
       case MATTE_TOKEN_FUNCTION_CONSTRUCTOR:  {
+        if (iter->next && iter->next->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR_LISTEN) {
+            matteArray_t * arr = (matteArray_t*)iter->next->data; // the sneaky VI in action....
+            merge_instructions(inst, matte_array_clone(arr));
+            *src = iter->next->next;
+            return inst;
+        }
 
         matteFunctionBlock_t * fn = (matteFunctionBlock_t*)iter->data; // the sneaky IV in action....
         if (fn->isEmpty) {
@@ -3582,7 +3584,7 @@ static matteArray_t * compile_listen(
         b->stubID
     );
 
-    if (iter->ttype == MATTE_TOKEN_GENERAL_SPECIFIER) {
+    if (iter->ttype == MATTE_TOKEN_LISTEN_IMPLICATION) {
         iter = iter->next; // skip :
 
         matteArray_t * inst = compile_expression(g, block, functions, &iter);
@@ -3873,27 +3875,6 @@ static matteArray_t * compile_expression(
             break;
           }
 
-          case MATTE_TOKEN_FUNCTION_LISTEN: {
-            matteToken_t * start = iter;
-            matteArray_t * inst = compile_listen(g, block, functions, &iter);
-            if (!inst) {
-                goto L_FAIL;
-            }
-            matteToken_t * end = iter;            
-            matte_token_new_data(start, inst, MATTE_TOKEN_DATA_TYPE__ARRAY_INST);    
-            
-
-            // dispose of unneeded nodes since they were compiled.
-            iter = start->next;
-            matteToken_t * next;
-            while(iter != end) {
-                next = iter->next;
-                destroy_token(iter);            
-                iter = next;
-            }
-            start->next = end;
-            break;
-          }
 
           // gate expressions mimic ternary operators in c-likes <3
           case MATTE_TOKEN_EXTERNAL_GATE: {
@@ -3977,6 +3958,29 @@ static matteArray_t * compile_expression(
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR: {
             matteToken_t * start = iter;
             iter = iter->next;
+            
+            if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR_LISTEN) {
+                matteToken_t * start = iter;
+                matteArray_t * inst = compile_listen(g, block, functions, &iter);
+                if (!inst) {
+                    goto L_FAIL;
+                }
+                matteToken_t * end = iter;            
+                matte_token_new_data(start, inst, MATTE_TOKEN_DATA_TYPE__ARRAY_INST);    
+                
+
+                // dispose of unneeded nodes since they were compiled.
+                iter = start->next;
+                matteToken_t * next;
+                while(iter != end) {
+                    next = iter->next;
+                    destroy_token(iter);            
+                    iter = next;
+                }
+                start->next = end;
+                break;
+            }
+            
             matteFunctionBlock_t * b = compile_function_block(g, block, functions, &iter);
             if (!b) {
                 goto L_FAIL;
@@ -4789,8 +4793,7 @@ static matteFunctionBlock_t * compile_function_block(
     // next find all locals and static strings
     funcStart = iter;
     while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
-        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR ||  
-            iter->ttype == MATTE_TOKEN_FUNCTION_LISTEN) {
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
             ff_skip_inner_function(&iter);
         } else if (iter->ttype == MATTE_TOKEN_DECLARE ||
             iter->ttype == MATTE_TOKEN_DECLARE_CONST) {

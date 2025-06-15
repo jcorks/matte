@@ -68,7 +68,7 @@ return ::? {
             }
         }
     ).new();
-} : {
+} => {
     onError:::(message) {
         error(:'Only workers are allowed to import the AsyncWorker module.');
     }

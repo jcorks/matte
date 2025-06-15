@@ -84,7 +84,7 @@ combinedArea(a:tri0, b:sq0);
     // will throw type error
     combinedAreaRestricted(a:sq0, b:tri0);
     combinedAreaRestricted(a:sq1, b:sq0);
-} : {
+} => {
     onError:::(message){}
 }
 

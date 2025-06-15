@@ -46,7 +46,7 @@ out = out + instance.depth;
 
 ::? {
     instance.grub = 10;
-} : {
+} => {
     onError::(message) {
         return out = out + 'nomem1'
     }
@@ -55,7 +55,7 @@ out = out + instance.depth;
 
 ::? {
     instance.label = 100;
-} : {
+} => {
     onError::(message) {
         return out = out + 'notype'
     }
@@ -70,7 +70,7 @@ out = out + instance.depth;
         ],
         layout : out
     );
-} : {
+} => {
     onError::(message) {
         return out = out + 'nolyt1'
     }

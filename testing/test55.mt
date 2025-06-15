@@ -54,7 +54,7 @@
 ::?{
     result = a % b;
     result = '' + (a - b * 2);
-} : {
+} => {
 
     onError:::(message) {
 

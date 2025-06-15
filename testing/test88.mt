@@ -49,7 +49,7 @@ combinedArea(a:tri0, b:sq0);
     combinedAreaRestricted(shapeA:sq1, squareB:sq0);
     combinedAreaRestricted(shapeA:sq0, squareB:tri0);
     combinedAreaRestricted(shapeA:sq1, squareB:sq0);
-} : {
+} => {
     onError:::(message) {}   
 }
 

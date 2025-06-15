@@ -110,7 +110,7 @@ out = out + sq.numSides;
 
 ::? {
     out = out + sq.sides;
-} : {
+} => {
     onError::(message) {
         out = out + 'nosides';
     }

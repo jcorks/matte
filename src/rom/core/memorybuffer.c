@@ -1,3 +1,14 @@
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+
+#include "../native.h"
+#include "../../matte.h"
+#include "../../matte_string.h"
+#include "../../matte_store.h"
+#include "../../matte_vm.h"
+
+
 /*
 Copyright (c) 2023, Johnathan Corkery. (jcorkery@umich.edu)
 All rights reserved.

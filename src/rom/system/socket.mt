@@ -431,7 +431,7 @@ DEALINGS IN THE SOFTWARE.
                         @err;
                         ::?{
                             _socket_client_update(a:socket);
-                        } : { 
+                        } => { 
                             onError:::(message) {
                                 @:er = message.detail;
                                 err = er;
@@ -497,7 +497,7 @@ DEALINGS IN THE SOFTWARE.
                         
                         ::? {
                             socket = _socket_client_create(a:address, b:port, c:0, d:mode, e:tls);
-                        } : {
+                        } => {
                             onError:::(message){
                                 this.emit(event:'onConnectFail', detail:message.detail);
                             }

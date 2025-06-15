@@ -22,7 +22,7 @@ out = out + list->findIndexCondition(::(value) <- false);
 
 ::? {
     list->findIndex(:21);
-} : {
+} => {
     onError::(message) {
         out = out + 'error';
     }

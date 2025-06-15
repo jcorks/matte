@@ -9,7 +9,7 @@
 
 ::?{
     forever 'hi';
-} : {
+} => {
     onError:::(message){
         output = output + 'nofn';
     }
@@ -22,7 +22,7 @@
         }
         send();
     }
-} : { 
+} => { 
     onError:::(message){
         output = output + 'norun';
     }
