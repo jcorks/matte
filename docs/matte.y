@@ -275,11 +275,11 @@
 /* Exactly: <- */
 %token FUNCTION_CONSTRUCTOR_INLINE
 
-/* Exactly: ::<= */
+/* Exactly: <= */
 %token FUNCTION_CONSTRUCTOR_DASH
 
-/* Exactly: {:::} */
-%token FUNCTION_LISTEN
+/* Exactly: ? */
+%token FUNCTION_CONSTRUCTOR_LISTEN
 
 
 
@@ -326,6 +326,9 @@
 
 /* Exactly: : */
 %token GENERAL_SPECIFIER
+
+/* Exactly: => */
+%token LISTEN_IMPLICATION
 
 /* Exactly: return */
 %token RETURN 
@@ -420,9 +423,7 @@ postfix__a_post   : ASSIGNMENT_POW expression
                   
 
 /* general expression */
-expression : FUNCTION_LISTEN function_definition GENERAL_SPECIFIER expression
-           | FUNCTION_LISTEN function_definition
-           | GENERAL_OPERATOR1 expression postfix_repeat
+expression : GENERAL_OPERATOR1 expression postfix_repeat
            | GENERAL_OPERATOR1 expression
            | EXPRESSION_GROUP_BEGIN expression EXPRESSION_GROUP_END postfix_repeat
            | EXPRESSION_GROUP_BEGIN expression EXPRESSION_GROUP_END
@@ -554,11 +555,13 @@ new_function_with_specifier : FUNCTION_CONSTRUCTOR_WITH_SPECIFIER function_body
 
 
 function_body : FUNCTION_CONSTRUCTOR_DASH function_body
+              | FUNCTION_CONSTRUCTOR_LISTEN function_definition LISTEN_IMPLICATION expression STATEMENT_END
+              | FUNCTION_CONSTRUCTOR_LISTEN function_definition
               | value_function_creation_args FUNCTION_TYPESPEC expression function_definition
               | value_function_creation_args function_definition
               | FUNCTION_TYPESPEC expression function_definition
               | function_definition
-              ;
+              ;	
               
               
 /* function scope statement */
