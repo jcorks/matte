@@ -24,16 +24,16 @@ test->setAttributes(attributes:op);
 test +=  1;
 out = out + test.data;
 
-{:::}{
+::?{
     10->setAttributes(:op);    
-}: {onError:::(message){
+}=> {onError:::(message){
     out = out + 'noobj0';
 }}
 
 
-{:::}{
+::?{
     test->setAttributes(:0);    
-}:{ onError:::(message){
+}=>{ onError:::(message){
     out = out + 'noobj1';
 }}
 test +=  1;
@@ -59,9 +59,9 @@ out = out + test.data;
 
 
 out = out + Boolean(:test->attributes == op2);
-{:::}{
+::?{
     Object.getAttributes(:'d');
-}: {onError:::(message){
+}=>{onError:::(message){
     out = out + 'noobjEX';
 }}
 

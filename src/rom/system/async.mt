@@ -106,7 +106,7 @@ return class(
         }
 
         @idToWorker::(id) {
-            return {:::} {
+            return ::? {
                 for(0, workers.length)::(i){
                     if (workers[i].id == id) send(:workers[i]);
                 }
@@ -117,7 +117,7 @@ return class(
 
         // message checking
         @checkMessages::{
-            {:::}{
+            ::?{
                 forever ::{
                     @nextm = _workernextmessage();
                     when(nextm != empty) ::<={
@@ -188,7 +188,7 @@ return class(
                             }
                         });
                         
-                        {:::}{
+                        ::?{
                             forever ::{
                                 Time.sleep(milliseconds:50);
                                 this.updateState();

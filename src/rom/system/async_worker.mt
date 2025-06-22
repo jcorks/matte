@@ -30,7 +30,7 @@ DEALINGS IN THE SOFTWARE.
 @:class = import(:'Matte.Core.Class');
 @:EventSystem = import(:'Matte.Core.EventSystem');
 
-return {:::} {
+return ::? {
     // Sends a message to the parent async manager
     // arg0: (string) message to send to parent
     @:_workersendmessage = getExternalFunction(:"__matte_::asyncworker_send_message");
@@ -56,7 +56,7 @@ return {:::} {
                 },
                 
                 update :: {
-                    {:::}{
+                    ::?{
                         forever ::{
                             @:msg = _workercheckmessage();        
                             when(msg == empty) send();
@@ -68,7 +68,7 @@ return {:::} {
             }
         }
     ).new();
-} : {
+} => {
     onError:::(message) {
         error(:'Only workers are allowed to import the AsyncWorker module.');
     }

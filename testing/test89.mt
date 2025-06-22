@@ -75,7 +75,7 @@ sq1.length = 4;
 
 
 combinedArea(a:tri0, b:sq0);
-{:::}{
+::?{
     @:combinedAreaRestricted ::(a => Shape.type, b => Square.type) {
         out = out + a.area() + b.area(); 
     }
@@ -84,7 +84,7 @@ combinedArea(a:tri0, b:sq0);
     // will throw type error
     combinedAreaRestricted(a:sq0, b:tri0);
     combinedAreaRestricted(a:sq1, b:sq0);
-} : {
+} => {
     onError:::(message){}
 }
 

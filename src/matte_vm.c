@@ -1929,12 +1929,13 @@ matteVM_t * matte_vm_create(matte_t * m) {
 
 
     //vm_add_built_in(vm, MATTE_EXT_CALL_INTERNAL__INTROSPECT_NOWRITE, 0, vm_ext_call__introspect_nowrite);    
-    matte_bind_native_functions(vm);
 
 
 
     
     // add the default roms
+    #ifndef MATTE_NO_EXTENSIONS
+    matte_bind_native_functions(vm);
     {
         uint32_t i;
         uint32_t len = MATTE_ROM__COUNT;
@@ -1958,7 +1959,9 @@ matteVM_t * matte_vm_create(matte_t * m) {
             matte_vm_add_stubs(vm, stubs);
             matte_array_destroy(stubs);
         }
-   }
+    }
+    #endif
+   
 
     // pre-allocate lookahead
     vm_push_frame(vm);

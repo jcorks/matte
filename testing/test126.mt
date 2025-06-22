@@ -44,18 +44,18 @@ out = out + instance.numSides;
 out = out + instance.area();
 out = out + instance.depth;
 
-{:::} {
+::? {
     instance.grub = 10;
-} : {
+} => {
     onError::(message) {
         return out = out + 'nomem1'
     }
 }
 
 
-{:::} {
+::? {
     instance.label = 100;
-} : {
+} => {
     onError::(message) {
         return out = out + 'notype'
     }
@@ -63,14 +63,14 @@ out = out + instance.depth;
 
 
 
-{:::} {
+::? {
     Object.newType(
         inherits : [
             SuperShape
         ],
         layout : out
     );
-} : {
+} => {
     onError::(message) {
         return out = out + 'nolyt1'
     }

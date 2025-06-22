@@ -11,7 +11,7 @@ out = out + (["1"]->subset(from:0, to:0))[0];
 
 out = out + (['11', '22', '33', '44']->subset(from:1, to:3))[0];
 
-out = out + [0]->subset(from:0, to:2);
+out = out + [0]->subset(from:0, to:2)->size;
 
 
 return out;

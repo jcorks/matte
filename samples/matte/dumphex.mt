@@ -230,7 +230,7 @@ when(parameters == empty || parameters.file == empty) ::<={
         lineAsTextPoints->setSize(:0);    
     }
 
-    {:::} {
+    ::? {
         forever ::{
             @lineIter = 0;
             @lineAsTextIter = 0;

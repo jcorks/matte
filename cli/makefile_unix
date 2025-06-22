@@ -10,6 +10,9 @@ all-extensions:
 	cd ../ && make -f ./makefile_gcc_static all-extensions
 	gcc -std=c99 -O2 -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS__ALL -fmax-errors=5 ./*.c ../libmatte.a -o ./matte -lm -lpthread -lssl -lcrypto
 
+no-extensions:
+	gcc -std=c99 -DMATTE_NO_EXTENSIONS -g -fmax-errors=5 ./*.c ../src/*.c ../src/rom/core/memorybuffer.c -o ./matte -lm -lpthread
+
 
 debug:
 	gcc -std=c99 -O2 ./package/make_package.c ./shared.c ../src/*.c ../src/rom/native.c -o ./package/make_package -lm

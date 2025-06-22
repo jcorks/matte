@@ -63,34 +63,34 @@ out = out + p.iter;
 p.print();
 out = out + (p.x + p.y);
 
-{:::} {
+::? {
     p.hi = 10;
-} : {
+} => {
     onError ::(message) {
         out = out + 'noMember'
     }
 }
 
 
-{:::} {
+::? {
     p.x = 10;
-} : {
+} => {
     onError ::(message) {
         out = out + 'noWrite'
     }
 }
 
-{:::} {
+::? {
     p.move = 10;
-} : {
+} => {
     onError ::(message) {
         out = out + 'noWriteFn'
     }
 }
 
-{:::} {
+::? {
     p.x = p.setOnly;
-} : {
+} => {
     onError ::(message) {
         out = out + 'noRead'
     }
