@@ -749,7 +749,7 @@ make sense in Matte.
 <br>
 <br>
 Instead, however, we have messaging. Messaging allows you to abandon a calling context to an 
-earlier context level. This is accomplished using <i>Listen Functions (`{:::}`)</i> and <i>send()</i>
+earlier context level. This is accomplished using <i>Listen Functions (`::?`)</i> and <i>send()</i>
 <br>
 <br>
 <i>Listen Functions</i> are similar to dash functions in that all inner statements are run immediately. However, it returns either the function's result OR the result of 
@@ -763,7 +763,7 @@ a <i>send()</i> call. The Listen Function acts as a barrier for messages, much l
 
     
     // The Listen Function syntax runs all statements immediately.
-    @result = {:::} {
+    @result = ::? {
         for(0, 100)::(y) {
             for(0, 100)::(x) {
                 // If a true cell is found, all functions are stopped 
@@ -792,7 +792,7 @@ function overall, so the handler effectively supervises the entire listen functi
 
 <br>
 <pre id="doc-source">
-    {:::}{
+    ::? {
         for(0, 100)::(y) {
             for(0, 100)::(x) {
                 // If a true cell is found, all functions are stopped 
@@ -801,7 +801,7 @@ function overall, so the handler effectively supervises the entire listen functi
                 when(my2DArray[x][y] == true) send(:'Found!');
             }
         }
-    } : {
+    } => {
         onSend:::(message) {
             print(:'A message was received: ' + message);
         }
@@ -820,7 +820,7 @@ loop can safely be broken:
 
 <pre id="doc-source">
     @counter = 0;
-    {:::} {
+    ::? {
         forever ::{
             // when send is called, forever() is escaped.
             if(counter == 10) send();
@@ -860,13 +860,13 @@ Error catching is similar to catching regular messages with <i>send</i>:
 
 <pre id="doc-source">
     @errorExample :: {
-        {:::} {
+        ::? {
             print(:"1");
             print(:"2");
             error(:'Uh oh!');
             print(:"3");
             print(:"4");
-        } : {
+        } => {
             onError:::(message) {        
                 print(:"The following error was caught: " + message.data);
             }
@@ -903,11 +903,11 @@ Error catching is similar to catching regular messages with <i>send</i>:
     }
     
     @mySafeFunction ::{
-        {:::} {    
+        ::? {    
             print(:1);
             dangerousFunction();
             print(:2);
-        } : {
+        } => {
             onError::(message){        
                 print(:'Caught external error');
             }
