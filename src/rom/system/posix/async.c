@@ -225,6 +225,7 @@ static void * matte_thread(void * userData) {
     }
 
     matte_t * m = matte_create();
+    matte_set_importer(m, NULL, NULL);
     uint32_t outByteLen;
     uint8_t * outBytes = matte_compiler_run(
         matte_get_syntax_graph(m),

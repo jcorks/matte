@@ -269,6 +269,11 @@ static matteValue_t vm_ext_call__importmodule(matteVM_t * vm, matteValue_t fn, c
     matteValue_t params = args[1];
     matteValue_t as = args[2];
     matteValue_t preload = args[3];
+    matteValue_t noCache = args[4];
+    
+    int noCacheFlag = 0;
+    if (matte_value_type(noCache) == MATTE_VALUE_TYPE_BOOLEAN)
+        noCacheFlag = dump.boolean;
     
     if (matte_value_type(a) != MATTE_VALUE_TYPE_STRING) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "the module argument to importModule MUST be a string."));        
@@ -308,6 +313,7 @@ static matteValue_t vm_ext_call__importmodule(matteVM_t * vm, matteValue_t fn, c
         return matte_store_new_value(vm->store);
     }
     
+
     
     matteValue_t * v = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
     if (v) {
@@ -319,11 +325,18 @@ static matteValue_t vm_ext_call__importmodule(matteVM_t * vm, matteValue_t fn, c
         if (preloadOnly) {
             v = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
             *v = matte_vm_run_fileid(vm, fileid, params);
-            matte_table_insert_by_uint(vm->imported, fileid, v);
+            
+            if (noCache) {
+                matte_value_object_pop_lock(*v);
+            } else {
+                matte_table_insert_by_uint(vm->imported, fileid, v);
+            }
         } else {
             return matte_store_new_value(vm->store);
         }
     }
+
+
 
     return *v;
 }
