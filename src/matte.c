@@ -873,7 +873,9 @@ uint32_t matte_add_module(
                 bytecodeLen
             );
             if (stubs) {
-            matte_vm_add_stubs(m->vm, stubs);
+                matte_vm_add_stubs(m->vm, stubs);
+                matte_array_destroy(stubs);
+                stubs = NULL;
             } else {
                 fileid = 0; // failed.
                 matteString_t * str = matte_string_create_from_c_str("Failed to assemble bytecode %s.", name);

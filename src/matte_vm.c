@@ -2661,13 +2661,16 @@ matteValue_t matte_vm_import(
     matteValue_t preloadBool = matte_store_new_value(vm->store);
     if (preloadOnly)
         matte_value_into_boolean(vm->store, &preloadBool, preloadOnly);
+
+    matteValue_t noCache = matte_store_new_value(vm->store);
     
     
     matteValue_t args[] = {
         pathStr,
         parameters,
         aliasStr,
-        preloadBool
+        preloadBool,
+        noCache
     };
     matte_value_object_push_lock(vm->store, parameters);
     matteValue_t v =  vm_ext_call__importmodule(vm, matte_store_new_value(vm->store), args, NULL);

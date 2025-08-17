@@ -265,6 +265,7 @@ MATTE_EXT_FN(matte_json__encode) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t out = matte_store_new_value(store);
     matte_value_into_string(store, &out, str);
+    matte_string_destroy(str);
     return out;
 }
 typedef struct{
