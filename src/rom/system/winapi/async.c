@@ -499,7 +499,7 @@ static void matte_system__async_cleanup(matteVM_t * vm, void * nu) {
 }
 
 static void matte_system__async(matteVM_t * vm) {
-    MatteAsyncInfo * asyncSelf = matte_allocate(sizeof(MatteWorkerChildInfo));
+    MatteAsyncInfo * asyncSelf = (MatteAsyncInfo*)matte_allocate(sizeof(MatteAsyncInfo));
 
     asyncSelf->messagesReceived = matte_array_create(sizeof(MatteWorkerPendingMessage));
     asyncSelf->messagesPending  = matte_array_create(sizeof(MatteWorkerPendingMessage));
