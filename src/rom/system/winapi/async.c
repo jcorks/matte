@@ -94,7 +94,6 @@ typedef enum {
 
 
 // TLS 
-static DWORD tlsIndex = {};
 //__thread MatteAsyncInfo asyncSelf = {};
 
 typedef struct {
@@ -132,8 +131,7 @@ typedef struct {
 } MatteAsyncStartData;
 
 
-static MatteWorkerChildInfo * find_child(int id) {
-    MatteAsyncInfo * asyncSelf = TlsGetValue(tlsIndex);
+static MatteWorkerChildInfo * find_child(MatteAsyncInfo * asyncSelf, int id) {
     uint32_t i;
     uint32_t len = matte_array_get_size(asyncSelf->children);
     for(i = 0; i < len; ++i) {
@@ -211,6 +209,7 @@ MATTE_EXT_FN(matte_asyncworker__check_message) {
 static void * matte_thread(void * userData) {
     
     MatteAsyncStartData * startData = (MatteAsyncStartData*)userData;
+    printf("Started thread: %p\n", startData);
     uint32_t lenBytes;
     *startData->stateRef = MWAS_UNKNOWN;
     uint8_t * src = (uint8_t*)dump_bytes(matte_string_get_c_str(startData->from), &lenBytes);
@@ -311,14 +310,12 @@ static void * matte_thread(void * userData) {
 }
 
 
-static int matte_async_next_id() {
-    MatteAsyncInfo * asyncSelf = TlsGetValue(tlsIndex);
-
+static int matte_async_next_id(MatteAsyncInfo * asyncSelf) {
     int i;
     int len = (int)matte_array_get_size(asyncSelf->children);
     
     for(i = 0; i < len; ++i) {
-        if (matte_array_at(asyncSelf->children, MatteWorkerChildInfo, i).workerid == asyncSelf.workeridpool) {
+        if (matte_array_at(asyncSelf->children, MatteWorkerChildInfo, i).workerid == asyncSelf->workeridpool) {
             asyncSelf->workeridpool++;
             i = -1;
         }
@@ -329,6 +326,7 @@ static int matte_async_next_id() {
 
 
 MATTE_EXT_FN(matte_async__start) {
+    MatteAsyncInfo * asyncSelf = (MatteAsyncInfo*)userData;
     matteStore_t * store = matte_vm_get_store(vm);
     // source ensures strings
     matteValue_t path  = args[0];
@@ -344,13 +342,13 @@ MATTE_EXT_FN(matte_async__start) {
     init->stateRef = &(ch->state);
     init->fromVM = vm;
     init->resultRef = &(ch->result);
-    ch->workerid = matte_async_next_id();
-    MatteAsyncInfo * asyncSelf = TlsGetValue(tlsIndex);
+    ch->workerid = matte_async_next_id(asyncSelf);
     matte_array_push(asyncSelf->children, ch);
     
     ch->winthreadID = CreateThread(
         0,
-        matte_thread,
+        0,
+        (LPTHREAD_START_ROUTINE)matte_thread,
         init,
         0,
         NULL
@@ -363,9 +361,10 @@ MATTE_EXT_FN(matte_async__start) {
 
 
 MATTE_EXT_FN(matte_async__state) {
+    MatteAsyncInfo * asyncSelf = (MatteAsyncInfo*)userData;
     matteStore_t * store = matte_vm_get_store(vm);
     int id = matte_value_as_number(store, args[0]);
-    MatteWorkerChildInfo * ch = find_child(id);
+    MatteWorkerChildInfo * ch = find_child(asyncSelf, id);
     if (!ch) {
         matte_vm_raise_error_cstring(vm, "No such async primitive ID.");
         return matte_store_new_value(store);
@@ -379,9 +378,10 @@ MATTE_EXT_FN(matte_async__state) {
 
 
 MATTE_EXT_FN(matte_async__result) {
+    MatteAsyncInfo * asyncSelf = (MatteAsyncInfo*)userData;
     matteStore_t * store = matte_vm_get_store(vm);
     int id = matte_value_as_number(store, args[0]);
-    MatteWorkerChildInfo * ch = find_child(id);
+    MatteWorkerChildInfo * ch = find_child(asyncSelf, id);
     if (!ch) {
         matte_vm_raise_error_cstring(vm, "No such async primitive ID.");
         return matte_store_new_value(store);
@@ -399,8 +399,9 @@ MATTE_EXT_FN(matte_async__result) {
 
 MATTE_EXT_FN(matte_async__error) {
     matteStore_t * store = matte_vm_get_store(vm);
+    MatteAsyncInfo * asyncSelf = (MatteAsyncInfo*)userData;
     int id = matte_value_as_number(store, args[0]);
-    MatteWorkerChildInfo * ch = find_child(id);
+    MatteWorkerChildInfo * ch = find_child(asyncSelf, id);
     if (!ch) {
         matte_vm_raise_error_cstring(vm, "No such async primitive ID.");
         return matte_store_new_value(store);
@@ -416,9 +417,8 @@ MATTE_EXT_FN(matte_async__error) {
 }
 
 
-static void push_messages() {
-    MatteAsyncInfo * asyncSelf = TlsGetValue(tlsIndex);
-
+static void push_messages(MatteAsyncInfo * asyncSelf) {
+    printf("hi\n");
     int i, n;
     uint32_t len  = matte_array_get_size(asyncSelf->messagesPending),
              nlen = matte_array_get_size(asyncSelf->children);
@@ -443,20 +443,20 @@ static void push_messages() {
 MATTE_EXT_FN(matte_async__sendmessage) {
     matteStore_t * store = matte_vm_get_store(vm);
     MatteWorkerPendingMessage pending;
+    MatteAsyncInfo * asyncSelf = (MatteAsyncInfo*)userData;
 
     pending.id = matte_value_as_number(store, args[0]);
     pending.message = matte_string_clone(matte_value_string_get_string_unsafe(store, args[1]));
-    MatteAsyncInfo * asyncSelf = TlsGetValue(tlsIndex);
     matte_array_push(asyncSelf->messagesPending, pending);
     
-    push_messages();
+    push_messages(asyncSelf);
     return matte_store_new_value(store);    
 }
 
 MATTE_EXT_FN(matte_async__nextmessage) {
     matteStore_t * store = matte_vm_get_store(vm);
-    MatteAsyncInfo * asyncSelf = TlsGetValue(tlsIndex);
-    push_messages();
+    MatteAsyncInfo * asyncSelf = (MatteAsyncInfo*)userData;
+    push_messages(asyncSelf);
     // first update children
     uint32_t i;
     uint32_t len = matte_array_get_size(asyncSelf->children);
@@ -492,27 +492,26 @@ MATTE_EXT_FN(matte_async__nextmessage) {
 }
 
 static void matte_system__async_cleanup(matteVM_t * vm, void * nu) {
-    MatteAsyncInfo * asyncSelf = TlsGetValue(tlsIndex);
+    MatteAsyncInfo * asyncSelf = (MatteAsyncInfo*)nu;
     matte_array_destroy(asyncSelf->messagesReceived);
     matte_array_destroy(asyncSelf->messagesPending);
     matte_array_destroy(asyncSelf->children);
 }
 
 static void matte_system__async(matteVM_t * vm) {
-    tlsIndex = TlsAlloc();
     MatteAsyncInfo * asyncSelf = matte_allocate(sizeof(MatteWorkerChildInfo));
-    TlsSetValue(tlsIndex, asyncSelf);
+
     asyncSelf->messagesReceived = matte_array_create(sizeof(MatteWorkerPendingMessage));
     asyncSelf->messagesPending  = matte_array_create(sizeof(MatteWorkerPendingMessage));
     asyncSelf->children = matte_array_create(sizeof(MatteWorkerChildInfo*));
     
 
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_start"),   2, matte_async__start,   NULL);
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_state"),   1, matte_async__state,   NULL);
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_result"),  1, matte_async__result,   NULL);
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_error"),   1, matte_async__error,   NULL);
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_sendmessage"),   2, matte_async__sendmessage,   NULL);
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_nextmessage"),   0, matte_async__nextmessage,   NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_start"),   2, matte_async__start,   asyncSelf);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_state"),   1, matte_async__state,   asyncSelf);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_result"),  1, matte_async__result,   asyncSelf);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_error"),   1, matte_async__error,   asyncSelf);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_sendmessage"),   2, matte_async__sendmessage,   asyncSelf);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::async_nextmessage"),   0, matte_async__nextmessage,   asyncSelf);
 
-    matte_vm_add_shutdown_callback(vm, matte_system__async_cleanup, NULL);
+    matte_vm_add_shutdown_callback(vm, matte_system__async_cleanup, asyncSelf);
 }

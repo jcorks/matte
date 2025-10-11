@@ -51,6 +51,8 @@ AsyncWorker.installHook(
 
 @out = 0;
 for(0, input.count) ::(i) {
+    if (i % 100000 == 0)
+        print(:out)
     out += i;
 }
 AsyncWorker.update(); // checks for new messages

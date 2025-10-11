@@ -44,7 +44,7 @@ DEALINGS IN THE SOFTWARE.
 // Once created, worker are immediately started.
 @w = Async.Worker.new(
     module : 'async_simple__helper.mt',
-    input  : JSON.encode(:{a:"hello", count:4200})
+    input  : JSON.encode(:{a:"hello", count:4200000000})
 );
 
 w.installHooks(:{
