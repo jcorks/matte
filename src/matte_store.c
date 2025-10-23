@@ -777,7 +777,9 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
             matte_mvt2_insert(m->table.keyvalues_id, key, out);
             return matte_mvt2_find(m->table.keyvalues_id, key);
         } else {
-            object_link_parent_value(store, m, &key);
+            if (matte_value_type(key) == MATTE_VALUE_TYPE_OBJECT) {
+                object_link_parent_value(store, m, &key);
+            }
             return matte_mvt2_insert(m->table.keyvalues_id, key, out);
         }
       }
