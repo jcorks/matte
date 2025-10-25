@@ -95,6 +95,8 @@ static void push_double_buffer(matteArray_t * buffer, double val) {
     
     if (fabs(val - (int64_t)val) < DBL_EPSILON) {
         sprintf(tempstr, "%" PRId64 "", (int64_t)val);
+    } else if (isnan(val)) {
+        sprintf(tempstr, "null");
     } else {
         sprintf(tempstr, "%.15g", val);        
     }
