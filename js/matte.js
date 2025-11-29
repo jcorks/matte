@@ -4461,11 +4461,13 @@ Matte.newVM = function(
         
         
         vm_addBuiltIn(vm.EXT_CALL.IMPORT, ['module'], function(fn, args) {
-            return vm.import(store.valueAsString(args[0]), args[1]);
+            return vm.import(store.valueAsString(args[0]), undefined);
         });
 
-        vm_addBuiltIn(vm.EXT_CALL.IMPORTMODULE, ['module', 'parameters'], function(fn, args) {
-            return vm.import(store.valueAsString(args[0]), undefined);
+        vm_addBuiltIn(vm.EXT_CALL.IMPORTMODULE, ['module', 'parameters', 'noCache'], function(fn, args) {
+            if (store.valueAsBoolean(args[2]))
+              vm_imports[args[0]] = undefined;            
+            return vm.import(store.valueAsString(args[0]), args[1]);
         });
         
         vm_addBuiltIn(vm.EXT_CALL.PRINT, ['message'], function(fn, args) {
