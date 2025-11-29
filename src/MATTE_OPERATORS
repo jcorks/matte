@@ -538,10 +538,14 @@ static matteValue_t vm_operator__eq(matteVM_t * vm, matteValue_t a, matteValue_t
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
+        if (matte_value_type(b) != MATTE_VALUE_TYPE_BOOLEAN) {
+            matte_value_into_boolean(vm->store, &result, 0);
+            return result;        
+        }
         matte_value_into_boolean(vm->store, 
             &result, 
-            matte_value_as_boolean(vm->store, a) ==
-            matte_value_as_boolean(vm->store, b)
+            a.value.boolean ==
+            b.value.boolean
         );
         break;
 
@@ -613,10 +617,15 @@ static matteValue_t vm_operator__noteq(matteVM_t * vm, matteValue_t a, matteValu
         break;
       }
       case MATTE_VALUE_TYPE_BOOLEAN: 
+        if (matte_value_type(b) != MATTE_VALUE_TYPE_BOOLEAN) {
+            matte_value_into_boolean(vm->store, &result, 1);
+            return result;        
+        }
+
         matte_value_into_boolean(vm->store, 
             &result, 
-            matte_value_as_boolean(vm->store, a) !=
-            matte_value_as_boolean(vm->store, b)
+            a.value.boolean !=
+            b.value.boolean
         );
         break;
       

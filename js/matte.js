@@ -3452,7 +3452,9 @@ Matte.newVM = function(
                 return store.createBoolean(a == store.valueAsString(b));
 
               case store.TYPE_BOOLEAN:
-                return store.createBoolean(a == store.valueAsBoolean(b));
+                if (typ_b != store.TYPE_BOOLEAN)
+                  return store.createBoolean(false);
+                return store.createBoolean(a == b);
 
               case store.TYPE_OBJECT:
                 if (vm_objectHasOperator(a, '==')) {
@@ -3499,7 +3501,10 @@ Matte.newVM = function(
                 return store.createBoolean(a != store.valueAsString(b));
 
               case store.TYPE_BOOLEAN:
-                return store.createBoolean(a != store.valueAsBoolean(b));
+                if (typ_b != store.TYPE_BOOLEAN)
+                  return store.createBoolean(true);
+
+                return store.createBoolean(a != b);
 
 
               case store.TYPE_OBJECT:
