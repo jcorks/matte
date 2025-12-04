@@ -296,7 +296,7 @@ static matteValue_t vm_operator__bitwise_not(matteVM_t * vm, matteValue_t a) {
       case MATTE_VALUE_TYPE_NUMBER: {
         matte_value_into_number(vm->store, 
             &result, 
-            ~((int32_t)matte_value_as_number(vm->store, a))
+            ~((uint32_t)matte_value_as_number(vm->store, a))
         );
         break;
       }      
@@ -328,8 +328,8 @@ static matteValue_t vm_operator__bitwise_or(matteVM_t * vm, matteValue_t a, matt
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             &result, 
-            ((int32_t)matte_value_as_number(vm->store, a)) |
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, a)) |
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
         
@@ -385,8 +385,8 @@ static matteValue_t vm_operator__bitwise_and(matteVM_t * vm, matteValue_t a, mat
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             &result, 
-            ((int32_t)matte_value_as_number(vm->store, a)) &
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, a)) &
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
 
@@ -945,8 +945,8 @@ static matteValue_t vm_operator__caret(matteVM_t * vm, matteValue_t a, matteValu
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             &result, 
-            ((int32_t)matte_value_as_number(vm->store, a)) ^
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, a)) ^
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -970,8 +970,8 @@ static matteValue_t vm_operator__shift_left(matteVM_t * vm, matteValue_t a, matt
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             &result, 
-            ((int32_t)matte_value_as_number(vm->store, a)) <<
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, a)) <<
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -994,8 +994,8 @@ static matteValue_t vm_operator__shift_right(matteVM_t * vm, matteValue_t a, mat
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             &result, 
-            ((int32_t)matte_value_as_number(vm->store, a)) >>
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, a)) >>
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
       case MATTE_VALUE_TYPE_OBJECT: {
@@ -1195,8 +1195,8 @@ static matteValue_t vm_operator__assign_and(matteVM_t * vm, matteValue_t * a, ma
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             a, 
-            ((int32_t)matte_value_as_number(vm->store, *a)) &
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, *a)) &
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
 
@@ -1232,8 +1232,8 @@ static matteValue_t vm_operator__assign_or(matteVM_t * vm, matteValue_t * a, mat
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             a, 
-            ((int32_t)matte_value_as_number(vm->store, *a)) |
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, *a)) |
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
 
@@ -1270,8 +1270,8 @@ static matteValue_t vm_operator__assign_xor(matteVM_t * vm, matteValue_t * a, ma
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             a, 
-            ((int32_t)matte_value_as_number(vm->store, *a)) ^
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, *a)) ^
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
 
@@ -1296,8 +1296,8 @@ static matteValue_t vm_operator__assign_bleft(matteVM_t * vm, matteValue_t * a, 
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             a, 
-            ((int32_t)matte_value_as_number(vm->store, *a)) <<
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, *a)) <<
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
 
@@ -1323,8 +1323,8 @@ static matteValue_t vm_operator__assign_bright(matteVM_t * vm, matteValue_t * a,
       case MATTE_VALUE_TYPE_NUMBER:
         matte_value_into_number(vm->store, 
             a, 
-            ((int32_t)matte_value_as_number(vm->store, *a)) >>
-            ((int32_t)matte_value_as_number(vm->store, b))
+            ((uint32_t)matte_value_as_number(vm->store, *a)) >>
+            ((uint32_t)matte_value_as_number(vm->store, b))
         );
         break;
 
