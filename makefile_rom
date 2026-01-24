@@ -1,0 +1,3 @@
+all:
+	cd ./src/rom/ && make
+	cd ./src/rom/ && ./makerom
