@@ -999,13 +999,13 @@ Matte.newVM = function(
                 const typ = valToType(value); 
                 if (typ == TYPE_OBJECT) {
                     const curlen = value.kv_number ? value.kv_number.length : 0;
-                    if (from >= curlen || to >= curlen) return createValue();
+                    if (from >= curlen || to >= curlen) return createObject();
                     
                     return store.createObjectArray(value.kv_number.slice(from, to+1));
                 } else if (typ == TYPE_STRING) {
                     
                     const curlen = value.length;;
-                    if (from >= curlen || to >= curlen) return createValue();
+                    if (from >= curlen || to >= curlen) return createString("");
                     return store.createString(
                         value.substr(from, to+1)
                     );
@@ -3339,7 +3339,7 @@ Matte.newVM = function(
         vm_operatorFunc[vm_operator.MATTE_OPERATOR_BITWISE_OR] = function(a, b) {
             switch(valToType(a)) {
               case store.TYPE_NUMBER:
-                return store.createNumber(a | store.valueAsNumber(b));
+                return store.createNumber((a | store.valueAsNumber(b)) >>> 0);
 
               case store.TYPE_BOOLEAN:
                 return store.createBoolean(a | store.valueAsBoolean(b));
@@ -3638,7 +3638,7 @@ Matte.newVM = function(
         vm_operatorFunc[vm_operator.MATTE_OPERATOR_CARET] = function(a, b) {
             switch(valToType(a)) {
               case store.TYPE_NUMBER:
-                return store.createNumber(a ^ store.valueAsNumber(b));
+                return store.createNumber((a ^ store.valueAsNumber(b)) >>> 0);
               case store.TYPE_BOOLEAN:
                 return store.createBoolean(a ^ store.valueAsBoolean(b));
                 
@@ -3654,7 +3654,7 @@ Matte.newVM = function(
         vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_LEFT] = function(a, b) {
             switch(valToType(a)) {
               case store.TYPE_NUMBER:
-                return store.createNumber(a << store.valueAsNumber(b));
+                return store.createNumber((a << store.valueAsNumber(b)) >>> 0);
                 
               case store.TYPE_OBJECT:
                 return vm_runObjectOperator2(a, '<<', b);
@@ -3668,7 +3668,7 @@ Matte.newVM = function(
         vm_operatorFunc[vm_operator.MATTE_OPERATOR_SHIFT_RIGHT] = function(a, b) {
             switch(valToType(a)) {
               case store.TYPE_NUMBER:
-                return store.createNumber(a >> store.valueAsNumber(b));
+                return store.createNumber(a >>> store.valueAsNumber(b));
                 
               case store.TYPE_OBJECT:
                 return vm_runObjectOperator2(a, '>>', b);
@@ -3801,7 +3801,7 @@ Matte.newVM = function(
         vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BLEFT] = function(a, b) {
             switch(valToType(a)) {
               case store.TYPE_NUMBER:
-                return store.createNumber(a << store.valueAsNumber(b));
+                return store.createNumber((a << store.valueAsNumber(b)) >>> 0);
               case store.TYPE_OBJECT:
                 return vm_runObjectOperator2(a, "<<=", b);
               default:
@@ -3813,7 +3813,7 @@ Matte.newVM = function(
         vm_operatorFunc[vm_operator.MATTE_OPERATOR_ASSIGNMENT_BRIGHT] = function(a, b) {
             switch(valToType(a)) {
               case store.TYPE_NUMBER:
-                return store.createNumber(a >> store.valueAsNumber(b));
+                return store.createNumber(a >>> store.valueAsNumber(b));
               case store.TYPE_OBJECT:
                 return vm_runObjectOperator2(a, ">>=", b);
               default:

@@ -21,6 +21,8 @@ a &= 5;  out = out + (a == 5);
 a ^= 2;  out = out + (a == 7);
 
 
+out = out + (0xffffffff << 2 == 4294967292);
+out = out + (0xffffffff >> 2 == 1073741823);
 
 
 return out;
