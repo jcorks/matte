@@ -11,6 +11,7 @@
 
 
 #define POOL_PAGE_SIZE 256
+#define POOL_PAGE_SIZE_2POW 8
 
 
 typedef struct mattePoolPage_t mattePoolPage_t;
@@ -305,9 +306,9 @@ void matte_pool_recycle(mattePool_t * m, uint32_t id) {
 }
 
 void * matte_pool_fetch_raw(mattePool_t * m, uint32_t id) {
-    mattePoolPage_t * pageV = ((mattePoolPage_t*)m->pages->data)+(id/POOL_PAGE_SIZE);
-    if (pageV->data == NULL) return NULL;
-    return (void*)(((uint8_t*)pageV->data) + (id%POOL_PAGE_SIZE) * m->sizeofType);
+    uint8_t * data = (uint8_t*)(((mattePoolPage_t*)m->pages->data)+(id >> POOL_PAGE_SIZE_2POW))->data;
+    if (data == NULL) return NULL;
+    return (void*)(data + (id%POOL_PAGE_SIZE) * m->sizeofType);
 }
 
 void matte_pool_report(mattePool_t * m) {

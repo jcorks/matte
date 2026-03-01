@@ -123,11 +123,12 @@ static void matte_store_bin_destroy(matteStoreBin_t *);
 #define IS_FUNCTION_ID(__ID__) (((__ID__)/2)*2 == (__ID__))
 #define IS_FUNCTION_OBJECT(__OBJ__) (((__OBJ__)->storeID/2)*2 == (__OBJ__)->storeID)
 
-			
-typedef struct {
-    uint32_t next;
-    uint32_t data;
-} matteObjectNode_t;
+typedef struct matteObjectNode_t matteObjectNode_t;
+struct matteObjectNode_t {
+    matteObjectNode_t * next;
+    matteObject_t * data;
+    uint32_t self;
+};
 
 
 enum {
@@ -213,7 +214,7 @@ struct matteStore_t {
     int shutdown;
     uint32_t gcRequestStrength;
     uint32_t gcOldCycle;
-    uint32_t pendingRoots;
+    matteObjectNode_t * pendingRoots;
     matteVM_t * vm;
 
     matteStringStore_t * stringStore;
@@ -258,7 +259,7 @@ struct matteStore_t {
     matteTableIter_t * freeIter;
     
     matteArray_t * toRemove;
-    uint32_t roots;
+    matteObjectNode_t * roots;
     double ticksGC;
 
     
@@ -551,15 +552,17 @@ static void object_link_parent(matteStore_t * h, matteObject_t * parent, matteOb
     if (!parent->children) {
         parent->children = matte_pool_add(h->nodes);
         matteObjectNode_t * n = matte_pool_fetch(h->nodes, matteObjectNode_t, parent->children);
-        n->next = 0;
-        n->data = child->storeID;
+        n->self = parent->children;
+        n->next = NULL;
+        n->data = child;
     } else {
         uint32_t next = matte_pool_add(h->nodes);
         matteObjectNode_t * n = matte_pool_fetch(h->nodes, matteObjectNode_t, next);
         matteObjectNode_t * old = matte_pool_fetch(h->nodes, matteObjectNode_t, parent->children);
-        
-        n->next = parent->children;
-        n->data = child->storeID;
+
+        n->self = next;        
+        n->next = old;
+        n->data = child;
         
         parent->children = next;
     }
@@ -586,20 +589,21 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
     #endif
 
 
-    uint32_t next = parent->children;
+    matteObjectNode_t * next = matte_pool_fetch(h->nodes, matteObjectNode_t, parent->children);
     matteObjectNode_t * prev = NULL;
     while(next) {
-        matteObjectNode_t * node = matte_pool_fetch(h->nodes, matteObjectNode_t, next);
-        if (node->data == child->storeID) {            
+        matteObjectNode_t * node = next;
+        if (node->data == child) {            
             if (prev) {
                 prev->next = node->next;
             }
             
-            if (parent->children == next)
-                parent->children = node->next;
+            if (parent->children == next->self) {
+                parent->children = node->next == NULL ? 0 : node->next->self;
+            }
             
-            node->next = 0;
-            matte_pool_recycle(h->nodes, next);
+            node->next = NULL;
+            matte_pool_recycle(h->nodes, next->self);
             break;
         }
         next = node->next;
@@ -3133,11 +3137,12 @@ void matte_value_object_push_lock_(matteStore_t * store, matteValue_t v) {
 
         uint32_t n = matte_pool_add(store->nodes);
         matteObjectNode_t * node = matte_pool_fetch(store->nodes, matteObjectNode_t, n);
-        node->data = m->storeID;
+        node->self = n;
+        node->data = m;
         if (store->roots) {
             node->next = store->roots;
         }
-        store->roots = n;
+        store->roots = node;
 
         if (m->color == OBJECT_TRICOLOR__WHITE) {
             matte_store_garbage_collect__rem_from_color(store, m);
@@ -4724,12 +4729,11 @@ int matte_store_report(matteStore_t * store) {
 
 
 static int matte_value_count_children(matteStore_t * store, matteObject_t * m) {
-    uint32_t next = m->children;
+    matteObjectNode_t * next = matte_pool_fetch(store->nodes, matteObjectNode_t, m->children);
     uint32_t count = 0;
     while(next) {
-        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, next);        
         count ++;
-        next = n->next;
+        next = next->next;
     }
     return count;
 }
@@ -4941,13 +4945,13 @@ void matte_store_value_object_get_reference_graphology_all__scan_object_down(
     );
     
 
-    uint32_t iter = m->children;
+    matteObjectNode_t * iter = matte_pool_fetch(store->nodes, matteObjectNode_t, m->children);
     while(iter) {
-        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, iter);
+        matteObjectNode_t * n = iter;
         
         matteValue_t v = {};
         v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
-        v.value.id = n->data;
+        v.value.id = n->data->storeID;
         
         matte_store_value_object_get_reference_graphology__make_edge(
             fedges,
@@ -4984,12 +4988,12 @@ void matte_store_value_object_get_reference_graphology_all(
 
 
 
-    uint32_t root = store->roots;
+    matteObjectNode_t * root = store->roots;
     while(root) {
-        matteObjectNode_t * node = matte_pool_fetch(store->nodes, matteObjectNode_t, root);
+        matteObjectNode_t * node = root;
         matteValue_t v = {};
         v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
-        v.value.id = node->data;
+        v.value.id = node->data->storeID;
     
         matte_store_value_object_get_reference_graphology_all__scan_object_down(
             store,
@@ -5001,8 +5005,7 @@ void matte_store_value_object_get_reference_graphology_all(
             fedges
         );
 
-        uint32_t next = node->next;        
-        root = next;
+        root = node->next;
     }
 
 
@@ -5040,13 +5043,14 @@ void matte_store_value_object_get_reference_graphology__scan_object_down(
 
 
 
-    uint32_t iter = m->children;
+    matteObjectNode_t * iter = matte_pool_fetch(store->nodes, matteObjectNode_t, m->children);
+
     while(iter) {
-        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, iter);
+        matteObjectNode_t * n = iter;
         
         matteValue_t v = {};
         v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
-        v.value.id = n->data;
+        v.value.id = n->data->storeID;
         
         matte_store_value_object_get_reference_graphology__scan_object_down(
             store,
@@ -5084,12 +5088,12 @@ void matte_store_value_object_get_reference_graphology(
 
     printf("Traversing node graph...\n");
 
-    uint32_t root = store->roots;
+    matteObjectNode_t * root = store->roots;
     while(root) {
-        matteObjectNode_t * node = matte_pool_fetch(store->nodes, matteObjectNode_t, root);
+        matteObjectNode_t * node = root;
         matteValue_t v = {};
         v.binIDreserved = MATTE_VALUE_TYPE_OBJECT;
-        v.value.id = node->data;
+        v.value.id = node->data->storeID;
     
         matte_store_value_object_get_reference_graphology__scan_object_down(
             store,
@@ -5102,8 +5106,7 @@ void matte_store_value_object_get_reference_graphology(
         );
 
 
-        uint32_t next = node->next;        
-        root = next;
+        root = node->next;
     }
     matte_table_destroy(t);
     if (matte_array_get_size(hits) == 0) {
@@ -5227,16 +5230,16 @@ void matte_store_value_object_get_memory_breakdown__find_relevant(
         matte_array_push(hits, m->storeID);
     }
 
-    uint32_t iter = m->children;
+    matteObjectNode_t * iter = matte_pool_fetch(store->nodes, matteObjectNode_t, m->children);
     while(iter) {
-        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, iter);
+        matteObjectNode_t * n = iter;
         
         matte_store_value_object_get_memory_breakdown__find_relevant(
             store,
             visited,
             hits,
             vm,
-            n->data,
+            n->data->storeID,
             fileIDsrc,
             totalMemory
         );
@@ -5259,15 +5262,15 @@ void matte_store_value_object_get_memory_breakdown__track_memory(
     matte_table_insert_by_uint(visited, m->storeID, (void*)0x1);
     *totalMemory += matte_store_value_object_get_memory_breakdown__estimate_usage(m);
 
-    uint32_t iter = m->children;
+    matteObjectNode_t * iter = matte_pool_fetch(store->nodes, matteObjectNode_t, m->children);
     while(iter) {
-        matteObjectNode_t * n = matte_pool_fetch(store->nodes, matteObjectNode_t, iter);
+        matteObjectNode_t * n = iter;
         
         matte_store_value_object_get_memory_breakdown__track_memory(
             store,
             visited,
             vm,
-            n->data,
+            n->data->storeID,
             totalMemory
         );
         
@@ -5313,23 +5316,22 @@ void matte_store_value_object_get_memory_breakdown(
 
     printf("Traversing node graph...\n");
     uint32_t totalBytes = 0;
-    uint32_t root = store->roots;
+    matteObjectNode_t * root = store->roots;
     while(root) {
-        matteObjectNode_t * node = matte_pool_fetch(store->nodes, matteObjectNode_t, root);
+        matteObjectNode_t * node = root;
     
         matte_store_value_object_get_memory_breakdown__find_relevant(
             store,
             t,
             hits,
             vm,
-            node->data,
+            node->data->storeID,
             fileID,
             &totalBytes
         );
 
 
-        uint32_t next = node->next;        
-        root = next;
+        root = node->next;
     }    
     
     printf("Entire reachable set: %d KB\n", (totalBytes));
