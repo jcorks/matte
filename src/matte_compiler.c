@@ -3826,6 +3826,56 @@ static int assignment_token_to_op_index(matteTokenType_t t) {
     return 0;
 }   
 
+static matteArray_t * compile_expression(
+    matteSyntaxGraphWalker_t * g, 
+    matteFunctionBlock_t * block,
+    matteArray_t * functions, 
+    matteToken_t ** src
+);
+
+static matteArray_t * compile_expression_gate_function_body(
+    matteSyntaxGraphWalker_t * g, 
+    matteFunctionBlock_t * block,
+    matteArray_t * functions, 
+    matteToken_t ** src
+) {
+    matteToken_t * iter = *src;
+
+    if (iter->ttype == MATTE_TOKEN_FUNCTION_BEGIN) {
+        matteFunctionBlock_t * b = compile_function_block(g, block, functions, &iter);
+        if (!b) {
+            goto L_FAIL;
+        }
+        // to reference this new function as needed, the token for the 
+        // function constructor will have its text replaced with a pointer
+        matte_token_new_data(iter, b, MATTE_TOKEN_DATA_TYPE__FUNCTION_BLOCK);    
+        matte_array_push(functions, b);
+
+
+        matteArray_t * instOut = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+        write_instruction__nfn(
+            instOut, 
+            GET_LINE_OFFSET(block),
+            b->stubID
+        );
+        write_instruction__cal(
+            instOut, 
+            GET_LINE_OFFSET(block),
+            0
+        );
+        *src = iter;
+        return instOut;
+    } else {
+        matteArray_t * out = compile_expression(g, block, functions, &iter);
+        *src = iter;
+        return out;
+
+    }
+  L_FAIL:
+    return NULL;
+
+}
+
 // Returns an array of instructions that, when computed in order,
 // produce exactly ONE value on the stack (the evaluation of the expression).
 // returns NULL on failure. Expected to report errors 
@@ -3881,6 +3931,9 @@ static matteArray_t * compile_expression(
             matteToken_t * start = iter;
             iter = iter->next; // skip "gate"
             iter = iter->next; // skip "("
+
+
+            
             matteArray_t * inst = compile_expression(g, block, functions, &iter);
             if (!inst) {
                 goto L_FAIL;
@@ -3890,8 +3943,8 @@ static matteArray_t * compile_expression(
             matteArray_t * iftrue;
             matteArray_t * iffalse;
 
-            // true bit is always there
-            iftrue = compile_expression(g, block, functions, &iter);
+            
+            iftrue = compile_expression_gate_function_body(g, block, functions, &iter);
             if (!iftrue) {
                 goto L_FAIL;
             }
@@ -3901,7 +3954,7 @@ static matteArray_t * compile_expression(
             if (iter->ttype == MATTE_TOKEN_GATE_RETURN)  {
                 iter = iter->next; // skip ":"
 
-                iffalse = compile_expression(g, block, functions, &iter);
+                iffalse = compile_expression_gate_function_body(g, block, functions, &iter);
                 if (!iffalse) {
                     goto L_FAIL;
                 }

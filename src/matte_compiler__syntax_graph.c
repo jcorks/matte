@@ -153,6 +153,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_SYNTAX_CONSTRUCT_FUNCTION_DEFINITION, "Function Definition",
         MATTE_SYNTAX_CONSTRUCT_POSTFIX, "Postfix",
         MATTE_SYNTAX_CONSTRUCT_MATCH_IMPLICATION, "Match Implication",
+        MATTE_SYNTAX_CONSTRUCT_GATE_BODY, "Gate Body",
         NULL
     );
 
@@ -557,6 +558,24 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         NULL 
     );
 
+    matte_syntax_graph_add_construct_path(g, "Gate Body", MATTE_SYNTAX_CONSTRUCT_GATE_BODY,
+        matte_syntax_graph_node_split(
+          matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_DEFINITION),
+          matte_syntax_graph_node_end(),
+          NULL,
+
+          matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+          matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+          matte_syntax_graph_node_end(),
+          NULL,
+          
+          NULL
+        
+        ),
+        NULL
+    ),
+
+
     matte_syntax_graph_add_construct_path(g, "Gate Expression", MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
         matte_syntax_graph_node_token(MATTE_TOKEN_EXTERNAL_GATE),
         matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_START),
@@ -564,16 +583,12 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
         matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_END),
 
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-
+        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_GATE_BODY),
         matte_syntax_graph_node_split(
             matte_syntax_graph_node_token(MATTE_TOKEN_GATE_RETURN),
-            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_GATE_BODY),
             matte_syntax_graph_node_end(),    
             NULL,
-
 
             matte_syntax_graph_node_end(),    
             NULL,
