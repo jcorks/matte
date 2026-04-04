@@ -169,6 +169,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_EXTERNAL_MATCH, "Match built-in",
         MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION, "Get External Function built-in",
         MATTE_TOKEN_EXTERNAL_IMPORT, "Import built-in",
+        MATTE_TOKEN_EXTERNAL_SETMODULE, "SetModule built-in",
 
         MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN, "Boolean Type object",
         MATTE_TOKEN_EXTERNAL_TYPEEMPTY, "Empty Type object",
@@ -680,6 +681,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
             MATTE_TOKEN_EXTERNAL_GETEXTERNALFUNCTION,
             MATTE_TOKEN_EXTERNAL_IMPORT,
             MATTE_TOKEN_EXTERNAL_IMPORTMODULE,
+            MATTE_TOKEN_EXTERNAL_SETMODULE,
             MATTE_TOKEN_EXTERNAL_TYPEBOOLEAN,
             MATTE_TOKEN_EXTERNAL_TYPENUMBER,
             MATTE_TOKEN_EXTERNAL_TYPEEMPTY,

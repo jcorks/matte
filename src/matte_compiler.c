@@ -1113,6 +1113,10 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "importModule");
         break;
       }
+      case MATTE_TOKEN_EXTERNAL_SETMODULE: {
+        return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "setModule");
+        break;
+      }
 
 
 
@@ -2991,6 +2995,11 @@ static matteArray_t * compile_base_value(
       }
       case MATTE_TOKEN_EXTERNAL_IMPORTMODULE: {
         write_instruction__ext(inst, GET_LINE_OFFSET(block), MATTE_EXT_CALL_IMPORTMODULE);
+        *src = iter->next;
+        return inst;
+      }
+      case MATTE_TOKEN_EXTERNAL_SETMODULE: {
+        write_instruction__ext(inst, GET_LINE_OFFSET(block), MATTE_EXT_CALL_SETMODULE);
         *src = iter->next;
         return inst;
       }

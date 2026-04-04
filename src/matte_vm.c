@@ -1842,6 +1842,10 @@ matteVM_t * matte_vm_create(matte_t * m) {
         MATTE_VM_STR_CAST(vm, "to")
     };
 
+    const matteString_t * setmodule_names[] = {
+        MATTE_VM_STR_CAST(vm, "name"),
+        MATTE_VM_STR_CAST(vm, "value")
+    };
 
 
     matteArray_t temp;
@@ -1849,6 +1853,8 @@ matteVM_t * matte_vm_create(matte_t * m) {
     vm_add_built_in(vm, MATTE_EXT_CALL_BREAKPOINT,  matte_array_empty(), vm_ext_call__breakpoint);
     temp = MATTE_ARRAY_CAST(&import_names, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORT,  &temp, vm_ext_call__import);
     temp = MATTE_ARRAY_CAST(&import_names, matteString_t *, 5);vm_add_built_in(vm, MATTE_EXT_CALL_IMPORTMODULE,  &temp, vm_ext_call__importmodule);
+    temp = MATTE_ARRAY_CAST(&setmodule_names, matteString_t *, 2);vm_add_built_in(vm, MATTE_EXT_CALL_SETMODULE,  &temp, vm_ext_call__set_module);
+
 
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_PRINT,      &temp, vm_ext_call__print);
     temp = MATTE_ARRAY_CAST(&message, matteString_t *, 1);vm_add_built_in(vm, MATTE_EXT_CALL_SEND,       &temp, vm_ext_call__send);
