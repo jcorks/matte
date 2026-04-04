@@ -1006,9 +1006,20 @@ Matte comes with a small set of pre-compiled modules that can be loaded using th
 default VM import. 
 
 <ul>
-    <li><b>Matte.Class:</b> Imports an function that can be used to create classes with a proper interface, setters/getters, inheritance, and more.</li>
-    <li><b>Matte.JSON:</b> Imports a set of functions that can be used for working with JSON data.</li>
-    <li><b>Matte.Core:</b> Imports an object that contains all of the built-in matte features separately available.</li>
+    <li><b>Matte.Core.Class:</b> Imports an function that can be used to create classes with a proper interface, setters/getters, inheritance, and more.</li>
+    <li><b>Matte.Core.JSON:</b> Imports a set of functions that can be used for working with JSON data.</li>
+    <li><b>Matte.Core.EventSystem:</b> Imports a class that can act as a generic event handler.</li>
+    <li><b>Matte.Core.Introspect:</b> Imports a function that can be used to print complex values for viewing.</li>
+    <li><b>Matte.Core.MemoryBuffer:</b> Imports a class that can be used to work with raw, tightly-packed memory buffers.</li>
+
+
+    <li><b>Matte.System.ConsoleIO:</b> Imports an object that can be used to interact with standard I/O.</li>
+    <li><b>Matte.System.Filesystem:</b> Imports an object that can be used to interact with a host filesystem.</li>
+    <li><b>Matte.System.Socket:</b> Imports an object that can be used to work with OS-level sockets.</li>
+    <li><b>Matte.System.Time:</b> Imports an object that can be used to interact with system time and sleep.</li>
+    <li><b>Matte.System.OS:</b> Imports an object that can be used to interact with system shell.</li>
+    <li><b>Matte.System.Async:</b> Imports an object that can be used to run Matte asyncronously in the flavor of Workers and message passing.</li>    
+    
 </ul>
 
 <hr>
