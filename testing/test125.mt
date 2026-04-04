@@ -5,7 +5,7 @@
 @:class = ::<= {
 
     @:applyClass ::(class, priv, obj) {
-        if (class.inherits != empty) ::<= {
+        if (class.inherits != empty) {
             foreach(class.inherits) ::(i, v) {
                 applyClass(class:v, priv, obj);
             }
@@ -17,12 +17,12 @@
     }
     
     @:construct ::(class, priv, obj, args) {
-        if (class.inherits != empty) ::<= {
+        if (class.inherits != empty) {
             foreach(class.inherits) ::(i, v) {
                 construct(class:v, priv, obj, args);
             }
         }
-        if (class.constructor != empty) ::<= {
+        if (class.constructor != empty) {
             obj->setIsInterface(enabled:false);
             obj.constructor = class.constructor;
             obj->setIsInterface(enabled:true, private:priv);
@@ -42,7 +42,7 @@
             Object.newType(name, inherits:[...inherits]->map(to:::(value) <- value.type));
 
         @:class = {};
-        if (statics != empty) ::<= {
+        if (statics != empty) {
             foreach(statics) ::(name => String, thing) {
                 class[name] = thing;
             }

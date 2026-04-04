@@ -107,7 +107,7 @@ state[SWCA_WIDTH/2] = true;
 
 forever ::{
     // get the full state every line.
-    if (progress == SWCA_WIDTH)::<={
+    if (progress == SWCA_WIDTH) {
         for(0, SWCA_WIDTH) ::(i) {
             @next = getNextState(state:state, index:i);
             stateNext[i] = next;

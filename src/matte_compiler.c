@@ -3857,8 +3857,6 @@ static matteFunctionBlock_t * compile_function_block_core(
     matteToken_t ** src
 );
 
-
-
 // Returns an array of instructions that, when computed in order,
 // produce exactly ONE value on the stack (the evaluation of the expression).
 // returns NULL on failure. Expected to report errors 
@@ -3914,6 +3912,9 @@ static matteArray_t * compile_expression(
             matteToken_t * start = iter;
             iter = iter->next; // skip "gate"
             iter = iter->next; // skip "("
+
+
+            
             matteArray_t * inst = compile_expression(g, block, functions, &iter);
             if (!inst) {
                 goto L_FAIL;

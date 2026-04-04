@@ -237,7 +237,7 @@ when(parameters == empty || parameters.file == empty) ::<={
             @out = '';
         
             for(iterBytes, endPoint()) ::(i) {
-                if (i%BYTES_PER_LINE == 0) ::<={
+                if (i%BYTES_PER_LINE == 0) {
                     flush();
                 }
 
@@ -253,7 +253,7 @@ when(parameters == empty || parameters.file == empty) ::<={
                 iter += 1;
             }
             
-            if (iter%BYTES_PER_LINE) ::<= {
+            if (iter%BYTES_PER_LINE) {
                 flush();
             }
             
