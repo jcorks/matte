@@ -597,15 +597,24 @@ The if expression in Matte can be used to control or avoid computation of anothe
 
     // if an "if" statement requires multiple statements, 
     // a new function can be created and immediately run containing the 
-    // expressions to be run. However, in most cases, other 
-    // structures can be used to make more readable code.
-
+    // statements to be run.
 
     // should print 42
     if (myVal == false) ::<={
         @val = 4 * 8 + 10;
         print(:val);
     }
+    
+    // Because this pattern is so common, a special convenience structure exists.
+    // Omitting the dash function syntax, a dash function can be computed for <i>if/else</i>
+    // by only specifying {}. This is the only time this convenience structure can be used:
+
+    // should print 43. The {} in this case is treated as if it were ::<={}
+    if (myVal == false) {
+        @val = 4 * 8 + 10 + 1;
+        print(:val);    
+    }
+    
 
     print(:'myVal is ' + (if (myVal) 'true' else 'false'));
 
