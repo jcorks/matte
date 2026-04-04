@@ -976,9 +976,31 @@ In another file which is run in the VM:
 
 Note: <b>importing the same module more than once, by default, will just return the same computed result from the first import. Take care if you are using a custom import implementation.</b>
 
+<br>
+<h3> 8.2 Built-in setModule()</h3>
+
+In addition to use an environment-defined module import, Matte also allows adding modules from inside Matte code.
+
+<pre id="doc-source">
+    // Set setModule version of the example above 
+    setModule(
+      name : 'module.mt',
+      value ::<= {
+        @privateData = 'Hello, World!';
+
+        @myModule = {
+            getData ::{
+                return privateData;
+            }
+        }
+        return myModule;      
+      }
+    )
+
+</pre>
 
 <br>
-<h3> 8.1 Built-in Modules</h3>
+<h3> 8.2 Built-in Modules</h3>
 
 Matte comes with a small set of pre-compiled modules that can be loaded using the 
 default VM import. 
