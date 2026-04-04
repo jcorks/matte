@@ -139,8 +139,6 @@ void matte_token_print(matteToken_t * t);
 
 
 
-
-
 // Attempts to add additional tokens to the 
 // token chain by scanning for the given constructs.
 // returns success (1 if sucess, 0 if failure).
@@ -1080,6 +1078,11 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         break;
       }
 
+      case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH_ALT: {
+        return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '{');
+        break;
+      }
+
       case MATTE_TOKEN_LISTEN_IMPLICATION: {
         return matte_tokenizer_consume_exact(t, currentLine, currentCh, preLine, preCh, ty, "=>");
         break;  
@@ -1093,6 +1096,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "if");
         break;
       }
+
       case MATTE_TOKEN_EXTERNAL_MATCH: {
         return matte_tokenizer_consume_word(t, currentLine, currentCh, preLine, preCh, ty, "match");
         break;
@@ -1554,6 +1558,7 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '}');
         break;
       }
+
       case MATTE_TOKEN_VARARG: {
         return matte_tokenizer_consume_char(t, currentLine, currentCh, preLine, preCh, ty, '*');
         break;
@@ -2360,6 +2365,12 @@ static void ff_skip_inner_function(matteToken_t ** t) {
             }
             *t = iter;
             return;
+            
+          // special because does not contain "::"
+          case MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH_ALT:
+            ff_skip_inner_function(&iter);
+            break;
+          
           case MATTE_TOKEN_FUNCTION_CONSTRUCTOR:
             ff_skip_inner_function(&iter);
             break;
@@ -2881,6 +2892,15 @@ static void expression_node_sort(matteArray_t * nodes) {
         expression_node_sort__comparator
     );
 }
+
+
+// Creates a new function block.
+static matteFunctionBlock_t * create_function_block(
+    matteSyntaxGraphWalker_t * g, 
+    matteToken_t * iter,
+    matteFunctionBlock_t * parent
+);
+
 
 
 // like compile expression, except the expression has 
@@ -3826,6 +3846,19 @@ static int assignment_token_to_op_index(matteTokenType_t t) {
     return 0;
 }   
 
+
+// compiles the "meat" of a function statements..}
+// The initial character is AFTER any '{'
+static matteFunctionBlock_t * compile_function_block_core(
+    matteSyntaxGraphWalker_t * g, 
+    matteFunctionBlock_t * parent,
+    matteFunctionBlock_t * b,
+    matteArray_t * functions, 
+    matteToken_t ** src
+);
+
+
+
 // Returns an array of instructions that, when computed in order,
 // produce exactly ONE value on the stack (the evaluation of the expression).
 // returns NULL on failure. Expected to report errors 
@@ -3887,11 +3920,35 @@ static matteArray_t * compile_expression(
             }
 
             iter = iter->next; // skip ")"
-            matteArray_t * iftrue;
-            matteArray_t * iffalse;
+            matteArray_t * iftrue = NULL;
+            matteArray_t * iffalse = NULL;
 
             // true bit is always there
-            iftrue = compile_expression(g, block, functions, &iter);
+            if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH_ALT) {
+                iter = iter->next;
+                matteFunctionBlock_t * b = create_function_block(g, iter, block);
+                b->isDashed = 1;
+                matteArray_t * outInst = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+                b = compile_function_block_core(g, block, b, functions, &iter);
+                if (b) {
+                    matte_array_push(functions, b);
+                    write_instruction__nfn(
+                        outInst, 
+                        GET_LINE_OFFSET(block),
+                        b->stubID
+                    );
+                    write_instruction__cal(
+                        outInst, 
+                        GET_LINE_OFFSET(block),
+                        b->stubID
+                    );
+
+                    iftrue = outInst;
+                }
+            } else {
+                iftrue = compile_expression(g, block, functions, &iter);
+            }
+
             if (!iftrue) {
                 goto L_FAIL;
             }
@@ -3899,9 +3956,32 @@ static matteArray_t * compile_expression(
 
             // only true, else empty
             if (iter->ttype == MATTE_TOKEN_GATE_RETURN)  {
-                iter = iter->next; // skip ":"
+                iter = iter->next; // skip "else"
 
-                iffalse = compile_expression(g, block, functions, &iter);
+                if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH_ALT) {
+                    iter = iter->next;
+                    matteFunctionBlock_t * b = create_function_block(g, iter, block);
+                    b->isDashed = 1;
+                    matteArray_t * outInst = matte_array_create(sizeof(matteBytecodeStubInstruction_t));
+                    b = compile_function_block_core(g, block, b, functions, &iter);
+                    if (b) {
+                        matte_array_push(functions, b);
+                        write_instruction__nfn(
+                            outInst, 
+                            GET_LINE_OFFSET(block),
+                            b->stubID
+                        );
+                        write_instruction__cal(
+                            outInst, 
+                            GET_LINE_OFFSET(block),
+                            b->stubID
+                        );
+                        iffalse = outInst;
+                    }
+                } else {
+                    iffalse = compile_expression(g, block, functions, &iter);
+                }
+
                 if (!iffalse) {
                     goto L_FAIL;
                 }
@@ -4342,8 +4422,6 @@ static matteArray_t * compile_expression(
 
 
 
-
-
 static int compile_statement(
     matteSyntaxGraphWalker_t * g, 
     matteFunctionBlock_t * block,
@@ -4552,13 +4630,92 @@ static int compile_statement(
 
 
 
-static matteFunctionBlock_t * compile_function_block(
+static matteFunctionBlock_t * compile_function_block_core(
     matteSyntaxGraphWalker_t * g, 
     matteFunctionBlock_t * parent,
+    matteFunctionBlock_t * b,
     matteArray_t * functions, 
     matteToken_t ** src
 ) {
     matteToken_t * iter = *src;
+    
+    // next find all locals and static strings
+    matteToken_t * funcStart = iter;
+    while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+            ff_skip_inner_function(&iter);
+        } else if (iter->ttype == MATTE_TOKEN_DECLARE ||
+            iter->ttype == MATTE_TOKEN_DECLARE_CONST) {
+            int isconst = iter->ttype == MATTE_TOKEN_DECLARE_CONST;
+
+            iter = iter->next;
+            if (iter->ttype != MATTE_TOKEN_VARIABLE_NAME) {
+                matte_syntax_graph_print_compile_error(g, iter, "Expected local variable name.");
+                goto L_FAIL;
+            }
+            
+            matteString_t * local = matte_string_clone((matteString_t*)iter->data);
+            matte_array_push(b->locals, local);
+            matte_array_push(b->local_isConst, isconst);
+            
+            #ifdef MATTE_DEBUG__COMPILER
+                printf("  - Local%s %d: %s\n", isconst? "(const)" : "", matte_array_get_size(b->locals), matte_string_get_c_str(local));
+            #endif
+        } 
+        iter = iter->next;
+    }
+    
+    if (matte_array_get_size(b->locals) > FUNCTION_LOCAL_MAX)
+        matte_syntax_graph_print_compile_error(g, iter, "Function exceeds local variable count limit.");
+
+    // reset
+    iter = funcStart;
+
+
+
+    // now that we have all the locals and args, we can start emitting bytecode.
+    if (iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
+        b->isEmpty = 0;
+        int status;
+        do {
+            status = compile_statement(g, b, functions, &iter);
+            if (!(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END)) break;
+        } while(status == 1);
+
+        if (status == -1) {
+            // should be clean
+            goto L_FAIL;
+        }
+    }
+    
+    // in the case that a user has not explicitly placed a return, then 
+    // we by default "return empty"
+    // we aren't C after all...
+    if (!b->isEmpty && iter) {
+        write_instruction__nem(b->instructions, GET_LINE_OFFSET(b));
+        write_instruction__ret(b->instructions, GET_LINE_OFFSET(b));
+    }
+    
+    // for every except stubID == 0, there should be an end brace here. Consume it.
+    if (iter && (
+      iter->ttype == MATTE_TOKEN_FUNCTION_END
+    )) {
+        *src = iter->next;
+    } else {
+        *src = iter;
+    }
+
+    return b;
+  L_FAIL:;
+    function_block_destroy(b);
+    return NULL;  
+}
+
+static matteFunctionBlock_t * create_function_block(
+    matteSyntaxGraphWalker_t * g, 
+    matteToken_t * iter,
+    matteFunctionBlock_t * parent
+) {
     matteFunctionBlock_t * b = (matteFunctionBlock_t*)matte_allocate(sizeof(matteFunctionBlock_t));
     b->startingLine = iter->line;
     b->args = matte_array_create(sizeof(matteString_t *));
@@ -4572,7 +4729,19 @@ static matteFunctionBlock_t * compile_function_block(
     b->stubID = g->functionStubID++;
     b->isEmpty = 1;
     b->parent = parent;
-    matteToken_t * funcStart;
+    return b;
+}
+
+
+static matteFunctionBlock_t * compile_function_block(
+    matteSyntaxGraphWalker_t * g, 
+    matteFunctionBlock_t * parent,
+    matteArray_t * functions, 
+    matteToken_t ** src
+) {
+    matteToken_t * iter = *src;
+    matteFunctionBlock_t * b = create_function_block(g, iter, parent);
+
     
 
     #ifdef MATTE_DEBUG__COMPILER
@@ -4779,7 +4948,9 @@ static matteFunctionBlock_t * compile_function_block(
 
         // most situations will require that the block begin '{' token 
         // exists already. This will be true EXCEPT in the toplevel function call (root stub)        
-        } else if (iter->ttype != MATTE_TOKEN_FUNCTION_BEGIN) {
+        } else if (
+            iter->ttype != MATTE_TOKEN_FUNCTION_BEGIN
+        ) {
             matte_syntax_graph_print_compile_error(g, iter, "Missing function block begin brace. '{'");
             goto L_FAIL;
         }
@@ -4790,70 +4961,15 @@ static matteFunctionBlock_t * compile_function_block(
         matteString_t * arg = matte_string_create_from_c_str("parameters");
         matte_array_push(b->args, arg);
     }
-    // next find all locals and static strings
-    funcStart = iter;
-    while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
-        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
-            ff_skip_inner_function(&iter);
-        } else if (iter->ttype == MATTE_TOKEN_DECLARE ||
-            iter->ttype == MATTE_TOKEN_DECLARE_CONST) {
-            int isconst = iter->ttype == MATTE_TOKEN_DECLARE_CONST;
-
-            iter = iter->next;
-            if (iter->ttype != MATTE_TOKEN_VARIABLE_NAME) {
-                matte_syntax_graph_print_compile_error(g, iter, "Expected local variable name.");
-                goto L_FAIL;
-            }
-            
-            matteString_t * local = matte_string_clone((matteString_t*)iter->data);
-            matte_array_push(b->locals, local);
-            matte_array_push(b->local_isConst, isconst);
-            
-            #ifdef MATTE_DEBUG__COMPILER
-                printf("  - Local%s %d: %s\n", isconst? "(const)" : "", matte_array_get_size(b->locals), matte_string_get_c_str(local));
-            #endif
-        } 
-        iter = iter->next;
-    }
     
-    if (matte_array_get_size(b->locals) > FUNCTION_LOCAL_MAX)
-        matte_syntax_graph_print_compile_error(g, iter, "Function exceeds local variable count limit.");
-
-    // reset
-    iter = funcStart;
-
-
-
-    // now that we have all the locals and args, we can start emitting bytecode.
-    if (iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
-        b->isEmpty = 0;
-        int status;
-        do {
-            status = compile_statement(g, b, functions, &iter);
-            if (!(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END)) break;
-        } while(status == 1);
-
-        if (status == -1) {
-            // should be clean
-            goto L_FAIL;
-        }
-    }
-    
-    // in the case that a user has not explicitly placed a return, then 
-    // we by default "return empty"
-    // we aren't C after all...
-    if (!b->isEmpty && iter) {
-        write_instruction__nem(b->instructions, GET_LINE_OFFSET(b));
-        write_instruction__ret(b->instructions, GET_LINE_OFFSET(b));
-    }
-    
-    // for every except stubID == 0, there should be an end brace here. Consume it.
-    if (iter && iter->ttype == MATTE_TOKEN_FUNCTION_END) {
-        *src = iter->next;
-    } else {
-        *src = iter;
-    }
-
+    b = compile_function_block_core(
+      g,
+      parent,
+      b,
+      functions, 
+      &iter
+    );
+    *src = iter;
     return b;
   L_FAIL:
     function_block_destroy(b);

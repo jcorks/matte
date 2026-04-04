@@ -153,6 +153,8 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_SYNTAX_CONSTRUCT_FUNCTION_DEFINITION, "Function Definition",
         MATTE_SYNTAX_CONSTRUCT_POSTFIX, "Postfix",
         MATTE_SYNTAX_CONSTRUCT_MATCH_IMPLICATION, "Match Implication",
+        MATTE_SYNTAX_CONSTRUCT_FUNCTION_BODY_GATE_DASH, "Special Gate Dash",        
+        MATTE_SYNTAX_CONSTRUCT_GATE_EXPRESSION_END, "Gate Ending (else)",
         NULL
     );
 
@@ -225,6 +227,7 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR_INLINE, "Function Constructor Inline '<-'",
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR_WITH_SPECIFIER, "Function Constructor with Specifier ':::'",
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH, "Function Constructor Dash'<='",
+        MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH_ALT, "Function Constructor Dash For Gate'{'",
         MATTE_TOKEN_FUNCTION_CONSTRUCTOR_LISTEN, "Function Constructor Listen'?'",
         MATTE_TOKEN_FUNCTION_TYPESPEC, "Function Type Specifier '=>'",
 
@@ -557,6 +560,24 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         NULL 
     );
 
+    matte_syntax_graph_add_construct_path(g, "Gate Expression End", MATTE_SYNTAX_CONSTRUCT_GATE_EXPRESSION_END,
+        matte_syntax_graph_node_token(MATTE_TOKEN_GATE_RETURN),
+        matte_syntax_graph_node_split(
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_BODY_GATE_DASH),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
+            matte_syntax_graph_node_end(),    
+            NULL,
+
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
+            matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),                
+            matte_syntax_graph_node_end(),    
+
+            NULL,
+            NULL
+        ),
+        NULL
+    );
+
     matte_syntax_graph_add_construct_path(g, "Gate Expression", MATTE_SYNTAX_CONSTRUCT_EXPRESSION,
         matte_syntax_graph_node_token(MATTE_TOKEN_EXTERNAL_GATE),
         matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_START),
@@ -564,20 +585,31 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
         matte_syntax_graph_node_token(MATTE_TOKEN_IMPLICATION_END),
 
-        matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
-        matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-
         matte_syntax_graph_node_split(
-            matte_syntax_graph_node_token(MATTE_TOKEN_GATE_RETURN),
+            matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_BODY_GATE_DASH),
+            matte_syntax_graph_node_split(
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_GATE_EXPRESSION_END),
+                matte_syntax_graph_node_end(),    
+                NULL,
+                
+                matte_syntax_graph_node_end(),    
+                NULL,
+                NULL
+            ),
+            NULL,
+
             matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_EXPRESSION),
             matte_syntax_graph_node_marker(MATTE_TOKEN_MARKER_EXPRESSION_END),
-            matte_syntax_graph_node_end(),    
+            matte_syntax_graph_node_split(
+                matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_GATE_EXPRESSION_END),
+                matte_syntax_graph_node_end(),    
+                NULL,
+                
+                matte_syntax_graph_node_end(),    
+                NULL,
+                NULL
+            ),
             NULL,
-
-
-            matte_syntax_graph_node_end(),    
-            NULL,
-
             NULL
         ),
         NULL
@@ -1024,6 +1056,36 @@ static void generate_graph(matteSyntaxGraph_t * g) {
         NULL
     );
     
+    ///////////////
+    ///////////////
+    /// Special syntax sugar for gate dash 
+    /// (the '{' and '}' after if or else)
+    ///////////////
+    ///////////////
+
+    matte_syntax_graph_add_construct_path(g, "", MATTE_SYNTAX_CONSTRUCT_FUNCTION_BODY_GATE_DASH,
+        matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH_ALT),
+          matte_syntax_graph_node_split(
+              matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+              matte_syntax_graph_node_end(),
+              NULL,
+
+              matte_syntax_graph_node_construct(MATTE_SYNTAX_CONSTRUCT_FUNCTION_SCOPE_STATEMENT),
+              matte_syntax_graph_node_split(
+                  matte_syntax_graph_node_token(MATTE_TOKEN_FUNCTION_END),
+
+                  matte_syntax_graph_node_end(),
+                  NULL,
+
+                  matte_syntax_graph_node_to_parent(2),
+                  NULL,
+                  NULL
+              ),
+              NULL,
+              NULL
+          ),
+        NULL
+    );
 
 
     ///////////////
