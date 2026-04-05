@@ -23,60 +23,61 @@ Matte.newVM = function(
             NOOP : 0,
             IMPORT : 1,
             IMPORTMODULE : 2,
-            PRINT : 3,
-            SEND : 4,
-            ERROR : 5,
-            BREAKPOINT : 6,
+            SETMODULE : 3,
+            PRINT : 4,
+            SEND : 5,
+            ERROR : 6,
+            BREAKPOINT : 7,
             
-            NUMBER_PI : 7,
-            NUMBER_PARSE : 8,
-            NUMBER_RANDOM : 9,
+            NUMBER_PI : 8,
+            NUMBER_PARSE : 9,
+            NUMBER_RANDOM : 10,
             
-            STRING_COMBINE : 10,
+            STRING_COMBINE : 11,
             
-            OBJECT_NEWTYPE : 11,
-            OBJECT_INSTANTIATE : 12,
-            OBJECT_FREEZEGC : 13,
-            OBJECT_THAWGC : 14,
-            OBJECT_GARBAGECOLLECT : 15,
+            OBJECT_NEWTYPE : 12,
+            OBJECT_INSTANTIATE : 13,
+            OBJECT_FREEZEGC : 14,
+            OBJECT_THAWGC : 15,
+            OBJECT_GARBAGECOLLECT : 16,
             
-            QUERY_ATAN2 : 16,
+            QUERY_ATAN2 : 17,
             
-            QUERY_PUSH : 17,
-            QUERY_INSERT: 18,
-            QUERY_REMOVE : 19,
-            QUERY_SETATTRIBUTES : 20,
-            QUERY_SORT : 21,
-            QUERY_SUBSET : 22,
-            QUERY_FILTER : 23,
-            QUERY_FINDINDEX : 24,
-            QUERY_FINDINDEXCONDITION : 25,
-            QUERY_ISA : 26,
-            QUERY_MAP : 27,
-            QUERY_REDUCE : 28,
-            QUERY_ANY : 29,
-            QUERY_ALL : 30,
-            QUERY_FOREACH : 31,
-            QUERY_SETSIZE : 32,
+            QUERY_PUSH : 18,
+            QUERY_INSERT: 19,
+            QUERY_REMOVE : 20,
+            QUERY_SETATTRIBUTES : 21,
+            QUERY_SORT : 22,
+            QUERY_SUBSET : 23,
+            QUERY_FILTER : 24,
+            QUERY_FINDINDEX : 25,
+            QUERY_FINDINDEXCONDITION : 26,
+            QUERY_ISA : 27,
+            QUERY_MAP : 28,
+            QUERY_REDUCE : 29,
+            QUERY_ANY : 30,
+            QUERY_ALL : 31,
+            QUERY_FOREACH : 32,
+            QUERY_SETSIZE : 33,
             
-            QUERY_CHARAT : 33,
-            QUERY_CHARCODEAT : 34,
-            QUERY_SETCHARAT : 35,
-            QUERY_SETCHARCODEAT : 36,
-            QUERY_SCAN : 37,
-            QUERY_SEARCH : 38,
-            QUERY_SEARCH_ALL : 39,
-            QUERY_FORMAT : 40,
-            QUERY_SPLIT : 41,
-            QUERY_SUBSTR : 42,
-            QUERY_CONTAINS : 43,
-            QUERY_COUNT : 44,
-            QUERY_REPLACE : 45,
-            QUERY_REMOVECHAR : 46,
+            QUERY_CHARAT : 34,
+            QUERY_CHARCODEAT : 35,
+            QUERY_SETCHARAT : 36,
+            QUERY_SETCHARCODEAT : 37,
+            QUERY_SCAN : 38,
+            QUERY_SEARCH : 39,
+            QUERY_SEARCH_ALL : 40,
+            QUERY_FORMAT : 41,
+            QUERY_SPLIT : 42,
+            QUERY_SUBSTR : 43,
+            QUERY_CONTAINS : 44,
+            QUERY_COUNT : 45,
+            QUERY_REPLACE : 46,
+            QUERY_REMOVECHAR : 47,
             
-            QUERY_SETISINTERFACE : 47,
+            QUERY_SETISINTERFACE : 48,
             
-            GETEXTERNALFUNCTION : 48
+            GETEXTERNALFUNCTION : 49
             
         },
         
@@ -4469,6 +4470,25 @@ Matte.newVM = function(
               vm_imports[args[0]] = undefined;            
             return vm.import(store.valueAsString(args[0]), args[1]);
         });
+
+        vm_addBuiltIn(vm.EXT_CALL.SETMODULE, ['name', 'value'], function(fn, args) {
+            const name = args[0];
+            const value = args[1];
+            if (valToType(args[0]) != store.TYPE_STRING) {
+                vm.raiseErrorString("Name argument to setModule MUST be a string.");
+                return store.empty;
+            
+            }
+
+
+            if (vm_imports[name] != undefined) {
+                vm.raiseErrorString("setModule can only set a module if it hasn\'t already been defined.");
+                return store.empty;
+            }
+            vm_imports[name] = value;
+            return store.empty;
+        });
+
         
         vm_addBuiltIn(vm.EXT_CALL.PRINT, ['message'], function(fn, args) {
             onPrint(store.valueAsString(args[0]));
