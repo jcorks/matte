@@ -3458,7 +3458,11 @@ static matteArray_t * compile_function_call(
             
             // compile object to be the vararg
             exp = compile_expression(g, block, functions, &iter);
-            merge_instructions(inst, exp); // push argument
+            if (exp) {
+                merge_instructions(inst, exp); // push argument
+            } else {
+                goto L_FAIL;
+            }
             break;
         }
         
@@ -4652,7 +4656,9 @@ static matteFunctionBlock_t * compile_function_block_core(
     // next find all locals and static strings
     matteToken_t * funcStart = iter;
     while(iter && iter->ttype != MATTE_TOKEN_FUNCTION_END) {
-        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR) {
+        if (iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR ||
+            iter->ttype == MATTE_TOKEN_FUNCTION_CONSTRUCTOR_DASH_ALT
+        ) {
             ff_skip_inner_function(&iter);
         } else if (iter->ttype == MATTE_TOKEN_DECLARE ||
             iter->ttype == MATTE_TOKEN_DECLARE_CONST) {

@@ -15,6 +15,15 @@ debug:
 	gcc -std=c99 -g -c ./src/*.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
 	gcc -std=c99 -g -c ./src/rom/native.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS  -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
 	ar rcs libmatte.a *.o
+
+debug-compiler:
+	make -f ./makefile_rom
+	gcc -std=c99 -g -c ./src/*.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC -DMATTE_DEBUG__COMPILER
+	gcc -std=c99 -g -c ./src/rom/native.c -D_GNU_SOURCE -D_XOPEN_SOURCE=500 -DMATTE_USE_SYSTEM_EXTENSIONS  -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
+	ar rcs libmatte.a *.o
+
+
+
 clean:
 	rm -f *.o
 	rm -f libmatte.a
