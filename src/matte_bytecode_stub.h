@@ -34,6 +34,9 @@ DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 
 
+
+
+
 typedef struct {
     /// Line offset for the instruction from the stub function
     uint16_t lineOffset;
@@ -51,13 +54,19 @@ typedef struct {
 
     // auxiliary data
     union {
+        uint64_t data64;
+        struct {
+            uint32_t slot0;
+            uint32_t slot1;
+        } data32;
+    
         struct {
             uint16_t slot0;
             uint16_t slot1;
             uint16_t slot2;
             uint16_t slot3;
         } args;
-        double data;
+        double number;
         struct {
             uint32_t stubID;
             /// Per-opcode auxiliary data. Currently only used for fileID for nfn opcodes
@@ -98,6 +107,9 @@ matteArray_t * matte_bytecode_stubs_from_bytecode(
     const uint8_t * bytecodeRaw, 
     uint32_t len
 );
+
+
+
 
 /// Destroys a bytecode stub.
 void matte_bytecode_stub_destroy(matteBytecodeStub_t * b);

@@ -661,6 +661,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     const matteBytecodeStubInstruction_t * inst;
     uint32_t instCount;
     uint32_t sfscount = 0;
+    int isBracket;
     matteValue_Extended_t ve_ = {};
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
 
@@ -708,7 +709,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
             
           case MATTE_OPCODE_PRF: {
-            uint32_t referrable = (uint32_t)inst->data;
+            uint32_t referrable = inst->data32.slot0;
             matteValue_t * v = (matteValue_t *)matte_vm_current_stackframe_get_referrable(vm, referrable);
             if (v) {
                 matteValue_t copy = matte_store_new_value(vm->store);
@@ -722,7 +723,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
           
           case MATTE_OPCODE_PNR: {
-            uint32_t referrableStrID = (double) inst->data;
+            uint32_t referrableStrID = inst->data32.slot0;
             matteValue_t v = matte_bytecode_stub_get_string_noref(frame->stub, referrableStrID);
             if (!matte_value_type(v)) {
                 matte_vm_raise_error_cstring(vm, "VM Error: No such bytecode stub string.");
@@ -747,20 +748,20 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
           case MATTE_OPCODE_NNM: {
             matteValue_t v = {};
-            matte_value_into_number(vm->store, &v, inst->data);
+            matte_value_into_number(vm->store, &v, inst->number);
             STACK_PUSH(v);
 
             break;
           }
           case MATTE_OPCODE_NBL: {
             matteValue_t v = matte_store_new_value(vm->store);
-            matte_value_into_boolean(vm->store, &v, inst->data!=0.0);
+            matte_value_into_boolean(vm->store, &v, inst->data32.slot0!=0.0);
             STACK_PUSH(v);
             break;
           }
 
           case MATTE_OPCODE_NST: {
-            uint32_t stringID = inst->data;
+            uint32_t stringID = inst->data32.slot0;
 
             // NO XFER
             matteValue_t v = matte_bytecode_stub_get_string_noref(frame->stub, stringID);
@@ -792,7 +793,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
                     
           case MATTE_OPCODE_SFS:
-            sfscount = (uint32_t)inst->data;
+            sfscount = inst->data32.slot0;
 
             if (frame->pc >= instCount) {
                 break;
@@ -960,7 +961,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           
           
           case MATTE_OPCODE_PTO: {
-            uint32_t typecode = (uint32_t)inst->data;
+            uint32_t typecode = inst->data32.slot0;
             matteValue_t v;
             
             switch(typecode) {
@@ -1108,8 +1109,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_vm_raise_error_cstring(vm, "VM error: tried to prepare arguments for referrable assignment, but insufficient arguments on the stack.");    
                 break;            
             }
-            uint64_t refn = ((uint64_t)inst->data) % 0xffffffff;
-            uint64_t op  = ((uint64_t)inst->data) / 0xffffffff;
+            uint64_t refn = ((uint64_t)inst->data64) % 0xffffffff;
+            uint64_t op  = ((uint64_t)inst->data64) / 0xffffffff;
             
             matteValue_t * ref = (matteValue_t *)matte_vm_current_stackframe_get_referrable(vm, refn); 
             if (ref) {
@@ -1147,7 +1148,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }          
           case MATTE_OPCODE_POP: {
-            uint32_t popCount = (uint32_t)inst->data;
+            uint32_t popCount = inst->data32.slot0;
             while (popCount && STACK_SIZE()) {
                 matteValue_t m = STACK_POP();
                 matte_store_recycle(vm->store, m);
@@ -1171,7 +1172,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_vm_raise_error_cstring(vm, "VM error: OSN opcode requires 3 on the stack.");                
                 break;        
             }
-            int opr = (uint32_t)(inst->data);
+            int opr = (inst->data32.slot0);
             int isBracket = 0;
             if (opr >= (int)MATTE_OPERATOR_STATE_BRACKET) {
                 opr -= MATTE_OPERATOR_STATE_BRACKET;
@@ -1234,13 +1235,13 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }    
 
+          case MATTE_OPCODE_OLB: 
+            isBracket = 1;
           case MATTE_OPCODE_OLK: {
             if (STACK_SIZE() < 2) {
                 matte_vm_raise_error_cstring(vm, "VM error: OLK opcode requires 2 on the stack.");                
                 break;        
             }
-            
-            uint32_t isBracket = (uint32_t)inst->data;
             matteValue_t key = STACK_PEEK(0);
             matteValue_t object = STACK_PEEK(1);            
             matteValue_t output = matte_value_object_access(vm->store, object, key, isBracket);
@@ -1265,7 +1266,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
 
           case MATTE_OPCODE_EXT: {
-            uint64_t call = (uint64_t)inst->data;
+            uint32_t call = inst->data32.slot0;
             if (call >= matte_array_get_size(vm->externalFunctionIndex)) {
                 matte_vm_raise_error_cstring(vm, "VM error: unknown external call.");                
                 break;        
@@ -1281,7 +1282,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
           // used to implement all branching
           case MATTE_OPCODE_SKP: {
-            uint32_t count = (uint32_t)inst->data;
+            uint32_t count = (uint32_t)inst->data32.slot0;
             matteValue_t condition = STACK_PEEK(0);
             if (!matte_value_as_boolean(vm->store, condition)) {
                 frame->pc += count;
@@ -1290,7 +1291,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }
           case MATTE_OPCODE_SCA: {
-            uint32_t count = (uint32_t)inst->data;
+            uint32_t count = (uint32_t)inst->data32.slot0;
             matteValue_t condition = STACK_PEEK(0);
             if (!matte_value_as_boolean(vm->store, condition)) {
                 frame->pc += count;
@@ -1298,7 +1299,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             break;
           }
           case MATTE_OPCODE_SCO: {
-            uint32_t count = (uint32_t)inst->data;
+            uint32_t count = (uint32_t)inst->data32.slot0;
             matteValue_t condition = STACK_PEEK(0);
             if (matte_value_as_boolean(vm->store, condition)) {
                 frame->pc += count;
@@ -1428,14 +1429,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }
 
           case MATTE_OPCODE_ASP: {
-            uint32_t count = (uint32_t)inst->data;
+            uint32_t count = (uint32_t)inst->data32.slot0;
             frame->pc += count;
             break;
           }  
           
           case MATTE_OPCODE_QRY: {
             matteValue_t o = STACK_PEEK(0);
-            matteValue_t output = matte_value_query(vm->store, &o, (matteQuery_t)inst->data);
+            matteValue_t output = matte_value_query(vm->store, &o, (matteQuery_t)inst->data32.slot0);
             o = STACK_POP();            
 
             STACK_PUSH(output);
@@ -1454,7 +1455,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           
           
           case MATTE_OPCODE_OPR: {            
-            switch((int)inst->data) {
+            switch((int)inst->data32.slot0) {
                 case MATTE_OPERATOR_ADD:
                 case MATTE_OPERATOR_SUB:
                 case MATTE_OPERATOR_DIV:
@@ -1485,7 +1486,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         matteValue_t b = STACK_PEEK(0);
                         matteValue_t v = vm_operator_2(
                             vm,
-                            (matteOperator_t)(inst->data),
+                            (matteOperator_t)(inst->data32.slot0),
                             a, b
                         );
                         STACK_POP_NORET();
@@ -1507,7 +1508,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                         matteValue_t a = STACK_PEEK(0);
                         matteValue_t v = vm_operator_1(
                             vm,
-                            (matteOperator_t)inst->data,
+                            (matteOperator_t)inst->data32.slot0,
                             a
                         );
                         STACK_POP_NORET();
@@ -1606,6 +1607,7 @@ static void vm_add_built_in(
     };
     uint8_t u8;
     uint32_t u32 = index;
+    uint16_t u16;
     WRITE_NBYTES(tag, 7); 
     WRITE_BYTES(uint32_t, u32); 
     u8 = 0;
@@ -1617,6 +1619,26 @@ static void vm_add_built_in(
     for(i = 0; i < u8; ++i) {
         write_unistring(arr, matte_array_at(argNames, matteString_t *, i));
     }
+    // local
+    u8 = 0;
+    WRITE_BYTES(uint8_t, u8); 
+    
+    // strings
+    u32 = 0;
+    WRITE_BYTES(uint32_t, u32); 
+    
+    // captures
+    u16 = 0;
+    WRITE_BYTES(uint16_t, u16); 
+
+    //inst + lines
+    WRITE_BYTES(uint32_t, u32); 
+    WRITE_BYTES(uint32_t, u32); 
+
+    // inst stream + options
+    WRITE_BYTES(uint8_t, u8); 
+    WRITE_BYTES(uint32_t, u32); 
+
     
     
     matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(

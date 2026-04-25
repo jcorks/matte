@@ -32,6 +32,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_string.h"
 #include "matte_table.h"
 #include "matte_bytecode_stub.h"
+#include "matte_instruction_stream.h"
 #include "matte_opcode.h"
 #include "matte_compiler__syntax_graph.h"
 #include "matte.h"
@@ -3364,7 +3365,7 @@ static matteArray_t * compile_value(
             // if so, the next will be a variable name
             if (iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
                 write_instruction__nst(inst, GET_LINE_OFFSET(block), function_intern_string(block, (matteString_t*) iter->data));
-                write_instruction__olk(inst, GET_LINE_OFFSET(block), 0);
+                write_instruction__olk(inst, GET_LINE_OFFSET(block));
                 *lvalue = 1;
                 iter = iter->next;
             } else if (iter->ttype == MATTE_TOKEN_ASSIGNMENT) {
@@ -3393,7 +3394,7 @@ static matteArray_t * compile_value(
                 return NULL;               
             }
             merge_instructions(inst, exp); // push argument
-            write_instruction__olk(inst, GET_LINE_OFFSET(block), 1);
+            write_instruction__olb(inst, GET_LINE_OFFSET(block));
             iter = iter->next; // skip ]        
         // function calls are kind of like special operators
         // here, they use the compiled value above as the function object 
@@ -4240,7 +4241,7 @@ static matteArray_t * compile_expression(
             uint32_t n;
             for(n = 0; n < size; ++n) {
                 matteBytecodeStubInstruction_t u = matte_array_at(valueInst, matteBytecodeStubInstruction_t, n);
-                if (u.info.opcode == MATTE_OPCODE_OLK) {
+                if (u.info.opcode == MATTE_OPCODE_OLK || u.info.opcode == MATTE_OPCODE_OLB) {
                     isSimpleReferrable = 0;
                     break;
                 }
@@ -4255,13 +4256,13 @@ static matteArray_t * compile_expression(
                     goto L_FAIL;
                 }
                 
-                if (is_referrable_const(block, (uint32_t)(undo.data))) {
+                if (is_referrable_const(block, (uint32_t)(undo.data32.slot0))) {
                     matte_syntax_graph_print_compile_error(g, iter, "Cannot assign new value to constant.");
                     goto L_FAIL;                    
                 }
                 // removed the referrable value, since thats already wrapped in the ARF
                 matte_array_set_size(valueInst, size-1);
-                write_instruction__arf(valueInst, line - block->startingLine, (uint32_t)(undo.data), assignment_token_to_op_index(iter->ttype));
+                write_instruction__arf(valueInst, line - block->startingLine, (uint32_t)(undo.data32.slot0), assignment_token_to_op_index(iter->ttype));
                 
             } else {
                 // for handling assignment for the dot access and the [] lookup, 
@@ -4269,11 +4270,11 @@ static matteArray_t * compile_expression(
                 // object AND the key on the stack (since OLK would normally consume both)
                 //postOp = POST_OP_SYMBOLIC__ASSIGN_MEMBER + assignment_token_to_op_index(iter->ttype) + (*((uint32_t*)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0);
                 matte_array_set_size(valueInst, size-1);
-                if (undo.info.opcode != MATTE_OPCODE_OLK) {
+                if (undo.info.opcode != MATTE_OPCODE_OLK && undo.info.opcode != MATTE_OPCODE_OLB) {
                     matte_syntax_graph_print_compile_error(g, iter, "Missing lookup token. (internal error)");
                     goto L_FAIL;
                 }
-                write_instruction__osn(valueInst, line - block->startingLine, assignment_token_to_op_index(iter->ttype) + (((uint32_t)undo.data) ? MATTE_OPERATOR_STATE_BRACKET : 0));                
+                write_instruction__osn(valueInst, line - block->startingLine, assignment_token_to_op_index(iter->ttype) + (((uint32_t)undo.data32.slot0) ? MATTE_OPERATOR_STATE_BRACKET : 0));                
 
             }
             
@@ -4352,14 +4353,14 @@ static matteArray_t * compile_expression(
                     matteBytecodeStubInstruction_t marker;
                     marker.info.lineOffset = n->line - block->startingLine;
                     marker.info.opcode = 0xff;
-                    marker.data = 1;
+                    marker.data32.slot0 = 1;
                     matte_array_push(n->value, marker);
                     hasandor = 1;
                 } else if (n->postOp == MATTE_OPERATOR_OR) {
                     matteBytecodeStubInstruction_t marker;
                     marker.info.lineOffset = n->line - block->startingLine;
                     marker.info.opcode = 0xff;
-                    marker.data = 2;
+                    marker.data32.slot0 = 2;
                     matte_array_push(n->value, marker);                    
                     hasandor = 1;
                 }
@@ -4397,17 +4398,17 @@ static matteArray_t * compile_expression(
         for(i = 0; i < len; ++i) {
             matteBytecodeStubInstruction_t * inst = &matte_array_at(outInst, matteBytecodeStubInstruction_t, i);
             if (inst->info.opcode == 0xff) {
-                switch((int)inst->data) {
+                switch((int)inst->data32.slot0) {
                   case 1: {// AND 
                     inst->info.opcode = MATTE_OPCODE_SCA;
                     uint32_t skipAmt = len - i - 1;
-                    inst->data = skipAmt;                    
+                    inst->data32.slot0 = skipAmt;                    
                     break;
                   }
                   case 2: {// OLD
                     inst->info.opcode = MATTE_OPCODE_SCO;
                     uint32_t skipAmt = len - i - 1;
-                    inst->data = skipAmt;  
+                    inst->data32.slot0 = skipAmt;  
                     break;
                   }
 
@@ -5069,17 +5070,32 @@ void * matte_function_block_array_to_bytecode(
 
         nInst = matte_array_get_size(block->instructions);
         WRITE_BYTES(uint32_t, nInst);
-
         WRITE_BYTES(uint32_t, block->startingLine);
 
+        
+        uint32_t compressedSize = 0;
+        uint8_t * compressed = matte_instruction_stream_encode(
+            block->instructions,
+            1, // TODO!
+            &compressedSize
+        );
+        
+        WRITE_NBYTES(compressedSize, compressed);
+        matte_deallocate(compressed);
+        /*
+        nInst = matte_array_get_size(block->instructions);
+        WRITE_BYTES(uint32_t, nInst);
+        WRITE_BYTES(uint32_t, block->startingLine);
         for(n = 0; n < nInst; ++n) {
             matteBytecodeStubInstruction_t * inst = &matte_array_at(block->instructions, matteBytecodeStubInstruction_t, n);
             WRITE_BYTES(uint16_t, inst->info.lineOffset);
             WRITE_BYTES(uint8_t, inst->info.opcode);
             WRITE_BYTES(double, inst->data);        
         }
-
+        */
+        
         function_block_destroy(block);
+        
     }
 
 

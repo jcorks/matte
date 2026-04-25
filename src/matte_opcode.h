@@ -77,6 +77,7 @@ typedef enum {
     MATTE_OPCODE_OSN,
     // lookup member
     MATTE_OPCODE_OLK,
+    MATTE_OPCODE_OLB,
 
     // general purpose operator code.
     MATTE_OPCODE_OPR,
@@ -170,6 +171,8 @@ typedef enum {
     // pushes the private interface data for the calling context if any.
     MATTE_OPCODE_PIP,
     
+    MATTE_OPCODE_COUNT,
+        
     MATTE_OPCODE_ERROR = -1
 
 } matteOpcode_t;

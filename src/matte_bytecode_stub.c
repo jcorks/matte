@@ -31,6 +31,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_string.h"
 #include "matte_array.h"
 #include "matte_opcode.h"
+#include "matte_instruction_stream.h"
 #include "matte.h"
 
 #include <stdlib.h>
@@ -64,6 +65,12 @@ struct matteBytecodeStub_t {
     uint8_t isVarArg;
 
 };  
+
+
+
+
+
+
 
 // prevents incomplete advances
 
@@ -154,14 +161,23 @@ static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID
     }
     ADVANCE(uint32_t, out->instructionCount);
     ADVANCE(uint32_t, out->startingLine);
-    if (out->instructionCount) {
-        out->instructions = (matteBytecodeStubInstruction_t*)matte_allocate(sizeof(matteBytecodeStubInstruction_t)* out->instructionCount);    
+    
+    out->instructions = (matteBytecodeStubInstruction_t*)matte_allocate(sizeof(matteBytecodeStubInstruction_t)* out->instructionCount);    
+    matte_instruction_stream_decode(
+        out->instructions,
+        out->instructionCount,
+        out->startingLine,
+        &bytes,
+        &left
+    );
+    
+        /*
         for(i = 0; i < out->instructionCount; ++i) {
             ADVANCE(uint16_t, out->instructions[i].info.lineOffset);
             ADVANCE(uint8_t,  out->instructions[i].info.opcode);
             ADVANCE(double,   out->instructions[i].data);
         }
-    }
+        */
 
     // complete linkage for NFN instructions
     // This will help other instances know the originating
@@ -271,6 +287,10 @@ int matte_bytecode_stub_is_vararg(const matteBytecodeStub_t * stub) {
 int matte_bytecode_stub_is_dynamic_bind(const matteBytecodeStub_t * stub) {
     return stub->isDynamicBinding;
 }
+
+
+
+
 
 
 

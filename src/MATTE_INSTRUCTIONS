@@ -37,7 +37,7 @@ static void write_instruction__prf(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_PRF;
-    inst.data = referrable;
+    inst.data32.slot0 = referrable;
     matte_array_push(insts, inst);
 }
 
@@ -60,7 +60,7 @@ static void write_instruction__nnm(matteArray_t * insts, uint16_t lineOffset, do
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_NNM;
-    inst.data = val;
+    inst.number = val;
     matte_array_push(insts, inst);
 }
 
@@ -68,7 +68,7 @@ static void write_instruction__nbl(matteArray_t * insts, uint16_t lineOffset, in
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_NBL;
-    inst.data = b;
+    inst.data32.slot0 = b;
     matte_array_push(insts, inst);
 }
 
@@ -77,7 +77,7 @@ static void write_instruction__nst(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_NST;
-    inst.data = id;
+    inst.data32.slot0 = id;
     matte_array_push(insts, inst);
 }
 
@@ -110,7 +110,7 @@ static void write_instruction__sfs(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_SFS;
-    inst.data = sfsCount;
+    inst.data32.slot0 = sfsCount;
     matte_array_push(insts, inst);
 }
 
@@ -156,7 +156,7 @@ static void write_instruction__cal(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_CAL;
-    inst.data = args;
+    inst.data32.slot0 = args;
     matte_array_push(insts, inst);
 }
 
@@ -164,7 +164,7 @@ static void write_instruction__clv(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_CLV;
-    inst.data = args;
+    inst.data32.slot0 = args;
     matte_array_push(insts, inst);
 }
 
@@ -174,7 +174,7 @@ static void write_instruction__arf(matteArray_t * insts, uint16_t lineOffset, ui
     inst.info.opcode = MATTE_OPCODE_ARF;
     uint64_t packed = ref;
     packed += ((uint64_t)op) * (0xffffffff);
-    inst.data = (double)packed;
+    inst.data64 = packed;
     matte_array_push(insts, inst);
 }
 
@@ -182,15 +182,21 @@ static void write_instruction__osn(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_OSN;
-    inst.data = opcode;
+    inst.data32.slot0 = opcode;
     matte_array_push(insts, inst);
 }
 
-static void write_instruction__olk(matteArray_t * insts, uint16_t lineOffset, uint32_t bracket) {
+static void write_instruction__olk(matteArray_t * insts, uint16_t lineOffset) {
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_OLK;
-    inst.data = bracket;
+    matte_array_push(insts, inst);
+}
+
+static void write_instruction__olb(matteArray_t * insts, uint16_t lineOffset) {
+    matteBytecodeStubInstruction_t inst;
+    inst.info.lineOffset = lineOffset;
+    inst.info.opcode = MATTE_OPCODE_OLB;
     matte_array_push(insts, inst);
 }
 
@@ -199,7 +205,7 @@ static void write_instruction__opr(matteArray_t * insts, uint16_t lineOffset, in
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_OPR;
-    inst.data = op;
+    inst.data32.slot0 = op;
     matte_array_push(insts, inst);
 }
 
@@ -208,7 +214,7 @@ static void write_instruction__ext(matteArray_t * insts, uint16_t lineOffset, ma
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_EXT;
-    inst.data = ext;
+    inst.data32.slot0 = ext;
     matte_array_push(insts, inst);
 }
 
@@ -216,7 +222,7 @@ static void write_instruction__pop(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_POP;
-    inst.data = n;
+    inst.data32.slot0 = n;
     matte_array_push(insts, inst);
 }
 
@@ -224,7 +230,7 @@ static void write_instruction__pnr(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_PNR;
-    inst.data = n;
+    inst.data32.slot0 = n;
     matte_array_push(insts, inst);
 }
 
@@ -241,7 +247,7 @@ static void write_instruction__qry(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_QRY;
-    inst.data = query;
+    inst.data32.slot0 = query;
     matte_array_push(insts, inst);
 }
 
@@ -278,7 +284,7 @@ static void write_instruction__skp_insert(matteArray_t * insts, uint16_t lineOff
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_SKP;
-    inst.data = ninst;
+    inst.data32.slot0 = ninst;
     matte_array_push(insts, inst);
 }
 
@@ -286,7 +292,7 @@ static void write_instruction__asp(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_ASP;
-    inst.data = ninst;
+    inst.data32.slot0 = ninst;
     matte_array_push(insts, inst);
 }
 
@@ -294,7 +300,7 @@ static void write_instruction__pto(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_PTO;
-    inst.data = type;
+    inst.data32.slot0 = type;
     matte_array_push(insts, inst);
 }
 
