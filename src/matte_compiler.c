@@ -5013,11 +5013,44 @@ matteArray_t * matte_syntax_graph_compile(matteSyntaxGraphWalker_t * g) {
 #define WRITE_BYTES(__T__, __VAL__) matte_array_push_n(byteout, &(__VAL__), sizeof(__T__));
 #define WRITE_NBYTES(__N__, __VALP__) matte_array_push_n(byteout, (__VALP__), __N__);
 
+
+static void write_rolled_uint(matteArray_t * byteout, uint32_t val) {
+    uint8_t needed;
+    if (val <= 0xff) {
+        needed = 1;
+        uint8_t val8 = val;
+        WRITE_BYTES(uint8_t, needed);
+        WRITE_BYTES(uint8_t, val8);
+    } else if (val <= 0xffff) {
+        needed = 2;
+        uint8_t val16 = val;
+        WRITE_BYTES(uint8_t, needed);
+        WRITE_BYTES(uint16_t, val16);    
+    } else if (val <= 0xffffff) {
+        needed = 3;
+        uint8_t val24[3] = {
+            val % 0xff,
+            (val >> 8) % 0xff,
+            (val >> 16) % 0xff
+        };
+        WRITE_BYTES(uint8_t, needed);
+        WRITE_NBYTES(3, val24);        
+
+    } else {
+        needed = 4;
+        WRITE_BYTES(uint8_t, needed);
+        WRITE_BYTES(uint32_t, val);
+    }
+}
+
 static void write_unistring(matteArray_t * byteout, matteString_t * str) {
     uint32_t len = matte_string_get_utf8_length(str);
-    WRITE_BYTES(uint32_t, len);
+    write_rolled_uint(byteout, len);
     WRITE_NBYTES(len, matte_string_get_utf8_data(str));
 }
+
+
+
 
 void * matte_function_block_array_to_bytecode(
     matteArray_t * arr, 
@@ -5066,7 +5099,17 @@ void * matte_function_block_array_to_bytecode(
 
         nCaps = matte_array_get_size(block->captures);
         WRITE_BYTES(uint16_t, nCaps);
-        WRITE_NBYTES(nCaps * (sizeof(uint32_t) + sizeof(uint32_t)), matte_array_get_data(block->captures));
+        uint32_t szBefore = matte_array_get_size(byteout);
+        for(n = 0; n < nCaps; ++n) {
+            matteBytecodeStubCapture_t * cpt = &matte_array_at(block->captures, matteBytecodeStubCapture_t, n);
+            write_rolled_uint(byteout, cpt->stubID);
+            write_rolled_uint(byteout, cpt->referrable);
+        }
+        printf("Captures compressed from %'d to %'d bytes\n",
+            (int)(nCaps * (sizeof(uint32_t) + sizeof(uint32_t))),
+            (int)(matte_array_get_size(byteout) - szBefore)
+        );
+        //WRITE_NBYTES(nCaps * (sizeof(uint32_t) + sizeof(uint32_t)), matte_array_get_data(block->captures));
 
         nInst = matte_array_get_size(block->instructions);
         WRITE_BYTES(uint32_t, nInst);
