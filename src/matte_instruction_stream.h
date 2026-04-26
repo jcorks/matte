@@ -46,7 +46,7 @@ extern uint8_t MATTE_INSTRUCTION_STREAM__OPCODE_TO_DATA_BLOCK_COUNT[MATTE_OPCODE
 void matte_instruction_stream_decode(
     matteBytecodeStubInstruction_t * instructions,
     uint32_t len,
-    uint32_t startLine,
+    uint32_t * startLine,
     uint8_t *** bytesIn,
     uint32_t ** leftIn
 );
@@ -58,6 +58,7 @@ void matte_instruction_stream_decode(
 uint8_t * matte_instruction_stream_encode(
     matteArray_t * instructions,
     int includeDebug,
+    uint32_t startingLine,
     uint32_t * len
 );
 

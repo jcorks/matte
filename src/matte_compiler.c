@@ -5023,7 +5023,7 @@ static void write_rolled_uint(matteArray_t * byteout, uint32_t val) {
         WRITE_BYTES(uint8_t, val8);
     } else if (val <= 0xffff) {
         needed = 2;
-        uint8_t val16 = val;
+        uint16_t val16 = val;
         WRITE_BYTES(uint8_t, needed);
         WRITE_BYTES(uint16_t, val16);    
     } else if (val <= 0xffffff) {
@@ -5074,7 +5074,7 @@ void * matte_function_block_array_to_bytecode(
 
         nSlots = 1;
         WRITE_NBYTES(7, tag); // HEADER + bytecode version
-        WRITE_BYTES(uint32_t, block->stubID);
+        write_rolled_uint(byteout, block->stubID);
         nSlots = block->isVarArg;
         WRITE_BYTES(uint8_t, nSlots);
 
@@ -5091,14 +5091,14 @@ void * matte_function_block_array_to_bytecode(
         }
 
         nStrings = matte_array_get_size(block->strings);
-        WRITE_BYTES(uint32_t, nStrings);
+        write_rolled_uint(byteout, nStrings);
         for(n = 0; n < nStrings; ++n) {
             write_unistring(byteout, matte_array_at(block->strings, matteString_t *, n));
         }
 
 
         nCaps = matte_array_get_size(block->captures);
-        WRITE_BYTES(uint16_t, nCaps);
+        write_rolled_uint(byteout, nCaps);
         uint32_t szBefore = matte_array_get_size(byteout);
         for(n = 0; n < nCaps; ++n) {
             matteBytecodeStubCapture_t * cpt = &matte_array_at(block->captures, matteBytecodeStubCapture_t, n);
@@ -5112,14 +5112,14 @@ void * matte_function_block_array_to_bytecode(
         //WRITE_NBYTES(nCaps * (sizeof(uint32_t) + sizeof(uint32_t)), matte_array_get_data(block->captures));
 
         nInst = matte_array_get_size(block->instructions);
-        WRITE_BYTES(uint32_t, nInst);
-        WRITE_BYTES(uint32_t, block->startingLine);
+        write_rolled_uint(byteout, nInst);
 
         
         uint32_t compressedSize = 0;
         uint8_t * compressed = matte_instruction_stream_encode(
             block->instructions,
             1, // TODO!
+            block->startingLine,
             &compressedSize
         );
         

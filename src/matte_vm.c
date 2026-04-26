@@ -661,7 +661,6 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     const matteBytecodeStubInstruction_t * inst;
     uint32_t instCount;
     uint32_t sfscount = 0;
-    int isBracket;
     matteValue_Extended_t ve_ = {};
     const matteBytecodeStubInstruction_t * program = matte_bytecode_stub_get_instructions(frame->stub, &instCount);
 
@@ -1236,8 +1235,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           }    
 
           case MATTE_OPCODE_OLB: 
-            isBracket = 1;
           case MATTE_OPCODE_OLK: {
+            int isBracket = inst->info.opcode == MATTE_OPCODE_OLB;
             if (STACK_SIZE() < 2) {
                 matte_vm_raise_error_cstring(vm, "VM error: OLK opcode requires 2 on the stack.");                
                 break;        
@@ -1573,9 +1572,39 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 #define WRITE_BYTES(__T__, __VAL__) matte_array_push_n(arr, &(__VAL__), sizeof(__T__));
 #define WRITE_NBYTES(__VAL__, __N__) matte_array_push_n(arr, &(__VAL__), __N__);
 
+static void write_rolled_uint(matteArray_t * arr, uint32_t val) {
+    uint8_t needed;
+    if (val <= 0xff) {
+        needed = 1;
+        uint8_t val8 = val;
+        WRITE_BYTES(uint8_t, needed);
+        WRITE_BYTES(uint8_t, val8);
+    } else if (val <= 0xffff) {
+        needed = 2;
+        uint16_t val16 = val;
+        WRITE_BYTES(uint8_t, needed);
+        WRITE_BYTES(uint16_t, val16);    
+    } else if (val <= 0xffffff) {
+        needed = 3;
+        uint8_t val24[3] = {
+            val % 0xff,
+            (val >> 8) % 0xff,
+            (val >> 16) % 0xff
+        };
+        WRITE_BYTES(uint8_t, needed);
+        WRITE_NBYTES(val24[0], 3);        
+
+    } else {
+        needed = 4;
+        WRITE_BYTES(uint8_t, needed);
+        WRITE_BYTES(uint32_t, val);
+    }
+}
+
+
 static void write_unistring(matteArray_t * arr, matteString_t * str) {
     uint32_t len = matte_string_get_utf8_length(str);
-    WRITE_BYTES(uint32_t, len);
+    write_rolled_uint(arr, len);
     WRITE_NBYTES(((uint8_t*)matte_string_get_utf8_data(str))[0], len);
 }
 
@@ -1609,7 +1638,7 @@ static void vm_add_built_in(
     uint32_t u32 = index;
     uint16_t u16;
     WRITE_NBYTES(tag, 7); 
-    WRITE_BYTES(uint32_t, u32); 
+    write_rolled_uint(arr, u32);
     u8 = 0;
     WRITE_BYTES(uint8_t, u8); // varargs
     
@@ -1625,15 +1654,13 @@ static void vm_add_built_in(
     
     // strings
     u32 = 0;
-    WRITE_BYTES(uint32_t, u32); 
+    write_rolled_uint(arr, u32);
     
     // captures
-    u16 = 0;
-    WRITE_BYTES(uint16_t, u16); 
+    write_rolled_uint(arr, u32);
 
-    //inst + lines
-    WRITE_BYTES(uint32_t, u32); 
-    WRITE_BYTES(uint32_t, u32); 
+    //inst
+    write_rolled_uint(arr, u32);
 
     // inst stream + options
     WRITE_BYTES(uint8_t, u8); 

@@ -77,6 +77,7 @@ struct matteBytecodeStub_t {
 
 #define ADVANCE(__T__, __V__) ADVANCE_SRC(sizeof(__T__), &(__V__), left, bytes);
 #define ADVANCEN(__N__, __V__) ADVANCE_SRC(__N__, &(__V__), left, bytes);
+#define UNROLL_UINT() UNROLL_UINT_SRC(&left, &bytes);
 
 static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
     int32_t v = n <= *left ? n : *left;
@@ -86,10 +87,47 @@ static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
 }
 
 
+static uint32_t UNROLL_UINT_SRC(uint32_t ** leftIn, uint8_t *** bytesIn) {
+    uint32_t * left = *leftIn;
+    uint8_t ** bytes = *bytesIn;
+    uint8_t count;
+    ADVANCE(uint8_t, count);
+    uint32_t out;
+    switch(count) {
+      case 1:
+        ADVANCE(uint8_t, count);
+        out = count;
+        break;
+        
+      case 2: {
+        uint16_t v;
+        ADVANCE(uint16_t, v);
+        out = v;
+        break;
+      }
+
+      case 3: {
+        uint8_t v[3];
+        ADVANCEN(3, v);
+        out = v[0] + 0xff*v[1] + 0xffff*v[2];
+        break;
+      }
+      
+      case 4:
+        ADVANCE(uint32_t, out);
+        break;
+    }
+    
+    *leftIn = left;
+    *bytesIn = bytes;
+    return out;
+
+}
+
+
 static matteValue_t chomp_string(matteStore_t * store, uint8_t ** bytes, uint32_t * left) {
     matteString_t * str;
-    uint32_t len = 0;
-    ADVANCE(uint32_t, len);
+    uint32_t len = UNROLL_UINT();
     uint8_t * utf8raw = (uint8_t*)matte_allocate((len+1)*1);
     ADVANCEN(len, utf8raw[0]);
     
@@ -134,7 +172,7 @@ static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID
 
 
     out->fileID = fileID;
-    ADVANCE(uint32_t, out->stubID);
+    out->stubID = UNROLL_UINT();
     ADVANCE(uint8_t, out->isVarArg);
     ADVANCE(uint8_t, out->argCount);
     out->argNames = (matteValue_t*)matte_allocate(sizeof(matteValue_t)*out->argCount);
@@ -149,24 +187,26 @@ static matteBytecodeStub_t * bytes_to_stub(matteStore_t * store, uint32_t fileID
     for(i = 0; i < out->localCount; ++i) {
         out->localNames[i] = chomp_string(store, bytes, left);    
     }        
-    ADVANCE(uint32_t, out->stringCount);
+    out->stringCount = UNROLL_UINT();
     out->strings = (matteValue_t*)matte_allocate(sizeof(matteValue_t)*out->stringCount);
     for(i = 0; i < out->stringCount; ++i) {
         out->strings[i] = chomp_string(store, bytes, left);    
     }       
-    ADVANCE(uint16_t, out->capturedCount);
+    out->capturedCount = UNROLL_UINT();
     if (out->capturedCount) {
         out->captures = (matteBytecodeStubCapture_t*)matte_allocate(sizeof(matteBytecodeStubCapture_t)* out->capturedCount);
-        ADVANCEN(sizeof(matteBytecodeStubCapture_t)*out->capturedCount, out->captures[0]);
+        for(i = 0; i < out->capturedCount; ++i) {
+            out->captures[i].stubID = UNROLL_UINT();
+            out->captures[i].referrable = UNROLL_UINT();
+        }
     }
-    ADVANCE(uint32_t, out->instructionCount);
-    ADVANCE(uint32_t, out->startingLine);
+    out->instructionCount = UNROLL_UINT();
     
     out->instructions = (matteBytecodeStubInstruction_t*)matte_allocate(sizeof(matteBytecodeStubInstruction_t)* out->instructionCount);    
     matte_instruction_stream_decode(
         out->instructions,
         out->instructionCount,
-        out->startingLine,
+        &out->startingLine,
         &bytes,
         &left
     );
