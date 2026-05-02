@@ -111,7 +111,7 @@ matteStore_t * matte_vm_get_store(matteVM_t *);
 
 /// Adds an array of matteBytecodeStub_t * to the vm.
 /// Ownership of the stubs is transferred (but not the array)
-void matte_vm_add_stubs(matteVM_t *, const matteArray_t *);
+void matte_vm_add_stubs(matteVM_t *, const matteArray_t *, uint32_t fileID);
 
 /// Sets the implementation for the import function.
 void matte_vm_set_import(
@@ -273,7 +273,7 @@ struct matteVMStackFrame_t {
     /// the stub of the current function
     /// If the stackframe is invalid, this will be NULL and no other values 
     /// will be valid.
-    const matteBytecodeStub_t * stub;
+    matteBytecodeStub_t * stub;
 
     /// Function object of the stackframe.
     /// Holds captured values.

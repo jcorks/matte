@@ -112,6 +112,10 @@ void matte_set_io(
 /// When called, enables debugging features with default handlers
 /// using the IO functions within matte_set_io.
 ///
+/// This call is required to compile in debugging info using the 
+/// convenience functions here. After enabling, all sources compiled with 
+/// this high-level interface will include debugging information.
+///
 /// After calling this function, a debugger will be available using IO features 
 /// creating an environment where code is viewable, commands may be issued,
 /// expressions may be run in-scope, and more. It provides a default 

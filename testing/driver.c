@@ -334,6 +334,7 @@ int main() {
         
         free(src);
         matte_t * m = matte_create();
+        matte_debugging_enable(m);
         matteVM_t * vm = matte_get_vm(m);
         matte_set_importer(m, NULL, NULL);
         matteStore_t * store = matte_vm_get_store(vm);
@@ -367,8 +368,9 @@ int main() {
         }
         
         uint32_t fileid = matte_vm_get_new_file_id(vm, infile);
-        matteArray_t * arr = matte_bytecode_stubs_from_bytecode(store, fileid, outBytes, outByteLen);
-        matte_vm_add_stubs(vm, arr);
+        
+        matteArray_t * arr = matte_bytecode_stubs_decode_binary(outBytes, outByteLen);
+        matte_vm_add_stubs(vm, arr, fileid);
         matte_array_destroy(arr);
         matte_deallocate(outBytes);
 

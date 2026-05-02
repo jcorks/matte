@@ -32,7 +32,6 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_string.h"
 #include "matte_table.h"
 #include "matte_bytecode_stub.h"
-#include "matte_instruction_stream.h"
 #include "matte_opcode.h"
 #include "matte_compiler__syntax_graph.h"
 #include "matte.h"
@@ -189,6 +188,9 @@ struct matteFunctionBlock_t {
     // whether the function does nothign useful. This will be replaced with 
     // The Empty Function
     int isEmpty;
+    
+    // whether the function uses dynamic binding ($)
+    int isDynamicBind;
         
     // Starting line of the function block
     uint32_t startingLine;
@@ -223,9 +225,9 @@ static matteArray_t * matte_syntax_graph_compile(matteSyntaxGraphWalker_t * g);
 static matteString_t * matte_syntax_graph_print(matteSyntaxGraphWalker_t * g);
 
 // transers ownership of the array and frees it and its contents.
-static void * matte_function_block_array_to_bytecode(
-    matteArray_t * arr, 
-    uint32_t * size
+static matteArray_t * matte_function_block_array_to_stubs(
+    matteArray_t * arr,
+    int options
 );
 
 
@@ -260,11 +262,11 @@ matteString_t * matte_compiler_tokenize(
 }
 
 
-static uint8_t * matte_compiler_run_base(
+static matteArray_t * matte_compiler_run_base(
+    int options,
     matteSyntaxGraph_t * graphsrc,
     const uint8_t * source, 
     uint32_t len,
-    uint32_t * size,
     void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
     void * userdata
 ) {
@@ -282,7 +284,6 @@ static uint8_t * matte_compiler_run_base(
     }
     matte_tokenizer_destroy(w);
     if (!success) {
-        *size = 0;
         matte_syntax_graph_walker_destroy(st);
         return NULL;
     }
@@ -296,18 +297,17 @@ static uint8_t * matte_compiler_run_base(
     // finally emit code for groups.
     matteArray_t * arr = matte_syntax_graph_compile(st);
     if (!arr) {
-        *size = 0;
         matte_syntax_graph_walker_destroy(st);
         return NULL;
     }
 
-    void * bytecode = matte_function_block_array_to_bytecode(arr, size);
+    matteArray_t * stubs = matte_function_block_array_to_stubs(arr, options);
     matte_syntax_graph_walker_destroy(st);
 
 
     // cleanup :(
     // especially those gosh darn function blocks
-    return (uint8_t*)bytecode;
+    return stubs;
 }
 
 uint8_t * matte_compiler_run_with_named_references(
@@ -319,12 +319,33 @@ uint8_t * matte_compiler_run_with_named_references(
     void * userdata
 ) {
     OPTION__NAMED_REFERENCES = 1;
-    return matte_compiler_run_base(
-        graph, source, len, size, onError, userdata
+    
+    matteArray_t * arr = matte_compiler_run_base(
+        MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO, graph, source, len, onError, userdata
     );
+    
+    if (arr == NULL || matte_array_get_size(arr) == 0) {
+        if (arr) matte_array_destroy(arr);
+        *size = 0;
+        return NULL;
+    }
+    
+    uint8_t * bytes = matte_bytecode_stubs_encode_binary(
+        arr,
+        size
+    );
+    
+    uint32_t i;
+    uint32_t lens = matte_array_get_size(arr);
+    for(i = 0; i < lens; ++i) {
+        matte_bytecode_stub_destroy(matte_array_at(arr, matteBytecodeStub_t *, i));
+    }
+    
+    return bytes;
 }
 
 uint8_t * matte_compiler_run(
+    int options,
     matteSyntaxGraph_t * graph,
     const uint8_t * source, 
     uint32_t len,
@@ -333,9 +354,46 @@ uint8_t * matte_compiler_run(
     void * userdata
 ) {
     OPTION__NAMED_REFERENCES = 0;
-    return matte_compiler_run_base(
-        graph, source, len, size, onError, userdata
+    
+    matteArray_t * arr = matte_compiler_run_base(
+        options, graph, source, len, onError, userdata
     );
+    
+    if (arr == NULL || matte_array_get_size(arr) == 0) {
+        if (arr) matte_array_destroy(arr);
+        *size = 0;
+        return NULL;
+    }
+    
+    uint8_t * bytes = matte_bytecode_stubs_encode_binary(
+        arr,
+        size
+    );
+    
+    uint32_t i;
+    uint32_t lens = matte_array_get_size(arr);
+    for(i = 0; i < lens; ++i) {
+        matte_bytecode_stub_destroy(matte_array_at(arr, matteBytecodeStub_t *, i));
+    }
+    
+    return bytes;
+}
+
+
+matteArray_t * matte_compiler_run_stubs(
+    int options,
+    matteSyntaxGraph_t * graph,
+    const uint8_t * source, 
+    uint32_t len,
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+    void * userdata
+) {
+    OPTION__NAMED_REFERENCES = 0;
+    
+    return matte_compiler_run_base(
+        options, graph, source, len, onError, userdata
+    );
+    
 }
 
 
@@ -2397,35 +2455,44 @@ static void ff_skip_inner_function(matteToken_t ** t) {
 static void function_block_destroy(matteFunctionBlock_t * t) {
     uint32_t i;
     uint32_t len;
-    matte_array_destroy(t->instructions); // safe
-    matte_array_destroy(t->captures); // safe
+    if (t->instructions) matte_array_destroy(t->instructions); // safe
+    if (t->captures) matte_array_destroy(t->captures); // safe
 
-    len = matte_array_get_size(t->locals);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(t->locals, matteString_t *, i));        
+    if (t->locals) {
+        len = matte_array_get_size(t->locals);
+        for(i = 0; i < len; ++i) {
+            matte_string_destroy(matte_array_at(t->locals, matteString_t *, i));        
+        }
+        matte_array_destroy(t->locals);
+        matte_array_destroy(t->local_isConst);
     }
-    matte_array_destroy(t->locals);
-    matte_array_destroy(t->local_isConst);
 
-    len = matte_array_get_size(t->args);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(t->args, matteString_t *, i));        
+    if (t->args) {
+        len = matte_array_get_size(t->args);
+        for(i = 0; i < len; ++i) {
+            matte_string_destroy(matte_array_at(t->args, matteString_t *, i));        
+        }
+        matte_array_destroy(t->args);
     }
-    matte_array_destroy(t->args);
-
-    len = matte_array_get_size(t->strings);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(t->strings, matteString_t *, i));        
+    
+    if (t->strings) {
+        len = matte_array_get_size(t->strings);
+        for(i = 0; i < len; ++i) {
+            matte_string_destroy(matte_array_at(t->strings, matteString_t *, i));        
+        }
+        matte_array_destroy(t->strings);
     }
-    matte_array_destroy(t->strings);
 
 
-    len = matte_array_get_size(t->captureNames);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(t->captureNames, matteString_t *, i));        
+    if (t->captureNames) {
+        len = matte_array_get_size(t->captureNames);
+        for(i = 0; i < len; ++i) {
+            matte_string_destroy(matte_array_at(t->captureNames, matteString_t *, i));        
+        }
+        matte_array_destroy(t->captureNames);
+        matte_array_destroy(t->capture_isConst);
     }
-    matte_array_destroy(t->captureNames);
-    matte_array_destroy(t->capture_isConst);
+    
     if (t->typestrict_types) 
         matte_array_destroy(t->typestrict_types);
     matte_deallocate(t);
@@ -4794,6 +4861,12 @@ static matteFunctionBlock_t * compile_function_block(
             } else {
                 while(iter && iter->ttype == MATTE_TOKEN_VARIABLE_NAME) {
                     matteString_t * arg = matte_string_clone((matteString_t*)iter->data);
+                    
+                    /// DYNAMIC BIND. Better check?
+                    const char * temp = matte_string_get_c_str(arg);
+                    if (temp && temp[0] != 0 && temp[1] == 0 && temp[0] == '$') {
+                        b->isDynamicBind = 1;
+                    }
                     matte_array_push(b->args, arg);
                     #ifdef MATTE_DEBUG__COMPILER
                         printf("  - Argument %d: %s\n", matte_array_get_size(b->args), matte_string_get_c_str(arg));
@@ -5052,101 +5125,50 @@ static void write_unistring(matteArray_t * byteout, matteString_t * str) {
 
 
 
-void * matte_function_block_array_to_bytecode(
-    matteArray_t * arr, 
-    uint32_t * size
+matteArray_t * matte_function_block_array_to_stubs(
+    matteArray_t * arr,
+    int options
 ) {
-    *size = 0;
-    matteArray_t * byteout = matte_array_create(sizeof(uint8_t));
+    matteArray_t * stubs = matte_array_create(sizeof(matteBytecodeStub_t *));
     uint32_t i;
     uint32_t len = matte_array_get_size(arr);
     uint32_t n;
-    uint8_t nSlots;
-    uint16_t nCaps;
-    uint32_t nInst;
-    uint32_t nStrings;
 
-    uint8_t tag[] = {
-        'M', 'A', 'T', 0x01, 0x06, 'B', 0x1
-    };
     for(i = 0; i < len; ++i) {
         matteFunctionBlock_t * block = matte_array_at(arr, matteFunctionBlock_t *, i);
 
-        nSlots = 1;
-        WRITE_NBYTES(7, tag); // HEADER + bytecode version
-        write_rolled_uint(byteout, block->stubID);
-        nSlots = block->isVarArg;
-        WRITE_BYTES(uint8_t, nSlots);
-
-        nSlots = matte_array_get_size(block->args);
-        WRITE_BYTES(uint8_t, nSlots);
-        for(n = 0; n < nSlots; ++n) {
-            write_unistring(byteout, matte_array_at(block->args, matteString_t *, n));
-        }
-
-        nSlots = matte_array_get_size(block->locals);
-        WRITE_BYTES(uint8_t, nSlots);
-        for(n = 0; n < nSlots; ++n) {
-            write_unistring(byteout, matte_array_at(block->locals, matteString_t *, n));
-        }
-
-        nStrings = matte_array_get_size(block->strings);
-        write_rolled_uint(byteout, nStrings);
-        for(n = 0; n < nStrings; ++n) {
-            write_unistring(byteout, matte_array_at(block->strings, matteString_t *, n));
-        }
-
-
-        nCaps = matte_array_get_size(block->captures);
-        write_rolled_uint(byteout, nCaps);
-        uint32_t szBefore = matte_array_get_size(byteout);
-        for(n = 0; n < nCaps; ++n) {
-            matteBytecodeStubCapture_t * cpt = &matte_array_at(block->captures, matteBytecodeStubCapture_t, n);
-            write_rolled_uint(byteout, cpt->stubID);
-            write_rolled_uint(byteout, cpt->referrable);
-        }
-        printf("Captures compressed from %'d to %'d bytes\n",
-            (int)(nCaps * (sizeof(uint32_t) + sizeof(uint32_t))),
-            (int)(matte_array_get_size(byteout) - szBefore)
-        );
-        //WRITE_NBYTES(nCaps * (sizeof(uint32_t) + sizeof(uint32_t)), matte_array_get_data(block->captures));
-
-        nInst = matte_array_get_size(block->instructions);
-        write_rolled_uint(byteout, nInst);
+        // TODO: having matteFunctionBlock_t contain a stub layout.
+        matteBytecodeStubLayout_t layout = {};
+        layout.stubID = block->stubID;
+        layout.startingLine = block->startingLine;
+        layout.options = 
+            (block->isVarArg ? MATTE_BYTECODE_STUB__OPTION__IS_VAR_ARG : 0) |
+            ((options & MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO) ? MATTE_BYTECODE_STUB__OPTION__DEBUG_INFO : 0) |
+            (block->isDynamicBind ? MATTE_BYTECODE_STUB__OPTION__IS_DYNAMIC_BIND : 0)
+        ;
+        layout.argumentNames = block->args;
+        
+        //if ((options & MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO)) {
+            layout.localNames = block->locals;
+        //}
+        layout.localStrings = block->strings;
+        layout.captures = block->captures;
+        layout.instructions = block->instructions;
 
         
-        uint32_t compressedSize = 0;
-        uint8_t * compressed = matte_instruction_stream_encode(
-            block->instructions,
-            1, // TODO!
-            block->startingLine,
-            &compressedSize
-        );
-        
-        WRITE_NBYTES(compressedSize, compressed);
-        matte_deallocate(compressed);
-        /*
-        nInst = matte_array_get_size(block->instructions);
-        WRITE_BYTES(uint32_t, nInst);
-        WRITE_BYTES(uint32_t, block->startingLine);
-        for(n = 0; n < nInst; ++n) {
-            matteBytecodeStubInstruction_t * inst = &matte_array_at(block->instructions, matteBytecodeStubInstruction_t, n);
-            WRITE_BYTES(uint16_t, inst->info.lineOffset);
-            WRITE_BYTES(uint8_t, inst->info.opcode);
-            WRITE_BYTES(double, inst->data);        
-        }
-        */
-        
+        matteBytecodeStub_t * stub = matte_bytecode_stub_create(&layout);
+        matte_array_push(stubs, stub);
+
+        // transfer ownership
+        block->args = NULL;
+        block->locals = NULL;
+        block->strings = NULL;
+        block->captures = NULL;
+        block->instructions = NULL;
+
         function_block_destroy(block);
         
     }
 
-
-    *size = matte_array_get_size(byteout);
-    uint8_t * out = (uint8_t*)matte_allocate(*size);
-    memcpy(out, matte_array_get_data(byteout), *size);
-
-    matte_array_destroy(byteout);
-    matte_array_destroy(arr);
-    return out;
+    return stubs;
 }

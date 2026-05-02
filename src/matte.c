@@ -183,7 +183,8 @@ static void debug_print_area(matte_t * m) {
     if (frame.pc-1 >= 0 && frame.pc-1 < numinst)
         line = inst[frame.pc-1].info.lineOffset + matte_bytecode_stub_get_starting_line(frame.stub);
 
-    m->clear(m);
+    if (m->clear)
+        m->clear(m);
     matte_print(m, "<file %s, line %d>", 
         matte_vm_get_script_name_by_id(vm, fileid) ? 
             matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, fileid)) 
@@ -246,6 +247,7 @@ static void exec_command_print_error(
 
 static int exec_command(matte_t * m) {
     matteVM_t * vm = m->vm;
+    if (m->input == NULL) return 0;
     prompt(m); // populates currentCommand
     if (m->currentInput[0] == '\n' || m->currentInput[0] == 0) {
         // repeat last command;
@@ -557,7 +559,6 @@ static uint32_t default_importer(
 matte_t * matte_create() {
     matte_t * m = (matte_t*)matte_allocate(1*sizeof(matte_t));
     m->output = default_output;
-    m->input = default_input;
     m->graph = matte_syntax_graph_create();
     m->vm = matte_vm_create(m);
     m->packages = matte_table_create_hash_c_string();
@@ -723,6 +724,7 @@ matteValue_t matte_run_bytecode(matte_t * m, const uint8_t * bytecode, uint32_t 
 
 uint8_t * matte_compile_source(matte_t * m, uint32_t * bytecodeSize, const char * source, matteString_t * error) {
     uint8_t * a = matte_compiler_run(
+        m->isDebug ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
         m->graph,
         (uint8_t*)source,
         strlen(source),
@@ -743,14 +745,12 @@ matteValue_t matte_run_bytecode_with_parameters(matte_t * m, const uint8_t * byt
     matteString_t * fname = matte_string_create_from_c_str("[matte_run_source:%d]", m->runSourceCount++);
     uint32_t fid = matte_vm_get_new_file_id(m->vm, fname);
 
-    matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-        matte_vm_get_store(m->vm),
-        fid,
+    matteArray_t * stubs = matte_bytecode_stubs_decode_binary(
         bytecode,
         bytecodeSize
     );
 
-    matte_vm_add_stubs(m->vm, stubs);
+    matte_vm_add_stubs(m->vm, stubs, fid);
 
     
     matteValue_t out = matte_vm_run_fileid(
@@ -767,17 +767,16 @@ matteValue_t matte_run_bytecode_with_parameters(matte_t * m, const uint8_t * byt
 
 matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, matteValue_t input) {
     
-    uint32_t bytecodeSize;
-    uint8_t * bytecode = matte_compiler_run(
+    matteArray_t * stubs = matte_compiler_run_stubs(
+        m->isDebug ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
         m->graph,
         (uint8_t*)source,
         strlen(source),
-        &bytecodeSize,
         
         default_compile_error,
         m
     );
-    if (!bytecodeSize || !bytecode) {
+    if (!stubs || matte_array_get_size(stubs) == 0) {
         return matte_store_new_value(matte_vm_get_store(m->vm));
     }
     
@@ -785,15 +784,8 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
     matteString_t * fname = matte_string_create_from_c_str("[matte_run_source:%d]", m->runSourceCount++);
     uint32_t fid = matte_vm_get_new_file_id(m->vm, fname);
 
-    matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-        matte_vm_get_store(m->vm),
-        fid,
-        bytecode,
-        bytecodeSize
-    );
 
-    matte_vm_add_stubs(m->vm, stubs);
-    matte_deallocate(bytecode);
+    matte_vm_add_stubs(m->vm, stubs, fid);
 
     
     if (m->isDebug) {
@@ -818,7 +810,7 @@ uint32_t matte_add_module(
     const uint8_t * bytes, 
     uint32_t bytelen
 ) {
-    uint32_t fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));   
+    uint32_t fileid = 0;   
     // determine if bytecode or raw source.
     // handle bytecodecase
     if (bytelen >= 6 &&
@@ -830,60 +822,49 @@ uint32_t matte_add_module(
         bytes[5] == 'B') {
         
         
-        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-            matte_vm_get_store(m->vm),
-            fileid,
+        matteArray_t * stubs = matte_bytecode_stubs_decode_binary(
             bytes,
             bytelen
         );
         if (stubs) {
-            matte_vm_add_stubs(m->vm, stubs);
+            fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
+            matte_vm_add_stubs(m->vm, stubs, fileid);
         } else {
-            fileid = 0; // failed.
             matteString_t * str = matte_string_create_from_c_str("Failed to assemble bytecode %s.", name);
             matte_vm_raise_error_string(m->vm, str);
             matte_string_destroy(str);
         }        
     // raw source
     } else {
-        uint32_t bytecodeLen;
-        uint8_t * bytecode = matte_compiler_run(
+        matteArray_t * stubs = matte_compiler_run_stubs(
+            m->isDebug ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
             m->graph,
             bytes,
             bytelen,
-            &bytecodeLen,
             default_compile_error,            
             m
         );
         
-        if (!bytes || ! bytecodeLen) {
-            fileid = 0; // failed.
+        if (!stubs || matte_array_get_size(stubs) == 0) {
             matteString_t * str = matte_string_create_from_c_str("Could not import '%s'. %s", name, (m->lastCompilerError) ? matte_string_get_c_str(m->lastCompilerError) : "<no data>");
             matte_vm_raise_error_string(m->vm, str);
             matte_string_destroy(str);
         } else {
-            if (m->isDebug)
-                debug_split_lines(m, fileid, bytes, bytelen);
-        
-        
-            matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-                matte_vm_get_store(m->vm),
-                fileid,
-                bytecode,
-                bytecodeLen
-            );
+
+
             if (stubs) {
-                matte_vm_add_stubs(m->vm, stubs);
+                fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
+                if (m->isDebug)
+                    debug_split_lines(m, fileid, bytes, bytelen);
+                matte_vm_add_stubs(m->vm, stubs, fileid);
                 matte_array_destroy(stubs);
                 stubs = NULL;
             } else {
-                fileid = 0; // failed.
                 matteString_t * str = matte_string_create_from_c_str("Failed to assemble bytecode %s.", name);
                 matte_vm_raise_error_string(m->vm, str);
                 matte_string_destroy(str);
             }           
         }
-        matte_deallocate(bytecode);
     }  
     return fileid;  
 }

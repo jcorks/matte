@@ -70,7 +70,7 @@ typedef struct {
         struct {
             uint32_t stubID;
             /// Per-opcode auxiliary data. Currently only used for fileID for nfn opcodes
-            int32_t  nfnFileID;
+            uint32_t aux;
         } funcData;
     };
 
@@ -92,24 +92,84 @@ typedef struct matteString_t matteString_t;
 
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 
+/// Options
+enum {
+    MATTE_BYTECODE_STUB__OPTION__IS_VAR_ARG = 1,
+    MATTE_BYTECODE_STUB__OPTION__IS_DYNAMIC_BIND = 2,
+    MATTE_BYTECODE_STUB__OPTION__DEBUG_INFO = 4
+};
+
+
+typedef struct {
+    // The fileID of the bytecode stub
+    uint32_t fileID;
+    
+    // Gets the ID of the stub within the fileID
+    uint32_t stubID;
+    
+    // The starting line in source for the stub.
+    uint32_t startingLine;
+    
+    // Options for the bytecode stub
+    int options;
+    
+    
+    
+    // matteString_t *
+    // All the argument names, in order.
+    matteArray_t * argumentNames;
+    
+    // All the local names, in order,
+    matteArray_t * localNames;
+    
+    // All the local strings, in order
+    matteArray_t * localStrings;
+    
+    
+    
+    
+    // matteBytecodeStubCapture_t
+    // All captures for the stub.
+    matteArray_t * captures;
+
+    // matteBytecodeStubInstruction_t
+    // All instructions for the stub
+    matteArray_t * instructions;
+
+} matteBytecodeStubLayout_t;
+
+
+// Creates a new bytecode stub using a layout.
+// NOTE: all matteArrays and matteStrings transfer ownership to this function 
+// and should not be freed.
+matteBytecodeStub_t * matte_bytecode_stub_create(const matteBytecodeStubLayout_t *);
+
 /// Creates a symbolic bytecode stub that doesnt do anything 
 /// and accepts all arguments.
 matteBytecodeStub_t * matte_bytecode_stub_create_symbolic();
 
 /// Generates an array of bytecode stubs (matteBytecodeStub_t *) from 
-/// raw bytecode. If an error occurs, err is populated and NULL is returned.
+/// raw bytecode binary. If an error occurs, err is populated and NULL is returned.
 /// When done, each matteBytecodeStub_t * should be removed.
 ///
 /// Incomplete stubs are supported. If given, remaining attributes are 0.
-matteArray_t * matte_bytecode_stubs_from_bytecode(
-    matteStore_t *,
-    uint32_t fileID,
+matteArray_t * matte_bytecode_stubs_decode_binary(
     const uint8_t * bytecodeRaw, 
     uint32_t len
 );
 
+/// Encodes an array of bytecode stubs into 
+/// a single binary encoding block.
+uint8_t * matte_bytecode_stubs_encode_binary(
+    // array of matteBytecodeStub_t *
+    const matteArray_t * stubs,
+    uint32_t * len
+);
 
-
+// Anchors the bytecode stub to a matteStore instance.
+// Needs to be called before retrieving matteValue_t 
+// values from the stub.
+void matte_bytecode_stub_link(matteBytecodeStub_t *, matteStore_t *, uint32_t fileID);
 
 /// Destroys a bytecode stub.
 void matte_bytecode_stub_destroy(matteBytecodeStub_t * b);
@@ -138,17 +198,17 @@ uint8_t matte_bytecode_stub_local_count(const matteBytecodeStub_t *);
 /// Gets the argument name of the local variable at the given index
 /// If none, empty is returned
 /// The returned string is NOT refd, so an additional unref is not needed.
-matteValue_t matte_bytecode_stub_get_arg_name_noref(const matteBytecodeStub_t *, uint8_t);
+matteValue_t matte_bytecode_stub_get_arg_name_noref(matteBytecodeStub_t *, uint8_t);
 
 /// Gets the local variable name of the local variable at the given index
 /// If none, empty is returned.
 /// The returned string is NOT refd, so an additional unref is not needed.
-matteValue_t matte_bytecode_stub_get_local_name_noref(const matteBytecodeStub_t *, uint8_t);
+matteValue_t matte_bytecode_stub_get_local_name_noref(matteBytecodeStub_t *, uint8_t);
 
 /// Gets the pre-compiled static string by local ID.
 /// These local IDs are used for NST
 /// The returned string is NOT refd, so an additional unref is not needed.
-matteValue_t matte_bytecode_stub_get_string_noref(const matteBytecodeStub_t *, uint32_t localStringID);
+matteValue_t matte_bytecode_stub_get_string_noref(matteBytecodeStub_t *, uint32_t localStringID);
 
 /// Returns whether the function is a vararg function, meaning it will 
 /// always have a single argument that contains all called arguments 

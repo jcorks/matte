@@ -99,6 +99,16 @@ static int load_package_recursive(matte_t * m, const char * name) {
 
 }
 
+
+static void default_compile_error(const matteString_t * str, uint32_t line, uint32_t ch, void * data) {
+    matteString_t * out = (matteString_t*)data;
+    matte_string_clear(out);
+    matte_string_concat_printf(
+        out,
+        "%s (line %d:%d)", matte_string_get_c_str(str), line, ch
+    );
+}
+
 static uint32_t cli_importer(
     matte_t * m,
     const char * name,
@@ -139,7 +149,7 @@ static uint32_t cli_importer(
     
 
     
-    uint32_t fileid = matte_vm_get_new_file_id(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name));   
+    uint32_t fileid = 0;   
     // determine if bytecode or raw source OR package.
     // handle bytecodecase
     if (byteLen >= 6 &&
@@ -151,58 +161,43 @@ static uint32_t cli_importer(
         bytes[5] == 'B') {
         
         
-        matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-            matte_vm_get_store(matte_get_vm(m)),
-            fileid,
+        matteArray_t * stubs = matte_bytecode_stubs_decode_binary(
             bytes,
             byteLen
         );
         if (stubs) {
-            matte_vm_add_stubs(matte_get_vm(m), stubs);
-        } else {
-            fileid = 0; // failed.
-            //matte_print(m, "Failed to assemble bytecode %s.", name); 
-        }        
+            fileid = matte_vm_get_new_file_id(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name));
+            matte_vm_add_stubs(matte_get_vm(m), stubs, fileid);
+        }
     // raw source
     } else {
         char * source = (char*)matte_allocate(byteLen+1);
         memcpy(source, bytes, byteLen);
-        uint32_t bytecodeLen;
         matteString_t * error = matte_string_create_from_c_str("");
-        uint8_t * bytecode = matte_compile_source(
-            m,
-            &bytecodeLen,
-            source,
+        matteArray_t * stubs = matte_compiler_run_stubs(
+            DEBUG ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
+            matte_get_syntax_graph(m),
+            
+            bytes,
+            byteLen,
+
+            default_compile_error,
             error
+
         );
         if (DEBUG)
             matte_debugging_register_source(m, fileid, source);
             
-        matte_deallocate(source);
           
-        if (!bytes || ! bytecodeLen) {
+        if (!stubs || matte_array_get_size(stubs) == 0) {
             matteString_t * str = matte_string_create_from_c_str("Could not import '%s': %s", name, matte_string_get_c_str(error));
             matte_vm_raise_error_string(matte_get_vm(m), str);
             matte_string_destroy(str);
-            fileid = 0;
         } else {        
-        
-            matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-                matte_vm_get_store(matte_get_vm(m)),
-                fileid,
-                bytecode,
-                bytecodeLen
-            );
-            if (stubs) {
-            matte_vm_add_stubs(matte_get_vm(m), stubs);
-            matte_array_destroy(stubs);
-            } else {
-                fileid = 0; // failed.
-                //matte_print(m, "Failed to assemble bytecode %s.", name); 
-            }           
+            fileid = matte_vm_get_new_file_id(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name));
+            matte_vm_add_stubs(matte_get_vm(m), stubs, fileid);
         }
         matte_string_destroy(error);
-        matte_deallocate(bytecode);
     }
 
     matte_deallocate(bytes);
@@ -289,7 +284,11 @@ static void show_help() {
 
     printf("  compile input-source.file output.file\n");
     printf("    - Takes the given file and compiles it into a single bytecode\n");
-    printf("      blob. The fileID of the given number is used\n\n");
+    printf("      blob\n\n");
+
+    printf("  compile-debug input-source.file output.file\n");
+    printf("    - Takes the given file and compiles it into a single bytecode\n");
+    printf("      blob while also including debug information.\n\n");
 
 
 }
@@ -467,11 +466,18 @@ int main(int argc, char ** args) {
                 matte_string_destroy(str);
             }
         }
-    } else if (!strcmp(tool, "compile")) {
+    } else if (
+        !strcmp(tool, "compile") ||
+        !strcmp(tool, "compile-debug")
+    ) {
         if (argc != 4) {
             printf("Insufficient arguments for compile tool\n");
             exit(1);
         }
+        
+        if (!strcmp(tool, "compile-debug"))
+            matte_debugging_enable(m);
+        
         uint32_t sourceLen;
         uint8_t * source = (uint8_t*)dump_bytes(args[2], &sourceLen, 1);
         if (!source) {

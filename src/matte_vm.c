@@ -803,7 +803,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
           
           case MATTE_OPCODE_NFN: {
             uint32_t ids[2];
-            ids[0] = inst->funcData.nfnFileID;
+            ids[0] = matte_bytecode_stub_get_file_id(frame->stub);
             ids[1] = inst->funcData.stubID;
 
             matteBytecodeStub_t * stub = vm_find_stub(vm, ids[0], ids[1]);
@@ -1608,6 +1608,17 @@ static void write_unistring(matteArray_t * arr, matteString_t * str) {
     WRITE_NBYTES(((uint8_t*)matte_string_get_utf8_data(str))[0], len);
 }
 
+static matteArray_t * matte_array_string_clone(const matteArray_t * ina) {
+    matteArray_t * out = matte_array_clone(ina);
+    uint32_t i;
+    uint32_t len = matte_array_get_size(ina);
+    
+    for(i = 0; i < len; ++i) {
+        matte_array_at(out, matteString_t *, i) = matte_string_clone(matte_array_at(ina, matteString_t *, i));
+    }
+    
+    return out;
+}
 
 static void vm_add_built_in(
     matteVM_t * vm,
@@ -1629,56 +1640,14 @@ static void vm_add_built_in(
     set->userData = NULL;
     set->nArgs = matte_array_get_size(argNames);
 
-    
-    matteArray_t * arr = matte_array_create(1);
-    uint8_t tag[] = {
-        'M', 'A', 'T', 0x01, 0x06, 'B', 0x1
-    };
-    uint8_t u8;
-    uint32_t u32 = index;
-    uint16_t u16;
-    WRITE_NBYTES(tag, 7); 
-    write_rolled_uint(arr, u32);
-    u8 = 0;
-    WRITE_BYTES(uint8_t, u8); // varargs
-    
-    u8 = matte_array_get_size(argNames);
-    WRITE_BYTES(uint8_t, u8); 
-    uint32_t i;
-    for(i = 0; i < u8; ++i) {
-        write_unistring(arr, matte_array_at(argNames, matteString_t *, i));
-    }
-    // local
-    u8 = 0;
-    WRITE_BYTES(uint8_t, u8); 
-    
-    // strings
-    u32 = 0;
-    write_rolled_uint(arr, u32);
-    
-    // captures
-    write_rolled_uint(arr, u32);
 
-    //inst
-    write_rolled_uint(arr, u32);
 
-    // inst stream + options
-    WRITE_BYTES(uint8_t, u8); 
-    WRITE_BYTES(uint32_t, u32); 
-
-    
-    
-    matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-        vm->store,
-        0,
-        (const uint8_t*) matte_array_get_data(arr), 
-        matte_array_get_size(arr)
-    );
-    matte_array_destroy(arr);    
-    matteBytecodeStub_t * out = matte_array_at(stubs, matteBytecodeStub_t *, 0);
-
-    matte_array_destroy(stubs);
+    matteBytecodeStubLayout_t layout = {};
+    layout.stubID = index;
+    layout.argumentNames = matte_array_string_clone(argNames);
+    matteBytecodeStub_t * out = matte_bytecode_stub_create(&layout);
     matte_array_at(vm->extStubs, matteBytecodeStub_t *, index) = out;
+    matte_bytecode_stub_link(out, vm->store, 0);
 
     matteValue_t func = {};
     matte_value_into_new_external_function_ref(vm->store, &func, out);
@@ -1990,6 +1959,7 @@ matteVM_t * matte_vm_create(matte_t * m) {
 
     
     // add the default roms
+    #ifndef MATTE_ROMLESS
     #ifndef MATTE_NO_EXTENSIONS
     matte_bind_native_functions(vm);
     {
@@ -2005,17 +1975,16 @@ matteVM_t * matte_vm_create(matte_t * m) {
 
             uint32_t fileid = matte_vm_get_new_file_id(vm, name);
             
-            matteArray_t * stubs = matte_bytecode_stubs_from_bytecode(
-                vm->store,
-                fileid,
+            matteArray_t * stubs = matte_bytecode_stubs_decode_binary(
                 src,
                 srcLen
             );        
             matte_string_destroy(name);    
-            matte_vm_add_stubs(vm, stubs);
+            matte_vm_add_stubs(vm, stubs, fileid);
             matte_array_destroy(stubs);
         }
     }
+    #endif
     #endif
    
 
@@ -2059,8 +2028,6 @@ void matte_vm_destroy(matteVM_t * vm) {
 
 
     matte_table_destroy(vm->imported);
-    matte_store_destroy(vm->store);
-    
 
     
 
@@ -2137,6 +2104,7 @@ void matte_vm_destroy(matteVM_t * vm) {
         if (vm->string_tempVals[i])
             matte_string_destroy(vm->string_tempVals[i]);
     }
+    matte_store_destroy(vm->store);
     matte_deallocate(vm);
 }
 
@@ -2144,15 +2112,16 @@ const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t fi
     return (matteString_t*)matte_table_find_by_uint(vm->id2importName, fileid);
 }
 
-void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr) {
+void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr, uint32_t fileID) {
     uint32_t i;
     uint32_t len = matte_array_get_size(arr);
     for(i = 0; i < len; ++i) {
         matteBytecodeStub_t * stub = matte_array_at(arr, matteBytecodeStub_t *, i);
+        matte_bytecode_stub_link(stub, vm->store, fileID);
         matteTable_t * fileindex = (matteTable_t*)matte_table_find_by_uint(vm->stubIndex, matte_bytecode_stub_get_file_id(stub));
         if (!fileindex) {
             fileindex = matte_table_create_hash_pointer();
-            matte_table_insert_by_uint(vm->stubIndex, matte_bytecode_stub_get_file_id(stub), fileindex);
+            matte_table_insert_by_uint(vm->stubIndex, fileID, fileindex);
         }
         
         matte_table_insert_by_uint(fileindex, matte_bytecode_stub_get_id(stub), stub);
@@ -2801,7 +2770,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
     uint32_t jitSize = 0;
     uint8_t * jitBuffer = matte_compiler_run_with_named_references(
         matte_get_syntax_graph(vm->matte),
-        (uint8_t*)matte_string_get_c_str(src), // TODO: UTF8
+        (uint8_t*)matte_string_get_c_str(src),
         matte_string_get_length(src),
         &jitSize,
         debug_compile_error,
@@ -2809,11 +2778,11 @@ matteValue_t matte_vm_run_scoped_debug_source(
     ); 
     matteValue_t result;
     if (jitSize) {
-        matteArray_t * jitstubs = matte_bytecode_stubs_from_bytecode(
-            vm->store, MATTE_VM_DEBUG_FILE, jitBuffer, jitSize
+        matteArray_t * jitstubs = matte_bytecode_stubs_decode_binary(
+            jitBuffer, jitSize
         );
         
-        matte_vm_add_stubs(vm, jitstubs);
+        matte_vm_add_stubs(vm, jitstubs, MATTE_VM_DEBUG_FILE);
         result = matte_vm_run_fileid(vm, MATTE_VM_DEBUG_FILE, matte_store_new_value(vm->store));
         matte_array_destroy(jitstubs);
     } else {
@@ -3213,7 +3182,7 @@ void matte_vm_set_print_callback(
     vm->userPrintData = userData;
 }
 
-
+#ifndef MATTE_ROMLESS
 matteValue_t matte_system_shared__create_memory_buffer_from_raw(matteVM_t * vm, const uint8_t * data, uint32_t size);
 
 matteValue_t matte_vm_create_memory_buffer_handle_from_data(
@@ -3242,3 +3211,4 @@ uint8_t * matte_vm_get_memory_buffer_handle_raw_data(
         size
     );
 }
+#endif

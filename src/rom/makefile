@@ -2,7 +2,7 @@
 CC:=gcc
 
 with-extensions:
-	$(CC) -std=c99 -g -DMATTE_USE_SYSTEM_EXTENSIONS makerom.c ../matte_string.c ../matte_array.c ../matte_table.c ../matte_compiler.c ../matte_compiler__syntax_graph.c ../matte_instruction_stream.c -o makerom
+	$(CC) -std=c99 -g -DMATTE_USE_SYSTEM_EXTENSIONS -DMATTE_ROMLESS ../*.c -lm ./makerom.c  -o makerom
 	
 no-extensions:
-	$(CC) -std=c99 -g makerom.c -DMATTE_DEBUG ../matte_string.c ../matte_array.c ../matte_table.c ../matte_compiler.c ../matte_compiler__syntax_graph.c ../matte_instruction_stream.c -o makerom
+	$(CC) -std=c99 -g -DMATTE_ROMLESS ../*.c -lm ./makerom.c  -o makerom

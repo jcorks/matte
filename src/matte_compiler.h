@@ -35,9 +35,16 @@ DEALINGS IN THE SOFTWARE.
 typedef struct matteSyntaxGraph_t matteSyntaxGraph_t;
 
 
+enum {
+    MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO = 1
+};
+
 /// attempts to take UTF8 source and compile it into 
-/// bytecode.
+/// bytecode binary. This can be stored and used for later 
+/// with matte_bytecode_stubs_decode_binary().
 uint8_t * matte_compiler_run(
+    /// An OR'd value of options. 0 for none.
+    int options,
     /// The cached syntax graph to use
     matteSyntaxGraph_t * graph,
     /// raw source. Does not neet to be nul-terminated.
@@ -55,6 +62,31 @@ uint8_t * matte_compiler_run(
     /// the user data supplied to the on error callback.
     void * data
 );
+
+
+/// attempts to take UTF8 source and compile it into 
+/// individual matteBytecodeStub_t * instances for interprogram 
+/// use.
+matteArray_t * matte_compiler_run_stubs(
+    /// An OR'd value of options. 0 for none.
+    int options,
+    /// The cached syntax graph to use
+    matteSyntaxGraph_t * graph,
+    /// raw source. Does not neet to be nul-terminated.
+    const uint8_t * source, 
+    /// Length of source in bytes.
+    uint32_t len,
+
+
+    /// If an error occurs, this function will be called detailing what 
+    /// went wrong.
+    void(*onError)(const matteString_t * s, uint32_t line, uint32_t ch, void *),
+
+    /// the user data supplied to the on error callback.
+    void * data
+);
+
+
 
 
 /// Same as matte_compiler_run, except in any case there are 

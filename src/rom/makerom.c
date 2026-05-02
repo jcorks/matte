@@ -36,8 +36,6 @@ DEALINGS IN THE SOFTWARE.
 #include "../matte_compiler__syntax_graph.h"
 
 // dummy allocator / deallocator
-void * matte_allocate(uint32_t size) {return calloc(size, 1);}
-void matte_deallocate(void * data) {free(data);}
 
 
 static void * dump_bytes(const char * filename, uint32_t * len) {
@@ -129,6 +127,7 @@ int main() {
         uint8_t * data = dump_bytes(iter[0], &len);
         uint32_t romCompiledLen = 0;
         uint8_t * romCompiledBytes = matte_compiler_run(
+            MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO,
             graph,
             data,
             len,

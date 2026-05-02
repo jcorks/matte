@@ -228,6 +228,7 @@ static void * matte_thread(void * userData) {
     matte_set_importer(m, NULL, NULL);
     uint32_t outByteLen;
     uint8_t * outBytes = matte_compiler_run(
+        0, // TODO: interface for this
         matte_get_syntax_graph(m),
         src,
         lenBytes,
@@ -255,9 +256,9 @@ static void * matte_thread(void * userData) {
 
     
 
-    matteArray_t * arr = matte_bytecode_stubs_from_bytecode(store, FILEIDS, outBytes, outByteLen);
+    matteArray_t * arr = matte_bytecode_stubs_decode_binary(outBytes, outByteLen);
     matte_deallocate(outBytes);
-    matte_vm_add_stubs(vm, arr);
+    matte_vm_add_stubs(vm, arr, FILEIDS);
     matte_array_destroy(arr);
 
 
