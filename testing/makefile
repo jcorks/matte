@@ -2,8 +2,10 @@
 
 all:
 	rm -f ./*.gcda
-	gcc -g -fsanitize=address -fsanitize=undefined -O0 -DMATTE_DEBUG -DMATTE_DEBUG__STORE -DMATTE_DEBUG__STORE_LEVEL_2  -pthread -fmax-errors=5 -fprofile-arcs -ftest-coverage ./*.c ../src/*.c ../src/rom/native.c -o ./test_driver -lm
+	gcc -g -fsanitize=address -fsanitize=undefined -O0 -DMATTE_DEBUG -DMATTE_DEBUG__STORE -DMATTE_DEBUG__STORE_LEVEL_2  -pthread -fmax-errors=5 ./*.c ../src/*.c ../src/rom/native.c -o ./test_driver -lm
 
+valgrind:
+	gcc -g -O0 -DMATTE_DEBUG -pthread -fmax-errors=5 -fprofile-arcs -ftest-coverage ./*.c ../src/*.c ../src/rom/native.c -o ./test_driver -lm
 
 
 coverage-report:

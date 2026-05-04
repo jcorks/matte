@@ -33,9 +33,15 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_opcode.h"
 #include "matte.h"
 
+#ifdef MATTE_DEBUG
+    #include <stdio.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
+#define MAX_ITEM_COUNT 1024*1024*16
 
 
 
@@ -84,8 +90,8 @@ static void matte_instruction_stream_decode(
     uint8_t options,
     uint32_t len,
     uint32_t * startLine,
-    uint8_t *** bytesIn,
-    uint32_t ** leftIn
+    uint8_t ** bytesIn,
+    uint32_t * leftIn
 );
 
 
@@ -187,7 +193,7 @@ matteBytecodeStub_t * matte_bytecode_stub_create(const matteBytecodeStubLayout_t
 
 #define ADVANCE(__T__, __V__) ADVANCE_SRC(sizeof(__T__), &(__V__), left, bytes);
 #define ADVANCEN(__N__, __V__) ADVANCE_SRC(__N__, &(__V__), left, bytes);
-#define UNROLL_UINT() UNROLL_UINT_SRC(&left, &bytes);
+#define UNROLL_UINT() UNROLL_UINT_SRC(left, bytes);
 
 static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
     int32_t v = n <= *left ? n : *left;
@@ -197,39 +203,41 @@ static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
 }
 
 
-static uint32_t UNROLL_UINT_SRC(uint32_t ** leftIn, uint8_t *** bytesIn) {
-    uint32_t * left = *leftIn;
-    uint8_t ** bytes = *bytesIn;
-    uint8_t count;
+static uint32_t UNROLL_UINT_SRC(uint32_t * left, uint8_t ** bytes) {
+    uint8_t count = 0;
     ADVANCE(uint8_t, count);
-    uint32_t out;
-    switch(count) {
-      case 1:
-        ADVANCE(uint8_t, count);
-        out = count;
-        break;
-        
-      case 2: {
-        uint16_t v;
-        ADVANCE(uint16_t, v);
-        out = v;
-        break;
-      }
+    uint32_t out = 0;
+    
+    if (count & 0x01) {
+        out = count >> 1;
+    } else {
+        count = count >> 1;
+        switch(count) {
+          case 1:
+            ADVANCE(uint8_t, count);
+            out = count;
+            break;
+            
+          case 2: {
+            uint16_t v = 0;
+            ADVANCE(uint16_t, v);
+            out = v;
+            break;
+          }
 
-      case 3: {
-        uint8_t v[3];
-        ADVANCEN(3, v);
-        out = v[0] + 0xff*v[1] + 0xffff*v[2];
-        break;
-      }
-      
-      case 4:
-        ADVANCE(uint32_t, out);
-        break;
+          case 3: {
+            uint8_t v[3] = {};
+            ADVANCEN(3, v);
+            out = v[0] + 0xff*v[1] + 0xffff*v[2];
+            break;
+          }
+          
+          case 4:
+            ADVANCE(uint32_t, out);
+            break;
+        }
     }
     
-    *leftIn = left;
-    *bytesIn = bytes;
     return out;
 
 }
@@ -238,6 +246,10 @@ static uint32_t UNROLL_UINT_SRC(uint32_t ** leftIn, uint8_t *** bytesIn) {
 static matteString_t * chomp_string(uint8_t ** bytes, uint32_t * left) {
     matteString_t * str;
     uint32_t len = UNROLL_UINT();
+    
+    if (len > *left) {
+        len = *left;
+    }
     uint8_t * utf8raw = (uint8_t*)matte_allocate((len+1)*1);
     ADVANCEN(len, utf8raw[0]);
     
@@ -262,7 +274,7 @@ static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
     uint32_t i;
     uint8_t ver = 0;
 
-    uint8_t tag[6];
+    uint8_t tag[6] = {};
     ADVANCEN(6*sizeof(uint8_t), tag);
     if (
         tag[0] != 'M'  ||
@@ -294,6 +306,11 @@ static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
         out->protoLocals[i] = chomp_string(bytes, left);    
     }        
     out->stringCount = UNROLL_UINT();
+    if (out->stringCount >= MAX_ITEM_COUNT) {
+        *left = 0;
+        return out;
+    }
+
     out->protoStrings = (matteString_t**)matte_allocate(sizeof(matteString_t*)*out->stringCount);
     for(i = 0; i < out->stringCount; ++i) {
         out->protoStrings[i] = chomp_string(bytes, left);    
@@ -307,6 +324,10 @@ static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
         }
     }
     out->instructionCount = UNROLL_UINT();
+    if (out->instructionCount >= MAX_ITEM_COUNT) {
+        *left = 0;
+        return out;
+    }
     
     out->instructions = (matteBytecodeStubInstruction_t*)matte_allocate(sizeof(matteBytecodeStubInstruction_t)* out->instructionCount);    
     matte_instruction_stream_decode(
@@ -314,8 +335,8 @@ static matteBytecodeStub_t * bytes_to_stub(uint8_t ** bytes, uint32_t * left) {
         out->options,
         out->instructionCount,
         &out->startingLine,
-        &bytes,
-        &left
+        bytes,
+        left
     );
     
         /*
@@ -404,19 +425,22 @@ matteArray_t * matte_bytecode_stubs_decode_binary(
 
 static uint8_t * write_rolled_uint_bytes(uint8_t * iter, uint32_t val) {
     uint8_t needed;
-    if (val <= 0xff) {
-        needed = 1;
+    if (val <= 127) {
+        needed = val;
+        (*(iter++)) = (needed<<1) + 1;
+    } else if (val <= 0xff) {
+        needed = 2;
         uint8_t val8 = val;
         (*(iter++)) = needed;
         (*(iter++)) = val8;
     } else if (val <= 0xffff) {
-        needed = 2;
+        needed = 4;
         uint16_t val16 = val;
         (*(iter++)) = needed;
         (*(iter++)) = val16 % 0xff;
         (*(iter++)) = val16 / 0xff;
     } else if (val <= 0xffffff) {
-        needed = 3;
+        needed = 6;
         uint8_t val24[3] = {
             val % 0xff,
             (val >> 8) % 0xff,
@@ -427,7 +451,7 @@ static uint8_t * write_rolled_uint_bytes(uint8_t * iter, uint32_t val) {
         (*(iter++)) = val24[1];
         (*(iter++)) = val24[2];
     } else {
-        needed = 4;
+        needed = 8;
         (*(iter++)) = needed;
         uint8_t * b = (uint8_t*)&val;
         (*(iter++)) = b[0];
@@ -724,13 +748,26 @@ uint8_t * matte_instruction_stream_encode(
 
     for(i = 0; i < len; ++i) {
         matteBytecodeStubInstruction_t * inst = insts+i;
+        if (inst->info.opcode >= MATTE_OPCODE_COUNT) {
+            *(instStreamIter++) = 0;
+            
+            #ifdef MATTE_DEBUG
+                printf("matte_instruction_stream_encode(): unrecognized opcode %d. Replacing with NOP for safety. Your program is likely corrupt.\n", inst->info.opcode);
+            #endif
+            continue;
+        }
+
+
+
         uint8_t bulkCount = MATTE_INSTRUCTION_STREAM__OPCODE_TO_DATA_BLOCK_COUNT[inst->info.opcode];
+
+
         
         // what????
         *(instStreamIter++) = inst->info.opcode;
 
         if (bulkCount == 1) {
-            instStreamIter = write_rolled_uint_bytes(instStreamIter, inst->data64);
+            instStreamIter = write_rolled_uint_bytes(instStreamIter, inst->data32.slot0);
         } else if (bulkCount == 2) {
             memcpy(instStreamIter, &(inst->data64), bulkCount*sizeof(uint32_t));        
             instStreamIter += bulkCount*(sizeof(uint32_t));        
@@ -803,16 +840,14 @@ void matte_instruction_stream_decode(
     uint8_t options,
     uint32_t len,
     uint32_t * startLine,
-    uint8_t *** bytesIn,
-    uint32_t ** leftIn
+    uint8_t ** bytes,
+    uint32_t * left
 ) {
-    uint8_t ** bytes = *bytesIn;
-    uint32_t * left = *leftIn;
     
     uint32_t i;
     
     
-    uint32_t instStreamSize;
+    uint32_t instStreamSize = 0;
     ADVANCE(uint32_t, instStreamSize);
     
     
@@ -820,6 +855,15 @@ void matte_instruction_stream_decode(
     for(i = 0; i < instStreamSize; n++) {
         if (n >= len) break;
         ADVANCE(uint8_t, instructions[n].info.opcode); i+=1;
+        
+        if (instructions[n].info.opcode >= MATTE_OPCODE_COUNT) {
+            #ifdef MATTE_DEBUG
+                printf("matte_instruction_stream_decode(): unrecognized opcode %d. Replacing with NOP for safety. Your program is likely corrupt.\n", instructions[n].info.opcode);
+            #endif
+            
+            instructions[n].info.opcode = MATTE_OPCODE_NOP;
+            continue;
+        }
                 
         switch(MATTE_INSTRUCTION_STREAM__OPCODE_TO_DATA_BLOCK_COUNT[instructions[n].info.opcode]) {
           case 1:
@@ -841,7 +885,7 @@ void matte_instruction_stream_decode(
     }
 
     if (options & MATTE_BYTECODE_STUB__OPTION__DEBUG_INFO) {
-        uint32_t debgStreamSize;
+        uint32_t debgStreamSize = 0;
         ADVANCE(uint32_t, debgStreamSize);
         
         
@@ -867,8 +911,6 @@ void matte_instruction_stream_decode(
     
     }
 
-    *bytesIn = bytes;
-    *leftIn = left;
 }
 
 

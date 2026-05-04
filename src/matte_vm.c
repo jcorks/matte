@@ -2017,6 +2017,8 @@ void matte_vm_destroy(matteVM_t * vm) {
         matte_table_iter_proceed(iter)) {
         
         matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
+      
+        printf("CLEANED @%p -> %d\n", v, (int)(uintptr_t)matte_table_iter_get_key(iter));
         matte_value_object_pop_lock(vm->store, *v);
         matte_store_recycle(vm->store, *v);
         matte_deallocate(v);
@@ -2124,9 +2126,18 @@ void matte_vm_add_stubs(matteVM_t * vm, const matteArray_t * arr, uint32_t fileI
             matte_table_insert_by_uint(vm->stubIndex, fileID, fileindex);
         }
         
+        matteBytecodeStub_t * existing = matte_table_find_by_uint(fileindex, matte_bytecode_stub_get_id(stub));
+  
+        // TODO: error state. For now, just dont add the new stub.
+        if (existing) {
+            matte_bytecode_stub_destroy(stub);
+            continue;
+        }
         matte_table_insert_by_uint(fileindex, matte_bytecode_stub_get_id(stub), stub);
     }
 }
+
+
 
 matteStore_t * matte_vm_get_store(matteVM_t * vm) {return vm->store;}
 
@@ -2411,6 +2422,7 @@ matteValue_t matte_vm_call_full(
                 );
                 matte_vm_call_full__raise_error(vm, func, str);
                 matte_string_destroy(str);                
+                matte_deallocate(referrables);
                 return matte_store_new_value(vm->store);
             }
             referrables[0] = matte_array_at(args, matteValue_t, 0);
@@ -2467,6 +2479,7 @@ matteValue_t matte_vm_call_full(
 
                     matte_vm_call_full__raise_error(vm, func, str);
                     matte_string_destroy(str); 
+                    matte_deallocate(referrables);
                     return matte_store_new_value(vm->store);
                 }
             }
@@ -2503,7 +2516,7 @@ matteValue_t matte_vm_call_full(
         frame->captures = matte_value_object_function_activate_closure(
             vm->store, 
             frame->context, 
-            referrables // xfer ownership
+            referrables // xfer ownership, but not block.
         );
         frame->referrablesSet = referrables;
 
@@ -2621,6 +2634,7 @@ matteValue_t matte_vm_call(
 matteValue_t matte_vm_run_fileid(
     matteVM_t * vm, 
     uint32_t fileid, 
+    int cache,
     matteValue_t parameters
 ) {
     if (fileid != MATTE_VM_DEBUG_FILE) {

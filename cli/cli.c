@@ -171,8 +171,6 @@ static uint32_t cli_importer(
         }
     // raw source
     } else {
-        char * source = (char*)matte_allocate(byteLen+1);
-        memcpy(source, bytes, byteLen);
         matteString_t * error = matte_string_create_from_c_str("");
         matteArray_t * stubs = matte_compiler_run_stubs(
             DEBUG ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
@@ -185,8 +183,11 @@ static uint32_t cli_importer(
             error
 
         );
-        if (DEBUG)
+        if (DEBUG) {
+            char * source = (char*)matte_allocate(byteLen+1);
+            memcpy(source, bytes, byteLen);
             matte_debugging_register_source(m, fileid, source);
+        }
             
           
         if (!stubs || matte_array_get_size(stubs) == 0) {

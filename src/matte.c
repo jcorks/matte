@@ -176,6 +176,7 @@ static void matte_print(matte_t * m, const char * fmt, ...) {
 static void debug_print_area(matte_t * m) {
     matteVM_t * vm = m->vm;
     matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, m->stackframe);
+    if (frame.stub == NULL) return;
     uint32_t fileid = matte_bytecode_stub_get_file_id(frame.stub);
     uint32_t numinst;
     const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
@@ -571,8 +572,31 @@ matteVM_t * matte_get_vm(matte_t * m) {
 }
 
 void matte_destroy(matte_t * m) {
+    if (m->lines) {
+        matteTableIter_t * iter = matte_table_iter_create();
+        for(matte_table_iter_start(iter, m->lines);
+            !matte_table_iter_is_end(iter);
+            matte_table_iter_proceed(iter)) {
+            
+            matteArray_t * linesLocal = (matteArray_t*)matte_table_iter_get_value(iter);
+            
+            uint32_t i;
+            uint32_t len = matte_array_get_size(linesLocal);
+            
+            for(i = 0; i < len; ++i) {
+                matte_string_destroy(matte_array_at(linesLocal, matteString_t *, i));
+            }
+            matte_array_destroy(linesLocal);
+        }
+        
+        matte_table_destroy(m->lines);
+        matte_table_iter_destroy(iter);
+    }
+    matte_deallocate(m->lastInput);
+    if (m->lastCompilerError) matte_string_destroy(m->lastCompilerError);
     matte_vm_destroy(m->vm);
     matte_syntax_graph_destroy(m->graph);
+    matte_table_destroy(m->packages);
     matte_deallocate(m);
 }
 
@@ -751,6 +775,7 @@ matteValue_t matte_run_bytecode_with_parameters(matte_t * m, const uint8_t * byt
     );
 
     matte_vm_add_stubs(m->vm, stubs, fid);
+    matte_array_destroy(stubs);
 
     
     matteValue_t out = matte_vm_run_fileid(
@@ -758,6 +783,7 @@ matteValue_t matte_run_bytecode_with_parameters(matte_t * m, const uint8_t * byt
         fid,
         input
     );
+    
     
     matte_string_destroy(fname);
     return out;

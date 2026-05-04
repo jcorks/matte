@@ -303,7 +303,7 @@ static matteArray_t * matte_compiler_run_base(
 
     matteArray_t * stubs = matte_function_block_array_to_stubs(arr, options);
     matte_syntax_graph_walker_destroy(st);
-
+    matte_array_destroy(arr);    
 
     // cleanup :(
     // especially those gosh darn function blocks
@@ -375,6 +375,7 @@ uint8_t * matte_compiler_run(
     for(i = 0; i < lens; ++i) {
         matte_bytecode_stub_destroy(matte_array_at(arr, matteBytecodeStub_t *, i));
     }
+    if (arr) matte_array_destroy(arr);
     
     return bytes;
 }
@@ -2457,6 +2458,7 @@ static void function_block_destroy(matteFunctionBlock_t * t) {
     uint32_t len;
     if (t->instructions) matte_array_destroy(t->instructions); // safe
     if (t->captures) matte_array_destroy(t->captures); // safe
+    if (t->local_isConst) matte_array_destroy(t->local_isConst);
 
     if (t->locals) {
         len = matte_array_get_size(t->locals);
@@ -2464,9 +2466,8 @@ static void function_block_destroy(matteFunctionBlock_t * t) {
             matte_string_destroy(matte_array_at(t->locals, matteString_t *, i));        
         }
         matte_array_destroy(t->locals);
-        matte_array_destroy(t->local_isConst);
     }
-
+    
     if (t->args) {
         len = matte_array_get_size(t->args);
         for(i = 0; i < len; ++i) {
@@ -4341,7 +4342,11 @@ static matteArray_t * compile_expression(
                     matte_syntax_graph_print_compile_error(g, iter, "Missing lookup token. (internal error)");
                     goto L_FAIL;
                 }
-                write_instruction__osn(valueInst, line - block->startingLine, assignment_token_to_op_index(iter->ttype) + (((uint32_t)undo.data32.slot0) ? MATTE_OPERATOR_STATE_BRACKET : 0));                
+                write_instruction__osn(
+                    valueInst, 
+                    line - block->startingLine, 
+                    assignment_token_to_op_index(iter->ttype) + ((undo.info.opcode == MATTE_OPCODE_OLB) ? MATTE_OPERATOR_STATE_BRACKET : 0)
+                );                
 
             }
             

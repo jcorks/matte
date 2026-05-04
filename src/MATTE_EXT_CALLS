@@ -272,9 +272,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
         #endif
     } else {
         if (preloadOnly) {
-            v = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
-            *v = matte_vm_run_fileid(vm, fileid, params);
-            matte_table_insert_by_uint(vm->imported, fileid, v);
+            return matte_vm_run_fileid(vm, fileid, params);
         } else {
             return matte_store_new_value(vm->store);
         }
@@ -350,8 +348,7 @@ static matteValue_t vm_ext_call__importmodule(matteVM_t * vm, matteValue_t fn, c
         #endif
     } else {
         if (preloadOnly) {
-            v = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
-            *v = matte_vm_run_fileid(vm, fileid, params);
+            matteValue_t va = matte_vm_run_fileid(vm, fileid, params);
             
             if (noCacheFlag) {
                 matte_value_object_pop_lock(vm->store, *v);

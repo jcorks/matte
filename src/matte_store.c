@@ -1015,8 +1015,6 @@ void matte_store_destroy(matteStore_t * h) {
         matte_value_object_pop_lock(h, val);
     }
 
-    matteObject_t * m = matte_store_bin_fetch_function(h->bin, 2);
-    matte_deallocate(m->function.stub);
 
     matte_value_object_pop_lock(h, matte_store_empty_function(h));
     matte_array_destroy(h->external);
@@ -1251,7 +1249,6 @@ static matteTable_t * type_array_get_layout(matteStore_t * store, matteValue_t v
     if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {
         uint32_t count = matte_value_object_get_key_count(store, val);
         uint32_t i;
-        matteArray_t * array = matte_array_create(sizeof(uint32_t));
 
         matteTableIter_t * iter = matte_table_iter_create();        
 
@@ -2285,6 +2282,10 @@ static void matte_value_into_new_function_ref_real(matteStore_t * store, matteVa
                 object_link_parent(store, d, origin);
                 vars->captures[i] = origin->function.vars->referrables+capturesRaw[i].referrable;
                 vars->captureOrigins[i] = origin->storeID;
+                break;
+            }
+            if (origin->function.origin == 0) {
+                origin = NULL;
                 break;
             }
             origin = matte_store_bin_fetch(store->bin, origin->function.origin);
@@ -4314,13 +4315,22 @@ static void assert_tricolor_invariant__child(matteStore_t * h, matteObject_t * p
 
 
 
-
-
-
-
 static void destroy_object(void * d) {
     matteObject_t * out = (matteObject_t*)d;
     if (out->storeID == 0) return;
+
+    if (IS_FUNCTION_OBJECT(out)) {
+        matte_deallocate(out->function.vars);
+        if (out->function.types) matte_array_destroy(out->function.types);
+    } else {
+        if (out->table.keyvalues_id) matte_mvt2_destroy(out->table.keyvalues_id);
+        if (out->table.keyvalues_number) matte_array_destroy(out->table.keyvalues_number);
+        matte_deallocate(out->table.attribSet);
+        matte_deallocate(out->table.privateBinding);
+    }
+
+
+
     out->storeID = 0;
     #ifdef MATTE_DEBUG__STORE
         matte_array_destroy(out->parents);
@@ -4329,12 +4339,7 @@ static void destroy_object(void * d) {
         out->children = 0;
     }
 
-    if (IS_FUNCTION_OBJECT(out)) {
-        matte_deallocate(out->function.vars);
-    } else {
 
-        if (out->table.keyvalues_id) matte_mvt2_destroy(out->table.keyvalues_id);
-    }
 
 }
 
@@ -4356,6 +4361,10 @@ static void destroy_object(void * d) {
 struct matteStoreBin_t {
     mattePool_t * functions;
     mattePool_t * tables;
+    
+    matteBytecodeStub_t * emptyStub;
+    
+    matteObject_t * zero;
 };
 
 
@@ -4369,11 +4378,15 @@ matteStoreBin_t * matte_store_bin_create() {
     store->tables    = matte_pool_create(sizeof(matteObject_t), destroy_object);
 
     // the 0th object. Nonexistent;
-    matte_store_bin_add_function(store);
+    matteObject_t * zero = matte_store_bin_add_function(store);
+    matteBytecodeStubLayout_t layout = {};
+    zero->function.stub = matte_bytecode_stub_create(&layout);
+    store->zero = zero;
 
     // empty function
     matteObject_t * o = matte_store_bin_add_function(store);
     o->function.stub = matte_bytecode_stub_create_symbolic();
+    store->emptyStub = o->function.stub;
  
     
     
@@ -4459,8 +4472,17 @@ void matte_store_bin_recycle(matteStoreBin_t * store, uint32_t id) {
 }
 
 void matte_store_bin_destroy(matteStoreBin_t * store) {
+    // TRICKY / TODO: Needs to be even and non-zero to count as a normal object for destruction
+    store->zero->storeID = 2;
+    destroy_object(store->zero);
+
+    matte_bytecode_stub_destroy(store->zero->function.stub);
+    matte_bytecode_stub_destroy(store->emptyStub);
+
     matte_pool_destroy(store->tables);
     matte_pool_destroy(store->functions);
+
+
     matte_deallocate(store);
 }
 

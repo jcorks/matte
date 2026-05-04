@@ -143,14 +143,16 @@ matteValue_t matte_vm_import(
 /// root stub functional; the function is then run.
 ///
 ///
-///
-/// This is equivalent to pushing the args onto the stack and 
-/// inserting a CAL instruction.
 /// The value is owned and reserved by the VM,
 /// so it shoud not be recycled.
 matteValue_t matte_vm_run_fileid(
     matteVM_t *, 
     uint32_t fileid, 
+    
+    /// Whether to cache the result tied to the fileid. 
+    /// Future runs of this function or importing the fileid 
+    /// results in the cached value being returned.
+    int cache,
     matteValue_t parameters
 );
 
