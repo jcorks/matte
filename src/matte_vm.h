@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 typedef struct matteArray_t matteArray_t;
 typedef struct matteBytecodeStub_t matteBytecodeStub_t;
 typedef struct matteVMStackFrame_t matteVMStackFrame_t;
+typedef uint32_t matteVMUnitID_t;
 #include "matte_store.h"
 #include "matte_opcode.h"
 typedef struct matte_t matte_t;
@@ -74,12 +75,12 @@ typedef enum {
 
 // The import handler function
 ///
-/// The import function returns the fileID 
+/// The import function returns the unitID 
 /// represented by this name.
 /// The most common use of this is to load in the corresponding 
 /// import bytecode stubs at the same time.
 ///
-typedef uint32_t (*matteImportFunction_t)(
+typedef matteVMUnitID_t (*matteImportFunction_t)(
     // The VM instance
     matteVM_t *,
     // The name of the module being requested
@@ -92,8 +93,8 @@ typedef uint32_t (*matteImportFunction_t)(
     void * userdata
 );
 
-/// The fileID reserved for the debug file.
-#define MATTE_VM_DEBUG_FILE 0xfffffffe
+/// The unitID reserved for the debug file.
+#define MATTE_VM_DEBUG_UNIT 0xfffffffe
 
 
 
@@ -109,9 +110,6 @@ void matte_vm_destroy(matteVM_t*);
 /// Returns the store owned by the VM.
 matteStore_t * matte_vm_get_store(matteVM_t *);
 
-/// Adds an array of matteBytecodeStub_t * to the vm.
-/// Ownership of the stubs is transferred (but not the array)
-void matte_vm_add_stubs(matteVM_t *, const matteArray_t *, uint32_t fileID);
 
 /// Sets the implementation for the import function.
 void matte_vm_set_import(
@@ -136,25 +134,57 @@ matteValue_t matte_vm_import(
 
 
 
-/// Runs the root function stub of the file
+
+
+
+
+
+/// Returns an ID to a new unit, registering it by name.
+matteVMUnitID_t matte_vm_unit_create(matteVM_t * vm, const matteString_t * name);
+
+
+
+/// Adds an array of matteBytecodeStub_t * to the vm.
+/// Ownership of the stubs is transferred (but not the array)
+void matte_vm_unit_set_program(matteVM_t *, matteVMUnitID_t, const matteArray_t *);
+
+
+/// Runs the root function stub of the unit
 /// The value result of stub is returned. Empty if no result.
 ///
 /// A function object is created as the toplevel for the 
 /// root stub functional; the function is then run.
 ///
 ///
+///
+/// This is equivalent to pushing the args onto the stack and 
+/// inserting a CAL instruction.
 /// The value is owned and reserved by the VM,
 /// so it shoud not be recycled.
-matteValue_t matte_vm_run_fileid(
+matteValue_t matte_vm_unit_execute(
     matteVM_t *, 
-    uint32_t fileid, 
+    matteVMUnitID_t, 
     
-    /// Whether to cache the result tied to the fileid. 
-    /// Future runs of this function or importing the fileid 
-    /// results in the cached value being returned.
+    /// Whether to cache the result tied to the unitid. 
+    /// Future runs of this function or importing the unitid 
+    ///
     int cache,
     matteValue_t parameters
 );
+
+
+
+/// Gets a script name by unitID. If none is associated, NULL is 
+/// returned.
+const matteString_t * matte_vm_unit_get_name(matteVM_t * vm, matteVMUnitID_t);
+
+/// Gets a unitID by name.
+matteVMUnitID_t matte_vm_unit_get_id_by_name(matteVM_t * vm, const matteString_t * name);
+
+
+
+
+
 
 
 /// Runs the given function and returns its result.
@@ -228,7 +258,7 @@ matteValue_t matte_vm_run_scoped_debug_source(
     matteVM_t *,
     const matteString_t * expression,
     int callstackIndex,
-    void(*onError)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *),
+    void(*onError)(matteVM_t *, matteVMDebugEvent_t event, matteVMUnitID_t, int lineNumber, matteValue_t value, void *),
     void * onErrorData
 );    
 
@@ -377,28 +407,20 @@ matteValue_t matte_vm_get_external_function_as_value(
 
 
 
-/// Gets an unused fileid, registering it by name.
-uint32_t matte_vm_get_new_file_id(matteVM_t * vm, const matteString_t * name);
 
-/// Gets a script name by fileID. If none is associated, NULL is 
-/// returned.
-const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t fileid);
-
-/// Gets a fileID by name.
-uint32_t matte_vm_get_file_id_by_name(matteVM_t * vm, const matteString_t * name);
 
 /// Sets a debug event callback.
 /// See matteVMDebugEvent_t for details.
 ///
 void matte_vm_set_debug_callback(
     matteVM_t * vm,
-    void(*)(matteVM_t *, matteVMDebugEvent_t event, uint32_t file, int lineNumber, matteValue_t value, void *),
+    void(*)(matteVM_t *, matteVMDebugEvent_t event, matteVMUnitID_t, int lineNumber, matteValue_t value, void *),
     void *
 );
 /// Sets a handler for unhandled errors. Unhandled errors are fatal to the VM.
 void matte_vm_set_unhandled_callback(
     matteVM_t * vm,
-    void(*)(matteVM_t *, uint32_t file, int lineNumber, matteValue_t value, void *),
+    void(*)(matteVM_t *, matteVMUnitID_t, int lineNumber, matteValue_t value, void *),
     void *
 );
 

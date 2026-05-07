@@ -123,7 +123,7 @@ struct matteBytecodeStub_t {
     matteString_t ** protoLocals;
     matteString_t ** protoStrings;
 
-    uint32_t fileID;
+    uint32_t unitID;
     uint32_t stubID;
     
     matteValue_t * argNames;
@@ -146,7 +146,7 @@ struct matteBytecodeStub_t {
 
 matteBytecodeStub_t * matte_bytecode_stub_create(const matteBytecodeStubLayout_t * layout) {
     matteBytecodeStub_t * stub = matte_allocate(sizeof(matteBytecodeStub_t));
-    stub->fileID = layout->fileID;
+    stub->unitID = layout->unitID;
     stub->stubID = layout->stubID;
     
     if (layout->argumentNames) {
@@ -397,9 +397,9 @@ void matte_bytecode_stub_destroy(matteBytecodeStub_t * b) {
     matte_deallocate(b);
 }
 
-void matte_bytecode_stub_link(matteBytecodeStub_t * stub, matteStore_t * store, uint32_t fileid) {
+void matte_bytecode_stub_link(matteBytecodeStub_t * stub, matteStore_t * store, uint32_t unitID) {
     stub->store = store;
-    stub->fileID = fileid;
+    stub->unitID = unitID;
 
 }
 
@@ -615,8 +615,8 @@ uint8_t * matte_bytecode_stubs_encode_binary(
 
 
 
-uint32_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t * stub) {
-    return stub->fileID;
+uint32_t matte_bytecode_stub_get_unit_id(const matteBytecodeStub_t * stub) {
+    return stub->unitID;
 }
 
 uint32_t matte_bytecode_stub_get_starting_line(const matteBytecodeStub_t * stub) {

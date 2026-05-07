@@ -127,14 +127,14 @@ void matte_debugging_enable(
 );
 
 
-/// When called, associates a fileID with a source file.
+/// When called, associates a unitID with a source file.
 /// For the default importer, this is called for you when 
 /// debugging is enabled.
 ///
 /// For cases where the default importer is not used, 
 /// this function can be called manually.
 ///
-/// When associated with a file ID, the source is used 
+/// When associated with a unit ID, the source is used 
 /// and displayed within the debugger when its activated.
 /// This makes debugging much more convenient, as a viewer 
 /// can follow where in the code the context is stopped and 
@@ -144,9 +144,9 @@ void matte_debugging_register_source(
     /// The instance to register source lines for.
     matte_t *,
 
-    /// The fileID of the compiled source or bytecode within the 
+    /// The unitID of the compiled source or bytecode within the 
     /// matte instance.
-    uint32_t fileID,
+    uint32_t unitID,
     
     /// C-String source that was compiled.
     const char * source    
@@ -221,7 +221,7 @@ matteValue_t matte_call(
 
 /// Convenience function that runs the given source.
 /// Internally, it is given a unique name, compiled, and
-/// runs the new fileID immediately. This will also provide 
+/// runs the new unitID immediately. This will also provide 
 /// a default handler for compilation error, piped through 
 /// the matte output IO function. If an unhandled error occurs,
 /// empty will be returned.
@@ -262,7 +262,7 @@ uint8_t * matte_compile_source(
 /// This function is most commonly used to implement 
 /// custom importers, as this handles the registering of 
 /// the external data, even registring debugging source if needed.
-/// The new fileID for the data is returned. Upon error, 0 is returned
+/// The new unitID for the data is returned. Upon error, 0 is returned
 ///
 uint32_t matte_add_module(
     /// The instance to add the module to.
@@ -293,10 +293,10 @@ void matte_set_importer(
     matte_t *,
     
     /// The function to call when the VM has requested 
-    /// an import. The function should return the fileid 
+    /// an import. The function should return the unitID 
     /// represented by the Matte bytecode to run.
     /// For a custom importer, it will be necessary to 
-    /// manually convert source / bytecode to a fileID by 
+    /// manually convert source / bytecode to a unitID by 
     /// hand using the matte_vm_* family of functions.
     ///
     /// When NULL, a default file-based importer will be used.
@@ -390,12 +390,12 @@ int matte_check_package(
 
 /// Convenience function that runs the given bytecode.
 /// Internally, it is given a unique name and
-/// runs the new fileID immediately. If an unhandled error 
+/// runs the new unitID immediately. If an unhandled error 
 /// occurs, empty is returned.
 ///
 /// The value is owned and reserved by the VM,
 /// so it shoud not be recycled.
-matteValue_t matte_run_bytecode(
+matteValue_t matte_execute_bytecode(
     /// The instance to run the bytecode on.
     matte_t *, 
     
@@ -412,7 +412,7 @@ matteValue_t matte_run_bytecode(
 ///
 /// The value is owned and reserved by the VM,
 /// so it shoud not be recycled.
-matteValue_t matte_run_bytecode_with_parameters(
+matteValue_t matte_execute_bytecode_with_parameters(
     /// The instance
     matte_t *, 
 
@@ -431,7 +431,7 @@ matteValue_t matte_run_bytecode_with_parameters(
 ///
 /// The value is owned and reserved by the VM,
 /// so it shoud not be recycled.
-matteValue_t matte_run_source_with_parameters(
+matteValue_t matte_execute_source_with_parameters(
     /// The instance to run with.
     matte_t *, 
     
@@ -508,7 +508,7 @@ void * matte_allocate(
 /// by matte_allocate(). if NULL is passed,
 /// no action is taken. UNDEFINED BEHAVIOR MAY OCCUR 
 /// if a pointer is passed that wasnt returned by 
-/// matte_allocate(). 
+/// matte_allocate(), or such a pointer is deallocated more than once.
 /// The allocator functions are meant for 
 /// use within matte to obey the allocator rules.
 /// User use is discouraged.

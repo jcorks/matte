@@ -43,7 +43,7 @@ DEALINGS IN THE SOFTWARE.
 #include <ctype.h>
 
 typedef struct {
-    uint32_t fileid;
+    uint32_t unitID;
     uint32_t line;
 } breakpoint;
 
@@ -95,7 +95,7 @@ struct matte_t {
     int isDebug;
     
     // Tracks how many matte_source_run and related functions have been called.
-    // These are used for the dummy fileIDs in the case that there is no real filename.
+    // These are used for the dummy unitIDs in the case that there is no real filename.
     int runSourceCount;
     
     // whether the next debug event is to be paused against
@@ -104,9 +104,9 @@ struct matte_t {
     // The required frame to step to. Used for step vs next
     int stepreqframe;
     
-    // Database of fileID to array of line strings.
+    // Database of unitID to array of line strings.
     // Used for debugging print areas.
-    matteTable_t * lines; // fileid -> array of lines (matteString);
+    matteTable_t * lines; // unitID -> array of lines (matteString);
     
     
     // result of last introspect.
@@ -177,7 +177,7 @@ static void debug_print_area(matte_t * m) {
     matteVM_t * vm = m->vm;
     matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, m->stackframe);
     if (frame.stub == NULL) return;
-    uint32_t fileid = matte_bytecode_stub_get_file_id(frame.stub);
+    uint32_t unitID = matte_bytecode_stub_get_unit_id(frame.stub);
     uint32_t numinst;
     const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
     uint32_t line = 0;
@@ -187,15 +187,15 @@ static void debug_print_area(matte_t * m) {
     if (m->clear)
         m->clear(m);
     matte_print(m, "<file %s, line %d>", 
-        matte_vm_get_script_name_by_id(vm, fileid) ? 
-            matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, fileid)) 
+        matte_vm_unit_get_name(vm, unitID) ? 
+            matte_string_get_c_str(matte_vm_unit_get_name(vm, unitID)) 
         : 
             "???" , 
         line
     );
     int i = line;
 
-    matteArray_t * localLines = (matteArray_t*)matte_table_find_by_uint(m->lines, fileid);
+    matteArray_t * localLines = (matteArray_t*)matte_table_find_by_uint(m->lines, unitID);
     if (localLines) {
         for(i = ((int)line) - PRINT_AREA_LINES/2; i < ((int)line) + PRINT_AREA_LINES/2 + 1; ++i) {
             if (i < 0 || i >= matte_array_get_size(localLines)) {
@@ -296,8 +296,8 @@ static int exec_command(matte_t * m) {
             uint32_t numinst;
             const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame.stub, &numinst);
 
-            uint32_t fileid = matte_bytecode_stub_get_file_id(frame.stub);
-            const matteString_t * fileName = matte_vm_get_script_name_by_id(vm, fileid);
+            uint32_t unitID = matte_bytecode_stub_get_unit_id(frame.stub);
+            const matteString_t * fileName = matte_vm_unit_get_name(vm, unitID);
             uint32_t lineNumber = inst[frame.pc].info.lineOffset + matte_bytecode_stub_get_starting_line(frame.stub); 
             if (i == m->stackframe) {
                 matte_print(m, " -> @%d: <%s>, line %d", i, fileName ? matte_string_get_c_str(fileName) : "???", (int)lineNumber);
@@ -341,7 +341,7 @@ static int exec_command(matte_t * m) {
     return 1;
 }
 
-static void debug_split_lines(matte_t * m, uint32_t fileid, const uint8_t * data, uint32_t size) {
+static void debug_split_lines(matte_t * m, uint32_t unitID, const uint8_t * data, uint32_t size) {
     matteArray_t * localLines = matte_array_create(sizeof(matteString_t *));
     uint32_t i;
     matteString_t * line = matte_string_create();
@@ -355,7 +355,7 @@ static void debug_split_lines(matte_t * m, uint32_t fileid, const uint8_t * data
         }
     }
     matte_array_push(localLines, line);
-    matte_table_insert_by_uint(m->lines, fileid, localLines);
+    matte_table_insert_by_uint(m->lines, unitID, localLines);
 }
 
 
@@ -426,7 +426,7 @@ static void debug_on_event(
     uint32_t i;
     for(i = 0; i < matte_array_get_size(m->breakpoints); ++i) {
         breakpoint p = matte_array_at(m->breakpoints, breakpoint, i);
-        if (p.fileid == file &&
+        if (p.unitID == file &&
             p.line == lineNumber) {
             m->stackframe = 0;
             debug_print_area(m);
@@ -460,7 +460,7 @@ static void default_clear(matte_t * m) {
 
 static void default_unhandled_error(
     matteVM_t * vm, 
-    uint32_t file, 
+    uint32_t unit, 
     int lineNumber, 
     matteValue_t val,
     void * d
@@ -477,10 +477,10 @@ static void default_unhandled_error(
         }
     }
     
-    if (matte_vm_get_script_name_by_id(vm, file)) {
+    if (matte_vm_unit_get_name(vm, unit)) {
         matte_print(m, 
             "Unhandled error (%s, line %d)", 
-            matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), 
+            matte_string_get_c_str(matte_vm_unit_get_name(vm, unit)), 
             lineNumber
         );
         matte_print(m, "%s", matte_introspect_value(m, val));
@@ -545,7 +545,7 @@ static uint32_t default_importer(
     }
     fclose(f);
 
-    uint32_t fileID = matte_add_module(
+    uint32_t unitID = matte_add_module(
         m,
         alias ? alias : name,
         bytes,
@@ -553,7 +553,7 @@ static uint32_t default_importer(
     );
 
     matte_deallocate(bytes);
-    return fileID;
+    return unitID;
 }
 
 
@@ -720,8 +720,8 @@ matteValue_t matte_call(
 }
 
 
-matteValue_t matte_run_source(matte_t * m, const char * source) {
-    return matte_run_source_with_parameters(m, source, matte_store_new_value(matte_vm_get_store(m->vm)));
+matteValue_t matte_execute_source(matte_t * m, const char * source) {
+    return matte_execute_source_with_parameters(m, source, matte_store_new_value(matte_vm_get_store(m->vm)));
 }
 
 
@@ -764,21 +764,21 @@ uint8_t * matte_compile_source(matte_t * m, uint32_t * bytecodeSize, const char 
 }
 
 
-matteValue_t matte_run_bytecode_with_parameters(matte_t * m, const uint8_t * bytecode, uint32_t bytecodeSize, matteValue_t input) {
+matteValue_t matte_execute_bytecode_with_parameters(matte_t * m, const uint8_t * bytecode, uint32_t bytecodeSize, matteValue_t input) {
 
-    matteString_t * fname = matte_string_create_from_c_str("[matte_run_source:%d]", m->runSourceCount++);
-    uint32_t fid = matte_vm_get_new_file_id(m->vm, fname);
+    matteString_t * fname = matte_string_create_from_c_str("[$matte_execute_source:%d]", m->runSourceCount++);
+    matteVMUnitID_t fid = matte_vm_unit_create(m->vm, fname);
 
     matteArray_t * stubs = matte_bytecode_stubs_decode_binary(
         bytecode,
         bytecodeSize
     );
 
-    matte_vm_add_stubs(m->vm, stubs, fid);
+    matte_vm_unit_set_program(m->vm, fid, stubs);
     matte_array_destroy(stubs);
 
     
-    matteValue_t out = matte_vm_run_fileid(
+    matteValue_t out = matte_vm_unit_execute(
         m->vm,
         fid,
         input
@@ -791,7 +791,7 @@ matteValue_t matte_run_bytecode_with_parameters(matte_t * m, const uint8_t * byt
 
 
 
-matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, matteValue_t input) {
+matteValue_t matte_execute_source_with_parameters(matte_t * m, const char * source, matteValue_t input) {
     
     matteArray_t * stubs = matte_compiler_run_stubs(
         m->isDebug ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
@@ -807,8 +807,8 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
     }
     
     
-    matteString_t * fname = matte_string_create_from_c_str("[matte_run_source:%d]", m->runSourceCount++);
-    uint32_t fid = matte_vm_get_new_file_id(m->vm, fname);
+    matteString_t * fname = matte_string_create_from_c_str("[$matte_execute_source:%d]", m->runSourceCount++);
+    uint32_t fid = matte_vm_get_new_unit_id(m->vm, fname);
 
 
     matte_vm_add_stubs(m->vm, stubs, fid);
@@ -818,7 +818,7 @@ matteValue_t matte_run_source_with_parameters(matte_t * m, const char * source, 
         debug_split_lines(m, fid, (const uint8_t*)source, strlen(source));
     }
     
-    matteValue_t out = matte_vm_run_fileid(
+    matteValue_t out = matte_vm_run_unitID(
         m->vm,
         fid,
         input
@@ -836,7 +836,7 @@ uint32_t matte_add_module(
     const uint8_t * bytes, 
     uint32_t bytelen
 ) {
-    uint32_t fileid = 0;   
+    uint32_t unitID = 0;   
     // determine if bytecode or raw source.
     // handle bytecodecase
     if (bytelen >= 6 &&
@@ -853,8 +853,8 @@ uint32_t matte_add_module(
             bytelen
         );
         if (stubs) {
-            fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
-            matte_vm_add_stubs(m->vm, stubs, fileid);
+            unitID = matte_vm_get_new_unit_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
+            matte_vm_add_stubs(m->vm, stubs, unitID);
         } else {
             matteString_t * str = matte_string_create_from_c_str("Failed to assemble bytecode %s.", name);
             matte_vm_raise_error_string(m->vm, str);
@@ -879,10 +879,10 @@ uint32_t matte_add_module(
 
 
             if (stubs) {
-                fileid = matte_vm_get_new_file_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
+                unitID = matte_vm_get_new_unit_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
                 if (m->isDebug)
-                    debug_split_lines(m, fileid, bytes, bytelen);
-                matte_vm_add_stubs(m->vm, stubs, fileid);
+                    debug_split_lines(m, unitID, bytes, bytelen);
+                matte_vm_add_stubs(m->vm, stubs, unitID);
                 matte_array_destroy(stubs);
                 stubs = NULL;
             } else {
@@ -892,7 +892,7 @@ uint32_t matte_add_module(
             }           
         }
     }  
-    return fileid;  
+    return unitID;  
 }
 
 
@@ -914,12 +914,12 @@ void matte_debugging_enable(matte_t * m) {
 
 void matte_debugging_register_source(
     matte_t * m,
-    uint32_t fileID,
+    uint32_t unitID,
     const char * source        
 ) {
     debug_split_lines(
         m,
-        fileID,
+        unitID,
         (const uint8_t *) source,
         strlen(source)
     );
@@ -1026,7 +1026,7 @@ matteValue_t matte_load_package(
         matte_value_into_string(store, &inputJson, json);
         matte_string_destroy(json);
         
-        matteValue_t jsonObject = matte_run_source_with_parameters(
+        matteValue_t jsonObject = matte_execute_source_with_parameters(
             m,
             "return (import(module:'Matte.Core.JSON')).decode(string:parameters);",
             inputJson

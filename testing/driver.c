@@ -174,16 +174,16 @@ static void onErrorCatch(
     matteStore_t * store = matte_vm_get_store(vm);
     const matteString_t * str = matte_value_string_get_string_unsafe(store, matte_value_as_string(store, matte_value_object_access_string(store, value, MATTE_VM_STR_CAST(vm, "detail"))));
     printf("TEST RAISED AN ERROR WHILE RUNNING:\n%s\n", str ? matte_string_get_c_str(str) : "(null)");
-    printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), lineNumber);
+    printf("(file %s, line %d)\n", matte_string_get_c_str(matte_vm_unit_get_name(vm, file)), lineNumber);
     uint32_t stacksize = matte_vm_get_stackframe_size(vm);
     printf("Callstack: \n");
     uint32_t i;
     uint32_t count;
     for(i = 0; i < stacksize; ++i) {
         matteVMStackFrame_t frame = matte_vm_get_stackframe(vm, i);
-        const matteString_t * str = matte_vm_get_script_name_by_id(
+        const matteString_t * str = matte_vm_unit_get_name(
             vm, 
-            matte_bytecode_stub_get_file_id(frame.stub)
+            matte_bytecode_stub_get_unit_id(frame.stub)
         );
 
         printf("(@%d, file %s, line %d)\n", 
@@ -367,14 +367,14 @@ int main() {
             exit(1);
         }
         
-        uint32_t fileid = matte_vm_get_new_file_id(vm, infile);
+        matteVMUnitID_t id = matte_vm_unit_create(vm, infile);
         
         matteArray_t * arr = matte_bytecode_stubs_decode_binary(outBytes, outByteLen);
-        matte_vm_add_stubs(vm, arr, fileid);
+        matte_vm_unit_set_program(vm, id, arr);
         matte_array_destroy(arr);
         matte_deallocate(outBytes);
 
-        matteValue_t v = matte_vm_run_fileid(vm, fileid, matte_store_new_value(matte_vm_get_store(vm)));
+        matteValue_t v = matte_vm_unit_execute(vm, id, 0, matte_store_new_value(matte_vm_get_store(vm)));
 
         char * outstr = dump_string(matte_string_get_c_str(outfile));
         if (!outstr) {

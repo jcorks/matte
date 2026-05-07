@@ -69,7 +69,7 @@ typedef struct {
         double number;
         struct {
             uint32_t stubID;
-            /// Per-opcode auxiliary data. Currently only used for fileID for nfn opcodes
+            /// Per-opcode auxiliary data. Currently only used for unitID for nfn opcodes
             uint32_t aux;
         } funcData;
     };
@@ -101,10 +101,10 @@ enum {
 
 
 typedef struct {
-    // The fileID of the bytecode stub
-    uint32_t fileID;
+    // The unitID of the bytecode stub
+    uint32_t unitID;
     
-    // Gets the ID of the stub within the fileID
+    // Gets the ID of the stub within the unitID
     uint32_t stubID;
     
     // The starting line in source for the stub.
@@ -169,15 +169,15 @@ uint8_t * matte_bytecode_stubs_encode_binary(
 // Anchors the bytecode stub to a matteStore instance.
 // Needs to be called before retrieving matteValue_t 
 // values from the stub.
-void matte_bytecode_stub_link(matteBytecodeStub_t *, matteStore_t *, uint32_t fileID);
+void matte_bytecode_stub_link(matteBytecodeStub_t *, matteStore_t *, uint32_t unitID);
 
 /// Destroys a bytecode stub.
 void matte_bytecode_stub_destroy(matteBytecodeStub_t * b);
 
-/// Returns the fileid that the stub was given.
-/// fileids are only valid if all stubs come from the same parser 
+/// Returns the unitID that the stub was given.
+/// unitIDs are only valid if all stubs come from the same parser 
 /// instance.
-uint32_t matte_bytecode_stub_get_file_id(const matteBytecodeStub_t *);
+uint32_t matte_bytecode_stub_get_unit_id(const matteBytecodeStub_t *);
 
 /// Gets the line that this function started at in source.
 uint32_t matte_bytecode_stub_get_starting_line(const matteBytecodeStub_t *);

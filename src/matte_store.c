@@ -354,7 +354,7 @@ struct matteObject_t {
     
     #ifdef MATTE_DEBUG__STORE
         matteArray_t * parents;
-        uint32_t fileIDsrc;
+        uint32_t unitIDsrc;
         uint32_t fileLine;
         uint64_t gcCycles;
     #endif
@@ -4768,7 +4768,7 @@ void matte_store_value_object_mark_created(
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);            
     if (frame == NULL) {
         m->fileLine = 0;
-        m->fileIDsrc = 0xffffffff;
+        m->unitIDsrc = 0xffffffff;
         return;
     }
     uint32_t instCount;
@@ -4778,18 +4778,18 @@ void matte_store_value_object_mark_created(
 
     uint32_t startingLine = matte_bytecode_stub_get_starting_line(stub);    
     m->fileLine = startingLine + inst.info.lineOffset;
-    m->fileIDsrc = matte_bytecode_stub_get_file_id(stub);
+    m->unitIDsrc = matte_bytecode_stub_get_unit_id(stub);
 }
 
 void matte_store_value_object_mark_created_manual(
     matteStore_t * store,
     matteValue_t v,
     uint32_t fileLine,
-    uint32_t fileIDsrc
+    uint32_t unitIDsrc
 ) {
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);            
     m->fileLine = fileLine;
-    m->fileIDsrc = fileIDsrc;
+    m->unitIDsrc = unitIDsrc;
 }
 
 
@@ -4798,7 +4798,7 @@ void matte_store_value_object_get_reference_graphology__make_node(
     matteVM_t * vm,
     FILE * f,
     uint32_t id,
-    uint32_t fileID,
+    uint32_t unitID,
     uint32_t lineNumber,
     int isSource,
     int size,
@@ -4808,7 +4808,7 @@ void matte_store_value_object_get_reference_graphology__make_node(
 ) {
     int isFunction = id/2 == (id+1)/2;
 
-    const matteString_t * str = matte_vm_get_script_name_by_id(vm, fileID);
+    const matteString_t * str = matte_vm_get_script_name_by_id(vm, unitID);
     fprintf(
         f,
         "{\"key\":\"%d\", \"attributes\":{\"label\":\"%s %d - %s, %d.\\nAlive %d cycles.%s\", \"size\":%f",
@@ -4862,7 +4862,7 @@ static void matte_store_value_object_get_reference_graphology_value__scan_object
         vm,
         fnodes,
         m->storeID,
-        m->fileIDsrc,
+        m->unitIDsrc,
         m->fileLine,
         source,
         1+matte_value_count_children(store, m),
@@ -4957,7 +4957,7 @@ void matte_store_value_object_get_reference_graphology_all__scan_object_down(
         vm,
         fnodes,
         m->storeID,
-        m->fileIDsrc,
+        m->unitIDsrc,
         m->fileLine,
         source,
         1+matte_value_count_children(store, m),
@@ -5052,14 +5052,14 @@ void matte_store_value_object_get_reference_graphology__scan_object_down(
     matteVM_t * vm,
     matteValue_t v,
     uint32_t line,
-    uint32_t fileIDsrc
+    uint32_t unitIDsrc
 ) {
     matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);            
     if (matte_table_find_by_uint(visited, m->storeID)) return;
     
     matte_table_insert_by_uint(visited, m->storeID, (void*)0x1);
     if (m->fileLine == line &&
-        m->fileIDsrc == fileIDsrc) {
+        m->unitIDsrc == unitIDsrc) {
         matte_array_push(hits, v.value.id);
     }
 
@@ -5081,7 +5081,7 @@ void matte_store_value_object_get_reference_graphology__scan_object_down(
             vm,
             v,
             line,
-            fileIDsrc
+            unitIDsrc
         );
         
         iter = n->next;
@@ -5099,12 +5099,12 @@ void matte_store_value_object_get_reference_graphology(
 ) {
     printf("Looking for %s, line %d...\n", filename, (int)line);
 
-    uint32_t fileID = matte_vm_get_file_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
-    if (fileID == 0xffffffff) {
+    uint32_t unitID = matte_vm_get_unit_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
+    if (unitID == 0xffffffff) {
         printf("Could not find file as a registered script.\n");
         return;
     } 
-    printf("Found file as fileID %d\n", (int)fileID);
+    printf("Found file as unitID %d\n", (int)unitID);
     matteTable_t * t = matte_table_create_hash_pointer();
     matteArray_t * hits = matte_array_create(sizeof(uint32_t));
 
@@ -5124,7 +5124,7 @@ void matte_store_value_object_get_reference_graphology(
             vm,
             v,
             line,
-            fileID
+            unitID
         );
 
 
@@ -5240,7 +5240,7 @@ void matte_store_value_object_get_memory_breakdown__find_relevant(
     matteArray_t * hits,
     matteVM_t * vm,
     uint32_t id,
-    uint32_t fileIDsrc,
+    uint32_t unitIDsrc,
     uint32_t * totalMemory
 ) {
     matteObject_t * m = matte_store_bin_fetch(store->bin, id);            
@@ -5248,7 +5248,7 @@ void matte_store_value_object_get_memory_breakdown__find_relevant(
     
     matte_table_insert_by_uint(visited, m->storeID, (void*)0x1);
     *totalMemory += matte_store_value_object_get_memory_breakdown__estimate_usage(m);
-    if (m->fileIDsrc == fileIDsrc) {
+    if (m->unitIDsrc == unitIDsrc) {
         matte_array_push(hits, m->storeID);
     }
 
@@ -5262,7 +5262,7 @@ void matte_store_value_object_get_memory_breakdown__find_relevant(
             hits,
             vm,
             n->data->storeID,
-            fileIDsrc,
+            unitIDsrc,
             totalMemory
         );
         
@@ -5327,12 +5327,12 @@ void matte_store_value_object_get_memory_breakdown(
 ) {
     printf("Looking for %s...\n", filename);
 
-    uint32_t fileID = matte_vm_get_file_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
-    if (fileID == 0xffffffff) {
+    uint32_t unitID = matte_vm_get_unit_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
+    if (unitID == 0xffffffff) {
         printf("Could not find file as a registered script.\n");
         return;
     } 
-    printf("Found file as fileID %d\n", (int)fileID);
+    printf("Found file as unitID %d\n", (int)unitID);
     matteTable_t * t = matte_table_create_hash_pointer();
     matteArray_t * hits = matte_array_create(sizeof(uint32_t));
 
@@ -5348,7 +5348,7 @@ void matte_store_value_object_get_memory_breakdown(
             hits,
             vm,
             node->data->storeID,
-            fileID,
+            unitID,
             &totalBytes
         );
 
