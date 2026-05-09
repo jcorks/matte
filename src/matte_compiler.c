@@ -321,7 +321,7 @@ uint8_t * matte_compiler_run_with_named_references(
     OPTION__NAMED_REFERENCES = 1;
     
     matteArray_t * arr = matte_compiler_run_base(
-        MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO, graph, source, len, onError, userdata
+        MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO, graph, source, len, onError, userdata
     );
     
     if (arr == NULL || matte_array_get_size(arr) == 0) {
@@ -5148,14 +5148,14 @@ matteArray_t * matte_function_block_array_to_stubs(
         layout.startingLine = block->startingLine;
         layout.options = 
             (block->isVarArg ? MATTE_BYTECODE_STUB__OPTION__IS_VAR_ARG : 0) |
-            ((options & MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO) ? MATTE_BYTECODE_STUB__OPTION__DEBUG_INFO : 0) |
+            ((options & MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO) ? MATTE_BYTECODE_STUB__OPTION__DEBUG_INFO : 0) |
             (block->isDynamicBind ? MATTE_BYTECODE_STUB__OPTION__IS_DYNAMIC_BIND : 0)
         ;
         layout.argumentNames = block->args;
         
-        //if ((options & MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO)) {
+        if ((options & MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO)) {
             layout.localNames = block->locals;
-        //}
+        }
         layout.localStrings = block->strings;
         layout.captures = block->captures;
         layout.instructions = block->instructions;
@@ -5166,7 +5166,9 @@ matteArray_t * matte_function_block_array_to_stubs(
 
         // transfer ownership
         block->args = NULL;
-        block->locals = NULL;
+        if ((options & MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO)) {
+            block->locals = NULL;
+        }
         block->strings = NULL;
         block->captures = NULL;
         block->instructions = NULL;

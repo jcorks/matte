@@ -120,6 +120,7 @@ typedef struct {
     matteArray_t * argumentNames;
     
     // All the local names, in order,
+    // Local names are only populated with debugging information.
     matteArray_t * localNames;
     
     // All the local strings, in order

@@ -280,16 +280,18 @@ static int exec_command(matte_t * m) {
     ) {
         matte_print(m, " ");
         matte_print(m, " ");
-        matte_print(m, " ");
-        matte_print(m, " ");   
         matte_print(m, "Matte Debugger, written by Johnathan Corkery, 2026");
         matte_print(m, " ");
         matte_print(m, "This GDB-style debugger allows for stepwise control of");
         matte_print(m, "the executing unit. The debugger can also evaluate expressions");
-        matte_print(m, "in-scope, as if the expression were written at the pause");
-        matte_print(m, "location.");
+        matte_print(m, "in-scope as if the expression were written at the pause");
+        matte_print(m, "location. Note that the debugger can still be used in a");
+        matte_print(m, "limited capacity if no debugging information is available");
+        matte_print(m, " ");
         matte_print(m, " ");
         matte_print(m, "The debugger knows the following commands:");
+        matte_print(m, " print/p  : Evaluates the expression entered after the command.");
+        matte_print(m, "            ");
         matte_print(m, " next/n  : Lets the debugger evaluate the next statement in");
         matte_print(m, "           the current function before pausing again.");
         matte_print(m, " ");
@@ -307,8 +309,6 @@ static int exec_command(matte_t * m) {
         matte_print(m, " down/d  : Navigates the debugger to the calling context beneath.");
         matte_print(m, " ");
         matte_print(m, " ");
-        matte_print(m, " ");
-        matte_print(m, " ");   
     
     } else if (!strcmp(command, "step") ||
                !strcmp(command, "s")) {
@@ -785,7 +785,11 @@ matteValue_t matte_execute_bytecode(matte_t * m, const uint8_t * bytecode, uint3
 
 uint8_t * matte_compile_source(matte_t * m, uint32_t * bytecodeSize, const char * source, matteString_t * error) {
     uint8_t * a = matte_compiler_run(
-        m->isDebug ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
+        m->isDebug ? (
+          MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO |
+          MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO
+        ) : 
+          0,
         m->graph,
         (uint8_t*)source,
         strlen(source),
@@ -832,7 +836,11 @@ matteValue_t matte_execute_bytecode_with_parameters(matte_t * m, const uint8_t *
 matteValue_t matte_execute_source_with_parameters(matte_t * m, const char * source, matteValue_t input) {
     
     matteArray_t * stubs = matte_compiler_run_stubs(
-        m->isDebug ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
+        m->isDebug ? (
+          MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO |
+          MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO
+        ) : 
+          0,
         m->graph,
         (uint8_t*)source,
         strlen(source),
@@ -907,7 +915,11 @@ uint32_t matte_add_module(
     // raw source
     } else {
         matteArray_t * stubs = matte_compiler_run_stubs(
-            m->isDebug ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
+            m->isDebug ? (
+              MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO |
+              MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO 
+            ): 
+              0,
             m->graph,
             bytes,
             bytelen,

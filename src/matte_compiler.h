@@ -36,7 +36,16 @@ typedef struct matteSyntaxGraph_t matteSyntaxGraph_t;
 
 
 enum {
-    MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO = 1
+    /// Includes debugging line information, allowing for computed 
+    /// backtrace printing and tracing in general.
+    MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO = 1,
+
+    /// Populates the local referrable names in each stub, which 
+    /// is the key mechanism that allows for the PNR opcode, used 
+    /// in Just-In-Time compilation when printing expressions 
+    /// in the debugger.
+    MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO = 2,
+
 };
 
 /// attempts to take UTF8 source and compile it into 
