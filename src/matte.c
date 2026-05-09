@@ -273,7 +273,44 @@ static int exec_command(matte_t * m) {
 
     // we follow GDB rules, except we dont use breakpoints.
     // Breakpoints are left in the code specifically 
-    if (!strcmp(command, "step") ||
+    if (!strcmp(command, "help") ||
+            !strcmp(command, "--help") ||
+            !strcmp(command, "h") ||
+            !strcmp(command, "-h")
+    ) {
+        matte_print(m, " ");
+        matte_print(m, " ");
+        matte_print(m, " ");
+        matte_print(m, " ");   
+        matte_print(m, "Matte Debugger, written by Johnathan Corkery, 2026");
+        matte_print(m, " ");
+        matte_print(m, "This GDB-style debugger allows for stepwise control of");
+        matte_print(m, "the executing unit. The debugger can also evaluate expressions");
+        matte_print(m, "in-scope, as if the expression were written at the pause");
+        matte_print(m, "location.");
+        matte_print(m, " ");
+        matte_print(m, "The debugger knows the following commands:");
+        matte_print(m, " next/n  : Lets the debugger evaluate the next statement in");
+        matte_print(m, "           the current function before pausing again.");
+        matte_print(m, " ");
+        matte_print(m, " step/s  : Lets the debugger evaluate the next opcode before");
+        matte_print(m, "           pausing again.");
+        matte_print(m, " ");
+        matte_print(m, " continue/c  :  Lets the debuger unpause the execution of the");
+        matte_print(m, "                unit, exiting the debugger until next breakpont()");
+        matte_print(m, " ");
+        matte_print(m, " backtrace/bt  :  Shows the all calling contexts, identifying");
+        matte_print(m, "                  the location of the current opcode.");
+        matte_print(m, " ");
+        matte_print(m, " up/u  : Navigates the debugger to the above calling context.");
+        matte_print(m, " ");
+        matte_print(m, " down/d  : Navigates the debugger to the calling context beneath.");
+        matte_print(m, " ");
+        matte_print(m, " ");
+        matte_print(m, " ");
+        matte_print(m, " ");   
+    
+    } else if (!strcmp(command, "step") ||
                !strcmp(command, "s")) {
         m->pauseNext = 1;
         m->stepreqframe = -1;
@@ -326,7 +363,7 @@ static int exec_command(matte_t * m) {
     } else if (!strcmp(command, "print") ||    
                !strcmp(command, "p")) {
         matteString_t * src = matte_string_create_from_c_str("return (%s);", res);        
-        matteValue_t val = matte_vm_run_scoped_debug_source(
+        matteValue_t val = matte_vm_execute_scoped_debug_source(
             vm,
             src,
             m->stackframe,
@@ -634,7 +671,7 @@ const char * matte_introspect_value(matte_t * m, matteValue_t val) {
     if (m->introspectResult)
         matte_string_destroy(m->introspectResult);
 
-    matteValue_t v = matte_run_source_with_parameters(m, "return import(module:'Matte.Core.Introspect')(value:parameters);", val);
+    matteValue_t v = matte_execute_source_with_parameters(m, "return import(module:'Matte.Core.Introspect')(value:parameters);", val);
     if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
         m->introspectResult = matte_string_clone(
             matte_value_string_get_string_unsafe(
@@ -741,8 +778,8 @@ void matte_set_importer(
 }
 
 
-matteValue_t matte_run_bytecode(matte_t * m, const uint8_t * bytecode, uint32_t bytecodeSize) {
-    return matte_run_bytecode_with_parameters(m, bytecode, bytecodeSize, matte_store_new_value(matte_vm_get_store(m->vm)));
+matteValue_t matte_execute_bytecode(matte_t * m, const uint8_t * bytecode, uint32_t bytecodeSize) {
+    return matte_execute_bytecode_with_parameters(m, bytecode, bytecodeSize, matte_store_new_value(matte_vm_get_store(m->vm)));
 }
 
 
@@ -781,6 +818,7 @@ matteValue_t matte_execute_bytecode_with_parameters(matte_t * m, const uint8_t *
     matteValue_t out = matte_vm_unit_execute(
         m->vm,
         fid,
+        0, // no cache
         input
     );
     
@@ -803,24 +841,30 @@ matteValue_t matte_execute_source_with_parameters(matte_t * m, const char * sour
         m
     );
     if (!stubs || matte_array_get_size(stubs) == 0) {
+        matteString_t * str = matte_string_create_from_c_str("==>> %s\n", (m->lastCompilerError) ? matte_string_get_c_str(m->lastCompilerError) : "<no data>");
+        matte_print(m, "%s", matte_string_get_c_str(str));
+        matte_string_destroy(str);
+
+
         return matte_store_new_value(matte_vm_get_store(m->vm));
     }
     
     
     matteString_t * fname = matte_string_create_from_c_str("[$matte_execute_source:%d]", m->runSourceCount++);
-    uint32_t fid = matte_vm_get_new_unit_id(m->vm, fname);
+    uint32_t fid = matte_vm_unit_create(m->vm, fname);
 
 
-    matte_vm_add_stubs(m->vm, stubs, fid);
+    matte_vm_unit_set_program(m->vm, fid, stubs);
 
     
     if (m->isDebug) {
         debug_split_lines(m, fid, (const uint8_t*)source, strlen(source));
     }
     
-    matteValue_t out = matte_vm_run_unitID(
+    matteValue_t out = matte_vm_unit_execute(
         m->vm,
         fid,
+        0, //no cache
         input
     );
     
@@ -853,8 +897,8 @@ uint32_t matte_add_module(
             bytelen
         );
         if (stubs) {
-            unitID = matte_vm_get_new_unit_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
-            matte_vm_add_stubs(m->vm, stubs, unitID);
+            unitID = matte_vm_unit_create(m->vm, MATTE_VM_STR_CAST(m->vm, name));
+            matte_vm_unit_set_program(m->vm, unitID, stubs);
         } else {
             matteString_t * str = matte_string_create_from_c_str("Failed to assemble bytecode %s.", name);
             matte_vm_raise_error_string(m->vm, str);
@@ -879,10 +923,10 @@ uint32_t matte_add_module(
 
 
             if (stubs) {
-                unitID = matte_vm_get_new_unit_id(m->vm, MATTE_VM_STR_CAST(m->vm, name));
+                unitID = matte_vm_unit_create(m->vm, MATTE_VM_STR_CAST(m->vm, name));
                 if (m->isDebug)
                     debug_split_lines(m, unitID, bytes, bytelen);
-                matte_vm_add_stubs(m->vm, stubs, unitID);
+                matte_vm_unit_set_program(m->vm, unitID, stubs);
                 matte_array_destroy(stubs);
                 stubs = NULL;
             } else {

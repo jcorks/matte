@@ -254,7 +254,7 @@ void matte_vm_set_external_function_autoname(
 /// within the given source will attempt to be linked to 
 /// the variables accesible within the stackframe scope.
 ///
-matteValue_t matte_vm_run_scoped_debug_source(
+matteValue_t matte_vm_execute_scoped_debug_source(
     matteVM_t *,
     const matteString_t * expression,
     int callstackIndex,

@@ -108,7 +108,7 @@ static matteValue_t vm_ext_call__breakpoint(matteVM_t * vm, matteValue_t fn, con
         vm->debug(
             vm,
             MATTE_VM_DEBUG_EVENT__BREAKPOINT,
-            matte_bytecode_stub_get_file_id(frame.stub),
+            matte_bytecode_stub_get_unit_id(frame.stub),
             line,
             matte_store_new_value(vm->store),
             vm->debugData                   
@@ -171,7 +171,7 @@ static matteValue_t vm_ext_call__send(matteVM_t * vm, matteValue_t fn, const mat
     if (framesrc.pc - 1 < instcount) {
         lineNumber = inst[framesrc.pc-1].info.lineOffset + matte_bytecode_stub_get_starting_line(framesrc.stub);                
     } 
-    vm->errorLastFile = matte_bytecode_stub_get_file_id(framesrc.stub);
+    vm->errorLastFile = matte_bytecode_stub_get_unit_id(framesrc.stub);
     vm->errorLastLine = lineNumber;
     return matte_store_new_value(vm->store);
 }
@@ -203,17 +203,17 @@ static matteValue_t vm_ext_call__set_module(matteVM_t * vm, matteValue_t fn, con
 
     const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, name));
     
-    uint32_t * fileidPtr = (uint32_t*)matte_table_find(vm->importName2ID, strSrc);
-    if (fileidPtr != NULL) {
+    uint32_t * unitIDPtr = (uint32_t*)matte_table_find(vm->importName2ID, strSrc);
+    if (unitIDPtr != NULL) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "setModule can only set a module if it hasn\'t already been defined."));        
         return matte_store_new_value(vm->store);    
     }
 
-    uint32_t fileid = matte_vm_get_new_file_id(vm, strSrc);   
+    uint32_t unitID = matte_vm_unit_create(vm, strSrc);   
     matteValue_t * v = (matteValue_t*)matte_allocate(sizeof(matteValue_t));
     *v = args[1];
     matte_value_object_push_lock(vm->store, *v);
-    matte_table_insert_by_uint(vm->imported, fileid, v);
+    matte_table_insert_by_uint(vm->imported, unitID, v);
     return matte_store_new_value(vm->store);    
 }
     
@@ -235,19 +235,19 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
     
     const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
     const matteString_t * alias = NULL;
-    int preloadOnly = 1;
+    int preloadOnly = 0;
     
     
 
     // first, see if the requested script has been preloaded
-    uint32_t * fileidPtr = (uint32_t*)matte_table_find(vm->importName2ID, strSrc);
-    uint32_t fileid = fileidPtr ? *fileidPtr : 0;
+    uint32_t * unitIDPtr = (uint32_t*)matte_table_find(vm->importName2ID, strSrc);
+    uint32_t unitID = unitIDPtr ? *unitIDPtr : 0;
     
-    // if the name does not have a fileid associated with it,
+    // if the name does not have a unitID associated with it,
     // call the import function.
-    if (!fileid) {
+    if (!unitID) {
         if (vm->importFunction) {
-            fileid = vm->importFunction(
+            unitID = vm->importFunction(
                 vm,
                 strSrc,
                 alias,
@@ -256,7 +256,7 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
         }
     }
     
-    if (!fileid) {
+    if (!unitID) {
         matteString_t * err = matte_string_create_from_c_str("Could not import '%s'", matte_string_get_c_str(strSrc));
         matte_vm_raise_error_string(vm, err);    
         matte_string_destroy(err);    
@@ -264,15 +264,15 @@ static matteValue_t vm_ext_call__import(matteVM_t * vm, matteValue_t fn, const m
     }
     
     
-    matteValue_t * v = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
+    matteValue_t * v = (matteValue_t*)matte_table_find_by_uint(vm->imported, unitID);
     if (v) {
         #ifdef MATTE_DEBUG
             //printf("import() returning pre-computed value\n");
             //fflush(stdout);
         #endif
     } else {
-        if (preloadOnly) {
-            return matte_vm_run_fileid(vm, fileid, params);
+        if (preloadOnly == 0) {
+            return matte_vm_unit_execute(vm, unitID, 1, params);
         } else {
             return matte_store_new_value(vm->store);
         }
@@ -308,21 +308,21 @@ static matteValue_t vm_ext_call__importmodule(matteVM_t * vm, matteValue_t fn, c
     
     const matteString_t * strSrc = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, a));
     const matteString_t * alias = NULL;
-    int preloadOnly = matte_value_type(preload) == MATTE_VALUE_TYPE_EMPTY || matte_value_as_boolean(vm->store, preload) == 0;
+    int preloadOnly = matte_value_type(preload) == MATTE_VALUE_TYPE_EMPTY && matte_value_as_boolean(vm->store, preload) == 1;
     
     if (matte_value_type(as) == MATTE_VALUE_TYPE_STRING)
         alias = matte_value_string_get_string_unsafe(vm->store, matte_value_as_string(vm->store, as));
     
 
     // first, see if the requested script has been preloaded
-    uint32_t * fileidPtr = (uint32_t*)matte_table_find(vm->importName2ID, alias ? alias : strSrc);
-    uint32_t fileid = fileidPtr ? *fileidPtr : 0;
+    uint32_t * unitIDPtr = (uint32_t*)matte_table_find(vm->importName2ID, alias ? alias : strSrc);
+    uint32_t unitID = unitIDPtr ? *unitIDPtr : 0;
     
-    // if the name does not have a fileid associated with it,
+    // if the name does not have a unitID associated with it,
     // call the import function.
-    if (!fileid) {
+    if (!unitID) {
         if (vm->importFunction) {
-            fileid = vm->importFunction(
+            unitID = vm->importFunction(
                 vm,
                 strSrc,
                 alias,
@@ -331,7 +331,7 @@ static matteValue_t vm_ext_call__importmodule(matteVM_t * vm, matteValue_t fn, c
         }
     }
     
-    if (!fileid) {
+    if (!unitID) {
         matteString_t * err = matte_string_create_from_c_str("Could not import '%s'", matte_string_get_c_str(strSrc));
         matte_vm_raise_error_string(vm, err);    
         matte_string_destroy(err);    
@@ -340,7 +340,7 @@ static matteValue_t vm_ext_call__importmodule(matteVM_t * vm, matteValue_t fn, c
     
 
     
-    matteValue_t * v = (matteValue_t*)matte_table_find_by_uint(vm->imported, fileid);
+    matteValue_t * v = (matteValue_t*)matte_table_find_by_uint(vm->imported, unitID);
     if (v) {
         #ifdef MATTE_DEBUG
             //printf("import() returning pre-computed value\n");
@@ -348,15 +348,15 @@ static matteValue_t vm_ext_call__importmodule(matteVM_t * vm, matteValue_t fn, c
         #endif
     } else {
         if (preloadOnly) {
-            matteValue_t va = matte_vm_run_fileid(vm, fileid, params);
+            return matte_store_new_value(vm->store);
+
+        } else {
+            matteValue_t va = matte_vm_unit_execute(vm, unitID, noCacheFlag ? 0 : 1, params);
             
             if (noCacheFlag) {
                 matte_value_object_pop_lock(vm->store, *v);
-            } else {
-                matte_table_insert_by_uint(vm->imported, fileid, v);
             }
-        } else {
-            return matte_store_new_value(vm->store);
+            return va;
         }
     }
 

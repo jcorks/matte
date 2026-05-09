@@ -487,6 +487,7 @@ static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, mat
                 "Objects with layouts can only have string keys."
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return NULL;                
         } else if (!matte_table_find_by_uint(data->layout, (key.value.id))) {
             matteString_t * err = matte_string_create_from_c_str(
@@ -494,6 +495,7 @@ static matteValue_t * object_lookup(matteStore_t * store, matteObject_t * m, mat
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, key))
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return NULL;                
         }
     }
@@ -2914,6 +2916,7 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
                 "Functions do not have members."
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return matte_store_new_value(store);        
         }
         matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3016,6 +3019,7 @@ matteValue_t matte_value_object_access(matteStore_t * store, matteValue_t v, mat
             matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, v))))
         );
         matte_vm_raise_error_string(store->vm, err);
+        matte_string_destroy(err);
         return matte_store_new_value(store);
       }
       
@@ -3035,6 +3039,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
                 "Types can only yield access to built-in functions through the dot '.' accessor."
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return NULL;
         }
         if (matte_value_type(key) != MATTE_VALUE_TYPE_STRING) {
@@ -3042,6 +3047,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
                 "Types can only yield access to built-in functions through the string keys."
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return NULL;
         }
         
@@ -3059,6 +3065,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, v))))
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return NULL;
         }
         
@@ -3082,6 +3089,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, v))))
             );
             matte_vm_raise_error_string(store->vm, err);
+            matte_string_destroy(err);
             return NULL; //matte_store_new_value(store);        
         }
 
@@ -3102,6 +3110,7 @@ matteValue_t * matte_value_object_access_direct(matteStore_t * store, matteValue
             matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_type_name_noref(store, matte_value_get_type(store, v))))
         );
         matte_vm_raise_error_string(store->vm, err);
+        matte_string_destroy(err);
         return NULL; //matte_store_new_value(store);
       
       
@@ -3180,7 +3189,7 @@ void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
 
 matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
     if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
-        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only get keys from something that's an Object."));        
+        matte_vm_raise_error_cstring(store->vm, "Can only get keys from something that's an Object.");        
         return matte_store_new_value(store);
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3251,7 +3260,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
 
 matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
     if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
-        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only get keys from something that's an Object."));        
+        matte_vm_raise_error_cstring(store->vm, "Can only get keys from something that's an Object.");        
         return matte_store_new_value(store);
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3263,7 +3272,7 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
             m = matte_store_bin_fetch_table(store->bin, v.value.id);
 
             if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
-                matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "values attribute MUST return an object."));
+                matte_vm_raise_error_cstring(store->vm, "values attribute MUST return an object.");
                 return matte_store_new_value(store);
             } else {
                 m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3361,7 +3370,7 @@ matteValue_t matte_value_object_values(matteStore_t * store, matteValue_t v) {
 // Returns the number of number keys within the object, ignoring keys of other types.
 uint32_t matte_value_object_get_number_key_count(matteStore_t * store, matteValue_t v) {
     if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
-        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only get size from something that's an Object."));        
+        matte_vm_raise_error_cstring(store->vm, "Can only get size from something that's an Object.");        
         return 0;
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3371,7 +3380,7 @@ uint32_t matte_value_object_get_number_key_count(matteStore_t * store, matteValu
 
 uint32_t matte_value_object_get_key_count(matteStore_t * store, matteValue_t v) {
     if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
-        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only get a keycount from something that's an Object."));        
+        matte_vm_raise_error_cstring(store->vm, "Can only get a keycount from something that's an Object.");        
         return 0;
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3391,7 +3400,7 @@ void matte_value_object_remove_key_string(matteStore_t * store, matteValue_t v, 
 
 void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteValue_t key) {
     if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
-        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "Can only remove from something that's an Object."));        
+        matte_vm_raise_error_cstring(store->vm, "Can only remove from something that's an Object.");        
         return;
     }
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -3454,7 +3463,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
 
 void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue_t func) {
     if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT || IS_FUNCTION_ID(v.value.id)) {
-        matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "'foreach' requires an object."));
+        matte_vm_raise_error_cstring(store->vm, "'foreach' requires an object.");
         return;
     }
 
@@ -3470,7 +3479,7 @@ void matte_value_object_foreach(matteStore_t * store, matteValue_t v, matteValue
             v = matte_vm_call(store->vm, set, matte_array_empty(), matte_array_empty(), NULL);
             m = (matteObject_t*)matte_store_bin_fetch_table(store->bin, v.value.id);
             if (matte_value_type(v) != MATTE_VALUE_TYPE_OBJECT) {
-                matte_vm_raise_error_string(store->vm, MATTE_VM_STR_CAST(store->vm, "foreach attribute MUST return an object."));
+                matte_vm_raise_error_cstring(store->vm, "foreach attribute MUST return an object.");
                 return;
             } else {
                 m = matte_store_bin_fetch_table(store->bin, v.value.id);
@@ -4808,7 +4817,7 @@ void matte_store_value_object_get_reference_graphology__make_node(
 ) {
     int isFunction = id/2 == (id+1)/2;
 
-    const matteString_t * str = matte_vm_get_script_name_by_id(vm, unitID);
+    const matteString_t * str = matte_vm_unit_get_name(vm, unitID);
     fprintf(
         f,
         "{\"key\":\"%d\", \"attributes\":{\"label\":\"%s %d - %s, %d.\\nAlive %d cycles.%s\", \"size\":%f",
@@ -5099,7 +5108,7 @@ void matte_store_value_object_get_reference_graphology(
 ) {
     printf("Looking for %s, line %d...\n", filename, (int)line);
 
-    uint32_t unitID = matte_vm_get_unit_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
+    uint32_t unitID = matte_vm_unit_get_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
     if (unitID == 0xffffffff) {
         printf("Could not find file as a registered script.\n");
         return;
@@ -5327,7 +5336,7 @@ void matte_store_value_object_get_memory_breakdown(
 ) {
     printf("Looking for %s...\n", filename);
 
-    uint32_t unitID = matte_vm_get_unit_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
+    uint32_t unitID =matte_vm_unit_get_id_by_name(vm, MATTE_VM_STR_CAST(vm, filename));
     if (unitID == 0xffffffff) {
         printf("Could not find file as a registered script.\n");
         return;

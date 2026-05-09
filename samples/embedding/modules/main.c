@@ -57,8 +57,10 @@ int main() {
         // Our module is a simble object with 3 members,
         // a, b, and add. When add is called, it sums 
         // the 2 other members.
+        // The last argument can be a string to catch an error message.
         "@:module = {a:0, b:0, add::<- module.a + module.b};" 
-        "return module;"
+        "return module;",
+        NULL
     );
     
     // Now add the module under the name TestModule
@@ -69,7 +71,7 @@ int main() {
     );
     
     // Import the module in code and work with it.
-    matteValue_t result = matte_run_source(m,
+    matteValue_t result = matte_execute_source(m,
         "@:m = import(:'TestModule');"
         "m.a = 30;"
         "m.b = 40;"

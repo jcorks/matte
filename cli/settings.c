@@ -60,7 +60,7 @@ matteSettings_t * matte_settings_load(matte_t * m) {
     matte_value_into_string(store, &inputJson, json);
     matte_string_destroy(json);
     
-    matteValue_t jsonObject = matte_run_source_with_parameters(
+    matteValue_t jsonObject = matte_execute_source_with_parameters(
         m,
         "return (import(module:'Matte.Core.JSON')).decode(string:parameters);",
         inputJson

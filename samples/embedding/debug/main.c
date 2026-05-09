@@ -58,7 +58,7 @@ int main() {
     // matte_run_source is a quick way to run raw 
     // source. The IO output function is used if an 
     // issue is encountered.
-    matteValue_t result = matte_run_source(m, 
+    matteValue_t result = matte_execute_source(m, 
         "@:add ::(a, b) {\n"
         "  breakpoint();\n"
         "  return a + b;\n"

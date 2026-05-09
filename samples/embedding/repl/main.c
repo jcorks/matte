@@ -91,7 +91,7 @@ int main() {
     
     
     // create the exit function
-    matteValue_t exitFunc = matte_run_source(m, "return getExternalFunction(name:'repl_exit');");
+    matteValue_t exitFunc = matte_execute_source(m, "return getExternalFunction(name:'repl_exit');");
     
     printf("Matte REPL.\n");
     printf("Johnathan Corkery, 2023\n\n"); //<- That's me!
@@ -110,7 +110,7 @@ int main() {
         // that consists of a function with 2 arguments, the exit function 
         // and a _ state object.
         matteString_t * source = matte_string_create_from_c_str("return ::(exit, store){return (%s);};", line);
-        matteValue_t nextFunc = matte_run_source(m, matte_string_get_c_str(source));
+        matteValue_t nextFunc = matte_execute_source(m, matte_string_get_c_str(source));
         matte_string_destroy(source);
 
 

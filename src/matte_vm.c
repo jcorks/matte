@@ -343,7 +343,7 @@ void matte_vm_set_import(
 
 // todo: how to we implement this in a way that we dont "waste"
 // IDs by failed /excessive calls to this when the IDs arent used?
-uint32_t matte_vm_get_new_unit_id(matteVM_t * vm, const matteString_t * name) {
+uint32_t matte_vm_unit_create(matteVM_t * vm, const matteString_t * name) {
     uint32_t unitID = vm->nextID++; 
 
     uint32_t * unitIDPtr = (uint32_t*)matte_allocate(sizeof(uint32_t));
@@ -356,7 +356,7 @@ uint32_t matte_vm_get_new_unit_id(matteVM_t * vm, const matteString_t * name) {
 }
 
 
-uint32_t matte_vm_get_unit_id_by_name(matteVM_t * vm, const matteString_t * name) {
+uint32_t matte_vm_unit_get_id_by_name(matteVM_t * vm, const matteString_t * name) {
     uint32_t * p = (uint32_t*)matte_table_find(vm->importName2ID, name);   
     if (!p) return 0xffffffff;
     return *p;
@@ -656,7 +656,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
     }
     matteVMStackFrame_t * frame = matte_array_at(vm->callstack, matteVMStackFrame_t*, vm->stacksize-1);
     #ifdef MATTE_DEBUG__VM
-        const matteString_t * str = matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_unit_id(frame->stub));
+        const matteString_t * str = matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(frame->stub));
     #endif
     const matteBytecodeStubInstruction_t * inst;
     uint32_t instCount;
@@ -777,7 +777,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             matteValue_t v = matte_store_new_value(vm->store);
             matte_value_into_new_object_ref(vm->store, &v);
             #ifdef MATTE_DEBUG__STORE
-                matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_unit_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
+                matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
                 matte_store_value_object_mark_created(vm->store, v, frame);
             #endif
             STACK_PUSH(v);
@@ -830,7 +830,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteArray_t arr = MATTE_ARRAY_CAST(vals, matteValue_t, sfscount);
                 matte_value_into_new_typed_function_ref(vm->store, &v, stub, &arr);
                 #ifdef MATTE_DEBUG__STORE
-                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_unit_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
+                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
                     matte_store_value_object_mark_created(vm->store, v, frame);
                 #endif
 
@@ -846,7 +846,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matteValue_t v = matte_store_new_value(vm->store);
                 matte_value_into_new_function_ref(vm->store, &v, stub);
                 #ifdef MATTE_DEBUG__STORE
-                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_unit_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
+                    matte_store_track_neutral(vm->store, v, matte_string_get_c_str(matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(frame->stub))), VM_EXECUTABLE_LOOP_CURRENT_LINE);
                     matte_store_value_object_mark_created(vm->store, v, frame);
                 #endif
 
@@ -1085,8 +1085,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
 
             #ifdef MATTE_DEBUG__STORE
                 matteString_t * info = matte_string_create_from_c_str("FUNCTION CALLED @");
-                if (matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_unit_id(frame->stub)))
-                    matte_string_concat(info, matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_unit_id(frame->stub)));
+                if (matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(frame->stub)))
+                    matte_string_concat(info, matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(frame->stub)));
                 matte_store_track_neutral(vm->store, function.value, matte_string_get_c_str(info), VM_EXECUTABLE_LOOP_CURRENT_LINE);
                 matte_string_destroy(info);
             #endif
@@ -1973,14 +1973,14 @@ matteVM_t * matte_vm_create(matte_t * m) {
             // promise to be safe
             uint8_t * src = (uint8_t*)MATTE_ROM__data + MATTE_ROM__offsets[i];
 
-            uint32_t unitID = matte_vm_get_new_unit_id(vm, name);
+            uint32_t unitID = matte_vm_unit_create(vm, name);
             
             matteArray_t * stubs = matte_bytecode_stubs_decode_binary(
                 src,
                 srcLen
             );        
             matte_string_destroy(name);    
-            matte_vm_add_stubs(vm, stubs, unitID);
+            matte_vm_unit_set_program(vm, unitID, stubs);
             matte_array_destroy(stubs);
         }
     }
@@ -2018,7 +2018,6 @@ void matte_vm_destroy(matteVM_t * vm) {
         
         matteValue_t * v = (matteValue_t*)matte_table_iter_get_value(iter);
       
-        printf("CLEANED @%p -> %d\n", v, (int)(uintptr_t)matte_table_iter_get_key(iter));
         matte_value_object_pop_lock(vm->store, *v);
         matte_store_recycle(vm->store, *v);
         matte_deallocate(v);
@@ -2110,11 +2109,11 @@ void matte_vm_destroy(matteVM_t * vm) {
     matte_deallocate(vm);
 }
 
-const matteString_t * matte_vm_get_script_name_by_id(matteVM_t * vm, uint32_t unitID) {
+const matteString_t * matte_vm_unit_get_name(matteVM_t * vm, uint32_t unitID) {
     return (matteString_t*)matte_table_find_by_uint(vm->id2importName, unitID);
 }
 
-void matte_vm_unit_set_stubs(matteVM_t * vm, uint32_t unitID, const matteArray_t * arr) {
+void matte_vm_unit_set_program(matteVM_t * vm, uint32_t unitID, const matteArray_t * arr) {
     uint32_t i;
     uint32_t len = matte_array_get_size(arr);
     for(i = 0; i < len; ++i) {
@@ -2128,7 +2127,7 @@ void matte_vm_unit_set_stubs(matteVM_t * vm, uint32_t unitID, const matteArray_t
         
         }
         
-        matteBytecodeStub_t * existing = matte_table_find_by_uint(fileindex, matte_bytecode_stub_get_id(stub));
+        matteBytecodeStub_t * existing = (matteBytecodeStub_t *)matte_table_find_by_uint(fileindex, matte_bytecode_stub_get_id(stub));
   
         // TODO: error state. For now, just dont add the new stub.
         if (existing) {
@@ -2158,7 +2157,7 @@ static void matte_vm_call_full__raise_error(
         fullErr = matte_string_create_from_c_str(
             "Error occurred while starting call: %s\nFunction was defined in %s, line %d.",
             matte_string_get_c_str(error),
-            matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, unitID)),
+            matte_string_get_c_str(matte_vm_unit_get_name(vm, unitID)),
             line
         );
     } else {
@@ -2528,8 +2527,8 @@ matteValue_t matte_vm_call_full(
             uint32_t instcount;
             const matteBytecodeStubInstruction_t * inst = matte_bytecode_stub_get_instructions(frame->stub, &instcount);                    
             matteString_t * info = matte_string_create_from_c_str("REFERRABLE MADE @");
-            if (matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_unit_id(frame->stub))) {
-                matte_string_concat(info, matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_unit_id(frame->stub)));
+            if (matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(frame->stub))) {
+                matte_string_concat(info, matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(frame->stub)));
             }
             matte_string_destroy(info);
         }
@@ -2633,13 +2632,13 @@ matteValue_t matte_vm_call(
 
 
 
-matteValue_t matte_vm_run_unitID(
+matteValue_t matte_vm_unit_execute(
     matteVM_t * vm, 
     uint32_t unitID, 
     int cache,
     matteValue_t parameters
 ) {
-    if (unitID != MATTE_VM_DEBUG_FILE) {
+    if (unitID != MATTE_VM_DEBUG_UNIT) {
         matteValue_t * precomp = (matteValue_t*)matte_table_find_by_uint(vm->imported, unitID);
         if (precomp) return *precomp;
     }
@@ -2671,7 +2670,7 @@ matteValue_t matte_vm_run_unitID(
     matteArray_t argNames = MATTE_ARRAY_CAST(&vm->specialString_parameters, matteValue_t, 1);
     matteArray_t args = MATTE_ARRAY_CAST(&parameters, matteValue_t, 1);
 
-    matteValue_t result = matte_vm_call(vm, func, &args, &argNames, matte_vm_get_script_name_by_id(vm, unitID));
+    matteValue_t result = matte_vm_call(vm, func, &args, &argNames, matte_vm_unit_get_name(vm, unitID));
 
     *ref = result;
     matte_value_object_push_lock(vm->store, *ref);
@@ -2753,7 +2752,7 @@ static void debug_compile_error(
     vm->debug(
         vm,
         MATTE_VM_DEBUG_EVENT__ERROR_RAISED,
-        MATTE_VM_DEBUG_FILE,
+        MATTE_VM_DEBUG_UNIT,
         line, 
         v,
         vm->debugData
@@ -2761,7 +2760,7 @@ static void debug_compile_error(
     matte_store_recycle(vm->store, v);
 }
 
-matteValue_t matte_vm_run_scoped_debug_source(
+matteValue_t matte_vm_execute_scoped_debug_source(
     matteVM_t * vm,
     const matteString_t * src,
     int callstackIndex,
@@ -2798,8 +2797,8 @@ matteValue_t matte_vm_run_scoped_debug_source(
             jitBuffer, jitSize
         );
         
-        matte_vm_add_stubs(vm, jitstubs, MATTE_VM_DEBUG_FILE);
-        result = matte_vm_run_unitID(vm, MATTE_VM_DEBUG_FILE, matte_store_new_value(vm->store));
+        matte_vm_unit_set_program(vm, MATTE_VM_DEBUG_UNIT, jitstubs);
+        result = matte_vm_unit_execute(vm, MATTE_VM_DEBUG_UNIT, 0, matte_store_new_value(vm->store));
         matte_array_destroy(jitstubs);
     } else {
         result = matte_store_new_value(vm->store);
@@ -2868,7 +2867,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
         matteValue_t frame = matte_store_new_value(vm->store);
         matte_value_into_new_object_ref(vm->store, &frame);
 
-        const matteString_t * filename = matte_vm_get_script_name_by_id(vm, matte_bytecode_stub_get_unit_id(framesrc.stub));
+        const matteString_t * filename = matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(framesrc.stub));
         
         matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "file"));
         matte_value_into_string(vm->store, &val, filename ? filename : MATTE_VM_STR_CAST(vm, "<unknown>"));        

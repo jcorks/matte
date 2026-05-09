@@ -58,7 +58,7 @@ int main() {
     // matte_run_source is a quick way to run raw 
     // source. The IO output function is used if an 
     // issue is encountered.
-    matteValue_t result = matte_run_source(m, 
+    matteValue_t result = matte_execute_source(m, 
         // import 2 modules, each returning an object 
         // with a member called "myFunction"
         "@:m1 = import(:'module1.mt');"

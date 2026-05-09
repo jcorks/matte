@@ -28,12 +28,19 @@ DEALINGS IN THE SOFTWARE.
 
 */
 // This demonstrates the server-side basic usage of Socket,
-// which performssockets over the IP.
-@:Socket     = import(module:'Matte.System.Socket');
+// which performs sockets over IP.
+@:Socket = ::? {
+    return import(module:'Matte.System.Socket');
+} => {
+    onError::(message) {
+        print(:'ERROR: It looks like the Sockets extension is not compiled in. For security, it is an optional addon. Check the CLI makefiles for the flags to create an executable with socket support.');
+    }
+}
 @:Time         = import(module:'Matte.System.Time');
 @:MemoryBuffer = import(module:'Matte.Core.MemoryBuffer');
 
-
+// Exit if no sockets.
+when(Socket == empty) 1;
 
 // This is a utility function for processing
 // strings and sending them as MemoryBuffers.
@@ -106,7 +113,8 @@ server.installHook(event:'onNewClient', hook:::(detail){
                 str = str->setCharCodeAt(index:i, value:data.readI8(:i));
             }
 
-            print(:'Server: ' + client.address + ' has sent ' + data.size + 'bytes :' + str);        
+            print(:'Server: ' + client.address + ' has sent ' + data.size + 
+                   'bytes :' + str);        
 
             // and send back a string to the client
             sendDataString(client:client, str:'pong!');

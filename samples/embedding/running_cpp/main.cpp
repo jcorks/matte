@@ -128,7 +128,7 @@ int main() {
     // issue is encountered.
     // NOTE: there is a built-in function for sorting;
     // this example is for demonstration purposes only!
-    matteValue_t result = matte_run_source(m,
+    matteValue_t result = matte_execute_source(m,
         // input array 
         "@:array = [10, 40, 3, 6, 20, 450];"
         

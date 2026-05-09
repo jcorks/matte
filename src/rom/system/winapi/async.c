@@ -164,7 +164,7 @@ static void matte_thread_error(
             *startData->errorStringRef = matte_string_create_from_c_str(
                 "Unhandled error: \n%s\n", 
                 matte_string_get_c_str(matte_value_string_get_string_unsafe(store, s)), 
-                matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), 
+                matte_string_get_c_str(matte_vm_unit_get_name(vm, file)), 
                 lineNumber
             );
             *startData->stateRef = MWAS_FAILED;        
@@ -174,7 +174,7 @@ static void matte_thread_error(
     
     *startData->errorStringRef = matte_string_create_from_c_str(
         "Unhandled error (%s, line %d)\n", 
-        matte_string_get_c_str(matte_vm_get_script_name_by_id(vm, file)), 
+        matte_string_get_c_str(matte_vm_unit_get_name(vm, file)), 
         lineNumber
     );
     *startData->stateRef = MWAS_FAILED;        
@@ -253,13 +253,13 @@ static void * matte_thread(void * userData) {
     matteStore_t * store = matte_vm_get_store(vm);
 
     // first compile all and add them 
-    int FILEIDS = matte_vm_get_new_file_id(vm, startData->from);
+    int FILEIDS = matte_vm_unit_create(vm, startData->from);
 
     
 
     matteArray_t * arr = matte_bytecode_stubs_from_bytecode(outBytes, outByteLen);
     matte_deallocate(outBytes);
-    matte_vm_add_stubs(vm, arr, FILEIDS);
+    matte_vm_unit_set_program(vm, FILEIDS, arr);
     matte_array_destroy(arr);
 
 
@@ -284,7 +284,7 @@ static void * matte_thread(void * userData) {
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::asyncworker_send_message"),   1, matte_asyncworker__send_message, startData);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::asyncworker_check_message"),   0, matte_asyncworker__check_message, startData);
 
-    matteValue_t v = matte_vm_run_fileid(vm, FILEIDS, params);
+    matteValue_t v = matte_vm_unit_execute(vm, FILEIDS, 0, params);
     matte_string_destroy(fromPath);
 
     

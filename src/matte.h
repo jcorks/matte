@@ -226,7 +226,7 @@ matteValue_t matte_call(
 /// the matte output IO function. If an unhandled error occurs,
 /// empty will be returned.
 ///
-matteValue_t matte_run_source(
+matteValue_t matte_execute_source(
     /// Instance to run.
     matte_t *, 
 

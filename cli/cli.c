@@ -125,7 +125,7 @@ static uint32_t cli_importer(
     }
     if (settings && settings != (void*)0x1) {
         if (load_package_recursive(m, name)) {
-            return matte_vm_get_file_id_by_name(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name)); 
+            return matte_vm_unit_get_id_by_name(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name)); 
         }
     }
     
@@ -166,8 +166,8 @@ static uint32_t cli_importer(
             byteLen
         );
         if (stubs) {
-            fileid = matte_vm_get_new_file_id(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name));
-            matte_vm_add_stubs(matte_get_vm(m), stubs, fileid);
+            fileid = matte_vm_unit_create(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name));
+            matte_vm_unit_set_program(matte_get_vm(m), fileid, stubs);
         }
     // raw source
     } else {
@@ -195,9 +195,10 @@ static uint32_t cli_importer(
             matte_vm_raise_error_string(matte_get_vm(m), str);
             matte_string_destroy(str);
         } else {        
-            fileid = matte_vm_get_new_file_id(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name));
-            matte_vm_add_stubs(matte_get_vm(m), stubs, fileid);
+            fileid = matte_vm_unit_create(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name));
+            matte_vm_unit_set_program(matte_get_vm(m), fileid, stubs);
         }
+        if (stubs) matte_array_destroy(stubs);
         matte_string_destroy(error);
     }
 
@@ -219,7 +220,7 @@ static int repl() {
     matte_value_object_push_lock(store, state);
     
     matte_add_external_function(m, "repl_exit", repl_exit, NULL, NULL);
-    matteValue_t exitFunc = matte_run_source(m, "return getExternalFunction(name:'repl_exit');");
+    matteValue_t exitFunc = matte_execute_source(m, "return getExternalFunction(name:'repl_exit');");
     
     printf("Matte REPL.\n");
     printf("Johnathan Corkery, 2023\n");
@@ -233,7 +234,7 @@ static int repl() {
         fgets(line, REPL_LINE_LIMIT, stdin); 
         
         matteString_t * source = matte_string_create_from_c_str("return ::(exit, store){return (%s);};", line);
-        matteValue_t nextFunc = matte_run_source(m, matte_string_get_c_str(source));
+        matteValue_t nextFunc = matte_execute_source(m, matte_string_get_c_str(source));
         matte_string_destroy(source);
 
         if (matte_value_type(nextFunc) != MATTE_VALUE_TYPE_EMPTY) {

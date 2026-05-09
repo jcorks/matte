@@ -36,6 +36,7 @@ DEALINGS IN THE SOFTWARE.
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <matte_string.h>
 
 int main() {
     // create a matte instance
@@ -51,6 +52,7 @@ int main() {
     // running it right away. This is a way to package 
     // Matte code. The bytecode could theoretically be used in a separate 
     // VM and could be run with equivalent results
+    matteString_t * error = matte_string_create();
     uint32_t bytecodeSize;
     uint8_t * bytecode = matte_compile_source(m, 
         &bytecodeSize,
@@ -58,14 +60,29 @@ int main() {
         "  return a + b;\n"
         "}\n"
         "\n"
-        "return add(a:'My favorite number is ', b:256);"
+        "return add(a:'My favorite number is ', b:256);",
+        error
     );
+
+
+    // Handle the error if one occurs.
+    if (bytecode == NULL || bytecodeSize == 0) {
+
+        // Report error
+        printf("Compiling the source caused an error: %s\n", matte_string_get_c_str(error));
+
+        // Clean up
+        matte_destroy(m); 
+        
+        // Return error code.
+        return 1;
+    }
     
     printf("The source converted to bytecode was %d bytes\n", bytecodeSize);
     
     
     // Now run the bytecode.
-    matteValue_t result = matte_run_bytecode(m, bytecode, bytecodeSize);
+    matteValue_t result = matte_execute_bytecode(m, bytecode, bytecodeSize);
 
     // free the bytecode
     free(bytecode);

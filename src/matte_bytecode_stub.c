@@ -145,7 +145,7 @@ struct matteBytecodeStub_t {
 
 
 matteBytecodeStub_t * matte_bytecode_stub_create(const matteBytecodeStubLayout_t * layout) {
-    matteBytecodeStub_t * stub = matte_allocate(sizeof(matteBytecodeStub_t));
+    matteBytecodeStub_t * stub = (matteBytecodeStub_t *) matte_allocate(sizeof(matteBytecodeStub_t));
     stub->unitID = layout->unitID;
     stub->stubID = layout->stubID;
     
@@ -608,7 +608,7 @@ uint8_t * matte_bytecode_stubs_encode_binary(
 
 
     *size = matte_array_get_size(byteout);
-    uint8_t * out = matte_array_get_data(byteout);
+    uint8_t * out = (uint8_t*)matte_array_get_data(byteout);
     matte_array_destroy_xfer(byteout);
     return out;
 }
@@ -644,7 +644,7 @@ static matteValue_t * link_strings(
     matteStore_t * store
 ) {
     uint32_t i;
-    matteValue_t * values = matte_allocate(sizeof(matteValue_t)*count);
+    matteValue_t * values = (matteValue_t *)matte_allocate(sizeof(matteValue_t)*count);
 
     for(i = 0; i < count; ++i) {
         matteValue_t v = matte_store_new_value(store);
@@ -783,11 +783,11 @@ uint8_t * matte_instruction_stream_encode(
 
 
     if (includeDebug) {
-        debgStream = matte_allocate((sizeof(int8_t) + sizeof(int16_t))*len + sizeof(uint32_t));
+        debgStream = (int8_t *)matte_allocate((sizeof(int8_t) + sizeof(int16_t))*len + sizeof(uint32_t));
 
         int8_t  * debgStreamIter = &debgStream[0];
 
-        debgStreamIter = (uint8_t*)write_rolled_uint_bytes((uint8_t*)debgStreamIter, startingLine);
+        debgStreamIter = (int8_t*)write_rolled_uint_bytes((uint8_t*)debgStreamIter, startingLine);
 
         uint16_t start = insts[0].info.lineOffset;
         uint16_t last  = start;
@@ -811,7 +811,7 @@ uint8_t * matte_instruction_stream_encode(
     }
     
     
-    uint8_t * out = matte_allocate(*outLen);
+    uint8_t * out = (uint8_t*)matte_allocate(*outLen);
     uint8_t * outIter = out;
 
     memcpy(outIter, &instSize,  sizeof(uint32_t)); outIter += sizeof(uint32_t);

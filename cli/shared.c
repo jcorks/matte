@@ -124,7 +124,8 @@ matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
                     if (!key) {
                         key = iter;
                         iter = matte_string_create();                    
-                    }                    break;
+                    }                    
+                    break;
                 }
             default:
                 matte_string_append_char(iter, matte_string_get_char(str, i));
@@ -147,5 +148,6 @@ matteValue_t parse_parameters(matteVM_t * vm, char ** args, uint32_t count) {
         matte_string_destroy(str);
 
     }
+    matte_string_destroy(iter);
     return v;
 }

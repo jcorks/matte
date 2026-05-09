@@ -115,7 +115,7 @@ int main() {
     
     // run a script that just pulls the external function 
     // and runs it with some arguments.
-    matteValue_t result = matte_run_source(
+    matteValue_t result = matte_execute_source(
         m,
             // Gets the external function of the given ID 
             // throws an error if it fails.

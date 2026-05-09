@@ -49,7 +49,7 @@ int main() {
     
     
     // Runs a script that returns a function as a value.
-    matteValue_t matteFunction = matte_run_source(m, 
+    matteValue_t matteFunction = matte_execute_source(m, 
         "@:add ::(a, b) {\n"
         "  return a + b;\n"
         "}\n"
