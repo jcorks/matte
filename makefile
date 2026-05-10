@@ -32,20 +32,20 @@ LIBS+= -lpthread -lssl -lcrypto
 DEFINES= -D_GNU_SOURCE -D_XOPEN_SOURCE=500
 
 # Flag for compilation of system extentions
-DEFINES+= -DMATTE_USE_SYSTEM_EXTENTIONS
+DEFINES+= -DMATTE_USE_SYSTEM_EXTENSIONS
 
 # Flag for compilation inclusion of basic system extensions
-DEFINES+= -DMATTE_USE_SYSTEM_EXTENTIONS__BASIC
+DEFINES+= -DMATTE_USE_SYSTEM_EXTENSIONS__BASIC
 
 # Flag for compilation of all system extensions.
-DEFINES+= -DMATTE_USE_SYSTEM_EXTENTIONS__ALL
+DEFINES+= -DMATTE_USE_SYSTEM_EXTENSIONS__ALL
 
 
 
 # These flags are for debugging the VM and compiler itself
 
 # Normal debugging
-#DEFINES+= -DMATTE_DEBUG
+DEFINES+= -DMATTE_DEBUG
 
 # Deep debugging for the VM and store modules
 #DEFINES+= -DMATTE_DEBUG__COMPILER -DMATTE_DEBUG__STORE
@@ -54,7 +54,7 @@ DEFINES+= -DMATTE_USE_SYSTEM_EXTENTIONS__ALL
 #DEFINES+= -DMATTE_DEBUG_STORE__LEVEL_2
 
 all:
-	cd ./src/rom/ && make CC=$(CC) DEFINES="$(DEFINES)"
+	cd ./src/rom/ && make CC="$(CC)" DEFINES="$(DEFINES)"
 	cd ./src/rom/ && ./makerom
 	$(CC) $(CC_MAKE_OBJECT_FILES) $(RELEASE_CC_FLAGS) ./src/*.c ./src/rom/native.c $(DEFINES)
 	$(MAKE_LIBRARY)
@@ -74,7 +74,7 @@ all:
 	@echo ""
 
 debug:
-	cd ./src/rom/ && make CC=$(CC) DEFINES="$(DEFINES)"
+	cd ./src/rom/ && make CC="$(CC)" DEFINES="$(DEFINES)"
 	cd ./src/rom/ && ./makerom
 	$(CC) $(CC_MAKE_OBJECT_FILES) $(DEBUG_CC_FLAGS) ./src/*.c ./src/rom/native.c $(DEFINES)
 	$(MAKE_LIBRARY)

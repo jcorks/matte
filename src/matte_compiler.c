@@ -5155,6 +5155,12 @@ matteArray_t * matte_function_block_array_to_stubs(
         
         if ((options & MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO)) {
             layout.localNames = block->locals;
+        } else {
+            uint32_t len = matte_array_get_size(block->locals);
+            for(n = 0; n < len; ++n) {
+                matte_string_clear(matte_array_at(block->locals, matteString_t *, n));
+            }
+            layout.localNames = block->locals;
         }
         layout.localStrings = block->strings;
         layout.captures = block->captures;
@@ -5166,9 +5172,7 @@ matteArray_t * matte_function_block_array_to_stubs(
 
         // transfer ownership
         block->args = NULL;
-        if ((options & MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO)) {
-            block->locals = NULL;
-        }
+        block->locals = NULL;
         block->strings = NULL;
         block->captures = NULL;
         block->instructions = NULL;
