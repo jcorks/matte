@@ -126,6 +126,33 @@ void matte_debugging_enable(
     matte_t *
 );
 
+/// When called, sets the options to use for when matte has to 
+/// compile source. Currently, this is only used for enabling 
+/// compiling with debug info
+///
+/// Debug information includes extra data per bytecode stub that 
+/// allows debugging mode to be more informative, to completing 
+/// backtraces, and to allow full evaluation at breakpoints.
+///
+/// The default value is 
+/*
+    MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO |
+    MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO |
+*/
+/// For flag info, see matte_compiler.h
+void matte_set_compile_flags(
+    /// The instance to enable debug info with
+    matte_t *,
+    
+    /// New compile flags as an ORd
+    /// set of the flags. (matte_compiler.h)
+    int flags
+);
+
+/// Returns the current compile flags as an ORd
+/// set of the flags.
+int matte_get_compile_flags(const matte_t *);
+
 
 /// When called, associates a unitID with a source file.
 /// For the default importer, this is called for you when 
@@ -307,87 +334,6 @@ void matte_set_importer(
 );
 
 
-/// Loads a package file and preloads all its 
-/// sources. Any trailing packages are also loaded.
-/// If any of the embedded packages fail to be 
-/// correctly read, a value of type empty
-/// and an error within the VM is raised. 
-/// matte_load_package will try to read and load 
-/// as much as it can and will stop on error.
-/// The main.mt is preloaded as the name of the package, while 
-/// all other sources are labeled as [package name].[source name]
-/// when preloaded.
-/// An object containing the parsed JSON describing 
-/// the package.
-/// Package JSON objects have the following attributes:
-/*
-    {
-        'name':         String,
-        'author':       String,
-        'maintainer':   String,
-        'description':  String,
-
-        'version', Object,
-    
-        'depends',      Object, 
-        'sources',      Object
-    }
-*/
-///
-/// The value is owned and reserved by the VM,
-/// so it shoud not be recycled.
-matteValue_t matte_load_package(
-    /// The instance to load the package into.
-    matte_t *,
-    /// A buffer containing the bytes the consist of the package.
-    const uint8_t * packageBytes,
-    /// The number of bytes in the buffer.
-    uint32_t packageByteLength
-);
-
-
-/// Returns the parsed JSON package object.
-/// If no such one exists, the empty value is returned.
-///
-/// The value is owned and reserved by the VM,
-/// so it shoud not be recycled.
-matteValue_t matte_get_package_info(
-    /// The instance to retrieve package info from
-    matte_t *,
-    /// The name of the package.
-    const char * packageName
-);
-    
-    
-/// Creates a new array of matteString_t *
-/// containing the dependency package names.
-/// If no such package has been loaded, NULL is returned.
-/// In the case an array is returned, the caller is 
-/// responsible for cleaning up the array and strings.
-matteArray_t * matte_get_package_dependencies(
-    /// The instance to query
-    matte_t *,
-    
-    /// The name of the package
-    const char * packageName
-);    
-
-/// Checks to see whether the package has all its 
-/// dependencies met. This checks all loaded packages 
-/// and their versions to see if it is safe to 
-/// run. If it is not, an error is thrown 
-/// and 0 is returned.
-/// While it is not necessary to call this on any package,
-/// it is helpful as a preflight check to make sure the 
-/// package will run properly.
-int matte_check_package(
-    /// The instance to check.
-    matte_t *,
-    /// The package to check
-    const char * packageName
-);
-
-
 /// Convenience function that runs the given bytecode.
 /// Internally, it is given a unique name and
 /// runs the new unitID immediately. If an unhandled error 
@@ -490,6 +436,94 @@ matteSyntaxGraph_t * matte_get_syntax_graph(
     /// The instance to retrieve the graph from.
     matte_t *
 );
+
+
+
+
+
+/// Loads a package file and preloads all its 
+/// sources. Any trailing packages are also loaded.
+/// If any of the embedded packages fail to be 
+/// correctly read, a value of type empty
+/// and an error within the VM is raised. 
+/// matte_load_package will try to read and load 
+/// as much as it can and will stop on error.
+/// The main.mt is preloaded as the name of the package, while 
+/// all other sources are labeled as [package name].[source name]
+/// when preloaded.
+/// Returns an object containing the parsed JSON describing 
+/// the package.
+/// Package JSON objects have the following attributes:
+/*
+    {
+        'name':         String,
+        'author':       String,
+        'maintainer':   String,
+        'description':  String,
+
+        'version', Object,
+    
+        'depends',      Object, 
+        'sources',      Object
+    }
+*/
+///
+/// The value is owned and reserved by the VM,
+/// so it shoud not be recycled.
+matteValue_t matte_load_package(
+    /// The instance to load the package into.
+    matte_t *,
+    /// A buffer containing the bytes the consist of the package.
+    const uint8_t * packageBytes,
+    /// The number of bytes in the buffer.
+    uint32_t packageByteLength
+);
+
+
+/// Returns the parsed JSON package object.
+/// If no such one exists, the empty value is returned.
+///
+/// The value is owned and reserved by the VM,
+/// so it shoud not be recycled.
+matteValue_t matte_get_package_info(
+    /// The instance to retrieve package info from
+    matte_t *,
+    /// The name of the package.
+    const char * packageName
+);
+    
+    
+/// Creates a new array of matteString_t *
+/// containing the dependency package names.
+/// If no such package has been loaded, NULL is returned.
+/// In the case an array is returned, the caller is 
+/// responsible for cleaning up the array and strings.
+matteArray_t * matte_get_package_dependencies(
+    /// The instance to query
+    matte_t *,
+    
+    /// The name of the package
+    const char * packageName
+);    
+
+/// Checks to see whether the package has all its 
+/// dependencies met. This checks all loaded packages 
+/// and their versions to see if it is safe to 
+/// run. If it is not, an error is thrown 
+/// and 0 is returned.
+/// While it is not necessary to call this on any package,
+/// it is helpful as a preflight check to make sure the 
+/// package will run properly.
+int matte_check_package(
+    /// The instance to check.
+    matte_t *,
+    /// The package to check
+    const char * packageName
+);
+
+
+
+
 
 /// Allocates a buffer of size bytes
 /// All bytes are set to 0. Upon error

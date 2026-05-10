@@ -1,9 +1,0 @@
-all:
-	make -f ./makefile_rom
-	gcc -std=c99 -O2 -c ./src/*.c
-	gcc -std=c99 -O2 -c ./src/rom/native.c
-	ar rcs libmatte.a *.o
-	
-clean:
-	rm -f *.o
-	rm -f libmatte.a

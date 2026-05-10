@@ -172,8 +172,8 @@ static uint32_t cli_importer(
     // raw source
     } else {
         matteString_t * error = matte_string_create_from_c_str("");
-        matteArray_t * stubs = matte_compiler_run_stubs(
-            DEBUG ? MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO : 0,
+        matteArray_t * stubs = matte_compiler_run_stubs(  
+            matte_get_compile_flags(m),
             matte_get_syntax_graph(m),
             
             bytes,
@@ -477,9 +477,9 @@ int main(int argc, char ** args) {
             exit(1);
         }
         
-        if (!strcmp(tool, "compile-debug"))
-            matte_debugging_enable(m);
-        
+        if (!strcmp(tool, "compile")) {
+            matte_set_compile_flags(m, 0);
+        }
         uint32_t sourceLen;
         uint8_t * source = (uint8_t*)dump_bytes(args[2], &sourceLen, 1);
         if (!source) {

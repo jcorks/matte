@@ -39,7 +39,7 @@ DEALINGS IN THE SOFTWARE.
 #ifdef MATTE_USE_SYSTEM_EXTENSIONS__ALL
     #define MATTE_USE_SYSTEM_EXTENSIONS
     #define MATTE_USE_SYSTEM_EXTENSIONS__BASIC
-    #define MATTE_USE_SYSTEM_EXTENTIONS__SOCKETS
+    #define MATTE_USE_SYSTEM_EXTENSIONS__SOCKETS
 #endif
 
 #include "./core/json.c"
@@ -70,7 +70,7 @@ DEALINGS IN THE SOFTWARE.
         #include "./system/winapi/async.c"
     #endif
 
-    #ifdef MATTE_USE_SYSTEM_EXTENTIONS__SOCKETS
+    #ifdef MATTE_USE_SYSTEM_EXTENSIONS__SOCKETS
         #include "./system/winapi/socketio.c"
     #endif
 
@@ -106,7 +106,7 @@ DEALINGS IN THE SOFTWARE.
         #include "./system/posix/async.c"
     #endif        
         
-    #ifdef MATTE_USE_SYSTEM_EXTENTIONS__SOCKETS
+    #ifdef MATTE_USE_SYSTEM_EXTENSIONS__SOCKETS
         #include <netdb.h>
         #include <sys/socket.h>
         #include <netinet/in.h>
@@ -140,7 +140,7 @@ void matte_bind_native_functions(matteVM_t * vm) {
         matte_system__async(vm);
     #endif
 
-    #ifdef MATTE_USE_SYSTEM_EXTENTIONS__SOCKETS
+    #ifdef MATTE_USE_SYSTEM_EXTENSIONS__SOCKETS
         matte_system__socketio(vm);
     #endif
     

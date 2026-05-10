@@ -104,6 +104,9 @@ struct matte_t {
     // The required frame to step to. Used for step vs next
     int stepreqframe;
     
+    // Whether compilations will include debug info
+    int compileFlags;
+    
     // Database of unitID to array of line strings.
     // Used for debugging print areas.
     matteTable_t * lines; // unitID -> array of lines (matteString);
@@ -597,6 +600,10 @@ static uint32_t default_importer(
 matte_t * matte_create() {
     matte_t * m = (matte_t*)matte_allocate(1*sizeof(matte_t));
     m->output = default_output;
+    m->compileFlags = 
+        MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO |
+        MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO;
+            
     m->graph = matte_syntax_graph_create();
     m->vm = matte_vm_create(m);
     m->packages = matte_table_create_hash_c_string();
@@ -785,11 +792,7 @@ matteValue_t matte_execute_bytecode(matte_t * m, const uint8_t * bytecode, uint3
 
 uint8_t * matte_compile_source(matte_t * m, uint32_t * bytecodeSize, const char * source, matteString_t * error) {
     uint8_t * a = matte_compiler_run(
-        m->isDebug ? (
-          MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO |
-          MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO
-        ) : 
-          0,
+        m->compileFlags,
         m->graph,
         (uint8_t*)source,
         strlen(source),
@@ -836,11 +839,7 @@ matteValue_t matte_execute_bytecode_with_parameters(matte_t * m, const uint8_t *
 matteValue_t matte_execute_source_with_parameters(matte_t * m, const char * source, matteValue_t input) {
     
     matteArray_t * stubs = matte_compiler_run_stubs(
-        m->isDebug ? (
-          MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO |
-          MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO
-        ) : 
-          0,
+        m->compileFlags,
         m->graph,
         (uint8_t*)source,
         strlen(source),
@@ -915,11 +914,7 @@ uint32_t matte_add_module(
     // raw source
     } else {
         matteArray_t * stubs = matte_compiler_run_stubs(
-            m->isDebug ? (
-              MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO |
-              MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO 
-            ): 
-              0,
+            m->compileFlags,
             m->graph,
             bytes,
             bytelen,
@@ -967,6 +962,13 @@ void matte_debugging_enable(matte_t * m) {
     m->lastInput = matte_strdup("");
 }
 
+void matte_set_compile_flags(matte_t * m, int flags) {
+    m->compileFlags = flags;
+}
+
+int matte_get_compile_flags(const matte_t * m) {
+    return m->compileFlags;
+}
 
 void matte_debugging_register_source(
     matte_t * m,

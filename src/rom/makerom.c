@@ -118,6 +118,12 @@ int main() {
     );
 
     matteSyntaxGraph_t * graph = matte_syntax_graph_create();
+    #ifdef MATTE_DEBUG
+        printf("Assembling ROM file WITH debugging data.\n");
+    #else 
+        printf("Assembling ROM file WITHOUT debugging data.\n");    
+    #endif
+    
     
     char ** iter = files;
     int count = 0;
@@ -127,7 +133,12 @@ int main() {
         uint8_t * data = dump_bytes(iter[0], &len);
         uint32_t romCompiledLen = 0;
         uint8_t * romCompiledBytes = matte_compiler_run(
-            MATTE_COMPILER__OPTION__INCLUDE_DEBUG_INFO,
+          #ifdef MATTE_DEBUG
+            MATTE_COMPILER__OPTION__INCLUDE_DEBUG_LINE_INFO |
+            MATTE_COMPILER__OPTION__INCLUDE_DEBUG_PNR_INFO,
+          #else 
+            0,
+          #endif
             graph,
             data,
             len,

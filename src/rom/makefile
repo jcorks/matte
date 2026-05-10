@@ -1,8 +1,7 @@
-# default is GCC. Override CC when invoking make for something else.
-CC:=gcc
+#defines are from the root makefile. look there for more details
 
-with-extensions:
-	$(CC) -std=c99 -g -DMATTE_USE_SYSTEM_EXTENSIONS -DMATTE_ROMLESS -DMATTE_DEBUG ../*.c -lm ./makerom.c  -o makerom
-	
-no-extensions:
-	$(CC) -std=c99 -g -DMATTE_ROMLESS ../*.c -lm ./makerom.c  -o makerom
+
+all:
+	$(CC) $(DEFINES) -DMATTE_ROMLESS ../*.c -lm ./makerom.c  -o makerom
+
+
