@@ -45,7 +45,7 @@ DEFINES+= -DMATTE_USE_SYSTEM_EXTENSIONS__ALL
 # These flags are for debugging the VM and compiler itself
 
 # Normal debugging
-DEFINES+= -DMATTE_DEBUG
+#DEFINES+= -DMATTE_DEBUG
 
 # Deep debugging for the VM and store modules
 #DEFINES+= -DMATTE_DEBUG__COMPILER -DMATTE_DEBUG__STORE
