@@ -1108,8 +1108,8 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 matte_vm_raise_error_cstring(vm, "VM error: tried to prepare arguments for referrable assignment, but insufficient arguments on the stack.");    
                 break;            
             }
-            uint64_t refn = ((uint64_t)inst->data64) % 0xffffffff;
-            uint64_t op  = ((uint64_t)inst->data64) / 0xffffffff;
+            uint64_t refn = inst->data32.slot0;
+            uint64_t op  = inst->data32.slot1;
             
             matteValue_t * ref = (matteValue_t *)matte_vm_current_stackframe_get_referrable(vm, refn); 
             if (ref) {
@@ -2869,7 +2869,7 @@ matteValue_t vm_info_new_object(matteVM_t * vm, matteValue_t detail) {
 
         const matteString_t * filename = matte_vm_unit_get_name(vm, matte_bytecode_stub_get_unit_id(framesrc.stub));
         
-        matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "file"));
+        matte_value_into_string(vm->store, &key, MATTE_VM_STR_CAST(vm, "unit"));
         matte_value_into_string(vm->store, &val, filename ? filename : MATTE_VM_STR_CAST(vm, "<unknown>"));        
         matte_value_object_set(vm->store, frame, key, val, 0);
         

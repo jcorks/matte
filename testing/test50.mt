@@ -12,7 +12,7 @@
         errMessage = 
             'callstack:' + 
             message.callstack.length +':' + 
-            message.callstack.frames[0].file + ':' + 
+            message.callstack.frames[0].unit + ':' + 
             message.callstack.frames[0].lineNumber;
         return 100;
     }

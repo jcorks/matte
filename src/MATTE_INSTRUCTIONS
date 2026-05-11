@@ -172,9 +172,10 @@ static void write_instruction__arf(matteArray_t * insts, uint16_t lineOffset, ui
     matteBytecodeStubInstruction_t inst;
     inst.info.lineOffset = lineOffset;
     inst.info.opcode = MATTE_OPCODE_ARF;
-    uint64_t packed = ref;
-    packed += ((uint64_t)op) * (0xffffffff);
-    inst.data64 = packed;
+    
+    inst.data32.slot0 = ref;
+    inst.data32.slot1 = op;
+    
     matte_array_push(insts, inst);
 }
 

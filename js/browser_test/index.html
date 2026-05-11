@@ -73,7 +73,7 @@
             const test = testList++;
             readBinary('/browser_test/test'+test+'.mt.bytes', function(array) {
                 console.log('Performing test ' + test + '...');
-                result = matte.runBytecode(array, null, 'test'+test+'.mt');
+                result = matte.executeBytecode(array, null, 'test'+test+'.mt');
 
                 readText('/browser_test/test'+test+'.out', function(text) {
                     text = text.replaceAll(' ', '');

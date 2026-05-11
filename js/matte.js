@@ -124,34 +124,35 @@ Matte.newVM = function(
             MATTE_OPCODE_OSN : 12,
             // lookup member
             MATTE_OPCODE_OLK : 13,
+            MATTE_OPCODE_OLB : 14,
 
             // general purpose operator code.
-            MATTE_OPCODE_OPR : 14,
+            MATTE_OPCODE_OPR : 15,
             
             // call c / built-in function
-            MATTE_OPCODE_EXT : 15,
+            MATTE_OPCODE_EXT : 16,
 
             // pop values from the stack
-            MATTE_OPCODE_POP : 16,
+            MATTE_OPCODE_POP : 17,
             // copys top value on the stack.
-            MATTE_OPCODE_CPY : 17,
+            MATTE_OPCODE_CPY : 18,
 
             // return;
-            MATTE_OPCODE_RET : 18,
+            MATTE_OPCODE_RET : 19,
             
             // skips PC forward if conditional is false. used for when conditional return
-            MATTE_OPCODE_SKP : 19 ,
+            MATTE_OPCODE_SKP : 20 ,
             // skips PC forward always.
-            MATTE_OPCODE_ASP : 20,
+            MATTE_OPCODE_ASP : 21,
             // pushes a named referrable at runtime.
             // performance heavy; is not used except for 
             // special compilation.
-            MATTE_OPCODE_PNR : 21,
+            MATTE_OPCODE_PNR : 22,
             
             // Pushes the result of an listen expression.
             // listen pops 2 functions off the stack and pushes 
             // the result of the listen operation.
-            MATTE_OPCODE_LST : 22,
+            MATTE_OPCODE_LST : 23,
             
             // pushes a abuilt-in type object 
             // 
@@ -162,68 +163,117 @@ Matte.newVM = function(
             // 4 -> object
             // 5 -> type (type of the type object) 
             // 6 -> any (not physically in code, just for the vm)
-            MATTE_OPCODE_PTO : 23,
+            MATTE_OPCODE_PTO : 24,
             
             
             // indicates to the VM that the next NFN is 
             // a strict function.
-            MATTE_OPCODE_SFS : 24,
+            MATTE_OPCODE_SFS : 25,
 
             // Indicates a query
-            MATTE_OPCODE_QRY : 25,
+            MATTE_OPCODE_QRY : 26,
 
 
             // Shhort circuit: &&
             // Peek the top. If false, skip by given count
-            MATTE_OPCODE_SCA : 26,
+            MATTE_OPCODE_SCA : 27,
 
             // Shhort circuit: OR
             // Peek the top. If true, skip by given count
-            MATTE_OPCODE_SCO : 27,
+            MATTE_OPCODE_SCO : 28,
 
             // spread operator: array.
             // pops the top of the stack and push all values of the object.
-            MATTE_OPCODE_SPA : 28,
+            MATTE_OPCODE_SPA : 29,
 
             // spread operator: object 
             // pops the top of the stack and pushes all keys and values of the object.
-            MATTE_OPCODE_SPO : 29,
+            MATTE_OPCODE_SPO : 30,
             
             // Object: Assign Set 
             // Allows for many assignments at once to an object using the 
             // dot operator. The syntax is operand.{static object};
             // The first operand is pushed to the top of the stack.
-            MATTE_OPCODE_OAS  : 30,
+            MATTE_OPCODE_OAS  : 31,
             
             // performs a loop, taking the top 3 variables on the stack to define a 
             // loop: from value[top-3] to value[top-2], run function value[top-1]
-            MATTE_OPCODE_LOP : 31,
+            MATTE_OPCODE_LOP : 32,
 
             // performs an infinite loop, calling the value[top-1] function indefinitely.
-            MATTE_OPCODE_FVR : 32,
+            MATTE_OPCODE_FVR : 33,
 
             // performs a foreach loop on an object (value[top-1])
-            MATTE_OPCODE_FCH : 33,
+            MATTE_OPCODE_FCH : 34,
             
             // Performs a varargs call. Always expects one argument + the function.
-            MATTE_OPCODE_CLV : 34,
+            MATTE_OPCODE_CLV : 35,
             
             // Pushes the empty function.
-            MATTE_OPCODE_NEF : 35,
+            MATTE_OPCODE_NEF : 36,
             
             // Pushes the current private binding
-            MATTE_OPCODE_PIP : 36
+            MATTE_OPCODE_PIP : 37
                      
         
         }              
     };
 
+    const MATTE_INSTRUCTION_STREAM__OPCODE_TO_DATA_BLOCK_COUNT = [
+        0,//MATTE_OPCODE_NOP,
+        1, //MATTE_OPCODE_PRF,
+        0, //MATTE_OPCODE_NEM,
+        2, //MATTE_OPCODE_NNM,
+        1, //MATTE_OPCODE_NBL,
+        1, //MATTE_OPCODE_NST,
+        0, //MATTE_OPCODE_NOB,
+        1, //MATTE_OPCODE_NFN,
+        0, //MATTE_OPCODE_CAS,
+        0, //MATTE_OPCODE_CAA,    
+        1, //MATTE_OPCODE_CAL,
+        2, //MATTE_OPCODE_ARF,
+        1, //MATTE_OPCODE_OSN,
+        0, //MATTE_OPCODE_OLK,
+        0, //MATTE_OPCODE_OLB,
+        1, //MATTE_OPCODE_OPR,
+        1, //MATTE_OPCODE_EXT,
+        1, //MATTE_OPCODE_POP,
+        0, //MATTE_OPCODE_CPY,
+        0, //MATTE_OPCODE_RET,
+        1, //MATTE_OPCODE_SKP ,
+        1, //MATTE_OPCODE_ASP,
+        1, //MATTE_OPCODE_PNR,
+        0, //MATTE_OPCODE_LST,
+        1, //MATTE_OPCODE_PTO,
+        1, //MATTE_OPCODE_SFS,
+        1, //MATTE_OPCODE_QRY,
+        1, //MATTE_OPCODE_SCA,
+        1, //MATTE_OPCODE_SCO,
+        0, //MATTE_OPCODE_SPA,
+        0, //MATTE_OPCODE_SPO,
+        0, //MATTE_OPCODE_OAS,
+        0, //MATTE_OPCODE_LOP,
+        0, //MATTE_OPCODE_FVR,
+        0, //MATTE_OPCODE_FCH,
+        1, //MATTE_OPCODE_CLV,
+        0, //MATTE_OPCODE_NEF,
+        0, //MATTE_OPCODE_PIP,    
+    ];
+
+    const MATTE_BYTECODE_STUB__OPTION__IS_VAR_ARG = 1
+    const MATTE_BYTECODE_STUB__OPTION__IS_DYNAMIC_BIND = 2
+    const MATTE_BYTECODE_STUB__OPTION__DEBUG_INFO = 4
 
     // matte_bytecode_stub.c
     const bytecode = {
+        // sets the unit ID for the stubs created.
+        linkStub : function(stub, id) {
+            stub.unitID = id;
+        },
+    
         // converts bytecode into stub objects.
         // bytecode should be an ArrayBuffer.
-        stubsFromBytecode : function(fileID, bytecode) {
+        stubsFromBytecode : function(unitID, bytecode) {
             // simple byte iterator matching what is done in C
             const bytes = {
                 iter : 0,
@@ -233,6 +283,61 @@ Matte.newVM = function(
                     const out = bytes.dataView.getUint8(bytes.iter);
                     bytes.iter += 1;
                     return out;
+                },
+                
+                chompInt8 : function() {
+                    if (bytes.iter >= bytecode.byteLength) return 0;
+                    const out = bytes.dataView.getInt8(bytes.iter);
+                    bytes.iter += 1;
+                    return out;
+                },                
+
+                chompInt16 : function() {
+                    if (bytes.iter >= bytecode.byteLength) return 0;
+                    const out = bytes.dataView.getInt16(bytes.iter);
+                    bytes.iter += 2;
+                    return out;
+                },                
+                
+                nextChompRollSize : function() {
+                    return (bytes.dataView.getUint8(bytes.iter) >> 1) + 1;
+                },
+                
+                chompRolled : function() {
+                    if (bytes.iter >= bytecode.byteLength) return 0;
+                    var count = bytes.dataView.getUint8(bytes.iter);
+                    var t = 0;
+                    bytes.iter += 1;                    
+                    
+                    const isSingle = count & 0x01;
+                    count = count >> 1;
+                    if (isSingle) {
+                        return count;
+                    }
+                    switch(count) {
+                      case 1:
+                        t = bytes.dataView.getUint8(bytes.iter);
+                        break;
+                        
+                      case 2:
+                        t = bytes.dataView.getUint16(bytes.iter, true);
+                        break;
+
+                      case 3:
+                        t = bytes.dataView.getUint8(bytes.iter) +
+                            bytes.dataView.getUint8(bytes.iter+1)*0xff +
+                            bytes.dataView.getUint8(bytes.iter+2)*0xffff;
+                        break;
+                        
+                      case 4:
+                        t = bytes.dataView.getUInt32(bytes.iter, true);
+                        break;
+                    
+                    }
+                    bytes.iter += count;
+                    return t;
+
+                    
                 },
                 chompUInt16 : function() {
                     if (bytes.iter >= bytecode.byteLength) return 0;
@@ -261,7 +366,7 @@ Matte.newVM = function(
                 },
                 
                 chompString : function() {
-                    const size = bytes.chompUInt32();
+                    const size = bytes.chompRolled();
                     var out = "";
                     var i = 0;
                     while (i < size) {
@@ -316,21 +421,38 @@ Matte.newVM = function(
 
                 // version
                 if (bytes.chompUInt8() != 1)
-                    throw new Error("Only version 1 of bytecode is supported.");
+                    throw new Error("Only version 1 of matte bytecode is supported.");
                     
                 const stub = {
-                    fileID : fileID
+                    unitID : unitID
                 };
-                
-                stub.stubID = bytes.chompUInt32();
-                stub.isVarArg = bytes.chompUInt8();
-                stub.argCount = bytes.chompUInt8();
+
+                //stub.isVarArg = bytes.chompUInt8();
                 stub.argNames = [];
-                stub.isDynamicBinding = false;
+                //stub.isDynamicBinding = false;
+
+
+                
+                stub.stubID = bytes.chompRolled();
+                stub.options = bytes.chompUInt8();
+                stub.argCount = bytes.chompUInt8();
+
+                if (stub.options & MATTE_BYTECODE_STUB__OPTION__IS_DYNAMIC_BIND) {
+                    stub.isDynamicBinding = true;
+                } else {
+                    stub.isDynamicBinding = false;
+                }
+                
+                
+                if (stub.options & MATTE_BYTECODE_STUB__OPTION__IS_VAR_ARG) {
+                    stub.isVarArg = true;
+                } else {
+                    stub.isVarArg = false;
+                }
+
+
                 for(var i = 0; i < stub.argCount; ++i) {
                     stub.argNames[i] = bytes.chompString();
-                    if (stub.argNames[i] == '$')
-                        stub.isDynamicBinding = true;
                 }
                 
                 stub.localCount = bytes.chompUInt8();
@@ -339,41 +461,74 @@ Matte.newVM = function(
                     stub.localNames[i] = bytes.chompString();
                 }
 
-                stub.stringCount = bytes.chompUInt32();
+                stub.stringCount = bytes.chompRolled();
                 stub.strings = [];
                 for(var i = 0; i < stub.stringCount; ++i) {
                     stub.strings[i] = bytes.chompString();
                 }
 
-                stub.capturedCount = bytes.chompUInt16();
+                stub.capturedCount = bytes.chompRolled();
                 stub.captures = [];
                 for(var i = 0; i < stub.capturedCount; ++i) {
                     stub.captures[i] = {
-                        stubID : bytes.chompUInt32(),
-                        referrable : bytes.chompUInt32()
+                        stubID : bytes.chompRolled(),
+                        referrable : bytes.chompRolled()
                     };
                 }
                 
-                stub.instructionCount = bytes.chompUInt32();
+                stub.instructionCount = bytes.chompRolled();
                 stub.instructions = [];
                 
-                const baseLine = bytes.chompUInt32();
-                for(var i = 0; i < stub.instructionCount; ++i) {
-                    const offset = bytes.chompUInt16();
-                    stub.instructions[i] = {
-                        lineNumber : baseLine + offset,
-                        opcode     : bytes.chompUInt8()
-                    };
+                
+                //
+                //
+                //
+                // stream decode
+                //
+                //
+                //
+                const len = stub.instructionCount;
+                for(var n = 0; n < len; ++n) {                    
+                    const inst = {opcode : bytes.chompUInt8()};
+                    // TODO filter out bad instructions
                     
-                    if (stub.instructions[i].opcode == vm.opcodes.MATTE_OPCODE_NFN) {
-                        stub.instructions[i].nfnFileID = fileID;
+                    switch(MATTE_INSTRUCTION_STREAM__OPCODE_TO_DATA_BLOCK_COUNT[inst.opcode]) {
+                      case 1:
+                        inst.data = bytes.chompRolled();
+                        break;
+                      case 2:
+                        if (inst.opcode == vm.opcodes.MATTE_OPCODE_NNM) {
+                            inst.data = bytes.chompDouble();
+                        } else {
+                            inst.data0 = bytes.chompUInt32();
+                            inst.data1 = bytes.chompUInt32();
+                        }
+                        break;
+                      case 0:
+                        break;
+                      default:
+                        inst.opcode = 0;
+                        break;
+                    }
+                    stub.instructions[n] = inst;
+                }
+                
+                
+                stub.startingLine = 0;
+                if (stub.options & MATTE_BYTECODE_STUB__OPTION__DEBUG_INFO) {
+                    stub.startingLine = bytes.chompRolled();
+                    
+                    var current = 0;
+                    for(var n = 0; n < len; ++n) {
+                        var miniOffset = bytes.chompInt8();
+                        if (miniOffset == 124) {
+                            var bigOffset = bytes.chompInt16();
+                            stub.instructions[n].lineOffset = current + bigOffset
+                        } else {
+                            stub.instructions[n].lineOffset = current + miniOffset                        
+                        }
                         
-                        // only the first 32 bits of data is the stubID.
-                        // rewind and take only that
-                        stub.instructions[i].data = bytes.chompUInt32();
-                        bytes.chompUInt32(); // dump;
-                    } else {
-                        stub.instructions[i].data = bytes.chompDouble();                        
+                        current = stub.instructions[n].lineOffset;
                     }
                 }
                 stub.endByte = bytes.iter;
@@ -2397,18 +2552,18 @@ Matte.newVM = function(
         var vm_pendingRestartCondition = false;
         var vm_pendingRestartConditionData = false;
         var vm_stacksize = 0;
-        var vm_fileIDPool = 10;
+        var vm_unitIDPool = 10;
         var vm_catchable;
         var vm_errorLastFile;
         var vm_errorLastLine;
         
         
-        const vm_getScriptNameById = function(fileID) {
-            return vm_id2importPath[fileID];
+        const vm_getScriptNameById = function(unitID) {
+            return vm_id2importPath[unitID];
         };
         
-        const vm_getNewFileID = function(name) {
-            const id = vm_fileIDPool++;
+        const vm_getNewUnitID = function(name) {
+            const id = vm_unitIDPool++;
             vm_importPath2ID[name] = id;
             vm_id2importPath[id] = name;
             return id;
@@ -2434,9 +2589,9 @@ Matte.newVM = function(
             for(var i = 0; i < vm_stacksize; ++i) {
                 const framesrc = vm.getStackframe(i);
                 const frame = store.createObject();
-                const filename = vm_getScriptNameById(framesrc.stub.fileID);
+                const filename = vm_getScriptNameById(framesrc.stub.unitID);
                 
-                key = store.createString('file');
+                key = store.createString('unit');
                 val = store.createString(filename ? filename : '<unknown>');
                 store.valueObjectSet(frame, key, val, 0);
                 
@@ -2444,7 +2599,7 @@ Matte.newVM = function(
                 key = store.createString("lineNumber");
                 var lineNumber = 0;
                 if (framesrc.pc -1 < instcount) {
-                    lineNumber = framesrc.stub.instructions[framesrc.pc-1].lineNumber;
+                    lineNumber = framesrc.stub.instructions[framesrc.pc-1].lineOffset + framesrc.stub.startingLine;
                 }
                 val = store.createNumber(lineNumber);
                 store.valueObjectSet(frame, key, val);
@@ -2492,87 +2647,21 @@ Matte.newVM = function(
                 nArgs : argNames.length
             };
             vm_externalFunctionIndex[index] = set;
-
-
-            var charLen = 0;
-            for(var i = 0; i < argNames.length; ++i) {
-                const str = argNames[i];
-                var nBytes = 0;
-                // get utf8 length;
-                for(var n = 0; n < str.length; ++n) {
-                    const val = str.codePointAt(n);
-                    if (val < 0x80) {
-                        charLen += 1;
-                    } else if (val < 0x800) {
-                        charLen += 2;
-                    } else if (val < 0x10000) {
-                        charLen += 3;    
-                    } else {
-                        charLen += 4;
-                    }                    
-                }
-            };
-            
-            const buffer = new Uint8Array(7 + 4 + 2 + charLen + argNames.length*4);
-            
-            buffer[0] = 'M'.charCodeAt(0);
-            buffer[1] = 'A'.charCodeAt(0);
-            buffer[2] = 'T'.charCodeAt(0);
-            buffer[3] = 0x01;
-            buffer[4] = 0x06;
-            buffer[5] = 'B'.charCodeAt(0);
-            buffer[6] = 0x1;
-            
-            
-            const bufferView = new DataView(buffer.buffer);
-            var iter = 7;
-            bufferView.setUint32(iter, index, true); iter += 4;
-            bufferView.setUint8(iter, 0); iter += 1;
-            bufferView.setUint8(iter, argNames.length); iter += 1;
-            
-            for(var i = 0; i < argNames.length; ++i) {
-                const str = argNames[i];
-                var nBytes = 0;
-                // get utf8 length;
-                for(var n = 0; n < str.length; ++n) {
-                    const val = str.codePointAt(n);
-                    if (val < 0x80) {
-                        nBytes += 1;
-                    } else if (val < 0x800) {
-                        nBytes += 2;
-                    } else if (val < 0x10000) {
-                        nBytes += 3;    
-                    } else {
-                        nBytes += 4;
-                    }                    
-                }
-            
-            
-                bufferView.setUint32(iter, nBytes, true);
-                iter += 4;
-                for(var n = 0; n < str.length; ++n) {
-                    const val = str.codePointAt(n);
-                    if (val < 0x80) {
-                        bufferView.setUint8(iter++, val & 0x7F);
-                    } else if (val < 0x800) {
-                        bufferView.setUint8(iter++, ((val & 0x7C0) >> 6) | 0xC0);
-                        bufferView.setUint8(iter++, (val & 0x3F) | 0x80); 
-                    } else if (val < 0x10000) {
-                        bufferView.setUint8(iter++, ((val & 0xF000) >> 12) | 0xE0); 
-                        bufferView.setUint8(iter++, ((val & 0xFC0) >> 6) | 0x80); 
-                        bufferView.setUint8(iter++, (val & 0x3F) | 0x80); 
-                    } else {
-                        bufferView.setUint8(iter++, ((val & 0x1C0000) >> 18) | 0xF0); 
-                        bufferView.setUint8(iter++, ((val & 0x3F000) >> 12) | 0x80); 
-                        bufferView.setUint8(iter++, ((val & 0xFC0) >> 6) | 0x80); 
-                        bufferView.setUint8(iter++, (val & 0x3F) | 0x80); 
-                    }
-
-                }
-            };
-            
-            const stubs = bytecode.stubsFromBytecode(0, buffer.buffer);
-            const stub = stubs[0];
+            const stub = {
+                argNames : argNames,
+                stubID : index,
+                options : 0,
+                argCount : argNames.length,
+                localCount : 0,
+                localNames : [],
+                stringCount : 0,
+                strings : [],
+                capturedCount : 0,
+                captures : [],
+                instructionCount : 0,
+                instructions : []
+            }
+            bytecode.linkStub(stub, 0);
             
             vm_extStubs[index] = stub;
             vm_extFuncs[index] = store.createFunction(stub);
@@ -2703,8 +2792,8 @@ Matte.newVM = function(
             return frame;
         };
         
-        const vm_findStub = function(fileid, stubid) {
-            return (vm_stubIndex[fileid])[stubid];
+        const vm_findStub = function(unitid, stubid) {
+            return (vm_stubIndex[unitid])[stubid];
         };
         
         const vm_executionLoop = function() {
@@ -2778,28 +2867,29 @@ Matte.newVM = function(
                 return;
             }
             
-            const v = vm.runBytecode(data, parameters, module);
+            const v = vm.executeBytecode(data, parameters, module);
             vm_imports[module] = v;
             return v;
         };
         
-        vm.runBytecode = function(bytes, parameters, name) {
-            const fileID = vm_getNewFileID(name);
-            const stubs = bytecode.stubsFromBytecode(fileID, bytes);
+        vm.executeBytecode = function(bytes, parameters, name) {
+            const unitID = vm_getNewUnitID(name);
+            const stubs = bytecode.stubsFromBytecode(unitID, bytes);
             // addstubs
             for(var i = 0; i < stubs.length; ++i) {
                 const stub = stubs[i];
-                var fileindex = vm_stubIndex[stub.fileID];
-                if (fileindex == undefined) {
-                    fileindex = {};
-                    vm_stubIndex[stub.fileID] = fileindex;
+                var unitindex = vm_stubIndex[stub.unitID];
+                if (unitindex == undefined) {
+                    unitindex = {};
+                    vm_stubIndex[stub.unitID] = unitindex;
                 }
-                fileindex[stub.stubID] = stub;
+                unitindex[stub.stubID] = stub;
+                bytecode.linkStub(stub, unitID);
             }
             
             if (name == undefined)
-                name = '___matte&___' + fileID;
-            return vm.runFileID(fileID, parameters, name);
+                name = '___matte&___' + unitID;
+            return vm.unitExecute(unitID, parameters, name);
         };
         
         vm.setExternalFunction = function(name, args, fn) {
@@ -2861,7 +2951,7 @@ Matte.newVM = function(
             } else {
                 vm_errorLastLine = -1;
             }
-            vm_errorLastFile = framesrc.stub.fileID;
+            vm_errorLastFile = framesrc.stub.unitID;
             
             
             // debug here 
@@ -2870,24 +2960,24 @@ Matte.newVM = function(
             
         };
             
-        vm.runFileID = function(fileid, parameters, importPath) {
-            if (fileid == 0xfffffffe) // debug fileID
+        vm.unitExecute = function(unitid, parameters, importPath) {
+            if (unitid == 0xfffffffe) // debug unitID
                 throw new Error('Matte debug context is not currently supported');
 
-            const precomp = vm_precomputed[fileid];
+            const precomp = vm_precomputed[unitid];
             if (precomp != undefined) return precomp;
             
             if (parameters == undefined)
                 parameters = store.empty;
             
-            const stub = vm_findStub(fileid, 0);
+            const stub = vm_findStub(unitid, 0);
             if (stub == undefined) {
                 vm.raiseErrorString('Script has no toplevel context to run');
                 return store.empty;
             }
             const func = store.createFunction(stub);
             const result = vm.callFunction(func, [parameters], [vm_specialString_parameters]);
-            vm_precomputed[fileid] = result;
+            vm_precomputed[unitid] = result;
             return result;
         },
             
@@ -2982,7 +3072,7 @@ Matte.newVM = function(
             
             //external function 
             const stub = store.valueGetBytecodeStub(func);
-            if (stub.fileID == 0) {
+            if (stub.unitID == 0) {
                 const external = stub.stubID;
                 if (external >= vm_externalFunctionIndex.length) {
                     return store.empty;
@@ -3888,7 +3978,7 @@ Matte.newVM = function(
         };
 
         vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_NFN] = function(frame, inst) {
-            const stub = vm_findStub(inst.nfnFileID, inst.data);
+            const stub = vm_findStub(frame.stub.unitID, inst.data);
             if (stub == undefined) {
                 vm.raiseErrorString("NFN opcode data referenced non-existent stub (either parser error OR bytecode was reused erroneously)");
                 return;
@@ -4107,8 +4197,8 @@ Matte.newVM = function(
                 return;
             }
             
-            const refn = inst.data % 0xffffffff;
-            const op = Math.floor(inst.data / 0xffffffff);
+            const refn = inst.data0;
+            const op = inst.data1;
             
             const ref = vm_stackframeGetReferrable(0, refn);
             const v = frame.valueStack[frame.valueStack.length-1];
@@ -4226,10 +4316,9 @@ Matte.newVM = function(
                 return;
             }
             
-            const isBracket = inst.data != 0.0;
             const key = frame.valueStack[frame.valueStack.length-1];
             const object = frame.valueStack[frame.valueStack.length-2];
-            const output = store.valueObjectAccess(object, key, isBracket);
+            const output = store.valueObjectAccess(object, key, false);
             
             frame.valueStack.pop();
             frame.valueStack.pop();
@@ -4243,6 +4332,30 @@ Matte.newVM = function(
             frame.valueStack.push(output);
             
         };
+
+        vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_OLB] = function(frame, inst) {
+            if (frame.valueStack.length < 2) {
+                vm.raiseErrorString("VM error: OLB opcode requires 2 on the stack.");
+                return;
+            }
+            
+            const key = frame.valueStack[frame.valueStack.length-1];
+            const object = frame.valueStack[frame.valueStack.length-2];
+            const output = store.valueObjectAccess(object, key, true);
+            
+            frame.valueStack.pop();
+            frame.valueStack.pop();
+            
+            if (output) {
+                const stub = store.valueGetBytecodeStub(output);
+                if (stub && valToType(key) == store.TYPE_STRING && valToType(object) == store.TYPE_OBJECT) {
+                    output.idAux = object;
+                }
+            }
+            frame.valueStack.push(output);
+            
+        };
+
         
         vm_opcodeSwitch[vm.opcodes.MATTE_OPCODE_EXT] = function(frame, inst) {
             if (inst.data >= vm_externalFunctionIndex.length) {

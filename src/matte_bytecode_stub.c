@@ -202,6 +202,11 @@ static void ADVANCE_SRC(int n, void * ptr, uint32_t * left, uint8_t ** bytes) {
     *bytes+=v;
 }
 
+#define NEXT_UNROLL_SIZE() NEXT_UNROLL_SIZE_SRC(left, bytes)
+
+static uint8_t NEXT_UNROLL_SIZE_SRC(uint32_t * left, uint8_t ** bytes) {
+    return ((*bytes)[0] >> 1) + 1;
+}
 
 static uint32_t UNROLL_UINT_SRC(uint32_t * left, uint8_t ** bytes) {
     uint8_t count = 0;
@@ -741,9 +746,9 @@ uint8_t * matte_instruction_stream_encode(
     uint32_t i;
     uint32_t len = count;
     
-    uint8_t  * instStream = (uint8_t*) matte_allocate((sizeof(uint16_t) + sizeof(uint64_t)) * len);
-     int8_t  * debgStream = NULL;
-    
+    uint8_t  * instStream = (uint8_t*) matte_allocate(
+        (sizeof(uint64_t) + sizeof(uint64_t)) * len * 2+1
+    );
     uint8_t  * instStreamIter = instStream;
 
     for(i = 0; i < len; ++i) {
@@ -761,9 +766,6 @@ uint8_t * matte_instruction_stream_encode(
 
         uint8_t bulkCount = MATTE_INSTRUCTION_STREAM__OPCODE_TO_DATA_BLOCK_COUNT[inst->info.opcode];
 
-
-        
-        // what????
         *(instStreamIter++) = inst->info.opcode;
 
         if (bulkCount == 1) {
@@ -776,18 +778,8 @@ uint8_t * matte_instruction_stream_encode(
         }
     }
 
-    uint32_t instSize = instStreamIter - instStream;
-    uint32_t debgSize = 0;
-  
-    *outLen = instSize + sizeof(uint32_t);
-
-
     if (includeDebug) {
-        debgStream = (int8_t *)matte_allocate((sizeof(int8_t) + sizeof(int16_t))*len + sizeof(uint32_t));
-
-        int8_t  * debgStreamIter = &debgStream[0];
-
-        debgStreamIter = (int8_t*)write_rolled_uint_bytes((uint8_t*)debgStreamIter, startingLine);
+        instStreamIter = (int8_t*)write_rolled_uint_bytes((uint8_t*)instStreamIter, startingLine);
 
         uint16_t start = insts[0].info.lineOffset;
         uint16_t last  = start;
@@ -797,41 +789,27 @@ uint8_t * matte_instruction_stream_encode(
             int16_t diff = i == 0 ? offset : offset - last;
             
             if (abs(diff) < 124) {
-                *(debgStreamIter++) = (int8_t)diff;
+                *(instStreamIter++) = (int8_t)diff;
             } else {
-                *(debgStreamIter++) = 124;
-                memcpy(debgStreamIter, &diff, sizeof(int16_t));
-                debgStreamIter+=sizeof(int16_t);
+                *(instStreamIter++) = 124;
+                memcpy(instStreamIter, &diff, sizeof(int16_t));
+                instStreamIter+=sizeof(int16_t);
             }
             last = offset;
         }    
         
-        debgSize = debgStreamIter - debgStream;
-        *outLen += (debgSize) + sizeof(uint32_t);
     }
+    *outLen += instStreamIter - instStream;
     
     
-    uint8_t * out = (uint8_t*)matte_allocate(*outLen);
-    uint8_t * outIter = out;
 
-    memcpy(outIter, &instSize,  sizeof(uint32_t)); outIter += sizeof(uint32_t);
-    memcpy(outIter, instStream, instSize); outIter += instSize;
-    
-    if (includeDebug) {
-        memcpy(outIter, &debgSize,  sizeof(uint32_t)); outIter += sizeof(uint32_t);
-        memcpy(outIter, debgStream, debgSize); outIter += debgSize;
-    }
-    
-    
-    matte_deallocate(instStream);
-    matte_deallocate(debgStream);
     
     //printf("Bytecode instruction stream compressed from %'d to %'d bytes\n",
     //    (int)(len * sizeof(matteBytecodeStubInstruction_t)),
     //    (int)*outLen
     //);
     
-    return out;
+    return instStream;
 }
 
 
@@ -842,19 +820,12 @@ void matte_instruction_stream_decode(
     uint32_t * startLine,
     uint8_t ** bytes,
     uint32_t * left
-) {
-    
-    uint32_t i;
-    
-    
-    uint32_t instStreamSize = 0;
-    ADVANCE(uint32_t, instStreamSize);
-    
+) {    
+       
     
     uint32_t n = 0;
-    for(i = 0; i < instStreamSize; n++) {
-        if (n >= len) break;
-        ADVANCE(uint8_t, instructions[n].info.opcode); i+=1;
+    for(n = 0; n < len; n++) {
+        ADVANCE(uint8_t, instructions[n].info.opcode);
         
         if (instructions[n].info.opcode >= MATTE_OPCODE_COUNT) {
             #ifdef MATTE_DEBUG
@@ -871,7 +842,7 @@ void matte_instruction_stream_decode(
             break;
             
           case 2:
-            ADVANCEN(2*sizeof(uint32_t), instructions[n].data64); i+=2*sizeof(uint32_t);
+            ADVANCEN(2*sizeof(uint32_t), instructions[n].data64);
             break;
                         
           case 0:
@@ -884,23 +855,18 @@ void matte_instruction_stream_decode(
 
     }
 
-    if (options & MATTE_BYTECODE_STUB__OPTION__DEBUG_INFO) {
-        uint32_t debgStreamSize = 0;
-        ADVANCE(uint32_t, debgStreamSize);
-        
+    if (options & MATTE_BYTECODE_STUB__OPTION__DEBUG_INFO) {        
         
         *startLine = UNROLL_UINT();
         
         uint16_t current = 0;
-        n = 0;
-        for(i = 0; i < debgStreamSize; ++n) {
-            if (n >= len) break;
+        for(n = 0; n < len; ++n) {
             int8_t miniOffset = 0;
-            ADVANCE(int8_t, miniOffset); i+=1;
+            ADVANCE(int8_t, miniOffset);
             
             if (miniOffset == 124) {
                 int16_t bigOffset;
-                ADVANCE(uint16_t, bigOffset);i+=2;
+                ADVANCE(int16_t, bigOffset);
                 
                 instructions[n].info.lineOffset = current + bigOffset;
             } else {
