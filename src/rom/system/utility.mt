@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.
 @:_run = getExternalFunction(:"__matte_::utility_system");
 @:_os = getExternalFunction(:"__matte_::utility_os")();
 @:_exit = getExternalFunction(:"__matte_::utility_exit");
+@:_getenv = getExternalFunction(:"__matte_::utility_get_environment_variable");
 return class(
     name : 'Matte.System.OS',
     define:::(this) {
@@ -47,6 +48,10 @@ return class(
             exit ::(code) {
                 _exit(a:code);
             } ,
+            
+            
+            /// environment variable 
+            getEnvironmentVariable ::(name) <- _getenv(a:name),
 
 
             /// Execute command in the environment shell
