@@ -569,7 +569,6 @@ static matteValue_t vm_operator_1(matteVM_t * vm, matteOperator_t op, matteValue
       case MATTE_OPERATOR_NOT:         return vm_operator__not(vm, a);
       case MATTE_OPERATOR_NEGATE:      return vm_operator__negate(vm, a);
       case MATTE_OPERATOR_BITWISE_NOT: return vm_operator__bitwise_not(vm, a);
-      case MATTE_OPERATOR_POUND:       return vm_operator__overload_only_1(vm, "#", a);
 
       default:
         matte_vm_raise_error_cstring(vm, "unhandled OPR operator");                        
@@ -1498,8 +1497,7 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
                 
                 case MATTE_OPERATOR_NOT:
                 case MATTE_OPERATOR_NEGATE:
-                case MATTE_OPERATOR_BITWISE_NOT:
-                case MATTE_OPERATOR_POUND:{
+                case MATTE_OPERATOR_BITWISE_NOT:{
                     if (STACK_SIZE() < 1) {
                         matte_vm_raise_error_cstring(vm, "OPR operator requires 1 operand.");                        
                     } else {

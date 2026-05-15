@@ -2487,18 +2487,17 @@ Matte.newVM = function(
             MATTE_OPERATOR_EQ : 12, // == 2 operands
             MATTE_OPERATOR_BITWISE_NOT : 13, // ~ 1 operand
             MATTE_OPERATOR_POINT : 14, // -> 2 operands
-            MATTE_OPERATOR_POUND : 15, // # 1 operand
-            MATTE_OPERATOR_TERNARY : 16, // ? 2 operands
-            MATTE_OPERATOR_GREATER : 17, // > 2 operands
-            MATTE_OPERATOR_LESS : 18, // < 2 operands
-            MATTE_OPERATOR_GREATEREQ : 19, // >= 2 operands
-            MATTE_OPERATOR_LESSEQ : 20, // <= 2 operands
-            MATTE_OPERATOR_TRANSFORM : 21, // <> 2 operands
-            MATTE_OPERATOR_NOTEQ : 22, // != 2 operands
-            MATTE_OPERATOR_MODULO : 23, // % 2 operands
-            MATTE_OPERATOR_CARET : 24, // ^ 2 operands
-            MATTE_OPERATOR_NEGATE : 25, // - 1 operand
-            MATTE_OPERATOR_TYPESPEC : 26, // => 2 operands
+            MATTE_OPERATOR_TERNARY : 15, // ? 2 operands
+            MATTE_OPERATOR_GREATER : 16, // > 2 operands
+            MATTE_OPERATOR_LESS : 17, // < 2 operands
+            MATTE_OPERATOR_GREATEREQ : 18, // >= 2 operands
+            MATTE_OPERATOR_LESSEQ : 19, // <= 2 operands
+            MATTE_OPERATOR_TRANSFORM : 20, // <> 2 operands
+            MATTE_OPERATOR_NOTEQ : 21, // != 2 operands
+            MATTE_OPERATOR_MODULO : 22, // % 2 operands
+            MATTE_OPERATOR_CARET : 23, // ^ 2 operands
+            MATTE_OPERATOR_NEGATE : 24, // - 1 operand
+            MATTE_OPERATOR_TYPESPEC : 25, // => 2 operands
 
             // special operators. They arent part of the OPR opcode
             MATTE_OPERATOR_ASSIGNMENT_NONE : 100,

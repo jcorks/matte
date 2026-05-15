@@ -586,10 +586,15 @@ static void tokenizer_strip(matteTokenizer_t * t, int skipNewline) {
     for(;;) {
         c = utf8_next_char(&t->iter);
         switch(c) {
+          case '#':
           case '/': {
             int skipped = 1;
-            int cprev = 0;                
-            c = utf8_next_char(&t->iter);
+            int cprev = 0;               
+            if (c == '#') { 
+                c = '/';
+            } else {
+                c = utf8_next_char(&t->iter);            
+            }
             switch(c) {
               case '/': // c-style line comment
                 while(c != '\n' && c != 0) {
@@ -1340,7 +1345,6 @@ matteToken_t * matte_tokenizer_next(matteTokenizer_t * t, matteTokenType_t ty) {
           case '-':
           case '~':
           case '!':
-          case '#':
             t->character++;
             t->backup = t->iter;
             return new_token(
@@ -2777,7 +2781,6 @@ matteOperator_t string_to_operator(const matteString_t * s, matteTokenType_t hin
         case '~': return MATTE_OPERATOR_BITWISE_NOT; break;
         break;
 
-        case '#': return MATTE_OPERATOR_POUND; break;
         case '?': return MATTE_OPERATOR_TERNARY; break;
         case '^': return MATTE_OPERATOR_CARET; break;
         case '%': return MATTE_OPERATOR_MODULO; break;
@@ -2859,8 +2862,6 @@ struct matteExpressionNode_t {
 #define POST_OP_SYMBOLIC__ASSIGN_MEMBER     20000
 static int op_to_precedence(int op) {
     switch(op) {
-      case MATTE_OPERATOR_POUND: // # 1 operand
-        return 0;
       case MATTE_OPERATOR_POINT: // -> 2 operands
         return 1;
 

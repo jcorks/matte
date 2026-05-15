@@ -56,6 +56,14 @@
                     </include>
                 </context>
 
+                <context id="comment-newstyle" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+                    <start>#</start>
+                    <include>
+                      <context ref="def:in-line-comment"/>
+                    </include>
+                </context>
+
+
                 <context id="comment-multiline" style-ref="comment" class="comment" class-disabled="no-spell-check">
                     <start>/\*</start>
                     <end>\*/</end>
