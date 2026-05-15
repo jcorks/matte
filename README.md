@@ -142,6 +142,11 @@ in the format `name:value`. For example, on a Unix-like system one could run a s
 
 This command can also be used to run bytecode blobs, as discussed in the next section.
 
+Because of Matte's ability to do both C-Style (//) and Shell-Style (#) comments,
+Matte can be used as a shell interpreter as well, if desired:
+
+![Example of shell use to display a directory.](/docs/shell.png)
+
 
 #### Compiling Matte Sources 
 
