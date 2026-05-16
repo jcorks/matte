@@ -187,8 +187,9 @@ static matteValue_t vm_ext_call__error(matteVM_t * vm, matteValue_t fn, const ma
 
 
 
-
+#ifndef MATTE_ROMLESS
 #include "MATTE_ROM"
+#endif
 
 static matteValue_t vm_ext_call__set_module(matteVM_t * vm, matteValue_t fn, const matteValue_t * args, void * userData) {
     if (vm->pendingCatchable) {
