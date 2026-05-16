@@ -80,11 +80,45 @@ static void push_cstr_buffer_cleaned(matteArray_t * buffer, const char * str) {
         if (next == '\\') {
             matte_array_push(buffer, next);  
         }
-        
+
         if (next == '"') {
             uint32_t n = '\\';
             matte_array_push(buffer, n);   
         }
+
+        
+        if (next == '\n') {
+            uint32_t n = '\\';
+            matte_array_push(buffer, n);   
+            n = 'n';
+            matte_array_push(buffer, n);   
+            continue;
+        }
+
+        if (next == '\r') {
+            uint32_t n = '\\';
+            matte_array_push(buffer, n);   
+            n = 'r';
+            matte_array_push(buffer, n);   
+            continue;
+        }
+
+        if (next == '\b') {
+            uint32_t n = '\\';
+            matte_array_push(buffer, n);   
+            n = 'b';
+            matte_array_push(buffer, n);   
+            continue;
+        }
+
+        if (next == '\t') {
+            uint32_t n = '\\';
+            matte_array_push(buffer, n);   
+            n = 't';
+            matte_array_push(buffer, n);   
+            continue;
+        }
+
         matte_array_push(buffer, next);
     }
 }
