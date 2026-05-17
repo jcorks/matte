@@ -42,8 +42,10 @@ DEALINGS IN THE SOFTWARE.
 @_readString = getExternalFunction(:"__matte_::filesystem_readstring");
 @_readJSON = getExternalFunction(:"__matte_::filesystem_readjson");
 @_writeString = getExternalFunction(:"__matte_::filesystem_writestring");
-@_writeJSON = getExternalFunction(:"__matte_::filesystem_writejson");
 @_writeBytes = getExternalFunction(:"__matte_::filesystem_writebytes");
+@_appendString = getExternalFunction(:"__matte_::filesystem_appendstring");
+@_appendBytes = getExternalFunction(:"__matte_::filesystem_appendbytes");
+@_writeJSON = getExternalFunction(:"__matte_::filesystem_writejson");
 @_remove = getExternalFunction(:"__matte_::filesystem_remove");
 @_getFullPath = getExternalFunction(:"__matte_::filesystem_getfullpath");
 @_exists = getExternalFunction(:"__matte_::filesystem_exists");
@@ -124,6 +126,12 @@ return class(
                 _writeString(a:path, b:string);
             },
             
+            // Given a path and a string, appends the given file.
+            // on failure, throws an error.
+            appendString ::(path, string) {
+                _appendString(a:path, b:string);
+            },
+            
             // Writes the given object as a JSON file.
             writeJSON ::(path, object) {
                 _writeJSON(a:path, b:object);
@@ -133,6 +141,12 @@ return class(
             // on failure, throws an error.
             writeBytes ::(path, bytes => MemoryBuffer.type) {
                 _writeBytes(a:path, b:bytes.handle);
+            },
+
+            // Given a path and a MemoryBuffer, writes the given file.
+            // on failure, throws an error.
+            appendBytes ::(path, bytes => MemoryBuffer.type) {
+                _appendBytes(a:path, b:bytes.handle);
             },
             
             // Attempts to remove the file at the given path.
