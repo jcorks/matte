@@ -314,7 +314,7 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
     matteValue_t out = matte_store_new_value(store);    
     
     uint32_t i, n;
-    uint32_t len = matte_string_get_length(str);
+    int64_t len = matte_string_get_length(str);
     uint32_t lenNew = matte_string_get_length(newst);
 
     uint32_t * newstBuffer = (uint32_t*)matte_allocate(sizeof(uint32_t) * lenNew);
@@ -326,7 +326,7 @@ static matteValue_t vm_ext_call__string__replace(matteVM_t * vm, matteValue_t fn
     uint32_t k;
     for(k = 0; k < nkeys; ++k) {
         const matteString_t * other = matte_array_at(keys, matteString_t *, k);
-        uint32_t lenOther = matte_string_get_length(other);
+        int64_t lenOther = matte_string_get_length(other);
         if (len >= lenOther-1) {
             for(i = 0; i < len - (lenOther-1); ++i) {
                 for(n = 0; n < lenOther && i+n < len; ++n) {
