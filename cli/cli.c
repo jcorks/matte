@@ -198,6 +198,13 @@ static uint32_t cli_importer(
             fileid = matte_vm_unit_create(matte_get_vm(m), MATTE_VM_STR_CAST(matte_get_vm(m), alias ? alias : name));
             matte_vm_unit_set_program(matte_get_vm(m), fileid, stubs);
         }
+        if (DEBUG) {
+            char * source = (char*)matte_allocate(byteLen+1);
+            memcpy(source, bytes, byteLen);
+            matte_debugging_register_source(m, fileid, source);
+        }
+
+
         if (stubs) matte_array_destroy(stubs);
         matte_string_destroy(error);
     }

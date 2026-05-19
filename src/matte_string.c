@@ -359,12 +359,20 @@ void matte_string_insert_n_chars(
     uint32_t len = nvalues;
 
     if (position == t->len) {
-        for(i = 0; i < len; ++i)
+        for(i = 0; i < len; ++i) {
+            #ifdef MATTE_DEBUG 
+                assert(values[i] != 0);
+            #endif
             t->utf8[t->len++] = values[i];
+        }
     } else {       
         memmove(t->utf8+position+nvalues, t->utf8+position, (t->len-position)*sizeof(uint32_t));
-        for(i = 0; i < len; ++i)
+        for(i = 0; i < len; ++i) {
+            #ifdef MATTE_DEBUG 
+                assert(values[i] != 0);
+            #endif
             t->utf8[position+i] = values[i];
+        }
         t->len += nvalues;
     }
 }

@@ -2114,24 +2114,28 @@ const matteString_t * matte_vm_unit_get_name(matteVM_t * vm, uint32_t unitID) {
 void matte_vm_unit_set_program(matteVM_t * vm, uint32_t unitID, const matteArray_t * arr) {
     uint32_t i;
     uint32_t len = matte_array_get_size(arr);
+
+    matteTable_t * fileindex = (matteTable_t*)matte_table_find_by_uint(vm->stubIndex, unitID);
+    if (!fileindex) {
+        fileindex = matte_table_create_hash_pointer();
+        matte_table_insert_by_uint(vm->stubIndex, unitID, fileindex);
+    } else {
+        matteTableIter_t * iter = matte_table_iter_create();
+
+        for(matte_table_iter_start(iter, fileindex);
+            !matte_table_iter_is_end(iter);
+            matte_table_iter_proceed(iter)) {
+            matte_bytecode_stub_destroy(matte_table_iter_get_value(iter));
+        }
+        matte_table_iter_destroy(iter);
+        matte_table_clear(fileindex);
+    }
+
+
+
     for(i = 0; i < len; ++i) {
         matteBytecodeStub_t * stub = matte_array_at(arr, matteBytecodeStub_t *, i);
         matte_bytecode_stub_link(stub, vm->store, unitID);
-        matteTable_t * fileindex = (matteTable_t*)matte_table_find_by_uint(vm->stubIndex, matte_bytecode_stub_get_unit_id(stub));
-        if (!fileindex) {
-            fileindex = matte_table_create_hash_pointer();
-            matte_table_insert_by_uint(vm->stubIndex, unitID, fileindex);
-        } else {
-        
-        }
-        
-        matteBytecodeStub_t * existing = (matteBytecodeStub_t *)matte_table_find_by_uint(fileindex, matte_bytecode_stub_get_id(stub));
-  
-        // TODO: error state. For now, just dont add the new stub.
-        if (existing) {
-            matte_bytecode_stub_destroy(stub);
-            continue;
-        }
         matte_table_insert_by_uint(fileindex, matte_bytecode_stub_get_id(stub), stub);
     }
 }
