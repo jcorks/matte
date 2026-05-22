@@ -72,10 +72,28 @@ static void push_cstr_buffer(matteArray_t * buffer, const char * str) {
     }
 }
 
+static void push_cstr_buffer_cleaned__special_unicode(matteArray_t * buffer, uint32_t val) {
+    char str[10] = {};
+    char * iter = str+0;
+    // bad, but okay for low values which its used
+    sprintf(str, "\\u%04x", (int)val);
+    
+    while(*iter) {
+        uint32_t ch = *iter;
+        matte_array_push(buffer, ch);
+        iter++;
+    }
+}
+
 static void push_cstr_buffer_cleaned(matteArray_t * buffer, const char * str) {
     for(;;) {
         uint32_t next = utf8_next_char((uint8_t**)&str);
         if (next == 0) break;
+        
+        if (next < 32) {
+            push_cstr_buffer_cleaned__special_unicode(buffer, next);  
+            continue;
+        } 
         
         if (next == '\\') {
             matte_array_push(buffer, next);  
@@ -333,6 +351,22 @@ matteValue_t decode_value(matteVM_t * vm, matteStore_t * store, StringIter * ite
             switch(iter_peek(iter, count)) {
               case '\\':
                 count ++;
+                
+                // unicode: always 4 hex characters
+                if (iter_peek(iter, count) == 'u') {
+                  count++;
+                  uint32_t val = ' ';
+                  char str[5] = {};
+                  str[0] = (char) iter_peek(iter, count++);
+                  str[1] = (char) iter_peek(iter, count++);
+                  str[2] = (char) iter_peek(iter, count++);
+                  str[3] = (char) iter_peek(iter, count++);
+                  sscanf(str, "%04x", &val);
+                  
+                  
+                  matte_string_append_char(substr, val);
+                  break;
+                }
                 
                 switch(iter_peek(iter, count)) {
                   case 'n' : matte_string_append_char(substr, '\n'); break;
