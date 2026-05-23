@@ -32,6 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 static int object_has_operator(matteVM_t * vm, matteValue_t a, const char * operator_) {
+    if (matte_value_is_function(a)) return 0;
     const matteValue_t * opSrc = matte_value_object_get_attributes_unsafe(vm->store, a);
     matteValue_t result;
     if (!opSrc) {
