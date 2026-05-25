@@ -240,7 +240,9 @@ MATTE_EXT_FN(matte_ext__memory_buffer__append_utf8) {
     }
     memcpy(m->buffer+m->size, matte_string_get_utf8_data(val), length);
     m->size+=length;
-    return matte_store_new_value(store);
+    matteValue_t out = matte_store_new_value(store);
+    matte_value_into_number(store, &out, length);
+    return out;
 }
 
 
