@@ -398,7 +398,11 @@ const char * matte_introspect_value(
     matte_t *, 
     
     /// The value to introspect.
-    matteValue_t
+    matteValue_t,
+    
+    /// The maximum depth level. A depth of 0 or lower makes it 
+    /// not have a maximum depth.
+    int depth
 );
 
 

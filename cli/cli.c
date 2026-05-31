@@ -252,7 +252,7 @@ static int repl() {
                 "store", state,
                 NULL
             );
-            printf("%s\n\n", matte_introspect_value(m, result));        
+            printf("%s\n\n", matte_introspect_value(m, result, 0));        
         }
     }   
     matte_destroy(m); 

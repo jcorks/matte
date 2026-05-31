@@ -27,42 +27,65 @@ DEALINGS IN THE SOFTWARE.
 
 
 */
-return ::(value) {
+return ::(value, depth) {
+    if (depth->type != Number) depth = empty;
+    if (depth->type == Number && depth <= 0) depth = empty;
     @already = {}
     @strings = [];
     @pspace ::(level) {
         for(0,level)::{
-            strings->push(:'  ');
+            strings->push(:'..');
         }
     }
     @helper ::(obj, level) {
-        @poself = helper;
 
         match(obj->type) {
-            (String) :  strings->push(:'(type => String): \'' + obj + '\''),
-            (Number) :  strings->push(:'(type => Number): '+obj),
-            (Boolean):  strings->push(:'(type => Boolean): '+obj),
-            (Function): strings->push(:'(type => Function)'),
-            (Empty)  :  strings->push(:'<empty>'),
-            (Type):     strings->push(:'(type => Type): ' + obj),
+            (String) :  strings->push(:'\'' + obj + '\''),
+            (Number) :  strings->push(:''+obj),
+            (Boolean):  strings->push(:''+obj),
+            (Function): strings->push(:'(Function)'),
+            (Empty)  :  strings->push(:''+obj),
+            (Type):     strings->push(:'' + obj),
             default: ::<={
+                when(depth != empty && level > depth) strings->push(:'[reached depth limit]');
+
                 when(already[obj] == true) strings->push(:
-                    '(type => '+obj->type+'): [already printed]'
+                    '('+obj->type+'): [already printed]'
                 );
                 already[obj] = true;
 
-                strings->push(:'(type => '+obj->type+'): {');
+                strings->push(:'('+obj->type+'): {');
+
+                @keyLength = 0;
+                @keyStr = {};
+                foreach(obj)::(key, val) {
+                    @:keyS = ::? {
+                      return String(:key);
+                    } => {
+                      onError::(message) {
+                        return '('+key->type+')';                       
+                      }
+                    }
+                    if (keyS->length > keyLength)
+                      keyLength = keyS->length;
+                    keyStr[key] = keyS;
+                }
+  
 
                 @multi = false;
                 foreach(obj)::(key, val) {                        
                     strings->push(:(if (multi) ',\n' else '\n')); 
                     pspace(level:level+1);
-                    strings->push(:String(:key));
+                    
+                    @keyS = keyStr[key];
+                    for(keyS->length, keyLength) ::(i) {
+                      keyS = keyS + ' ';
+                    }
+                    strings->push(:keyS);
                     strings->push(:' : ');
-                    poself(obj:val, level:level+1);
+                    helper(obj:val, level:level+1);
                     multi = true;
                 }
-                pspace(level:level);
                 if (multi) ::<= {
                     strings->push(:'\n');
                     pspace(level:level);

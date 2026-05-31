@@ -293,8 +293,10 @@ static int exec_command(matte_t * m) {
         matte_print(m, " ");
         matte_print(m, " ");
         matte_print(m, "The debugger knows the following commands:");
-        matte_print(m, " print/p  : Evaluates the expression entered after the command.");
-        matte_print(m, "            ");
+        matte_print(m, " print/p[$depth] : Evaluates the expression entered after the command.");
+        matte_print(m, "                   the optional depth level will only evaluate up to");
+        matte_print(m, "                   that object depth.");
+        matte_print(m, " ");
         matte_print(m, " next/n  : Lets the debugger evaluate the next statement in");
         matte_print(m, "           the current function before pausing again.");
         matte_print(m, " ");
@@ -363,8 +365,20 @@ static int exec_command(matte_t * m) {
         } else {
             matte_print(m, "Already at bottom of callstack.");
         }
-    } else if (!strcmp(command, "print") ||    
-               !strcmp(command, "p")) {
+    } else if (strstr(command, "print") == command ||    
+               strstr(command, "p") == command) {
+               
+        char * iter = command;
+        char * trace = "print";
+        while(*iter == *trace) {
+          iter++; trace++;
+        }
+        // should terminate when iter is at $
+        if (*iter)
+            iter++;
+        
+        int depth = -1;
+        sscanf(iter, "%d ", &depth);
         matteString_t * src = matte_string_create_from_c_str("return (%s);", res);        
         matteValue_t val = matte_vm_execute_scoped_debug_source(
             vm,
@@ -373,7 +387,7 @@ static int exec_command(matte_t * m) {
             exec_command_print_error,
             m
         );
-        matte_print(m, matte_introspect_value(m, val));
+        matte_print(m, matte_introspect_value(m, val, depth));
 
     } else {
         matte_print(m, "Unknown command.");        
@@ -523,7 +537,7 @@ static void default_unhandled_error(
             matte_string_get_c_str(matte_vm_unit_get_name(vm, unit)), 
             lineNumber
         );
-        matte_print(m, "%s", matte_introspect_value(m, val));
+        matte_print(m, "%s", matte_introspect_value(m, val, 0));
     };
 }
 
@@ -674,11 +688,17 @@ void matte_set_io(
 
 
 
-const char * matte_introspect_value(matte_t * m, matteValue_t val) {
+const char * matte_introspect_value(matte_t * m, matteValue_t val, int level) {
     if (m->introspectResult)
         matte_string_destroy(m->introspectResult);
 
-    matteValue_t v = matte_execute_source_with_parameters(m, "return import(module:'Matte.Core.Introspect')(value:parameters);", val);
+    matteString_t * command = matte_string_create_from_c_str(
+      "return import(module:'Matte.Core.Introspect')(value:parameters, depth:%d);",
+      level    
+    );
+
+    matteValue_t v = matte_execute_source_with_parameters(m, matte_string_get_c_str(command), val);
+    matte_string_destroy(command);
     if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
         m->introspectResult = matte_string_clone(
             matte_value_string_get_string_unsafe(
