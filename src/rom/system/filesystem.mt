@@ -97,62 +97,68 @@ return class(
 
             ///// file IO
 
-            // reads the contents of a file and returns a string of its contents
-            // Expects one argument: a path to the file
-            // On failure, throws an error.
-            readString ::(path) {
-                return _readString(a:path);
-            } ,
+            //////////////// if MATTE_USE_SYSTEM_EXTENSIONS__BASIC or MATTE_USE_SYSTEM_EXTENSIONS__FILESYSTEM_READ is allowed
 
-            // reads the contents of a file and returns MemoryBuffer of its contents.
-            // Expects one argument: a path to the file
-            // On failure, throws an error.
-            readBytes : ::(path){            
-                @:m = MemoryBuffer.new()  
-                m.bindNative(:_readBytes(a:path));
-                return m;
-            },
-            
-            // reads the contents of a JSON file and returns the parsed 
-            // object.
-            readJSON ::(path) {
-                return _readJSON(a:path);
-            },
-            
+                // reads the contents of a file and returns a string of its contents
+                // Expects one argument: a path to the file
+                // On failure, throws an error.
+                readString ::(path) {
+                    return _readString(a:path);
+                } ,
 
-            // Given a path and a string, writes the given file.
-            // on failure, throws an error.
-            writeString ::(path, string) {
-                _writeString(a:path, b:string);
-            },
+                // reads the contents of a file and returns MemoryBuffer of its contents.
+                // Expects one argument: a path to the file
+                // On failure, throws an error.
+                readBytes : ::(path){            
+                    @:m = MemoryBuffer.new()  
+                    m.bindNative(:_readBytes(a:path));
+                    return m;
+                },
+                
+                // reads the contents of a JSON file and returns the parsed 
+                // object.
+                readJSON ::(path) {
+                    return _readJSON(a:path);
+                },
+                
             
-            // Given a path and a string, appends the given file.
-            // on failure, throws an error.
-            appendString ::(path, string) {
-                _appendString(a:path, b:string);
-            },
-            
-            // Writes the given object as a JSON file.
-            writeJSON ::(path, object) {
-                _writeJSON(a:path, b:object);
-            },
+            //////////////// if MATTE_USE_SYSTEM_EXTENSIONS__ALL or MATTE_USE_SYSTEM_EXTENSIONS__FILESYSTEM_WRITE is allowed
 
-            // Given a path and a MemoryBuffer, writes the given file.
-            // on failure, throws an error.
-            writeBytes ::(path, bytes => MemoryBuffer.type) {
-                _writeBytes(a:path, b:bytes.handle);
-            },
+                // Given a path and a string, writes the given file.
+                // on failure, throws an error.
+                writeString ::(path, string) {
+                    _writeString(a:path, b:string);
+                },
+                
+                // Given a path and a string, appends the given file.
+                // on failure, throws an error.
+                appendString ::(path, string) {
+                    _appendString(a:path, b:string);
+                },
+                
+                // Writes the given object as a JSON file.
+                writeJSON ::(path, object) {
+                    _writeJSON(a:path, b:object);
+                },
 
-            // Given a path and a MemoryBuffer, writes the given file.
-            // on failure, throws an error.
-            appendBytes ::(path, bytes => MemoryBuffer.type) {
-                _appendBytes(a:path, b:bytes.handle);
-            },
-            
-            // Attempts to remove the file at the given path.
-            remove ::(path) {
-                _remove(a:path);
-            },
+                // Given a path and a MemoryBuffer, writes the given file.
+                // on failure, throws an error.
+                writeBytes ::(path, bytes => MemoryBuffer.type) {
+                    _writeBytes(a:path, b:bytes.handle);
+                },
+
+                // Given a path and a MemoryBuffer, writes the given file.
+                // on failure, throws an error.
+                appendBytes ::(path, bytes => MemoryBuffer.type) {
+                    _appendBytes(a:path, b:bytes.handle);
+                },
+                
+                // Attempts to remove the file at the given path.
+                remove ::(path) {
+                    _remove(a:path);
+                },
+
+            /////////////////
             
             // returns a boolean on whether the given path exists.
             exists ::(path) {

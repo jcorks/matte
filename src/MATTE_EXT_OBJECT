@@ -144,7 +144,11 @@ static matteValue_t vm_ext_call__object__sort(matteVM_t * vm, matteValue_t fn, c
 
     }
     matte_value_object_sort_unsafe(vm->store, args[0], args[1]);
-    return matte_store_new_value(vm->store);
+
+
+    matteValue_t out = matte_store_new_value(vm->store);
+    matte_value_into_copy(vm->store, &out, args[0]);
+    return out;
 }
 
 

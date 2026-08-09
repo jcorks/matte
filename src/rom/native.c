@@ -40,6 +40,8 @@ DEALINGS IN THE SOFTWARE.
     #define MATTE_USE_SYSTEM_EXTENSIONS
     #define MATTE_USE_SYSTEM_EXTENSIONS__BASIC
     #define MATTE_USE_SYSTEM_EXTENSIONS__SOCKETS
+    #define MATTE_USE_SYSTEM_EXTENSIONS__FILESYSTEM_READ
+    #define MATTE_USE_SYSTEM_EXTENSIONS__FILESYSTEM_WRITE
 #endif
 
 #include "./core/json.c"
@@ -61,7 +63,12 @@ DEALINGS IN THE SOFTWARE.
     #include <windows.h>
     ////////////
 
+    #ifdef MATTE_USE_SYSTEM_EXTENSIONS__SOCKETS
+        #include "./system/winapi/socketio.c"
+    #endif
+
     #ifdef MATTE_USE_SYSTEM_EXTENSIONS__BASIC
+        #define MATTE_USE_SYSTEM_EXTENSIONS__FILESYSTEM_READ
         #include "./system/winapi/shared.c"
         #include "./system/winapi/consoleio.c"
         #include "./system/winapi/filesystem.c"
@@ -70,9 +77,6 @@ DEALINGS IN THE SOFTWARE.
         #include "./system/winapi/async.c"
     #endif
 
-    #ifdef MATTE_USE_SYSTEM_EXTENSIONS__SOCKETS
-        #include "./system/winapi/socketio.c"
-    #endif
 
 
 
@@ -98,6 +102,7 @@ DEALINGS IN THE SOFTWARE.
 
     ////////////
     #ifdef MATTE_USE_SYSTEM_EXTENSIONS__BASIC
+        #define MATTE_USE_SYSTEM_EXTENSIONS__FILESYSTEM_READ
         #include "./system/posix/shared.c"
         #include "./system/posix/consoleio.c"
         #include "./system/posix/filesystem.c"
