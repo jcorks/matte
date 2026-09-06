@@ -32,6 +32,7 @@ DEALINGS IN THE SOFTWARE.
 #include "matte_array.h"
 #include "matte_opcode.h"
 #include "matte.h"
+#include <stdio.h>
 
 #ifdef MATTE_DEBUG
     #include <stdio.h>
@@ -431,8 +432,8 @@ matteArray_t * matte_bytecode_stubs_decode_binary(
 static uint8_t * write_rolled_uint_bytes(uint8_t * iter, uint32_t val) {
     uint8_t needed;
     if (val <= 127) {
-        needed = val;
-        (*(iter++)) = (needed<<1) + 1;
+        needed = 1;
+        (*(iter++)) = (val<<1) + 1;
     } else if (val <= 0xff) {
         needed = 2;
         uint8_t val8 = val;
@@ -442,14 +443,14 @@ static uint8_t * write_rolled_uint_bytes(uint8_t * iter, uint32_t val) {
         needed = 4;
         uint16_t val16 = val;
         (*(iter++)) = needed;
-        (*(iter++)) = val16 % 0xff;
-        (*(iter++)) = val16 / 0xff;
+        (*(iter++)) = val16 % (1<<8);
+        (*(iter++)) = val16 / (1<<8);
     } else if (val <= 0xffffff) {
         needed = 6;
         uint8_t val24[3] = {
-            val % 0xff,
-            (val >> 8) % 0xff,
-            (val >> 16) % 0xff
+            val % (1<<8),
+            (val >> 8) % (1<<8),
+            (val >> 16) % (1<<8)
         };
         (*(iter++)) = needed;
         (*(iter++)) = val24[0];
@@ -464,7 +465,6 @@ static uint8_t * write_rolled_uint_bytes(uint8_t * iter, uint32_t val) {
         (*(iter++)) = b[2];
         (*(iter++)) = b[3];
     }
-    
     return iter;
 }
 
@@ -581,9 +581,9 @@ uint8_t * matte_bytecode_stubs_encode_binary(
         //);
 
         nInst = block->instructionCount;
+
         write_rolled_uint_array(byteout, nInst);
 
-        
         uint32_t compressedSize = 0;
         uint8_t * compressed = matte_instruction_stream_encode(
             block->instructions,
@@ -811,7 +811,6 @@ uint8_t * matte_instruction_stream_encode(
     
     return instStream;
 }
-
 
 void matte_instruction_stream_decode(
     matteBytecodeStubInstruction_t * instructions,

@@ -304,10 +304,8 @@ Matte.newVM = function(
                 },
                 
                 chompRolled : function() {
-                    if (bytes.iter >= bytecode.byteLength) return 0;
-                    var count = bytes.dataView.getUint8(bytes.iter);
+                    var count = bytes.chompUInt8();
                     var t = 0;
-                    bytes.iter += 1;                    
                     
                     const isSingle = count & 0x01;
                     count = count >> 1;
@@ -316,28 +314,25 @@ Matte.newVM = function(
                     }
                     switch(count) {
                       case 1:
-                        t = bytes.dataView.getUint8(bytes.iter);
+                        t = bytes.chompUInt8();
                         break;
                         
                       case 2:
-                        t = bytes.dataView.getUint16(bytes.iter, true);
+                        t = bytes.chompUInt16();
                         break;
 
                       case 3:
                         t = bytes.dataView.getUint8(bytes.iter) +
-                            bytes.dataView.getUint8(bytes.iter+1)*0xff +
-                            bytes.dataView.getUint8(bytes.iter+2)*0xffff;
+                            bytes.dataView.getUint8(bytes.iter+1)*(1 << 8) +
+                            bytes.dataView.getUint8(bytes.iter+2)*(1 << 16);
+                        bytes.iter+=3;
                         break;
                         
                       case 4:
-                        t = bytes.dataView.getUInt32(bytes.iter, true);
+                        t = bytes.chompUInt32();
                         break;
-                    
                     }
-                    bytes.iter += count;
                     return t;
-
-                    
                 },
                 chompUInt16 : function() {
                     if (bytes.iter >= bytecode.byteLength) return 0;
@@ -1398,6 +1393,10 @@ Matte.newVM = function(
                         }
                         
                         const setget = v;
+                        if (setget.kv_string == undefined) {
+                            return createValue();
+                        }
+                        
                         const getter = setget.kv_string[store_specialString_get];
                         if (getter == undefined) {
                             vm.raiseErrorString("Object's interface disallows reading of the member \"" + key +"\".");
@@ -2853,22 +2852,30 @@ Matte.newVM = function(
             
         // Performs import as if from the code context,
         // invoking "onImport"
-        vm.import = function(module, parameters, data) {
-            if (vm_imports[module] != undefined)
-                return vm_imports[module];
+        const vm_preloaded = {};
+        vm.import = function(module, parameters, data, alias, preload) {
+            if (alias == undefined) alias = module;
+            if (vm_imports[alias] != undefined)
+                return vm_imports[alias];
             
-            
-            if (data == undefined)
-                data = vm.onImport(module);
+            data = vm_preloaded[alias];
+            if (data == undefined) {
+                data = vm.onImport(module, alias);
+            }
                 
             if (!data) {
                 vm.raiseErrorString("Could not retrieve bytecode data for import.");
                 return;
             }
             
-            const v = vm.executeBytecode(data, parameters, module);
-            vm_imports[module] = v;
-            return v;
+            if (preload) {
+                vm_preloaded[alias] = data;
+                return store.createEmpty();   
+            } else {
+                const v = vm.executeBytecode(data, parameters, module);
+                vm_imports[module] = v;
+                return v;
+            }
         };
         
         vm.executeBytecode = function(bytes, parameters, name) {
@@ -4577,10 +4584,14 @@ Matte.newVM = function(
             return vm.import(store.valueAsString(args[0]), undefined);
         });
 
-        vm_addBuiltIn(vm.EXT_CALL.IMPORTMODULE, ['module', 'parameters', 'noCache'], function(fn, args) {
-            if (store.valueAsBoolean(args[2]))
+        vm_addBuiltIn(vm.EXT_CALL.IMPORTMODULE, ['module', 'parameters', 'alias', 'preloadOnly', 'noCache'], function(fn, args) {
+            if (store.valueAsBoolean(args[4]))
               vm_imports[args[0]] = undefined;            
-            return vm.import(store.valueAsString(args[0]), args[1]);
+            
+            const alias = valToType(args[2]) == store.TYPE_STRING ? store.valueAsString(args[2]) : undefined
+            const preloadOnly = valToType(args[3]) == store.TYPE_BOOLEAN ? store.valueAsBoolean(args[3]) : undefined
+              
+            return vm.import(store.valueAsString(args[0]), args[1], undefined, alias, preloadOnly);
         });
 
         vm_addBuiltIn(vm.EXT_CALL.SETMODULE, ['name', 'value'], function(fn, args) {
@@ -4779,7 +4790,7 @@ Matte.newVM = function(
                 return store.empty;
             }
             store.valueObjectSortUnsafe(args[0], args[1]);
-            return store.empty;
+            return args[0];
         });
         
         vm_addBuiltIn(vm.EXT_CALL.QUERY_SUBSET, ['base', 'from', 'to'], function(fn, args) {
