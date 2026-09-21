@@ -263,6 +263,7 @@ MATTE_EXT_FN(matte_filesystem__writestring) {
         return matte_store_new_value(store);
     }
     if (!fwrite(matte_string_get_utf8_data(data), 1, matte_string_get_utf8_length(data), f)) {
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeString() could not write data successfully."));
         fclose(f);
         return matte_store_new_value(store);
     }
@@ -296,6 +297,7 @@ MATTE_EXT_FN(matte_filesystem__appendstring) {
     }
     if (!fwrite(matte_string_get_utf8_data(data), 1, matte_string_get_utf8_length(data), f)) {
         fclose(f);
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "appendString() could not write data successfully."));
         return matte_store_new_value(store);
     }
     fclose(f);
@@ -332,6 +334,7 @@ MATTE_EXT_FN(matte_filesystem__writejson) {
     }
     if (!fwrite(matte_string_get_utf8_data(data), 1, matte_string_get_utf8_length(data), f)) {
         fclose(f);
+        matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeJSON() could not write data successfully."));
         matte_string_destroy(data);
         return matte_store_new_value(store);
     }
