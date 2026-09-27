@@ -982,6 +982,10 @@ void matte_debugging_enable(matte_t * m) {
     m->lastInput = matte_strdup("");
 }
 
+int matte_debugging_is_enabled(matte_t * m) {
+    return m->isDebug;
+}
+
 void matte_set_compile_flags(matte_t * m, int flags) {
     m->compileFlags = flags;
 }

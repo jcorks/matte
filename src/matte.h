@@ -126,6 +126,14 @@ void matte_debugging_enable(
     matte_t *
 );
 
+/// Returns whether matte_debugging_enable() was called, as a convenience 
+/// check for whether the higher-level matte instance is within a 
+/// debugging mode.
+int matte_debugging_is_enabled(
+    /// The instance to enable IO for
+    matte_t *
+);
+
 /// When called, sets the options to use for when matte has to 
 /// compile source. Currently, this is only used for enabling 
 /// compiling with debug info
