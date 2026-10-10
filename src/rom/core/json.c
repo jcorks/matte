@@ -157,12 +157,21 @@ static void push_double_buffer(matteArray_t * buffer, double val) {
 }
 
 typedef struct {
+    int pretty;
+    int level;
     matteVM_t * vm;
     matteStore_t * store;
     matteString_t * lastNamedRef;
     matteTable_t * recur;
     matteArray_t * buffer;
 } JSONEncodeData;
+
+static void pad_value(JSONEncodeData * data) {
+    int i;
+    for(i = 0; i < data->level; ++i) {
+        push_cstr_buffer(data->buffer, "  ");  
+    }
+}
 
 static int encode_value(JSONEncodeData * data, matteValue_t val) {
     matteStore_t * store = data->store;
@@ -201,12 +210,21 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
         // if is array
         if (matte_value_object_get_key_count(store, val) == matte_value_object_get_number_key_count(store, val)) {
             push_char_buffer(buffer, '[');
+            data->level ++;
+            if (data->pretty) {
+                push_char_buffer(buffer, '\n');
+                pad_value(data);
+            }
             uint32_t len = matte_value_object_get_key_count(store, val);
             uint32_t i;
             for(i = 0; i < len; ++i) {
-                if (i != 0)
+                if (i != 0) {
                     push_char_buffer(buffer, ',');
-
+                    if (data->pretty) {
+                        push_char_buffer(buffer, '\n');
+                        pad_value(data);
+                    }
+                }
                 matteValue_t * subval = matte_value_object_array_at_unsafe(store, val, i);
 
                 matte_string_truncate(data->lastNamedRef, 0);
@@ -225,8 +243,14 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
                 }
                 if (!encode_value(data, *subval)) return 0;
             }
+            data->level --;
+            if (data->pretty) {
+                push_char_buffer(buffer, '\n');
+                pad_value(data);
+            }
             
             push_char_buffer(buffer, ']');
+
         } else {
             matteValue_t keys = matte_value_object_keys(store, val);
             matte_value_object_push_lock(store, keys);
@@ -234,14 +258,22 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
             uint32_t len = matte_value_object_get_key_count(store, keys);
             uint32_t i;
             push_char_buffer(buffer, '{');
-            
+            data->level ++;
+            if (data->pretty) {
+                push_char_buffer(buffer, '\n');
+                pad_value(data);
+            }
             for(i = 0; i < len; ++i) {
                 matteValue_t * key = matte_value_object_array_at_unsafe(store, keys, i);
                 if (matte_value_type(*key) != MATTE_VALUE_TYPE_STRING) continue;
 
-                if (i != 0)
+                if (i != 0) {
                     push_char_buffer(buffer, ',');
-                    
+                    if (data->pretty) {
+                        push_char_buffer(buffer, '\n');
+                        pad_value(data);
+                    }                    
+                }
                     
                 // key
                 push_char_buffer(buffer, '"');
@@ -266,7 +298,7 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
                     matte_value_object_pop_lock(store, keys);
                     return 0;
                 }
-                
+    
                 int ret = encode_value(data, keyval);
                 matte_store_recycle(store, keyval);
                 if (!ret) {
@@ -275,6 +307,11 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
                 }
             }
             matte_value_object_pop_lock(store, keys);
+            data->level --;
+            if (data->pretty) {
+                push_char_buffer(buffer, '\n');
+                pad_value(data);
+            }
             push_char_buffer(buffer, '}');
         }
         break;
@@ -293,7 +330,7 @@ static int encode_value(JSONEncodeData * data, matteValue_t val) {
     return 1;
 }
 
-matteString_t * matte_json_encode(matteVM_t * vm, matteValue_t object) {
+matteString_t * matte_json_encode(matteVM_t * vm, matteValue_t object, int pretty) {
     matteStore_t * store = matte_vm_get_store(vm);
     matteArray_t * arr = matte_array_create(sizeof(uint32_t));
     matteTable_t * recur = matte_table_create_hash_pointer();
@@ -304,7 +341,8 @@ matteString_t * matte_json_encode(matteVM_t * vm, matteValue_t object) {
     data.recur = recur;
     data.lastNamedRef = matte_string_create_from_c_str("[toplevel object]");
     data.buffer = arr;
-   
+    data.level = 0;
+    data.pretty = pretty;
     
     encode_value(&data, object);    
     
@@ -315,9 +353,14 @@ matteString_t * matte_json_encode(matteVM_t * vm, matteValue_t object) {
 }
 
 MATTE_EXT_FN(matte_json__encode) {
-    matteString_t * str = matte_json_encode(vm, args[0]);
     matteStore_t * store = matte_vm_get_store(vm);
     matteValue_t out = matte_store_new_value(store);
+    int pretty = 0;
+    if (matte_value_type(args[1]) == MATTE_VALUE_TYPE_BOOLEAN) {
+        pretty = matte_value_as_boolean(store, args[1]);
+    }
+    matteString_t * str = matte_json_encode(vm, args[0], pretty);
+
     matte_value_into_string(store, &out, str);
     matte_string_destroy(str);
     return out;
@@ -596,7 +639,7 @@ MATTE_EXT_FN(matte_json__decode) {
 
 
 void matte_system__json(matteVM_t * vm) {
-    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::json_encode"),   1, matte_json__encode,   NULL);
+    matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::json_encode"),   2, matte_json__encode,   NULL);
     matte_vm_set_external_function_autoname(vm, MATTE_VM_STR_CAST(vm, "__matte_::json_decode"),   1, matte_json__decode,   NULL);
 
 }

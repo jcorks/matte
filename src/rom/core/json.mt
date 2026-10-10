@@ -33,8 +33,8 @@ DEALINGS IN THE SOFTWARE.
 @:json_decode = getExternalFunction(name:"__matte_::json_decode");
 
 @JSON = {
-    encode :: (object => Object) { 
-        return json_encode(a:object);
+    encode :: (object => Object, pretty) { 
+        return json_encode(a:object, b:pretty);
     },
     
     

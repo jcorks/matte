@@ -306,7 +306,7 @@ MATTE_EXT_FN(matte_filesystem__appendstring) {
 }
 
 
-matteString_t * matte_json_encode(matteVM_t * vm, matteValue_t object);
+matteString_t * matte_json_encode(matteVM_t * vm, matteValue_t object, int pretty);
 
 
 MATTE_EXT_FN(matte_filesystem__writejson) {
@@ -319,7 +319,7 @@ MATTE_EXT_FN(matte_filesystem__writejson) {
     }
 
 
-    matteString_t * data = matte_json_encode(vm, args[1]);
+    matteString_t * data = matte_json_encode(vm, args[1], 1);
     if (!data) {
         matte_vm_raise_error_string(vm, MATTE_VM_STR_CAST(vm, "writeJSON() requires the second argument to be string coercible."));
         return matte_store_new_value(store);
