@@ -2625,8 +2625,6 @@ Matte.newVM = function(
         };
         
 
-
-
         
         const vm_addBuiltIn = function(index, argNames, fn) {
             if (vm_externalFunctionIndex.length <= index)
@@ -2841,6 +2839,10 @@ Matte.newVM = function(
         };
         // controls the store
         vm.store = store;
+        vm.printCallstack = function() {
+          const obj = vm_infoNewObject();
+          console.log(store.valueObjectAccess(obj, 'summary'));
+        };
 
 
             
@@ -5227,7 +5229,7 @@ Matte.newVM = function(
     }());
     ///
     
-    Matte.objectToJSON = function(obj) {
+    Matte.objectToJSON = function(obj, pretty) {
         const valToType = store.valToType;
         
         const encode = function(val) {
@@ -5264,8 +5266,11 @@ Matte.newVM = function(
               })()
             }
         };
-        const str = JSON.stringify(encode(obj));
-        return str;
+        if (pretty) {
+            return JSON.stringify(encode(obj), undefined, 2);
+        } else {
+            return JSON.stringify(encode(obj));
+        }
     }
     
     Matte.JSONtoObject = function(str) {
@@ -5318,8 +5323,9 @@ Matte.newVM = function(
     }
     
     
-    vm.setExternalFunction('__matte_::json_encode', ['a'], function(fn, args) {
-        return Matte.objectToJSON(args[0]);
+    vm.setExternalFunction('__matte_::json_encode', ['a', 'b'], function(fn, args) {
+        if (args[0] == "") return store.createEmpty()
+        return Matte.objectToJSON(args[0], store.valueAsBoolean(args[1]));
     });
     vm.setExternalFunction('__matte_::json_decode', ['a'], function(fn, args) {
         return Matte.JSONtoObject(args[0]);
