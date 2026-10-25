@@ -130,5 +130,6 @@ all:
 	cd ../../ && ./matte compile-debug ./testing/test126.mt ./js/browser_test/test126.mt.bytes
 	cd ../../ && ./matte compile-debug ./testing/test127.mt ./js/browser_test/test127.mt.bytes
 	cd ../../ && ./matte compile-debug ./testing/test128.mt ./js/browser_test/test128.mt.bytes
+	cd ../../ && ./matte compile-debug ./testing/test129.mt ./js/browser_test/test129.mt.bytes
 	cd ../../ && ./matte compile-debug ./testing/mytestmodule.mt ./js/browser_test/mytestmodule.mt
 

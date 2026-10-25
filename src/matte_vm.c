@@ -2316,26 +2316,26 @@ matteValue_t matte_vm_call_full(
                     matte_array_at(argsReal, matteValue_t, i) = vv;                    
                 }                       
             }  
-        } else {                                   
-            for(i = 0; i < lenReal; ++i) {
-                for(n = 0; n < len; ++n) {
-                    if (matte_bytecode_stub_get_arg_name_noref(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
-                        matteValue_t v = matte_array_at(args, matteValue_t, i);
-                        matte_array_at(argsReal, matteValue_t, n) = v;
-                        // sicne this function doesn't use a referrable, we need to set roots manually.
-                        if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
-                            matte_value_object_push_lock(vm->store, v);
-                        } else if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
-                            matteValue_t vv = matte_store_new_value(vm->store);
-                            matte_value_into_copy(vm->store, &vv, v);
-                            matte_array_at(argsReal, matteValue_t, n) = vv;                    
-                        }
-
-                        break;
-                    }
-                }       
+        } else {
+            int index;                                   
+            for(i = 0; i < lenReal; ++i) { 
+                index = matte_bytecode_stub_get_arg_index(
+                    stub,
+                    matte_array_at(argNames, matteValue_t, i).value.id
+                );
                 
-                if (n == len) {
+                if (index > -1) {
+                    matteValue_t v = matte_array_at(args, matteValue_t, i);
+                    matte_array_at(argsReal, matteValue_t, index) = v;
+                    // sicne this function doesn't use a referrable, we need to set roots manually.
+                    if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
+                        matte_value_object_push_lock(vm->store, v);
+                    } else if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
+                        matteValue_t vv = matte_store_new_value(vm->store);
+                        matte_value_into_copy(vm->store, &vv, v);
+                        matte_array_at(argsReal, matteValue_t, index) = vv;                    
+                    }
+                } else {
                     matteString_t * str;
                     // couldnt find the requested name. Throw an error.
                     if (len)
@@ -2360,7 +2360,6 @@ matteValue_t matte_vm_call_full(
                     
                     matte_array_destroy(argsReal);
                     return matte_store_new_value(vm->store);
-                    
                 }
             }
         }
@@ -2451,15 +2450,15 @@ matteValue_t matte_vm_call_full(
             referrables[0] = val;
             
         } else {
+            int index;
             for(i = 0; i < lenReal; ++i) {
-                for(n = 0; n < len; ++n) {
-                    if (matte_bytecode_stub_get_arg_name_noref(stub, n).value.id == matte_array_at(argNames, matteValue_t, i).value.id) {
-                        referrables[n] = matte_array_at(args, matteValue_t, i);
-                        break;
-                    }
-                }       
-                
-                if (n == len) {
+                index = matte_bytecode_stub_get_arg_index(
+                    stub,
+                    matte_array_at(argNames, matteValue_t, i).value.id
+                );
+                if (index > -1) {
+                    referrables[index] = matte_array_at(args, matteValue_t, i);
+                } else {
                     // couldnt find the requested name. Throw an error.
                     matteString_t * str;
                     if (len) 

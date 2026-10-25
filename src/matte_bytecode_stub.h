@@ -195,6 +195,10 @@ uint8_t matte_bytecode_stub_arg_count(const matteBytecodeStub_t *);
 /// Gets the count of local variables to this function.
 uint8_t matte_bytecode_stub_local_count(const matteBytecodeStub_t *);
 
+// Returns the index of the argument in the compiled argument list 
+// given an interned string ID.
+int matte_bytecode_stub_get_arg_index(matteBytecodeStub_t *, uint32_t argString);
+
 
 /// Gets the argument name of the local variable at the given index
 /// If none, empty is returned

@@ -107,7 +107,22 @@ static uint8_t * matte_instruction_stream_encode(
     uint32_t startingLine,
     uint32_t * len
 );
+#define ARG_TABLE_SEARCH_DEPTH_MAX 4
 
+typedef struct {
+  uint32_t value;
+  uint32_t index;
+} argTableBucketEntry_t;
+
+typedef struct {
+  uint32_t size;
+  argTableBucketEntry_t entries[ARG_TABLE_SEARCH_DEPTH_MAX];
+} argTableBucket_t;
+
+typedef struct {
+  argTableBucket_t ** buckets;
+  uint32_t bucketCount;
+} argTable_t;
 
 // ASSUMES THAT STRING IDS AS GIVEN BY 
 // THE STORE PERSIST THROUGHOUT THE STORE'S LIFETIME
@@ -141,6 +156,8 @@ struct matteBytecodeStub_t {
     uint32_t stringCount;
     uint32_t startingLine;
     uint8_t options;
+    
+    argTable_t * argTable;
 
 };  
 
@@ -409,8 +426,6 @@ void matte_bytecode_stub_link(matteBytecodeStub_t * stub, matteStore_t * store, 
 
 }
 
-
-
 matteArray_t * matte_bytecode_stubs_decode_binary(
     const uint8_t * bytecodeRaw, 
     uint32_t len
@@ -662,6 +677,91 @@ static matteValue_t * link_strings(
 }
 
 
+
+// creates the static arg table for quicker lookups
+static void matte_bytecode_stub_get_arg_index__create_arg_table(matteBytecodeStub_t * stub) {
+    uint32_t i, n;
+    uint32_t len = stub->argCount;
+    stub->argTable = matte_allocate(sizeof(argTable_t));
+    argTable_t * t = stub->argTable;
+    
+  L_TRY_AGAIN:
+    if (t->bucketCount == 0) {
+        t->bucketCount = ARG_TABLE_SEARCH_DEPTH_MAX;    
+    } else {
+        for(n = 0; n < t->bucketCount; ++n) {
+            if (t->buckets[n]) {
+                matte_deallocate(t->buckets[n]);
+            }    
+        }
+        t->bucketCount = (t->bucketCount+4)*1.4;    
+        matte_deallocate(t->buckets);
+    }
+    t->buckets = matte_allocate(sizeof(argTableBucket_t *) * t->bucketCount);
+    
+    // emplace each;
+    for(i = 0; i < len; ++i) {
+        uint32_t bin = stub->argNames[i].value.id % t->bucketCount;
+        argTableBucket_t * b = t->buckets[bin];
+        if (b == NULL) {
+            b = matte_allocate(sizeof(argTableBucket_t));
+            t->buckets[bin] = b;
+            
+        // too full, restart with a bigger size
+        } else if (b->size >= ARG_TABLE_SEARCH_DEPTH_MAX) {
+            goto L_TRY_AGAIN;
+        }
+        
+        argTableBucketEntry_t * e = b->entries+b->size++;
+        e->value = stub->argNames[i].value.id;
+        e->index = i;
+    }
+    //printf("complete. Args: %d, bucket count: %d\n", (int)stub->argCount, (int)t->bucketCount);
+}
+
+
+
+int matte_bytecode_stub_get_arg_index(matteBytecodeStub_t * stub, uint32_t argString) {
+    if (stub->argNames == NULL) {
+        stub->argNames = link_strings(stub->protoArgs, stub->argCount, stub->store);
+        matte_deallocate(stub->protoArgs);
+        stub->protoArgs = NULL;
+
+        if (stub->argCount > ARG_TABLE_SEARCH_DEPTH_MAX) {
+            matte_bytecode_stub_get_arg_index__create_arg_table(stub);
+        }
+    } 
+    
+    // we are trying to guarantee a search time of ARG_TABLE_SEARCH_DEPTH_MAX,
+    // so if its already lower, the easiest route is just to linear search 
+    if (stub->argCount <= ARG_TABLE_SEARCH_DEPTH_MAX) {
+        uint32_t i;
+        uint32_t len = stub->argCount;
+        for(i = 0; i < len; ++i) {
+            if (stub->argNames[i].value.id == argString) {
+                return (int)i;
+            }
+        }
+        return -1;
+    }
+    
+    // arg table 
+    argTable_t * t = stub->argTable;
+    uint32_t bin = argString%t->bucketCount;
+    uint32_t i;
+    argTableBucket_t * bucket = t->buckets[bin];
+    if (bucket) {
+        uint32_t len = bucket->size;
+        for(i = 0; i < len; ++i) {
+            if (bucket->entries[i].value == argString) {
+                return bucket->entries[i].index;
+            }
+        }
+    }
+    return -1;
+}
+
+
 matteValue_t matte_bytecode_stub_get_arg_name_noref(matteBytecodeStub_t * stub, uint8_t i) {    
     if (i >= stub->argCount || stub->store == NULL) {
         matteValue_t v = {};
@@ -672,9 +772,16 @@ matteValue_t matte_bytecode_stub_get_arg_name_noref(matteBytecodeStub_t * stub, 
         stub->argNames = link_strings(stub->protoArgs, stub->argCount, stub->store);
         matte_deallocate(stub->protoArgs);
         stub->protoArgs = NULL;
+
+        if (stub->argCount > ARG_TABLE_SEARCH_DEPTH_MAX) {
+            matte_bytecode_stub_get_arg_index__create_arg_table(stub);
+        }
     }
     return stub->argNames[i];
 }
+
+
+
 
 matteValue_t matte_bytecode_stub_get_local_name_noref(matteBytecodeStub_t * stub, uint8_t i) {
     if (i >= stub->localCount || stub->store == NULL) {
@@ -877,7 +984,6 @@ void matte_instruction_stream_decode(
     }
 
 }
-
 
 
 
