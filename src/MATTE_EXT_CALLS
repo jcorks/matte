@@ -353,10 +353,6 @@ static matteValue_t vm_ext_call__importmodule(matteVM_t * vm, matteValue_t fn, c
 
         } else {
             matteValue_t va = matte_vm_unit_execute(vm, unitID, noCacheFlag ? 0 : 1, params);
-            
-            if (noCacheFlag) {
-                matte_value_object_pop_lock(vm->store, *v);
-            }
             return va;
         }
     }
