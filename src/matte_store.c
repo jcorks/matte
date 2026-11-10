@@ -168,8 +168,7 @@ struct matteStore_t {
     matteStoreBin_t * bin;
     matteArray_t * valueStore;
     matteArray_t * valueStore_dead;
-    
-    
+
     uint64_t gcLastObjectCount;
     int gcState; 
     uint64_t removeObjectCount;
