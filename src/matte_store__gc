@@ -43,12 +43,14 @@ DEALINGS IN THE SOFTWARE.
 // Max number of milliseconds to dedicate to 
 // garbage collection before resuming 
 // normal execution. Steps are interleaved.
-#define BUSY_POSSUM__AWAKE_TIME_MS  3.5
+#define BUSY_POSSUM__AWAKE_TIME_MS  14.5
 
+// Time before passive checks of the gc
+#define BUSY_POSSUM__ALARM_TIME_MS 3000
 
 // Number of garbage collection events before 
 // awaking the garbage collector.
-#define BUSY_POSSUM__GC_LIMIT (4096*32)
+#define BUSY_POSSUM__GC_LIMIT (4096*8)
 
 // Number of tricolor march visits in a single cycle
 // Too big of a number could unexpectedly result 
@@ -484,10 +486,11 @@ void matte_store_garbage_collect(matteStore_t * h) {
       case (BUSY_POSSUM__STATE__SLEEPING):
         if (
             !h->shutdown && 
-            matte_store_bin_get_lifetime_creates(h->bin) + h->removeObjectCount < h->gcLastObjectCount + BUSY_POSSUM__GC_LIMIT
+            matte_store_bin_get_lifetime_creates(h->bin) + h->removeObjectCount < h->gcLastObjectCount + BUSY_POSSUM__GC_LIMIT &&
+            matte_os_get_ticks() - h->ticksGC < BUSY_POSSUM__ALARM_TIME_MS
         ) {
           return;
-        }
+        } 
         h->gcState = BUSY_POSSUM__STATE__AWAKING;
         break;
         
@@ -548,7 +551,7 @@ void matte_store_garbage_collect(matteStore_t * h) {
         
         
       case BUSY_POSSUM__STATE__YAWNING:
-        h->ticksGC = 0;     
+        h->ticksGC = matte_os_get_ticks();     
         h->gcState = BUSY_POSSUM__STATE__SLEEPING; 
         break;
     }
