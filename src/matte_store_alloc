@@ -109,7 +109,7 @@ void matte_store_recycle_(matteStore_t *, matteValue_t);
 #define matte_value_into_copy(__STORE__, __VAL__, __OTHER__) matte_value_into_copy_(__STORE__, __VAL__, __OTHER__)
 #define matte_value_object_push_lock(__STORE__, __VAL__) matte_value_object_push_lock_(__STORE__, __VAL__)
 #define matte_value_object_pop_lock(__STORE__, __VAL__) matte_value_object_pop_lock_(__STORE__, __VAL__)
-#define matte_store_recycle(__STORE__, __VAL__) (__STORE__),(__VAL__)
+#define matte_store_recycle(__STORE__, __VAL__) matte_store_recycle_(__STORE__,__VAL__)
 #define matte_value_create_type(__STORE__, __MOPTS__, __MOPTS2__, __MOPTSLYT__) matte_value_create_type_(__STORE__, __MOPTS__, __MOPTS2__, __MOPTSLYT__)
 #define matte_value_into_new_external_function_ref(__STORE__, __VAL__, __STUB__) matte_value_into_new_external_function_ref_(__STORE__, __VAL__, __STUB__)
 

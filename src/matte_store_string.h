@@ -59,9 +59,8 @@ void matte_string_store_unref(matteStringStore_t *, uint32_t);
 /// Finds a string based on its ID.
 const matteString_t * matte_string_store_find(const matteStringStore_t *, uint32_t);
 
-
-// null if fail
-const matteString_t * matte_string_store_find(const matteStringStore_t *, uint32_t);
+// Trims memory usage of long strings.
+void matte_string_store_trim(matteStringStore_t *);
 
 #ifdef MATTE_DEBUG
 void matte_string_store_print(matteStringStore_t * h);

@@ -519,6 +519,8 @@ void matte_store_garbage_collect(matteStore_t * h) {
                 // reset.
                 busy_possum_restart_cycle(h);
                 
+                matte_string_store_trim(h->stringStore);
+                
                 // has to go at least one complete distributed cycle
                 uint64_t ticks = matte_os_get_ticks();
                 if (ticks - h->ticksGC > BUSY_POSSUM__AWAKE_TIME_MS) {

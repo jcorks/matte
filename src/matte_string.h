@@ -180,7 +180,7 @@ const matteString_t * matte_string_get_substr(
 
 
 /// Gets a read-only pointer to a c-string representation of the 
-/// string.
+/// string. Only valid until next matte_string_* call with that same string.
 ///
 const char * matte_string_get_c_str(
     /// The string to query.
@@ -313,6 +313,9 @@ int matte_string_compare(
     const matteString_t * b
 );
 
+/// Trims memory used by the string.
+/// Helpful for very large strings.
+void matte_string_trim(matteString_t * tsrc);
 
 
 #endif

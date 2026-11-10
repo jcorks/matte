@@ -40,6 +40,8 @@ DEALINGS IN THE SOFTWARE.
 #include <assert.h>
 #endif
 
+#define MATTE_STRING_STORE__LARGE_STRING_LENGTH 1024
+
 
 typedef struct {
     matteString_t * str;
@@ -145,6 +147,17 @@ void matte_string_store_destroy(matteStringStore_t * h) {
 const matteString_t * matte_string_store_find(const matteStringStore_t * h, uint32_t i) {
     if (i >= matte_array_get_size(h->strings)) return NULL;
     return matte_array_at(h->strings, matteStringInfo_t, i).str;
+}
+
+void matte_string_store_trim(matteStringStore_t * h) {
+    uint32_t i;
+    uint32_t len = matte_array_get_size(h->strings);
+    for(i = 1; i < len; ++i) {
+        matteString_t * s = matte_array_at(h->strings, matteStringInfo_t, i).str;
+        if (s && matte_string_get_length(s) > MATTE_STRING_STORE__LARGE_STRING_LENGTH) {
+            matte_string_trim(s);
+        }
+    }
 }
 
 #ifdef MATTE_DEBUG

@@ -299,6 +299,19 @@ const char * matte_string_get_c_str(const matteString_t * tsrc) {
     return tsrc->cstrtemp;
 }
 
+void matte_string_trim(matteString_t * t) {
+    if (t->cstrtemp) matte_deallocate(t->cstrtemp); 
+    t->cstrtemp = NULL;
+
+    if (t->alloc > t->len) {
+        t->alloc = t->len;
+        uint32_t * newData = (uint32_t*)matte_allocate(t->alloc*sizeof(uint32_t));
+        memcpy(newData, t->utf8, t->len * sizeof(uint32_t));
+        matte_deallocate(t->utf8);
+        t->utf8 = newData;
+    }
+}
+
 uint32_t matte_string_get_length(const matteString_t * t) {
     return t->len;
 }
