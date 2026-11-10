@@ -109,7 +109,7 @@ static matteObject_t * matte_store_bin_fetch(matteStoreBin_t *, uint32_t id);
 static matteObject_t * matte_store_bin_fetch_function(matteStoreBin_t * store, uint32_t id);
 static matteObject_t * matte_store_bin_fetch_table(matteStoreBin_t * store, uint32_t id);
 
-
+static uint64_t matte_store_bin_get_lifetime_creates(const matteStoreBin_t *);
 // recycles an object.
 static void matte_store_bin_recycle(matteStoreBin_t *, uint32_t id);
 
@@ -168,6 +168,11 @@ struct matteStore_t {
     matteStoreBin_t * bin;
     matteArray_t * valueStore;
     matteArray_t * valueStore_dead;
+    
+    
+    uint64_t gcLastObjectCount;
+    int gcState; 
+    uint64_t removeObjectCount;
 
 
     // 0 -> white 
@@ -589,6 +594,7 @@ static void object_unlink_parent(matteStore_t * h, matteObject_t * parent, matte
         assert(found);
     }
     #endif
+    h->removeObjectCount++;
 
 
     matteObjectNode_t * next = matte_pool_fetch(h->nodes, matteObjectNode_t, parent->children);
@@ -3177,6 +3183,7 @@ void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
                 m->color = OBJECT_TRICOLOR__GREY;
                 matte_store_garbage_collect__add_to_color(store, m);
             }
+            store->removeObjectCount++;
             store->gcRequestStrength++;
         }
     }     
@@ -4374,6 +4381,8 @@ struct matteStoreBin_t {
     matteBytecodeStub_t * emptyStub;
     
     matteObject_t * zero;
+    uint64_t newObjectCount;
+
 };
 
 
@@ -4418,6 +4427,11 @@ matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
     return o;
 }
 
+static uint64_t matte_store_bin_get_lifetime_creates(const matteStoreBin_t * store) {
+    return store->newObjectCount;
+}
+
+
 matteObject_t * matte_store_bin_add_table(matteStoreBin_t * store) {
     uint32_t id = matte_pool_add(store->tables);
     matteObject_t * o = matte_pool_fetch(store->tables, matteObject_t, id);
@@ -4430,6 +4444,7 @@ matteObject_t * matte_store_bin_add_table(matteStoreBin_t * store) {
     #endif
 
     o->storeID = id*2+1;
+    store->newObjectCount++;
     return o;
 
 }

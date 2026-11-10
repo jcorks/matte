@@ -42,13 +42,13 @@ DEALINGS IN THE SOFTWARE.
 
 // Max number of milliseconds to dedicate to 
 // garbage collection before resuming 
-// normal execution.
+// normal execution. Steps are interleaved.
 #define BUSY_POSSUM__AWAKE_TIME_MS  3.5
 
-// Minimum number of milliseconds of normal 
-// execution before garbage collection can run once more.
-#define BUSY_POSSUM__SLEEPY_TIME_MS  7.5
 
+// Number of garbage collection events before 
+// awaking the garbage collector.
+#define BUSY_POSSUM__GC_LIMIT (4096*32)
 
 // Number of tricolor march visits in a single cycle
 // Too big of a number could unexpectedly result 
@@ -69,7 +69,10 @@ DEALINGS IN THE SOFTWARE.
 // will cause extra overhead.
 #define BUSY_POSSUM__CLEANUP_CHUNK 100
 
-
+#define BUSY_POSSUM__STATE__SLEEPING 0
+#define BUSY_POSSUM__STATE__AWAKING  1
+#define BUSY_POSSUM__STATE__WORKING  2
+#define BUSY_POSSUM__STATE__YAWNING  3
 
 // External functions:
 
@@ -474,75 +477,82 @@ static void busy_possum_restart_cycle(matteStore_t * h) {
 
 void matte_store_garbage_collect(matteStore_t * h) {
     if (h->gcLocked) return;
-    
 
-    // recycles pending objects
     busy_possum_object_cleanup(h);    
 
-    #ifdef MATTE_GC_FORCE_CYCLE_COUNT_TIMEOUT
-        h->gcRequestStrength++;
-        if (h->gcRequestStrength < MATTE_GC_FORCE_CYCLE_COUNT_TIMEOUT) {
-            return;
+    switch(h->gcState) {
+      case (BUSY_POSSUM__STATE__SLEEPING):
+        if (
+            !h->shutdown && 
+            matte_store_bin_get_lifetime_creates(h->bin) + h->removeObjectCount < h->gcLastObjectCount + BUSY_POSSUM__GC_LIMIT
+        ) {
+          return;
         }
-        h->gcRequestStrength = 0;
-    #else
-        double ticks = matte_os_get_ticks();
-        //#ifndef MATTE_DEBUG__STORE
-        if (!h->shutdown && (ticks - h->ticksGC < BUSY_POSSUM__SLEEPY_TIME_MS)) return;
-        h->ticksGC = ticks;
-    #endif
-    //#endif
-    h->gcLocked = 1;
-  L_BUSY_POSSUM_CYCLE:
-    
-    if (h->pendingRoots) {
-        // once a cycle is complete, the roots a searched and their children marked grey
-        busy_possum_process_roots(h);
-    } else {
-        h->gcRequestStrength = 0;
+        h->gcState = BUSY_POSSUM__STATE__AWAKING;
+        break;
+        
+      case BUSY_POSSUM__STATE__AWAKING:
+        h->ticksGC = matte_os_get_ticks();
+        h->gcLastObjectCount = matte_store_bin_get_lifetime_creates(h->bin) + h->removeObjectCount;
+        h->gcState = BUSY_POSSUM__STATE__WORKING;
+        break;
+        
+      case BUSY_POSSUM__STATE__WORKING:
+        h->gcLocked = 1;
+        L_BUSY_POSSUM_CYCLE:
+          
+        if (h->pendingRoots) {
+            // once a cycle is complete, the roots a searched and their children marked grey
+            busy_possum_process_roots(h);
+        } else {
+            h->gcRequestStrength = 0;
 
-        // converts grey into black through children to mark grey
-        busy_possum_tricolor_march(h);
+            // converts grey into black through children to mark grey
+            busy_possum_tricolor_march(h);
 
-        if (h->tricolor[OBJECT_TRICOLOR__GREY] == 0) {
-            // white objects are transfered to the cleanup list and the lists are 
-            // reset.
-            busy_possum_restart_cycle(h);
-            if (!h->shutdown) {
-                h->gcOldCycle++;
-                h->gcLocked = 0;
-                return;
+
+            if (h->tricolor[OBJECT_TRICOLOR__GREY] == 0) {
+                // white objects are transfered to the cleanup list and the lists are 
+                // reset.
+                busy_possum_restart_cycle(h);
+                
+                // has to go at least one complete distributed cycle
+                uint64_t ticks = matte_os_get_ticks();
+                if (ticks - h->ticksGC > BUSY_POSSUM__AWAKE_TIME_MS) {
+                    h->gcState = BUSY_POSSUM__STATE__YAWNING;
+                }
+                
+                if (!h->shutdown) {
+                    h->gcOldCycle++;
+                    h->gcLocked = 0;
+                    return;
+                }
             }
         }
-    }
 
-    
-    
-    if (h->shutdown) {
-        if (h->tricolor[OBJECT_TRICOLOR__BLACK] ||
-            h->tricolor[OBJECT_TRICOLOR__WHITE] ||
-            h->tricolor[OBJECT_TRICOLOR__GREY] ||
-            h->toRemove->size ||
-            h->pendingRoots) {
-            busy_possum_object_cleanup(h);    
-            goto L_BUSY_POSSUM_CYCLE;
-        } else {
-            // drop out
-        }
-    } else {
         
-        #ifndef MATTE_GC_FORCE_CYCLE_COUNT_TIMEOUT
-        ticks = matte_os_get_ticks();
-        if (ticks - h->ticksGC < BUSY_POSSUM__AWAKE_TIME_MS)
-            goto L_BUSY_POSSUM_CYCLE;
-        #endif
-
+        
+        if (h->shutdown) {
+            if (h->tricolor[OBJECT_TRICOLOR__BLACK] ||
+                h->tricolor[OBJECT_TRICOLOR__WHITE] ||
+                h->tricolor[OBJECT_TRICOLOR__GREY] ||
+                h->toRemove->size ||
+                h->pendingRoots) {
+                busy_possum_object_cleanup(h);    
+                goto L_BUSY_POSSUM_CYCLE;
+            }
+        } 
+        h->gcOldCycle++;
+        h->gcLocked = 0;
+        break;
+        
+        
+      case BUSY_POSSUM__STATE__YAWNING:
+        h->ticksGC = 0;     
+        h->gcState = BUSY_POSSUM__STATE__SLEEPING; 
+        break;
     }
 
-
-    h->gcOldCycle++;
-    h->gcLocked = 0;
-    //h->cooldown++;
 }
 
 
