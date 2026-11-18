@@ -50,6 +50,10 @@ DEALINGS IN THE SOFTWARE.
     #include <assert.h>
 #endif
 
+#ifdef MATTE_DEBUG__STORE
+static uint32_t matte_store_track_get_ref_count(matteStore_t *, int type, uint32_t id);
+#endif
+
 #define ROOT_AGE_LIMIT 2
 
 #define MATTE_PI 3.14159265358979323846
@@ -736,11 +740,13 @@ static matteValue_t * object_put_prop(matteStore_t * store, matteObject_t * m, m
                 object_unlink_parent_value(store, m, value);
             }
             matte_store_recycle(store, *value);
-            matte_mvt2_insert(m->table.keyvalues_id, key, out);
-            return matte_mvt2_find(m->table.keyvalues_id, key);
+            return matte_mvt2_insert(m->table.keyvalues_id, key, out);
         } else {
             
             matte_string_store_ref_id(store->stringStore, key.value.id);
+            #ifdef MATTE_DEBUG__STORE
+                matte_store_track_in(store, key, "object.putProp()", __LINE__);
+            #endif
             return matte_mvt2_insert(m->table.keyvalues_id, key, out);
         }
       }
@@ -880,17 +886,62 @@ static int BUILTIN_OBJECT__IDS[] = {
 };
 
 
+
+#ifdef MATTE_DEBUG__STORE
+#define matte_store_string(__STORE__, __STR__) matte_store_string_(__STORE__, __STR__, __FILE__, __LINE__)
+#define matte_store_c_string(__STORE__, __STR__) matte_store_c_string_(__STORE__, __STR__, __FILE__, __LINE__)
+
+
+static uint32_t matte_store_string_(
+    matteStore_t * store, 
+    const matteString_t * str, 
+    const char * file, 
+    int line 
+) {
+    uint32_t id = matte_string_store_ref(store->stringStore, str);
+    matteValue_t v = {};
+    v.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    v.value.id = id;
+    matte_store_track_in(store, v, file, line);
+    return id;
+}
+
+static uint32_t matte_store_c_string_(
+    matteStore_t * store, 
+    const char * str, 
+    const char * file, 
+    int line 
+) {
+    uint32_t id = matte_string_store_ref_cstring(store->stringStore, str);
+    matteValue_t v = {};
+    v.binIDreserved = MATTE_VALUE_TYPE_STRING;
+    v.value.id = id;
+    matte_store_track_in(store, v, file, line);
+    return id;
+}
+
+
+#else 
+#define matte_store_string(__STORE__, __STR__) matte_string_store_ref((__STORE__)->stringStore, __STR__)
+#define matte_store_c_string(__STORE__, __STR__) matte_string_store_ref_cstring((__STORE__)->stringStore, __STR__)
+#endif
+
+
+
+
+
+
 static void add_table_refs(
     matteTable_t * table,
-    matteStringStore_t * stringStore,
+    matteStore_t * store,
     const char ** names,
     int * ids
 ) {
     while(*names) {
 
 
-        
-        matte_table_insert_by_uint(table, matte_string_store_ref_cstring(stringStore, *names), (void*)(uintptr_t)*ids);
+        uint32_t id = matte_store_c_string(store, *names);
+        matte_table_insert_by_uint(table, id, (void*)(uintptr_t)*ids);
     
         names++;
         ids++;
@@ -941,21 +992,21 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->type_any = matte_value_create_type(out, dummy, dummy, dummy);
     out->type_nullable = matte_value_create_type(out, dummy, dummy, dummy);
 
-    out->specialString_empty.value.id = matte_string_store_ref_cstring(out->stringStore, "empty");
-    out->specialString_nothing.value.id = matte_string_store_ref_cstring(out->stringStore, "");
-    out->specialString_true.value.id = matte_string_store_ref_cstring(out->stringStore, "true");
-    out->specialString_false.value.id = matte_string_store_ref_cstring(out->stringStore, "false");
-    out->specialString_dynamicBindToken.value.id = matte_string_store_ref_cstring(out->stringStore, "$");
+    out->specialString_empty.value.id = matte_store_c_string(out, "empty");
+    out->specialString_nothing.value.id = matte_store_c_string(out, "");
+    out->specialString_true.value.id = matte_store_c_string(out, "true");
+    out->specialString_false.value.id = matte_store_c_string(out, "false");
+    out->specialString_dynamicBindToken.value.id = matte_store_c_string(out, "$");
 
-    out->specialString_type_boolean.value.id = matte_string_store_ref_cstring(out->stringStore, "Boolean");
-    out->specialString_type_empty.value.id = matte_string_store_ref_cstring(out->stringStore, "Empty");
-    out->specialString_type_number.value.id = matte_string_store_ref_cstring(out->stringStore, "Number");
-    out->specialString_type_string.value.id = matte_string_store_ref_cstring(out->stringStore, "String");
-    out->specialString_type_object.value.id = matte_string_store_ref_cstring(out->stringStore, "Object");
-    out->specialString_type_type.value.id = matte_string_store_ref_cstring(out->stringStore, "Type");
-    out->specialString_type_function.value.id = matte_string_store_ref_cstring(out->stringStore, "Function");
-    out->specialString_type_any.value.id = matte_string_store_ref_cstring(out->stringStore, "Any");
-    out->specialString_type_nullable.value.id = matte_string_store_ref_cstring(out->stringStore, "Nullable");
+    out->specialString_type_boolean.value.id = matte_store_c_string(out, "Boolean");
+    out->specialString_type_empty.value.id = matte_store_c_string(out, "Empty");
+    out->specialString_type_number.value.id = matte_store_c_string(out, "Number");
+    out->specialString_type_string.value.id = matte_store_c_string(out, "String");
+    out->specialString_type_object.value.id = matte_store_c_string(out, "Object");
+    out->specialString_type_type.value.id = matte_store_c_string(out, "Type");
+    out->specialString_type_function.value.id = matte_store_c_string(out, "Function");
+    out->specialString_type_any.value.id = matte_store_c_string(out, "Any");
+    out->specialString_type_nullable.value.id = matte_store_c_string(out, "Nullable");
 
     out->specialString_empty.binIDreserved = MATTE_VALUE_TYPE_STRING;
     out->specialString_nothing.binIDreserved = MATTE_VALUE_TYPE_STRING;
@@ -976,34 +1027,34 @@ matteStore_t * matte_store_create(matteVM_t * vm) {
     out->specialString_type_nullable.binIDreserved = MATTE_VALUE_TYPE_STRING;
 
 
-    out->specialString_set.value.id = matte_string_store_ref_cstring(out->stringStore, "set");
+    out->specialString_set.value.id = matte_store_c_string(out, "set");
     out->specialString_set.binIDreserved = MATTE_VALUE_TYPE_STRING;
-    out->specialString_get.value.id = matte_string_store_ref_cstring(out->stringStore, "get");
+    out->specialString_get.value.id = matte_store_c_string(out, "get");
     out->specialString_get.binIDreserved = MATTE_VALUE_TYPE_STRING;
-    out->specialString_bracketAccess.value.id = matte_string_store_ref_cstring(out->stringStore, "[]");
+    out->specialString_bracketAccess.value.id = matte_store_c_string(out, "[]");
     out->specialString_bracketAccess.binIDreserved = MATTE_VALUE_TYPE_STRING;
-    out->specialString_dotAccess.value.id = matte_string_store_ref_cstring(out->stringStore, ".");
+    out->specialString_dotAccess.value.id = matte_store_c_string(out, ".");
     out->specialString_dotAccess.binIDreserved = MATTE_VALUE_TYPE_STRING;
 
 
-    out->specialString_foreach.value.id = matte_string_store_ref_cstring(out->stringStore, "foreach");
+    out->specialString_foreach.value.id = matte_store_c_string(out, "foreach");
     out->specialString_foreach.binIDreserved = MATTE_VALUE_TYPE_STRING;
-    out->specialString_keys.value.id = matte_string_store_ref_cstring(out->stringStore, "keys");
+    out->specialString_keys.value.id = matte_store_c_string(out, "keys");
     out->specialString_keys.binIDreserved = MATTE_VALUE_TYPE_STRING;
-    out->specialString_values.value.id = matte_string_store_ref_cstring(out->stringStore, "values");
+    out->specialString_values.value.id = matte_store_c_string(out, "values");
     out->specialString_values.binIDreserved = MATTE_VALUE_TYPE_STRING;
-    out->specialString_name.value.id = matte_string_store_ref_cstring(out->stringStore, "name");
+    out->specialString_name.value.id = matte_store_c_string(out, "name");
     out->specialString_name.binIDreserved = MATTE_VALUE_TYPE_STRING;
-    out->specialString_inherits.value.id = matte_string_store_ref_cstring(out->stringStore, "inherits");
+    out->specialString_inherits.value.id = matte_store_c_string(out, "inherits");
     out->specialString_inherits.binIDreserved = MATTE_VALUE_TYPE_STRING;
-    out->specialString_key.value.id = matte_string_store_ref_cstring(out->stringStore, "key");
+    out->specialString_key.value.id = matte_store_c_string(out, "key");
     out->specialString_key.binIDreserved = MATTE_VALUE_TYPE_STRING;
-    out->specialString_value.value.id = matte_string_store_ref_cstring(out->stringStore, "value");
+    out->specialString_value.value.id = matte_store_c_string(out, "value");
     out->specialString_value.binIDreserved = MATTE_VALUE_TYPE_STRING;
     
-    add_table_refs(out->type_number_methods, out->stringStore, BUILTIN_NUMBER__NAMES, BUILTIN_NUMBER__IDS);
-    add_table_refs(out->type_object_methods, out->stringStore, BUILTIN_OBJECT__NAMES, BUILTIN_OBJECT__IDS);
-    add_table_refs(out->type_string_methods, out->stringStore, BUILTIN_STRING__NAMES, BUILTIN_STRING__IDS);
+    add_table_refs(out->type_number_methods, out, BUILTIN_NUMBER__NAMES, BUILTIN_NUMBER__IDS);
+    add_table_refs(out->type_object_methods, out, BUILTIN_OBJECT__NAMES, BUILTIN_OBJECT__IDS);
+    add_table_refs(out->type_string_methods, out, BUILTIN_STRING__NAMES, BUILTIN_STRING__IDS);
 
     out->ticksGC = matte_os_get_ticks();
 
@@ -1330,7 +1381,7 @@ matteValue_t matte_value_create_type_(
         matte_store_recycle(store, val);
     } else {
         matteString_t * str = matte_string_create_from_c_str("<anonymous type %d>", v.value.id);
-        data.name.value.id = matte_string_store_ref(store->stringStore, str);
+        data.name.value.id = matte_store_string(store, str);
         data.name.binIDreserved = MATTE_VALUE_TYPE_STRING;
         matte_string_destroy(str);        
     }
@@ -1756,7 +1807,9 @@ matteValue_t matte_value_query(matteStore_t * store, matteValue_t * v, matteQuer
         matte_value_into_number(store, &key, index);
 
         matteValue_t * at = matte_value_object_access_direct(store, *v, key, 1);
-        if (at) {
+        if (at) { 
+            matteValue_t out = matte_store_new_value(store);
+            matte_value_into_copy(store, &out, *at);
             matte_value_object_remove_key(store, *v, key);
             return *at;            
         }
@@ -2523,12 +2576,16 @@ void matte_value_print(matteStore_t * store, matteValue_t v) {
         printf("  Store Type: NUMBER\n");
         printf("  Value:     %f\n", matte_value_as_number(store, v));
         break;
-      case MATTE_VALUE_TYPE_STRING: 
+      case MATTE_VALUE_TYPE_STRING: {
         printf("  Store Type: STRING\n");
-        printf("  String ID:   %d\n", v.value.id);
-        printf("  Value:     %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(store, v)));
+        printf("  String ID:  %d\n", v.value.id);
+        const matteString_t * strraw = matte_value_string_get_string_unsafe(store, v);
+        if (strraw)
+            printf("  Value:      %s\n", matte_string_get_c_str(strraw));
+        else
+            printf("  [String no longer active. Contents unknown.]\n");
         break;
-      case MATTE_VALUE_TYPE_TYPE: 
+      } case MATTE_VALUE_TYPE_TYPE: 
         printf("  Store Type: TYPE\n");
         printf("  Value:     %s\n", matte_string_get_c_str(matte_value_string_get_string_unsafe(store, matte_value_as_string(store, v))));
         break;    
@@ -2698,7 +2755,7 @@ matteValue_t matte_value_as_string(matteStore_t * store, matteValue_t v) {
         }
         matteValue_t out;
         out.binIDreserved = MATTE_VALUE_TYPE_STRING;
-        out.value.id = matte_string_store_ref(store->stringStore, str);
+        out.value.id = matte_store_string(store, str);
         matte_string_destroy(str);        
         return out;        
       }
@@ -3167,7 +3224,7 @@ void matte_value_object_push_lock_(matteStore_t * store, matteValue_t v) {
     }
     m->rootState++;
     #ifdef MATTE_DEBUG__STORE_LEVEL_2   
-    printf("%d + at state %d\n", v.value.id, m->rootState);
+    //printf("%d + at state %d\n", v.value.id, m->rootState);
     #endif
 }
 
@@ -3187,7 +3244,7 @@ void matte_value_object_pop_lock_(matteStore_t * store, matteValue_t v) {
         }
     }     
     #ifdef MATTE_DEBUG__STORE_LEVEL_2
-    printf("%d - at state %d\n", v.value.id, m->rootState);
+    //printf("%d - at state %d\n", v.value.id, m->rootState);
     #endif
 }
 
@@ -3205,7 +3262,9 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
 
         if (matte_value_type(set)) {
             v = matte_vm_call(store->vm, set, matte_array_empty(), matte_array_empty(), NULL);
-            return matte_value_object_values(store, v);
+            matteValue_t vout = matte_value_object_values(store, v);
+            matte_store_recycle(store, v);
+            return vout;
         }    
     }
     matteArray_t * keys = matte_array_create(sizeof(matteValue_t));
@@ -3226,8 +3285,7 @@ matteValue_t matte_value_object_keys(matteStore_t * store, matteValue_t v) {
                 matte_string_store_ref_id(store->stringStore, key.value.id);
 
             #ifdef MATTE_DEBUG__STORE
-                if (matte_value_type(key) == MATTE_VALUE_TYPE_OBJECT)
-                    matte_store_track_in(store, key, "object.keys()", 0);
+                matte_store_track_in(store, key, "object.keys()", 0);
             #endif
 
 
@@ -3440,7 +3498,7 @@ void matte_value_object_remove_key(matteStore_t * store, matteValue_t v, matteVa
             }
             matte_mvt2_remove(m->table.keyvalues_id, key);
             matte_store_recycle(store, *value);
-            matte_string_store_unref(store->stringStore, key.value.id);
+            matte_store_recycle(store, key);
         }
         return;
       }
@@ -3806,8 +3864,8 @@ void matte_value_object_sort_unsafe(matteStore_t * store, matteValue_t v, matteV
     matteValue_t names[2];
     names[0].binIDreserved = MATTE_VALUE_TYPE_STRING;
     names[1].binIDreserved = MATTE_VALUE_TYPE_STRING;
-    names[0].value.id = matte_string_store_ref_cstring(store->stringStore, "a");
-    names[1].value.id = matte_string_store_ref_cstring(store->stringStore, "b");
+    names[0].value.id = matte_store_c_string(store, "a");
+    names[1].value.id = matte_store_c_string(store, "b");
     params.names = MATTE_ARRAY_CAST(names, matteValue_t, 2);
     
     matteValue_Sort_t * sortArray = (matteValue_Sort_t*)matte_allocate(sizeof(matteValue_Sort_t)*len);
@@ -3867,12 +3925,12 @@ void matte_value_object_push(
 
     matteObject_t * m = matte_store_bin_fetch_table(store->bin, v.value.id);
 
-    if (matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT) {    
-        object_link_parent_value(store, m, &val);
-    }
     
     matteValue_t vv = matte_store_new_value(store);
     matte_value_into_copy(store, &vv, val);
+    if (matte_value_type(vv) == MATTE_VALUE_TYPE_OBJECT) {    
+        object_link_parent_value(store, m, &vv);
+    }
     if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));//(matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
     matte_array_push(
         m->table.keyvalues_number,
@@ -3896,6 +3954,7 @@ void matte_value_object_set_table(matteStore_t * store, matteValue_t v, matteVal
         matteValue_t val = matte_value_object_access(store, srcTable, *key, 1); // bracket source
         
         matte_value_object_set(store, v, *key, val, 0); // dot target
+        matte_store_recycle(store, val);
     } 
 
     matte_value_object_pop_lock(store, keys);
@@ -4009,7 +4068,7 @@ matteValue_t matte_value_object_set(matteStore_t * store, matteValue_t v, matteV
 
 
 
-        matte_vm_call_full(store->vm, *setter, privateBinding, &arr, &argNames_array, NULL);
+        matte_store_recycle(store, matte_vm_call_full(store->vm, *setter, privateBinding, &arr, &argNames_array, NULL));
         return matte_store_new_value(store);
     }
 
@@ -4221,7 +4280,21 @@ void matte_store_recycle_(
 #endif    
 ) {
     if (matte_value_type(v) == MATTE_VALUE_TYPE_STRING) {
-        matte_string_store_unref(store->stringStore, v.value.id);
+        #ifdef MATTE_DEBUG__STORE
+            matte_store_track_out(store, v, file_, line_);
+        #endif
+      
+        int r = matte_string_store_unref(store->stringStore, v.value.id);
+        #ifdef MATTE_DEBUG__STORE
+            if (r) {
+                matte_store_track_done(store, v);
+            }
+            assert(
+                matte_string_store_get_ref_count(store->stringStore, v.value.id) == 
+                matte_store_track_get_ref_count(store, MATTE_VALUE_TYPE_STRING, v.value.id)
+            );
+
+        #endif
     }
     /*if (matte_value_type(v) == MATTE_VALUE_TYPE_OBJECT) {
         matteObject_t * m = matte_store_bin_fetch(store->bin, v.value.id);
@@ -4413,6 +4486,11 @@ matteStoreBin_t * matte_store_bin_create() {
 matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
     uint32_t id = matte_pool_add(store->functions);
     matteObject_t * o = matte_pool_fetch(store->functions, matteObject_t, id);
+
+    if (id == 8)
+      printf("hi");
+
+
     
     #ifdef MATTE_DEBUG__STORE
         assert(o->storeID == 0 || o->storeID == 0xffffffff);
@@ -4434,8 +4512,8 @@ static uint64_t matte_store_bin_get_lifetime_creates(const matteStoreBin_t * sto
 matteObject_t * matte_store_bin_add_table(matteStoreBin_t * store) {
     uint32_t id = matte_pool_add(store->tables);
     matteObject_t * o = matte_pool_fetch(store->tables, matteObject_t, id);
-    
-    
+
+
     #ifdef MATTE_DEBUG__STORE
         assert(o->storeID == 0 || o->storeID == 0xffffffff);
         if (o->parents == NULL)
@@ -4443,6 +4521,10 @@ matteObject_t * matte_store_bin_add_table(matteStoreBin_t * store) {
     #endif
 
     o->storeID = id*2+1;
+
+    if (o->storeID == 9145)
+      printf("hi");
+    
     store->newObjectCount++;
     return o;
 
@@ -4452,6 +4534,7 @@ matteObject_t * matte_store_bin_fetch(matteStoreBin_t * store, uint32_t id) {
     #ifdef MATTE_DEBUG__STORE
         assert(id != 0);
     #endif
+
 
     // function (is even)
     if (IS_FUNCTION_ID(id)) {
@@ -4539,6 +4622,7 @@ typedef struct {
 
 typedef struct {
     matteTable_t * values[MATTE_VALUE_TYPE_TYPE+1];
+    matteTable_t * values_dead[MATTE_VALUE_TYPE_TYPE+1];
     int resolved;
     int unresolved;
 } MatteStoreTrackInfo;
@@ -4550,6 +4634,10 @@ static MatteStoreTrackInfo * store_track_info = NULL;
 static void matte_store_track_initialize() {
     store_track_info = matte_allocate(sizeof(MatteStoreTrackInfo));
     store_track_info->values[MATTE_VALUE_TYPE_OBJECT] = matte_table_create_hash_pointer();
+    store_track_info->values_dead[MATTE_VALUE_TYPE_OBJECT] = matte_table_create_hash_pointer();
+
+    store_track_info->values[MATTE_VALUE_TYPE_STRING] = matte_table_create_hash_pointer();
+    store_track_info->values_dead[MATTE_VALUE_TYPE_STRING] = matte_table_create_hash_pointer();
 
 }
 
@@ -4562,26 +4650,63 @@ static const char * get_track_store_symbol(int i) {
     return "";
 }
 
+static uint32_t matte_store_track_get_ref_count(matteStore_t * store, int type, uint32_t id) {
+    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[type], id);
+    if (inst == NULL) return 0;
+    
+    return inst->refCount;
+}
 
-static void matte_store_track_print(matteStore_t * store, uint32_t id) {
-    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[MATTE_VALUE_TYPE_OBJECT], id);
-    if (!inst) {
-        printf("No such object / value.\n");
-        return;
+
+
+static void matte_store_track_print_id(matteStore_t * store, int type, uint32_t id) {
+    MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[type], id);
+    if (inst == NULL) {
+        inst = matte_table_find_by_uint(store_track_info->values_dead[type], id);
+        if (!inst) {
+            printf("No such object / value.\n");
+            return;
+        } else {
+        
+            printf("WARNING!! Object is inactive and was recycled...\n");
+        }
     }
 
-    matte_value_print(store, inst->refid);
-    uint32_t i;
-    uint32_t len = matte_array_get_size(inst->historyFiles);
-    for(i = 0; i < len; ++i) {
+    int i, n;
+    int len = (int)matte_array_get_size(inst->historyFiles);
+    int level = 0;
+    for(i = len-1; i >= 0; --i) {
+        int event = matte_array_at(inst->historyIncr, int, i);
+        if (event == 1)
+          level++;
+        else if (event == 0)
+          level--;
+        
+        for(n = 0; n < (-(level/2))%100; ++n) {
+          printf(".");
+        }
+        
+        
         printf(
-            "%s %s:%d\n", 
-            get_track_store_symbol(matte_array_at(inst->historyIncr, int, i)),
+            "(Event %d)-> %s %s:%d\n",
+            (int)i, 
+            get_track_store_symbol(event),
             matte_string_get_c_str(matte_array_at(inst->historyFiles, matteString_t *, i)),
             matte_array_at(inst->historyLines, int, i)
         );
     }
+    matte_value_print(store, inst->refid);
+
 }
+
+static void matte_store_track_print(matteStore_t * store, uint32_t id) {
+    matte_store_track_print_id(store, MATTE_VALUE_TYPE_OBJECT, id);
+}
+
+static void matte_store_track_print_string(matteStore_t * store, uint32_t id) {
+    matte_store_track_print_id(store, MATTE_VALUE_TYPE_STRING, id);
+}
+
 
 
 static void matte_store_report_val(matteStore_t * store, matteTable_t * t) {
@@ -4618,24 +4743,45 @@ void matte_store_track_out_lock(matteStore_t * store, matteValue_t val, const ch
     matte_string_destroy(st);
 }
 
+int64_t matte_store_track_id = -1;
 
 matteValue_t matte_store_track_in(matteStore_t * store, matteValue_t val, const char * file, int line) {
     if (!store_track_info) {
         matte_store_track_initialize();
     }
-    if (!matte_value_type(val) || (matte_value_type(val) != MATTE_VALUE_TYPE_OBJECT)) return val;    
-    matteObject_t * o = matte_store_bin_fetch(store->bin, val.value.id);
+    
+    if (!matte_value_type(val) || (matte_value_type(val) != MATTE_VALUE_TYPE_OBJECT && matte_value_type(val) != MATTE_VALUE_TYPE_STRING)) return val;    
     MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
+
+    if (val.value.id == matte_store_track_id)
+      printf("TRACKED_ID: IN++\n");
+
 
 
     // reference is complete. REMOVE!!!
 
     if (!inst) {
+        MatteStoreTrackInfo_Instance * old = matte_table_find_by_uint(store_track_info->values_dead[matte_value_type(val)], val.value.id);
+        if (old) {
+            matte_array_destroy(old->historyLines);
+            matte_array_destroy(old->historyIncr);
+            uint32_t i;
+            uint32_t len = matte_array_get_size(old->historyFiles);
+            for(i = 0; i < len; ++i) {
+                matte_string_destroy(matte_array_at(old->historyFiles, matteString_t *, i));
+            }
+            matte_array_destroy(old->historyFiles);
+            matte_deallocate(old);
+
+            matte_table_remove_by_uint(store_track_info->values_dead[matte_value_type(val)], val.value.id);
+        }
+    
         inst = matte_allocate(sizeof(MatteStoreTrackInfo_Instance));
         inst->historyFiles = matte_array_create(sizeof(matteString_t *));
         inst->historyLines = matte_array_create(sizeof(int));
         inst->historyIncr  = matte_array_create(sizeof(int));
         matte_table_insert_by_uint(store_track_info->values[matte_value_type(val)], val.value.id, inst);
+        matte_table_insert_by_uint(store_track_info->values_dead[matte_value_type(val)], val.value.id, inst);
         store_track_info->unresolved++;
         inst->refid = val;
     } 
@@ -4653,11 +4799,12 @@ void matte_store_track_neutral(matteStore_t * store, matteValue_t val, const cha
     if (!store_track_info) {
         matte_store_track_initialize();
     }
-    if (!matte_value_type(val) ||!(matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT)) return;
-    matteObject_t * o = matte_store_bin_fetch(store->bin, val.value.id);
+    if (!matte_value_type(val) || (matte_value_type(val) != MATTE_VALUE_TYPE_OBJECT && matte_value_type(val) != MATTE_VALUE_TYPE_STRING)) return;    
 
     MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
-
+    if (!inst) {
+        assert(!"If this assertion fails, an event for an object was tracked despite the object not being active (or possibly being already recycled)");
+    }
 
     matteString_t * fdup = matte_string_create_from_c_str("%s", file);
     int t = 2;
@@ -4673,10 +4820,17 @@ void matte_store_track_out(matteStore_t * store, matteValue_t val, const char * 
     if (!store_track_info) {
         matte_store_track_initialize();
     }
-    if (!matte_value_type(val) ||!(matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT)) return;
+    if (!matte_value_type(val) || (matte_value_type(val) != MATTE_VALUE_TYPE_OBJECT && matte_value_type(val) != MATTE_VALUE_TYPE_STRING)) return;    
     matteObject_t * o = matte_store_bin_fetch(store->bin, val.value.id);
 
     MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
+
+
+    if (val.value.id == matte_store_track_id)
+      printf("TRACKED_ID: OUT--\n");
+
+
+
         
     if (!inst) {
         return;
@@ -4711,23 +4865,37 @@ void matte_store_track_out(matteStore_t * store, matteValue_t val, const char * 
         assert(!"Negative refcount means something is getting rid of a value after it has been disposed.");
     }
     */
+    
+    if (inst->refCount == 0 && matte_value_type(val) == MATTE_VALUE_TYPE_STRING) {
+        printf("WARNING: refCount is 0...\n");
+    }
     if (inst->refCount) inst->refCount--;
     
         
 
 }
 
-
 void matte_store_track_done(matteStore_t * store, matteValue_t val) {
     if (!store_track_info) {
         matte_store_track_initialize();
     }
-    if (!matte_value_type(val) ||!(matte_value_type(val) == MATTE_VALUE_TYPE_OBJECT)) return;
+    if (!matte_value_type(val) || (matte_value_type(val) != MATTE_VALUE_TYPE_OBJECT && matte_value_type(val) != MATTE_VALUE_TYPE_STRING)) return;    
     matteObject_t * o = matte_store_bin_fetch(store->bin, val.value.id);
+
+
+    if (val.value.id == matte_store_track_id)
+      printf("TRACKED_ID: DONE\n");
+
+
 
     MatteStoreTrackInfo_Instance * inst = matte_table_find_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
     if (!inst) {
-        assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to destroy it.");
+        inst = matte_table_find_by_uint(store_track_info->values_dead[matte_value_type(val)], val.value.id);
+        if (inst) {
+            assert(!"If this assertion fails, an object was 'double-recycled'. Not good!!");        
+        } else {
+            assert(!"If this assertion fails, something has used a stray / uninitialized value and tried to destroy it.");
+        }
     }
 
     matteString_t * fdup = matte_string_create_from_c_str("<REMOVED>");
@@ -4737,18 +4905,9 @@ void matte_store_track_done(matteStore_t * store, matteValue_t val) {
     matte_array_push(inst->historyIncr, t);
 
     inst->refCount = 0;
-
-    matte_array_destroy(inst->historyLines);
-    matte_array_destroy(inst->historyIncr);
-    uint32_t i;
-    uint32_t len = matte_array_get_size(inst->historyFiles);
-    for(i = 0; i < len; ++i) {
-        matte_string_destroy(matte_array_at(inst->historyFiles, matteString_t *, i));
-    }
-    matte_array_destroy(inst->historyFiles);
     matte_table_remove_by_uint(store_track_info->values[matte_value_type(val)], val.value.id);
-    matte_deallocate(inst);
-    inst = NULL;
+
+
 
 
 }

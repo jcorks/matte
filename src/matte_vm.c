@@ -257,6 +257,7 @@ static matteValue_t matte_vm_vararg_call(
             if (matte_value_type(key) != MATTE_VALUE_TYPE_STRING) continue;
             
             if (key.value.id == dynBindName.value.id) {
+                matte_store_recycle(vm->store, key);
                 continue;
             }
             
@@ -276,6 +277,7 @@ static matteValue_t matte_vm_vararg_call(
             matte_value_into_copy(vm->store, &name, matte_bytecode_stub_get_arg_name_noref(stub, i));
            
             if (name.value.id == dynBindName.value.id) {
+                matte_store_recycle(vm->store, name);
                 continue;
             }
 
@@ -909,12 +911,14 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t i;
             uint32_t keylen = matte_value_object_get_number_key_count(vm->store, target);
             for(i = 0; i < len; ++i) {
+                matteValue_t val = matte_value_object_access_index(vm->store, p, i);
                 matte_value_object_insert(
                     vm->store,
                     target, 
                     keylen++,
-                    matte_value_object_access_index(vm->store, p, i)
+                    val
                 );
+                matte_store_recycle(vm->store, val);
             }
             
             STACK_POP();
@@ -941,13 +945,17 @@ static matteValue_t vm_execution_loop(matteVM_t * vm) {
             uint32_t i;
             matteValue_t item;            
             for(i = 0; i < len; ++i) {
+                matteValue_t key = matte_value_object_access_index(vm->store, keys, i);
+                matteValue_t val = matte_value_object_access_index(vm->store, vals, i);
                 matte_value_object_set(
                     vm->store,
                     target,
-                    matte_value_object_access_index(vm->store, keys, i),
-                    matte_value_object_access_index(vm->store, vals, i),
+                    key,
+                    val,
                     1
                 );
+                matte_store_recycle(vm->store, key);
+                matte_store_recycle(vm->store, val);
             }
             
             matte_value_object_pop_lock(vm->store, keys);

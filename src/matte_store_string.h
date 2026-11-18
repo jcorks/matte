@@ -54,7 +54,12 @@ void matte_string_store_ref_id(matteStringStore_t *, uint32_t);
 /// Unrefs an ID pointing to a pre-existing string.
 /// If the number of references is 0 after this call, the 
 /// string is dissociated with the string store.
-void matte_string_store_unref(matteStringStore_t *, uint32_t);
+/// Return value is whether the string was dissociated with the string store.
+int matte_string_store_unref(matteStringStore_t *, uint32_t);
+
+/// Returns the current ref count of a given ID.
+/// 0 is given if the ID does not exist.
+uint32_t matte_string_store_get_ref_count(matteStringStore_t * h, uint32_t id);
 
 /// Finds a string based on its ID.
 const matteString_t * matte_string_store_find(const matteStringStore_t *, uint32_t);

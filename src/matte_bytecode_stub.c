@@ -854,7 +854,7 @@ uint8_t * matte_instruction_stream_encode(
     uint32_t len = count;
     
     uint8_t  * instStream = (uint8_t*) matte_allocate(
-        (sizeof(uint64_t) + sizeof(uint64_t)) * len * 2+1
+        (sizeof(uint64_t) + sizeof(uint64_t)) * len * 2 + len * (sizeof(uint16_t)*2) + 1 + sizeof(uint16_t)
     );
     uint8_t  * instStreamIter = instStream;
 

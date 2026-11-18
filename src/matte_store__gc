@@ -198,7 +198,8 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
             printf("--RECYCLING OBJECT %d\n", m->storeID);
         #endif
 
-        #ifdef MATTE_DEBUG__STORE        
+        #ifdef MATTE_DEBUG__STORE       
+            assert(m->rootState == 0); 
             assert(m->color == OBJECT_TRICOLOR__WHITE);
             {
                 matteValue_t vl;
@@ -267,7 +268,11 @@ static void busy_possum_object_cleanup(matteStore_t * h) {
                 valIter->size = 0;
                 matte_mvt2_get_all_keys(m->table.keyvalues_id, keyIter);
                 matte_mvt2_get_all_values(m->table.keyvalues_id, valIter);
-            
+
+                #ifdef MATTE_DEBUG 
+                    assert(matte_array_get_size(valIter) == matte_array_get_size(keyIter));
+                #endif
+
                 uint32_t i;
                 uint32_t len = matte_array_get_size(valIter);
                 for(i = 0; i < len; ++i) {

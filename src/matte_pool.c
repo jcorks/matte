@@ -239,7 +239,6 @@ uint32_t matte_pool_add(mattePool_t * m) {
 
 // destroys a node from the pool;
 void matte_pool_recycle(mattePool_t * m, uint32_t id) {
-
     mattePoolPage_t * pageV = ((mattePoolPage_t*)m->pages->data)+(id/POOL_PAGE_SIZE);
     uint32_t smallID = id%POOL_PAGE_SIZE;
     int smallIDslot = smallID/64;
@@ -273,13 +272,28 @@ void matte_pool_recycle(mattePool_t * m, uint32_t id) {
     
         matte_deallocate(pageV->data);
         pageV->data = NULL;
+        if (pageV == m->unfilled)
+            m->unfilled = pageV->next;
+
+            
+        mattePoolPage_t * end = &matte_array_at(m->pages, mattePoolPage_t, matte_array_get_size(m->pages)-1);
+        if (end == pageV) {
+            while(matte_array_get_size(m->pages) && matte_array_at(m->pages, mattePoolPage_t, matte_array_get_size(m->pages)-1).useCount == 0) {
+                matte_pool_unlink(m, &matte_array_at(m->pages, mattePoolPage_t, matte_array_get_size(m->pages)-1));
+                matte_array_shrink_by_one(m->pages);
+                m->size = POOL_PAGE_SIZE*(matte_array_get_size(m->pages))+1;
+            }
+        } else {
+            matte_pool_unlink(m, pageV);        
+        }
+        return;
     }
     
     if (m->unfilled) {
         // already good!
         if (m->unfilled == pageV) return;
 
-        if (pageV->useCount < m->unfilled->useCount) {
+        if (pageV->id < m->unfilled->id) {
             matte_pool_unlink(m, pageV);
             m->unfilled->prev = pageV;
             pageV->next = m->unfilled;

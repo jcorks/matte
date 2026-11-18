@@ -68,6 +68,12 @@ matteStringStore_t * matte_string_store_create() {
     return h;
 }
 
+uint32_t matte_string_store_get_ref_count(matteStringStore_t * h, uint32_t id) {
+    if (id >= matte_array_get_size(h->strings)) return 0;
+    matteStringInfo_t * ref = &matte_array_at(h->strings, matteStringInfo_t, id);
+    return ref->refs;
+}
+
 uint32_t matte_string_store_ref(matteStringStore_t * h, const matteString_t * str) {
     return matte_string_store_ref_cstring(h, matte_string_get_c_str(str));
 }
@@ -102,12 +108,12 @@ void matte_string_store_ref_id(matteStringStore_t * h, uint32_t id) {
     matte_array_at(h->strings, matteStringInfo_t, id).refs++;
 }
 
-void matte_string_store_unref(matteStringStore_t * h, uint32_t id) {
+int matte_string_store_unref(matteStringStore_t * h, uint32_t id) {
     if (id >= matte_array_get_size(h->strings)) {
         #ifdef MATTE_DEBUG__STORE
             assert(!"Invalid string unrefd");
         #endif
-        return;
+        return 0;
     }
     
         
@@ -121,12 +127,17 @@ void matte_string_store_unref(matteStringStore_t * h, uint32_t id) {
     if (ref->refs == 0) {
         #ifdef MATTE_DEBUG__STORE
             printf("STRING %d DONE\n", id);
+            
+            if (id == 1629)
+              printf("hi");
         #endif    
         matte_table_remove(h->strbufferToID, matte_string_get_c_str(ref->str));
         matte_string_destroy(ref->str);
         ref->str = NULL;
         matte_array_push(h->deadIDs, id);
+        return 1;
     }
+    return 0;
 }
 
 
