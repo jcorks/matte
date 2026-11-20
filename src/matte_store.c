@@ -4487,9 +4487,6 @@ matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
     uint32_t id = matte_pool_add(store->functions);
     matteObject_t * o = matte_pool_fetch(store->functions, matteObject_t, id);
 
-    if (id == 8)
-      printf("hi");
-
 
     
     #ifdef MATTE_DEBUG__STORE
@@ -4500,6 +4497,7 @@ matteObject_t * matte_store_bin_add_function(matteStoreBin_t * store) {
     if (o->function.vars == NULL)
         o->function.vars = (matteVariableData_t*)matte_allocate(sizeof(matteVariableData_t));
     o->storeID = id*2;
+    store->newObjectCount++;
 	    
     return o;
 }
@@ -4521,9 +4519,6 @@ matteObject_t * matte_store_bin_add_table(matteStoreBin_t * store) {
     #endif
 
     o->storeID = id*2+1;
-
-    if (o->storeID == 9145)
-      printf("hi");
     
     store->newObjectCount++;
     return o;

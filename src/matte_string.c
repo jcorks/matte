@@ -43,7 +43,8 @@ DEALINGS IN THE SOFTWARE.
 
 
 #define prealloc_size 8
-
+#define MATTE_STRING_REALLOC_LIMIT (4096*2)
+#define MATTE_STRING_REALLOC_SCALE (1.4)
 
 struct matteString_t {
     uint32_t * utf8;
@@ -104,9 +105,9 @@ static int utf8_put_char(uint32_t val, uint8_t * iter) {
 
 
 static void matte_string_concat_cstr(matteString_t * s, const uint8_t * cstr, uint32_t len) {
-    while (s->len + len >= s->alloc) {
+    while (s->len + len > s->alloc) {
         uint32_t oldAlloc = s->alloc*sizeof(uint32_t);
-        s->alloc*=1.4;
+        s->alloc = s->len + len;
         uint32_t * newData = (uint32_t*)matte_allocate(s->alloc*sizeof(uint32_t));
         memcpy(newData, s->utf8, oldAlloc);
         matte_deallocate(s->utf8);
@@ -335,7 +336,10 @@ void matte_string_set_char(matteString_t * t, uint32_t p, uint32_t value) {
 void matte_string_append_char(matteString_t * t, uint32_t value) {
     if (t->len + 1 >= t->alloc) {
         uint32_t oldAlloc = t->alloc*sizeof(uint32_t);
-        t->alloc*=1.4;
+        t->alloc*=MATTE_STRING_REALLOC_SCALE;
+        if (t->alloc > oldAlloc + MATTE_STRING_REALLOC_LIMIT) {
+            t->alloc = oldAlloc + MATTE_STRING_REALLOC_LIMIT;
+        }
         uint32_t * newData = (uint32_t*)matte_allocate(t->alloc*sizeof(uint32_t));
         memcpy(newData, t->utf8, oldAlloc);
         matte_deallocate(t->utf8);
@@ -358,7 +362,10 @@ void matte_string_insert_n_chars(
     if (position >= t->len) return;
     while(t->len + nvalues >= t->alloc) {
         uint32_t oldAlloc = t->alloc*sizeof(uint32_t);
-        t->alloc*=1.4;
+        t->alloc*=MATTE_STRING_REALLOC_SCALE;
+        if (t->alloc > oldAlloc + MATTE_STRING_REALLOC_LIMIT) {
+            t->alloc = oldAlloc + MATTE_STRING_REALLOC_LIMIT;
+        }
         uint32_t * newData = (uint32_t*)matte_allocate(t->alloc*sizeof(uint32_t));
         memcpy(newData, t->utf8, oldAlloc);
         matte_deallocate(t->utf8);
@@ -435,7 +442,10 @@ void matte_string_append_utf8_char(
 
     while (s->len + 1 >= s->alloc) {
         uint32_t oldAlloc = s->alloc*sizeof(uint32_t);
-        s->alloc*=1.4;
+        s->alloc*=MATTE_STRING_REALLOC_SCALE;
+        if (s->alloc > oldAlloc + MATTE_STRING_REALLOC_LIMIT) {
+            s->alloc = oldAlloc + MATTE_STRING_REALLOC_LIMIT;
+        }
         uint32_t * newData = (uint32_t*)matte_allocate(s->alloc*sizeof(uint32_t));
         memcpy(newData, s->utf8, oldAlloc);
         matte_deallocate(s->utf8);

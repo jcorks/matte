@@ -127,9 +127,6 @@ int matte_string_store_unref(matteStringStore_t * h, uint32_t id) {
     if (ref->refs == 0) {
         #ifdef MATTE_DEBUG__STORE
             printf("STRING %d DONE\n", id);
-            
-            if (id == 1629)
-              printf("hi");
         #endif    
         matte_table_remove(h->strbufferToID, matte_string_get_c_str(ref->str));
         matte_string_destroy(ref->str);
