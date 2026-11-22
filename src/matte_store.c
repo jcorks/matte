@@ -3906,10 +3906,12 @@ void matte_value_object_insert(
         object_link_parent_value(store, m, &val);
     }
     if (!m->table.keyvalues_number) m->table.keyvalues_number = matte_array_create(sizeof(matteValue_t));//(matteArray_t*)matte_pool_fetch(store->keyvalues_numberPool);
+    matteValue_t valcpy = matte_store_new_value(store);
+    matte_value_into_copy(store, &valcpy, val);
     matte_array_insert(
         m->table.keyvalues_number,
         index,
-        val
+        valcpy
     );
 }
 

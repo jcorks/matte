@@ -188,6 +188,7 @@ static matteValue_t vm_ext_call__object__filter(matteVM_t * vm, matteValue_t fn,
         if (matte_value_as_boolean(vm->store, matte_vm_call(vm, args[1], &argsv, names, NULL))) {
             matte_value_object_insert(vm->store, out, ctout++, v);
         }
+        matte_store_recycle(vm->store, v);
     }
     
     matte_value_object_pop_lock(vm->store, args[0]);
@@ -219,8 +220,10 @@ static matteValue_t vm_ext_call__object__findindex(matteVM_t * vm, matteValue_t 
 
         if (matte_value_as_boolean(vm->store, vm_operator__eq(vm, v, args[1])))  {
             matte_value_into_number(vm->store, &out, i);
+            matte_store_recycle(vm->store, v);
             break;
         }
+        matte_store_recycle(vm->store, v);
     }
     matte_value_object_pop_lock(vm->store, args[0]);
     matte_value_object_pop_lock(vm->store, args[1]);
@@ -253,8 +256,10 @@ static matteValue_t vm_ext_call__object__findindexcondition(matteVM_t * vm, matt
 
             if (matte_value_as_boolean(vm->store, matte_vm_call(vm, args[1], &argsv, names, NULL))) {
                 matte_value_into_number(vm->store, &out, i);
+                matte_store_recycle(vm->store, v);
                 break;
             }
+            matte_store_recycle(vm->store, v);
         }
         
         matte_array_destroy(names);
@@ -334,6 +339,7 @@ static matteValue_t vm_ext_call__object__map(matteVM_t * vm, matteValue_t fn, co
 
         matteValue_t newv = matte_vm_call(vm, args[1], &argsv, &names, NULL);
         matte_value_object_set_index_unsafe(vm->store, out, i, newv);
+        matte_store_recycle(vm->store, v);
     }
     
     matte_value_object_pop_lock(vm->store, args[0]);
@@ -372,7 +378,7 @@ static matteValue_t vm_ext_call__object__reduce(matteVM_t * vm, matteValue_t fn,
         matte_value_object_pop_lock(vm->store, out);
         matte_value_into_copy(vm->store, &out, newv);
         matte_value_object_push_lock(vm->store, out);
-
+        matte_store_recycle(vm->store, argValues[1]);
     }
     matte_value_object_pop_lock(vm->store, out);
     matte_value_object_pop_lock(vm->store, args[0]);
@@ -408,8 +414,11 @@ static matteValue_t vm_ext_call__object__any(matteVM_t * vm, matteValue_t fn, co
         if (matte_value_as_boolean(vm->store, newv) == 1) {
             matte_store_recycle(vm->store, newv);
             matte_value_into_boolean(vm->store, &out, 1);
+            matte_store_recycle(vm->store, argValues[0]);
+
             break;
         }
+        matte_store_recycle(vm->store, argValues[0]);
 
     }
     matte_value_object_pop_lock(vm->store, args[0]);
@@ -444,8 +453,10 @@ static matteValue_t vm_ext_call__object__all(matteVM_t * vm, matteValue_t fn, co
         if (matte_value_as_boolean(vm->store, newv) == 0) {
             matte_store_recycle(vm->store, newv);
             matte_value_into_boolean(vm->store, &out, 0);
+            matte_store_recycle(vm->store, argValues[0]);
             break;
         }
+        matte_store_recycle(vm->store, argValues[0]);
 
     }
     matte_value_object_pop_lock(vm->store, args[0]);

@@ -78,7 +78,7 @@ uint32_t matte_string_store_ref(matteStringStore_t * h, const matteString_t * st
     return matte_string_store_ref_cstring(h, matte_string_get_c_str(str));
 }
 uint32_t matte_string_store_ref_cstring(matteStringStore_t * h, const char * strc) {
-    uint32_t id = (uintptr_t) matte_table_find(h->strbufferToID, strc);
+    uint32_t id = (uintptr_t) matte_table_find(h->strbufferToID, strc);    
     if (id == 0) {
         matteStringInfo_t val = {};
         val.str = matte_string_create_from_c_str("%s", strc);
@@ -95,11 +95,10 @@ uint32_t matte_string_store_ref_cstring(matteStringStore_t * h, const char * str
             matte_array_push(h->strings, val);
         }
         matte_table_insert(h->strbufferToID, strc, (void*)(uintptr_t)id);
-
-
-
     } 
     matte_array_at(h->strings, matteStringInfo_t, id).refs++;
+    if (id == 2025) 
+      printf("hi");
     return id;
 }
 
